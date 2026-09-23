@@ -602,6 +602,18 @@
                 <div class="mode-pill" data-blend="2" title="Direct solid render">Direct</div>
             </div>
 
+            <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
+                <span class="hud-label">POSITION</span>
+            </div>
+            <div class="mode-pills" id="logo-pos-pills" style="flex-wrap:wrap; gap:3px;">
+                <div class="mode-pill active" data-pos="center" style="flex:1 1 28%;">Center</div>
+                <div class="mode-pill" data-pos="top-left" style="flex:1 1 28%;">Top-L</div>
+                <div class="mode-pill" data-pos="top-right" style="flex:1 1 28%;">Top-R</div>
+                <div class="mode-pill" data-pos="top-quarter" style="flex:1 1 28%;">Top-1/4</div>
+                <div class="mode-pill" data-pos="bottom-left" style="flex:1 1 28%;">Bot-L</div>
+                <div class="mode-pill" data-pos="bottom-right" style="flex:1 1 28%;">Bot-R</div>
+            </div>
+
             <div class="slider-row">
                 <div class="slider-header">
                     <span>CONTRAST BOOSTER</span>
@@ -649,7 +661,7 @@
         </div>
 
         <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 9px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
-            <span>[1-9] FX Presets</span>
+            <span>[1-9,0,-,=,Q,W,E,R] 16 FX</span>
             <span>[A] Auto VJ</span>
             <span>[L] Logo</span>
             <span>[Space] Flash</span>
@@ -672,11 +684,11 @@
         <!-- Category Filter Tabs -->
         <div class="category-tabs">
             <div class="cat-tab-group">
-                <button class="cat-tab active" data-category="all">⚡ All (9)</button>
-                <button class="cat-tab" data-category="eq">📊 Equalizers</button>
-                <button class="cat-tab" data-category="wire">🕸️ Cyber Highway</button>
+                <button class="cat-tab active" data-category="all">⚡ All (16)</button>
+                <button class="cat-tab" data-category="eq">📊 Equalizers & Decks</button>
+                <button class="cat-tab" data-category="laser">⚡ Lasers & Disco</button>
+                <button class="cat-tab" data-category="wire">🕸️ Cyber & Retro</button>
                 <button class="cat-tab" data-category="space">🌌 Space & Galaxy</button>
-                <button class="cat-tab" data-category="laser">⚡ Lasers & Lights</button>
             </div>
             <div class="vj-actions">
                 <button class="auto-btn" id="btn-auto-vj" title="Toggle Auto VJ Mode (Cycles FX automatically)"><span class="fx-key">A</span> AUTO VJ</button>
@@ -684,24 +696,31 @@
             </div>
         </div>
 
-        <!-- FX Preset Buttons Row -->
+        <!-- FX Preset Buttons Row (16 Presets) -->
         <div class="fx-presets-row" id="fx-presets-row">
-            <!-- 📊 Equalizers -->
+            <!-- 📊 Equalizers & Decks -->
             <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
             <button class="fx-btn" data-fx="1" data-cat="eq"><span class="fx-key">2</span> 🎯 Circular Spectrum</button>
             <button class="fx-btn" data-fx="2" data-cat="eq"><span class="fx-key">3</span> 🌊 Fluid Wave Matrix</button>
+            <button class="fx-btn" data-fx="3" data-cat="eq"><span class="fx-key">4</span> 🎚️ DJ Deck Waveforms</button>
 
-            <!-- 🕸️ Cyber Highway -->
-            <button class="fx-btn" data-fx="3" data-cat="wire"><span class="fx-key">4</span> 🌅 Synthwave Grid</button>
-
-            <!-- 🌌 Space & Galaxy -->
-            <button class="fx-btn" data-fx="4" data-cat="space"><span class="fx-key">5</span> 🚀 Warp Starfield</button>
-            <button class="fx-btn" data-fx="5" data-cat="space"><span class="fx-key">6</span> 🌌 Spiral Galaxy Vortex</button>
-
-            <!-- ⚡ Lasers & Lights -->
+            <!-- ⚡ Lasers & Disco -->
+            <button class="fx-btn" data-fx="4" data-cat="laser"><span class="fx-key">5</span> 🪩 Spinning Disco Ball</button>
+            <button class="fx-btn" data-fx="5" data-cat="laser"><span class="fx-key">6</span> 🕺 70s Disco Dancefloor</button>
             <button class="fx-btn" data-fx="6" data-cat="laser"><span class="fx-key">7</span> ⚡ Dual-Bank Lasers</button>
             <button class="fx-btn" data-fx="7" data-cat="laser"><span class="fx-key">8</span> 💥 Saber Multi-Beams</button>
             <button class="fx-btn" data-fx="8" data-cat="laser"><span class="fx-key">9</span> 💫 Strobe Rings</button>
+            <button class="fx-btn" data-fx="9" data-cat="laser"><span class="fx-key">0</span> 💃 Silhouette Dancers</button>
+
+            <!-- 🕸️ Cyber & Retro -->
+            <button class="fx-btn" data-fx="10" data-cat="wire"><span class="fx-key">-</span> 🌅 Synthwave Grid</button>
+            <button class="fx-btn" data-fx="11" data-cat="wire"><span class="fx-key">=</span> 🏍️ Tron Lightcycles</button>
+            <button class="fx-btn" data-fx="12" data-cat="wire"><span class="fx-key">Q</span> 💻 Matrix Code Rain</button>
+            <button class="fx-btn" data-fx="13" data-cat="wire"><span class="fx-key">W</span> 👾 Retro Arcade 80s</button>
+
+            <!-- 🌌 Space & Galaxy -->
+            <button class="fx-btn" data-fx="14" data-cat="space"><span class="fx-key">E</span> 🚀 Warp Starfield</button>
+            <button class="fx-btn" data-fx="15" data-cat="space"><span class="fx-key">R</span> 🌌 Spiral Galaxy Vortex</button>
         </div>
     </div>
 

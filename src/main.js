@@ -31,6 +31,7 @@ async function init() {
     const logoFilename = document.getElementById('logo-filename');
     const modePills = document.querySelectorAll('.mode-pill[data-mode]');
     const blendPills = document.querySelectorAll('.mode-pill[data-blend]');
+    const posPills = document.querySelectorAll('#logo-pos-pills .mode-pill[data-pos]');
     const sliderLogoContrast = document.getElementById('slider-logo-contrast');
     const sliderLogoBright = document.getElementById('slider-logo-bright');
     const sliderLogoScale = document.getElementById('slider-logo-scale');
@@ -62,7 +63,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 9;
+    const TOTAL_FX = 16;
 
     // 2. Audio & Media Activation on User Click
     async function enableAudioAndMedia() {
@@ -122,6 +123,15 @@ async function init() {
             blendPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoBlendMode(blend);
+        });
+    });
+
+    posPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const pos = pill.getAttribute('data-pos');
+            posPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setLogoPosition(pos);
         });
     });
 
@@ -328,10 +338,15 @@ async function init() {
         }
     });
 
-    // 7. Keyboard Shortcuts
+    // 7. Keyboard Shortcuts (16 Presets)
     const hotkeyMap = {
-        '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
-        '6': 5, '7': 6, '8': 7, '9': 8
+        '1': 0, '2': 1, '3': 2, '4': 3,
+        '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
+        '-': 10, '=': 11,
+        'q': 12, 'Q': 12,
+        'w': 13, 'W': 13,
+        'e': 14, 'E': 14,
+        'r': 15, 'R': 15
     };
 
     window.addEventListener('keydown', (e) => {
