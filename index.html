@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DJ VFX - Nightclub Visual Engine, FX Bank & Branding Layer</title>
+    <title>DJ VFX - Nightclub Visual Engine, FX Bank & High-Clarity Branding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
@@ -41,14 +41,14 @@
             top: 16px;
             left: 16px;
             z-index: 20;
-            background: rgba(10, 10, 22, 0.78);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85), inset 0 0 15px rgba(0, 255, 255, 0.08);
+            background: rgba(10, 10, 22, 0.82);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.9), inset 0 0 15px rgba(0, 255, 255, 0.08);
             padding: 14px 18px;
             border-radius: 14px;
-            width: 320px;
+            width: 330px;
             max-height: 94vh;
             overflow-y: auto;
             scrollbar-width: none;
@@ -173,7 +173,7 @@
             background: linear-gradient(180deg, #aa00ff 0%, #ff00aa 100%);
         }
 
-        /* Calibration Controls Panel (Sliders) */
+        /* Calibration Controls Panel */
         .control-group {
             margin-top: 8px;
             padding-top: 8px;
@@ -184,7 +184,7 @@
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 1px;
-            color: rgba(255, 255, 255, 0.4);
+            color: rgba(255, 255, 255, 0.45);
             text-transform: uppercase;
             margin-bottom: 6px;
             display: flex;
@@ -201,7 +201,7 @@
             justify-content: space-between;
             font-size: 10px;
             font-family: 'JetBrains Mono', monospace;
-            color: rgba(255, 255, 255, 0.6);
+            color: rgba(255, 255, 255, 0.65);
             margin-bottom: 2px;
         }
 
@@ -229,7 +229,6 @@
             box-shadow: 0 0 8px #00ffff;
         }
 
-        /* Mode Selector Pill Buttons */
         .mode-pills {
             display: flex;
             gap: 4px;
@@ -252,7 +251,7 @@
         }
 
         .mode-pill.active {
-            background: rgba(0, 255, 204, 0.2);
+            background: rgba(0, 255, 204, 0.25);
             border-color: #00ffcc;
             color: #ffffff;
             font-weight: 700;
@@ -406,7 +405,7 @@
             50% { opacity: 0.4; }
         }
 
-        /* Drag & Drop Overlay Indicator */
+        /* Drag & Drop Indicator */
         #drop-zone {
             position: absolute;
             top: 0;
@@ -497,10 +496,10 @@
             </div>
         </div>
 
-        <!-- Logo / Branding Layer Controls -->
+        <!-- High-Clarity Logo & Branding Layer Controls -->
         <div class="control-group">
             <div class="group-title">
-                <span>⚡ Logo / Video Layer</span>
+                <span>⚡ High-Clarity Logo Layer</span>
                 <span id="logo-badge" class="hud-badge" style="cursor:pointer;">ACTIVE [L]</span>
             </div>
 
@@ -509,18 +508,34 @@
                 <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
             </div>
 
+            <!-- Position Mode -->
             <div class="mode-pills">
-                <div class="mode-pill active" data-mode="hologram">3D Hologram</div>
-                <div class="mode-pill" data-mode="backdrop">Backdrop</div>
-                <div class="mode-pill" data-mode="overlay">Watermark</div>
+                <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
+                <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
+                <div class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</div>
+            </div>
+
+            <!-- Blend / Knockout Mode -->
+            <div class="mode-pills">
+                <div class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</div>
+                <div class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</div>
+                <div class="mode-pill" data-blend="2" title="Direct solid render">Direct</div>
             </div>
 
             <div class="slider-row">
                 <div class="slider-header">
-                    <span>OPACITY / KNOCKOUT</span>
-                    <span class="val" id="logo-op-val">85%</span>
+                    <span>CONTRAST BOOSTER</span>
+                    <span class="val" id="logo-contrast-val">1.45x</span>
                 </div>
-                <input type="range" id="slider-logo-op" min="0" max="100" step="5" value="85">
+                <input type="range" id="slider-logo-contrast" min="0.8" max="2.5" step="0.05" value="1.45">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>BRIGHTNESS PUNCH</span>
+                    <span class="val" id="logo-bright-val">1.15x</span>
+                </div>
+                <input type="range" id="slider-logo-bright" min="0.6" max="2.0" step="0.05" value="1.15">
             </div>
 
             <div class="slider-row">
@@ -533,14 +548,21 @@
 
             <div class="slider-row">
                 <div class="slider-header">
-                    <span>BASS PULSE PUNCH</span>
-                    <span class="val" id="logo-pulse-val">60%</span>
+                    <span>BASS PULSE IMPACT</span>
+                    <span class="val" id="logo-pulse-val">50%</span>
                 </div>
-                <input type="range" id="slider-logo-pulse" min="0" max="150" step="10" value="60">
+                <input type="range" id="slider-logo-pulse" min="0" max="150" step="10" value="50">
+            </div>
+
+            <div class="hud-row" style="margin-top:6px;">
+                <span class="hud-label">CONTRAST SHIELD</span>
+                <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
+                    <input type="checkbox" id="check-logo-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
+                </label>
             </div>
 
             <div style="display:flex; gap:6px; margin-top:8px;">
-                <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom File</button>
+                <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom Media</button>
                 <button class="btn-mini" id="btn-reset-shock" title="Reset to JK McLaren Shock MP4">↺ Shock</button>
                 <input type="file" id="file-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
             </div>

@@ -51,6 +51,64 @@ const NightclubPostFX = {
     `
 };
 
+// High-Contrast Luma-Keyed Logo Shader for Razor-Sharp Visibility
+const HighClarityLogoShader = {
+    uniforms: {
+        map: { value: null },
+        uOpacity: { value: 1.0 },
+        uContrast: { value: 1.45 },
+        uBrightness: { value: 1.15 },
+        uLumaCutoff: { value: 0.07 },
+        uLumaSmooth: { value: 0.06 },
+        uBlendMode: { value: 0 } // 0: Crisp Luma Key (Normal), 1: Additive Holo, 2: Direct
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D map;
+        uniform float uOpacity;
+        uniform float uContrast;
+        uniform float uBrightness;
+        uniform float uLumaCutoff;
+        uniform float uLumaSmooth;
+        uniform int uBlendMode;
+        varying vec2 vUv;
+
+        void main() {
+            vec4 texColor = texture2D(map, vUv);
+
+            // Contrast & Brightness Enhancer
+            vec3 col = texColor.rgb;
+            col = (col - 0.5) * uContrast + 0.5 + (uBrightness - 1.0);
+            col = clamp(col, 0.0, 1.5);
+
+            float luma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
+            float alpha = texColor.a;
+
+            if (uBlendMode == 0) {
+                // Crisp Luma Key: Solid, sharp foreground with black knocked out
+                float key = smoothstep(uLumaCutoff, uLumaCutoff + uLumaSmooth, luma);
+                alpha = alpha * key * uOpacity;
+            } else if (uBlendMode == 1) {
+                // Additive Hologram
+                alpha = alpha * uOpacity;
+            } else {
+                // Direct Solid
+                alpha = alpha * uOpacity;
+            }
+
+            if (alpha < 0.005) discard;
+
+            gl_FragColor = vec4(col, alpha);
+        }
+    `
+};
+
 export function createVFXScene(container) {
     // 1. Scene, Camera, WebGL Renderer
     const scene = new THREE.Scene();
@@ -101,32 +159,70 @@ export function createVFXScene(container) {
     scene.add(lightMagenta);
 
     // ==========================================
-    // LOGO & VIDEO BACKDROP LAYER SUBSYSTEM
+    // HIGH-CLARITY LOGO & VIDEO LAYER
     // ==========================================
     const logoGroup = new THREE.Group();
+    logoGroup.renderOrder = 999; // Render in crisp focus
     scene.add(logoGroup);
 
     let logoVideoElement = null;
     let logoTexture = null;
     let logoMesh = null;
+    let logoShieldMesh = null;
     let logoVisible = true;
     let logoMode = 'hologram'; // 'hologram', 'backdrop', 'overlay'
-    let logoBaseOpacity = 0.85;
+    let logoBaseOpacity = 1.0;
     let logoBaseScale = 1.0;
-    let logoBassPulseAmount = 0.6;
+    let logoBassPulseAmount = 0.5;
     let logoAspectRatio = 16 / 9;
+    let logoContrast = 1.45;
+    let logoBrightness = 1.15;
+    let isShieldActive = true;
 
-    // Create Logo Mesh Geometry & Material
-    const logoGeo = new THREE.PlaneGeometry(16, 9);
-    const logoMat = new THREE.MeshBasicMaterial({
-        color: 0xffffff,
+    // Dark Contrast Shield (prevents background wireframes/lasers from obscuring logo text)
+    const shieldCanvas = document.createElement('canvas');
+    shieldCanvas.width = 256;
+    shieldCanvas.height = 256;
+    const sCtx = shieldCanvas.getContext('2d');
+    const sGrad = sCtx.createRadialGradient(128, 128, 20, 128, 128, 128);
+    sGrad.addColorStop(0, 'rgba(2, 2, 8, 0.88)');
+    sGrad.addColorStop(0.65, 'rgba(2, 2, 8, 0.55)');
+    sGrad.addColorStop(1, 'rgba(2, 2, 8, 0.0)');
+    sCtx.fillStyle = sGrad;
+    sCtx.fillRect(0, 0, 256, 256);
+
+    const shieldTexture = new THREE.CanvasTexture(shieldCanvas);
+    const shieldMat = new THREE.MeshBasicMaterial({
+        map: shieldTexture,
         transparent: true,
-        opacity: logoBaseOpacity,
-        blending: THREE.AdditiveBlending, // Knocks out black background and produces glowing neon hologram
-        side: THREE.DoubleSide,
-        depthWrite: false
+        opacity: 0.85,
+        depthWrite: false,
+        fog: false
     });
-    logoMesh = new THREE.Mesh(logoGeo, logoMat);
+    logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 11), shieldMat);
+    logoGroup.add(logoShieldMesh);
+
+    // Create Logo Mesh with High-Clarity Shader
+    const logoGeo = new THREE.PlaneGeometry(16, 9);
+    const logoShaderMat = new THREE.ShaderMaterial({
+        uniforms: {
+            map: { value: null },
+            uOpacity: { value: logoBaseOpacity },
+            uContrast: { value: logoContrast },
+            uBrightness: { value: logoBrightness },
+            uLumaCutoff: { value: 0.07 },
+            uLumaSmooth: { value: 0.06 },
+            uBlendMode: { value: 0 }
+        },
+        vertexShader: HighClarityLogoShader.vertexShader,
+        fragmentShader: HighClarityLogoShader.fragmentShader,
+        transparent: true,
+        depthWrite: false,
+        fog: false,
+        side: THREE.DoubleSide
+    });
+
+    logoMesh = new THREE.Mesh(logoGeo, logoShaderMat);
     logoGroup.add(logoMesh);
     applyLogoPlacement();
 
@@ -134,32 +230,44 @@ export function createVFXScene(container) {
         if (!logoMesh) return;
 
         if (logoMode === 'backdrop') {
-            // Positioned behind 3D objects
+            // Positioned behind 3D objects as animated wallpaper
             logoMesh.position.set(0, 0, -22);
-            const w = 56 * logoBaseScale;
-            const h = (56 / logoAspectRatio) * logoBaseScale;
+            const w = 58 * logoBaseScale;
+            const h = (58 / logoAspectRatio) * logoBaseScale;
             logoMesh.scale.set(w / 16, h / 9, 1);
-            logoMat.blending = THREE.AdditiveBlending;
+            logoShaderMat.blending = THREE.AdditiveBlending;
+            if (logoShieldMesh) logoShieldMesh.visible = false;
         } else if (logoMode === 'hologram') {
-            // Center 3D hologram integrated inside the visualizer
-            logoMesh.position.set(0, 0, -1.0);
-            const w = 14 * logoBaseScale;
-            const h = (14 / logoAspectRatio) * logoBaseScale;
+            // Crisp 3D placement floating in front of center geometry (z = 3.5)
+            logoMesh.position.set(0, 0, 3.5);
+            const w = 13.5 * logoBaseScale;
+            const h = (13.5 / logoAspectRatio) * logoBaseScale;
             logoMesh.scale.set(w / 16, h / 9, 1);
-            logoMat.blending = THREE.AdditiveBlending;
+            logoShaderMat.blending = THREE.NormalBlending;
+
+            if (logoShieldMesh) {
+                logoShieldMesh.visible = isShieldActive;
+                logoShieldMesh.position.set(0, 0, 3.35);
+                logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
+            }
         } else if (logoMode === 'overlay') {
-            // Foreground watermark
-            logoMesh.position.set(0, 0, 10);
-            const w = 6 * logoBaseScale;
-            const h = (6 / logoAspectRatio) * logoBaseScale;
+            // Front HUD watermark
+            logoMesh.position.set(0, 0, 11);
+            const w = 7.0 * logoBaseScale;
+            const h = (7.0 / logoAspectRatio) * logoBaseScale;
             logoMesh.scale.set(w / 16, h / 9, 1);
-            logoMat.blending = THREE.NormalBlending;
+            logoShaderMat.blending = THREE.NormalBlending;
+
+            if (logoShieldMesh) {
+                logoShieldMesh.visible = isShieldActive;
+                logoShieldMesh.position.set(0, 0, 10.9);
+                logoShieldMesh.scale.set((w * 1.3) / 18, (h * 1.35) / 11, 1);
+            }
         }
     }
 
-    function loadLogoMedia(sourceUrl, isVideo = true, mimeType = '') {
+    function loadLogoMedia(sourceUrl, isVideo = true) {
         try {
-            // Clean up previous video element if any
             if (logoVideoElement) {
                 logoVideoElement.pause();
                 logoVideoElement.removeAttribute('src');
@@ -186,7 +294,7 @@ export function createVFXScene(container) {
                 });
 
                 video.play().catch(e => {
-                    console.log("[Logo] Video autoplay waiting for user interaction:", e);
+                    console.log("[Logo] Video waiting for user gesture:", e);
                 });
 
                 logoVideoElement = video;
@@ -195,10 +303,9 @@ export function createVFXScene(container) {
                 logoTexture.magFilter = THREE.LinearFilter;
                 logoTexture.generateMipmaps = false;
 
-                logoMat.map = logoTexture;
-                logoMat.needsUpdate = true;
+                logoShaderMat.uniforms.map.value = logoTexture;
+                logoShaderMat.needsUpdate = true;
             } else {
-                // Image / GIF
                 const textureLoader = new THREE.TextureLoader();
                 textureLoader.load(sourceUrl, (tex) => {
                     logoTexture = tex;
@@ -208,12 +315,12 @@ export function createVFXScene(container) {
                         logoAspectRatio = tex.image.width / tex.image.height;
                         applyLogoPlacement();
                     }
-                    logoMat.map = logoTexture;
-                    logoMat.needsUpdate = true;
+                    logoShaderMat.uniforms.map.value = logoTexture;
+                    logoShaderMat.needsUpdate = true;
                 });
             }
         } catch (err) {
-            console.error("[Logo] Error loading logo media:", err);
+            console.error("[Logo] Error loading media:", err);
         }
     }
 
@@ -237,9 +344,7 @@ export function createVFXScene(container) {
         return group;
     }
 
-    // ------------------------------------------
-    // FX 0: QUANTUM NEON TORUS & CORE
-    // ------------------------------------------
+    // FX 0: Torus
     const gTorus = createFXGroup();
     gTorus.visible = true;
 
@@ -286,9 +391,7 @@ export function createVFXScene(container) {
     const torusParticles = new THREE.Points(pGeo, pMat);
     gTorus.add(torusParticles);
 
-    // ------------------------------------------
-    // FX 1: CYBER WARP TUNNEL
-    // ------------------------------------------
+    // FX 1: Tunnel
     const gTunnel = createFXGroup();
     const tunnelRings = [];
     const tunnelRingCount = 40;
@@ -321,9 +424,7 @@ export function createVFXScene(container) {
     const tunnelStars = new THREE.Points(starGeo, starMat);
     gTunnel.add(tunnelStars);
 
-    // ------------------------------------------
-    // FX 2: SYNTHWAVE LASER GRID
-    // ------------------------------------------
+    // FX 2: Grid
     const gGrid = createFXGroup();
     const gridDim = 36;
     const gridPlaneGeo = new THREE.PlaneGeometry(60, 80, gridDim, gridDim);
@@ -361,9 +462,7 @@ export function createVFXScene(container) {
         gGrid.add(pRight);
     }
 
-    // ------------------------------------------
-    // FX 3: AUDIO SPECTRUM ORB
-    // ------------------------------------------
+    // FX 3: Orb
     const gOrb = createFXGroup();
     const orbGeo = new THREE.IcosahedronGeometry(4.2, 5);
     const orbBasePositions = orbGeo.attributes.position.array.slice();
@@ -382,9 +481,7 @@ export function createVFXScene(container) {
     gOrb.add(eqRing1);
     gOrb.add(eqRing2);
 
-    // ------------------------------------------
-    // FX 4: STROBE HYPER-RINGS
-    // ------------------------------------------
+    // FX 4: Rings
     const gRings = createFXGroup();
     const hyperRings = [];
     const ringRadii = [2.5, 4.0, 5.5, 7.0, 8.5];
@@ -404,9 +501,7 @@ export function createVFXScene(container) {
     );
     gRings.add(centerOcta);
 
-    // ------------------------------------------
-    // Window Resize Handler
-    // ------------------------------------------
+    // Resize Handler
     function onResize() {
         const w = window.innerWidth;
         const h = window.innerHeight;
@@ -419,9 +514,7 @@ export function createVFXScene(container) {
     }
     window.addEventListener('resize', onResize);
 
-    // ------------------------------------------
-    // Animation Controller & Calibration State
-    // ------------------------------------------
+    // Animation & Calibration State
     const clock = new THREE.Clock();
     let currentBPM = 126.0;
     let bloomMultiplier = 1.0;
@@ -465,7 +558,7 @@ export function createVFXScene(container) {
 
     function setLogoOpacity(val) {
         logoBaseOpacity = Math.max(0.0, Math.min(1.0, Number(val)));
-        logoMat.opacity = logoBaseOpacity;
+        logoShaderMat.uniforms.uOpacity.value = logoBaseOpacity;
     }
 
     function setLogoScale(val) {
@@ -482,13 +575,34 @@ export function createVFXScene(container) {
         logoBassPulseAmount = Math.max(0.0, Math.min(2.0, Number(val)));
     }
 
+    function setLogoContrast(val) {
+        logoContrast = Math.max(0.5, Math.min(3.0, Number(val)));
+        logoShaderMat.uniforms.uContrast.value = logoContrast;
+    }
+
+    function setLogoBrightness(val) {
+        logoBrightness = Math.max(0.5, Math.min(2.5, Number(val)));
+        logoShaderMat.uniforms.uBrightness.value = logoBrightness;
+    }
+
+    function setLogoBlendMode(modeIdx) {
+        logoShaderMat.uniforms.uBlendMode.value = parseInt(modeIdx, 10);
+    }
+
+    function setLogoShieldVisible(visible) {
+        isShieldActive = !!visible;
+        if (logoShieldMesh && logoMode !== 'backdrop') {
+            logoShieldMesh.visible = isShieldActive;
+        }
+    }
+
     function animate(getAudioDataFn) {
         requestAnimationFrame(() => animate(getAudioDataFn));
 
         const delta = clock.getDelta();
         const elapsedTime = clock.getElapsedTime();
 
-        // 1. Audio Data
+        // Audio Data
         const audio = (typeof getAudioDataFn === 'function') ? getAudioDataFn() : {
             bass: 0,
             smoothedBass: 0,
@@ -507,32 +621,32 @@ export function createVFXScene(container) {
         const bps = currentBPM / 60.0;
         const speed = bps * delta;
 
-        // 2. Animate Logo Layer (Audio Reactivity)
+        // Animate Logo Layer (Razor-Sharp Audio Reactivity)
         if (logoVisible && logoMesh) {
-            const logoPulse = (bassPop * logoBassPulseAmount * 0.35) + (transient * logoBassPulseAmount * 0.25);
-            
-            // Dynamic scale pulse
+            const logoPulse = (bassPop * logoBassPulseAmount * 0.3) + (transient * logoBassPulseAmount * 0.2);
+
             if (logoMode === 'backdrop') {
-                const w = 56 * logoBaseScale * (1.0 + logoPulse * 0.4);
-                const h = (56 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.4);
+                const w = 58 * logoBaseScale * (1.0 + logoPulse * 0.35);
+                const h = (58 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.35);
                 logoMesh.scale.set(w / 16, h / 9, 1);
             } else if (logoMode === 'hologram') {
-                const w = 14 * logoBaseScale * (1.0 + logoPulse * 0.6);
-                const h = (14 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.6);
+                const w = 13.5 * logoBaseScale * (1.0 + logoPulse * 0.45);
+                const h = (13.5 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.45);
                 logoMesh.scale.set(w / 16, h / 9, 1);
-                // Subtle floating motion
-                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.3;
+                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.25;
+
+                if (logoShieldMesh && isShieldActive) {
+                    logoShieldMesh.position.y = logoMesh.position.y;
+                    logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
+                }
             } else if (logoMode === 'overlay') {
-                const w = 6 * logoBaseScale * (1.0 + logoPulse * 0.3);
-                const h = (6 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.3);
+                const w = 7.0 * logoBaseScale * (1.0 + logoPulse * 0.25);
+                const h = (7.0 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.25);
                 logoMesh.scale.set(w / 16, h / 9, 1);
             }
-
-            // Dynamic opacity surge on beat
-            logoMat.opacity = Math.min(1.0, logoBaseOpacity + (bassPop * 0.25));
         }
 
-        // 3. Animate Active Scene
+        // Animate Active Scene
         if (currentFXIndex === 0) {
             gTorus.rotation.x += speed * 0.4;
             gTorus.rotation.y += speed * 0.6;
@@ -617,7 +731,7 @@ export function createVFXScene(container) {
             centerOcta.scale.set(octaScale, octaScale, octaScale);
         }
 
-        // 4. Post-Processing Dynamic Glow & Chromatic Shockwave
+        // Post-Processing Dynamic Glow & Chromatic Shockwave
         const targetBloom = (1.8 + (bassPop * 2.2) + (transient * 2.0) + (manualFlash * 2.0)) * bloomMultiplier;
         bloomPass.strength = THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.25);
 
@@ -668,6 +782,10 @@ export function createVFXScene(container) {
         setLogoScale,
         setLogoMode,
         setLogoBassPulse,
+        setLogoContrast,
+        setLogoBrightness,
+        setLogoBlendMode,
+        setLogoShieldVisible,
         getCurrentFX: () => currentFXIndex
     };
 }

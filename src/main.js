@@ -26,16 +26,20 @@ async function init() {
     const sensVal = document.getElementById('sens-val');
     const bloomVal = document.getElementById('bloom-val');
 
-    // Logo Layer Controls
+    // High-Clarity Logo Layer Controls
     const logoBadge = document.getElementById('logo-badge');
     const logoFilename = document.getElementById('logo-filename');
-    const modePills = document.querySelectorAll('.mode-pill');
-    const sliderLogoOp = document.getElementById('slider-logo-op');
+    const modePills = document.querySelectorAll('.mode-pill[data-mode]');
+    const blendPills = document.querySelectorAll('.mode-pill[data-blend]');
+    const sliderLogoContrast = document.getElementById('slider-logo-contrast');
+    const sliderLogoBright = document.getElementById('slider-logo-bright');
     const sliderLogoScale = document.getElementById('slider-logo-scale');
     const sliderLogoPulse = document.getElementById('slider-logo-pulse');
-    const logoOpVal = document.getElementById('logo-op-val');
+    const logoContrastVal = document.getElementById('logo-contrast-val');
+    const logoBrightVal = document.getElementById('logo-bright-val');
     const logoScaleVal = document.getElementById('logo-scale-val');
     const logoPulseVal = document.getElementById('logo-pulse-val');
+    const checkLogoShield = document.getElementById('check-logo-shield');
     const btnLoadCustom = document.getElementById('btn-load-custom');
     const btnResetShock = document.getElementById('btn-reset-shock');
     const fileLogo = document.getElementById('file-logo');
@@ -44,13 +48,13 @@ async function init() {
     // 1. Initialize Three.js VFX Scene
     const vfx = createVFXScene(container);
 
-    // Load Default Logo / Animated Video (JK McLaren Shock MP4)
+    // Load Default Animated Logo Video (JK McLaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
 
     let audioProcessor = null;
     let isLogoActive = true;
 
-    // 2. Audio & Video Activation on User Click
+    // 2. Audio & Media Activation on User Click
     async function enableAudioAndMedia() {
         vfx.playLogoVideo();
 
@@ -80,7 +84,7 @@ async function init() {
         }
     });
 
-    // 3. Logo Layer Event Handlers
+    // 3. Logo Layer Controls
     function toggleLogo() {
         isLogoActive = !isLogoActive;
         vfx.setLogoVisible(isLogoActive);
@@ -95,7 +99,7 @@ async function init() {
         logoBadge.addEventListener('click', toggleLogo);
     }
 
-    // Logo Mode Selector (Hologram, Backdrop, Watermark)
+    // Position Mode (3D Front, Backdrop, Watermark)
     modePills.forEach((pill) => {
         pill.addEventListener('click', () => {
             const mode = pill.getAttribute('data-mode');
@@ -105,12 +109,30 @@ async function init() {
         });
     });
 
-    // Logo Sliders
-    if (sliderLogoOp) {
-        sliderLogoOp.addEventListener('input', (e) => {
-            const val = parseInt(e.target.value, 10);
-            logoOpVal.textContent = `${val}%`;
-            vfx.setLogoOpacity(val / 100);
+    // Blend / Knockout Mode (Crisp Cutout, Holo Glow, Direct)
+    blendPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const blend = pill.getAttribute('data-blend');
+            blendPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setLogoBlendMode(blend);
+        });
+    });
+
+    // Contrast & Brightness Sliders
+    if (sliderLogoContrast) {
+        sliderLogoContrast.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            logoContrastVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setLogoContrast(val);
+        });
+    }
+
+    if (sliderLogoBright) {
+        sliderLogoBright.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            logoBrightVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setLogoBrightness(val);
         });
     }
 
@@ -130,7 +152,13 @@ async function init() {
         });
     }
 
-    // Custom File Loading (MP4, GIF, PNG, JPG)
+    if (checkLogoShield) {
+        checkLogoShield.addEventListener('change', (e) => {
+            vfx.setLogoShieldVisible(e.target.checked);
+        });
+    }
+
+    // Custom File Loading
     if (btnLoadCustom && fileLogo) {
         btnLoadCustom.addEventListener('click', () => {
             fileLogo.click();
