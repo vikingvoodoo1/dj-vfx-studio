@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DJ VFX - Nightclub Visual Engine & FX Bank</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body,
+        html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #020208;
+            width: 100vw;
+            height: 100vh;
+            font-family: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            color: #ffffff;
+        }
+
+        #canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        /* Top-Left Nightclub Glassmorphic HUD */
+        #hud {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 20;
+            background: rgba(10, 10, 20, 0.75);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(0, 255, 255, 0.08);
+            padding: 16px 20px;
+            border-radius: 14px;
+            min-width: 320px;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #hud.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(-10px);
+        }
+
+        .hud-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+            margin-bottom: 12px;
+        }
+
+        .hud-title {
+            font-size: 14px;
+            font-weight: 900;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            background: linear-gradient(90deg, #00ffff, #ff007f);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hud-badge {
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 8px;
+            border-radius: 999px;
+            background: rgba(0, 255, 204, 0.15);
+            color: #00ffcc;
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            font-weight: 600;
+        }
+
+        .hud-section {
+            margin-bottom: 10px;
+            font-size: 12px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .hud-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .hud-label {
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .bpm-display {
+            font-size: 26px;
+            font-weight: 800;
+            color: #00ffff;
+            text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
+            display: inline-block;
+            vertical-align: middle;
+            transition: transform 0.08s ease;
+        }
+
+        .bpm-unit {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-left: 4px;
+        }
+
+        /* Frequency VU Meters */
+        .eq-bars {
+            display: flex;
+            gap: 5px;
+            height: 16px;
+            align-items: flex-end;
+            margin-top: 6px;
+        }
+
+        .eq-bar {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
+            height: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .eq-fill {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            transition: height 0.04s ease-out;
+            border-radius: 2px;
+        }
+
+        #eq-bass {
+            background: linear-gradient(180deg, #ff0055 0%, #ff5500 100%);
+            box-shadow: 0 0 8px #ff0055;
+        }
+
+        #eq-mid {
+            background: linear-gradient(180deg, #00ffff 0%, #0088ff 100%);
+        }
+
+        #eq-treble {
+            background: linear-gradient(180deg, #aa00ff 0%, #ff00aa 100%);
+        }
+
+        /* Calibration Controls Panel (Sliders) */
+        .control-group {
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .slider-row {
+            margin-bottom: 8px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 3px;
+        }
+
+        .slider-header span.val {
+            color: #00ffcc;
+            font-weight: 700;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 4px;
+            -webkit-appearance: none;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00ffff;
+            cursor: pointer;
+            box-shadow: 0 0 8px #00ffff;
+        }
+
+        /* Bottom FX Bank Selector Bar */
+        #fx-bank-panel {
+            position: absolute;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 20;
+            background: rgba(10, 10, 24, 0.85);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 8px 12px;
+            border-radius: 20px;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+        }
+
+        #fx-bank-panel.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, 20px);
+        }
+
+        .fx-btn {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.8);
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-family: 'Outfit', sans-serif;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .fx-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            transform: translateY(-2px);
+        }
+
+        .fx-btn.active {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.25), rgba(255, 0, 127, 0.25));
+            border-color: #00ffff;
+            color: #ffffff;
+            box-shadow: 0 0 16px rgba(0, 255, 255, 0.4), inset 0 0 8px rgba(0, 255, 255, 0.2);
+        }
+
+        .fx-key {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #00ffcc;
+        }
+
+        .flash-btn {
+            background: linear-gradient(135deg, #ff007f, #ffaa00);
+            border: none;
+            color: #ffffff;
+            font-weight: 800;
+            padding: 8px 18px;
+            border-radius: 12px;
+            cursor: pointer;
+            box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+            transition: all 0.1s ease;
+        }
+
+        .flash-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+        }
+
+        /* Top-Right Track Banner */
+        #track-banner {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 20;
+            background: rgba(10, 10, 20, 0.75);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            padding: 10px 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transition: opacity 0.3s ease;
+        }
+
+        #track-banner.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .track-meta {
+            text-align: right;
+        }
+
+        .track-title {
+            font-size: 13px;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .track-artist {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        .click-prompt {
+            cursor: pointer;
+            color: #00ffff;
+            text-decoration: underline;
+            animation: blink 1.5s infinite;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Nightclub HUD -->
+    <div id="hud">
+        <div class="hud-header">
+            <div class="hud-title">⚡ DJ VFX ENGINE</div>
+            <div class="hud-badge" id="hud-status">STANDBY</div>
+        </div>
+
+        <div class="hud-section">
+            <div class="hud-row">
+                <span class="hud-label">LIVE TEMPO</span>
+                <div>
+                    <span class="bpm-display" id="bpm-val">126.0</span>
+                    <span class="bpm-unit">BPM</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="hud-section">
+            <div class="hud-row">
+                <span class="hud-label">AUDIO INPUT</span>
+                <span class="hud-val" id="audio-status"><span class="click-prompt">Click to Enable Mic</span></span>
+            </div>
+            <!-- Frequency EQ meters -->
+            <div class="eq-bars">
+                <div class="eq-bar" title="Transient Sub-Bass"><div class="eq-fill" id="eq-bass"></div></div>
+                <div class="eq-bar" title="Mid Range"><div class="eq-fill" id="eq-mid"></div></div>
+                <div class="eq-bar" title="High Treble"><div class="eq-fill" id="eq-treble"></div></div>
+            </div>
+        </div>
+
+        <div class="hud-section">
+            <div class="hud-row">
+                <span class="hud-label">STAGELINQ</span>
+                <span class="hud-val" id="stagelinq-status">Connecting...</span>
+            </div>
+        </div>
+
+        <!-- Calibration Controls -->
+        <div class="control-group">
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>🔊 BASS GAIN / PUNCH</span>
+                    <span class="val" id="gain-val">2.2x</span>
+                </div>
+                <input type="range" id="slider-gain" min="0.5" max="5.0" step="0.1" value="2.2">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>💥 BEAT SENSITIVITY</span>
+                    <span class="val" id="sens-val">2.0x</span>
+                </div>
+                <input type="range" id="slider-sens" min="0.5" max="4.0" step="0.1" value="2.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>✨ BLOOM / NEON GLOW</span>
+                    <span class="val" id="bloom-val">1.2x</span>
+                </div>
+                <input type="range" id="slider-bloom" min="0.4" max="3.0" step="0.1" value="1.2">
+            </div>
+        </div>
+
+        <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 10px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
+            <span>[1-5] Switch FX</span>
+            <span>[Space] Strobe</span>
+            <span>[F] Fullscreen</span>
+            <span>[H] Hide HUD</span>
+        </div>
+    </div>
+
+    <!-- Active Track Banner -->
+    <div id="track-banner">
+        <div style="font-size: 20px;">🎛️</div>
+        <div class="track-meta">
+            <div class="track-title" id="track-title">Opus (Live Intro Mix)</div>
+            <div class="track-artist" id="track-artist">Eric Prydz • Deck 1</div>
+        </div>
+    </div>
+
+    <!-- Bottom FX Bank Selector Bar -->
+    <div id="fx-bank-panel">
+        <button class="fx-btn active" data-fx="0"><span class="fx-key">1</span> Quantum Torus</button>
+        <button class="fx-btn" data-fx="1"><span class="fx-key">2</span> Cyber Tunnel</button>
+        <button class="fx-btn" data-fx="2"><span class="fx-key">3</span> Synthwave Grid</button>
+        <button class="fx-btn" data-fx="3"><span class="fx-key">4</span> Spectrum Orb</button>
+        <button class="fx-btn" data-fx="4"><span class="fx-key">5</span> Hyper Rings</button>
+        <button class="flash-btn" id="btn-flash">⚡ STROBE</button>
+    </div>
+
+    <!-- 3D Canvas -->
+    <div id="canvas-container"></div>
+
+    <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
