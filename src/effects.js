@@ -115,12 +115,12 @@ const HighClarityLogoShader = {
     `
 };
 
-// High-Energy Volumetric Laser Beam Shader
+// High-Energy Volumetric Laser Beam Shader (Ultra-Vivid Saturated Color, No Blown-out White Washout)
 const VolumetricLaserShader = {
     uniforms: {
         uColor: { value: new THREE.Color(0x00ffff) },
-        uCoreIntensity: { value: 2.4 },
-        uGlowIntensity: { value: 0.9 },
+        uCoreIntensity: { value: 2.5 },
+        uGlowIntensity: { value: 1.2 },
         uPulse: { value: 0.0 },
         uTime: { value: 0.0 }
     },
@@ -142,8 +142,8 @@ const VolumetricLaserShader = {
         void main() {
             float dist = abs(vUv.x - 0.5) * 2.0; // 0.0 at center, 1.0 at edge
             
-            // Ultra-bright razor-sharp white core filament
-            float core = pow(clamp(1.0 - dist, 0.0, 1.0), 18.0) * (1.0 + uPulse * 2.5);
+            // Ultra-concentrated filament core
+            float core = pow(clamp(1.0 - dist, 0.0, 1.0), 16.0) * (1.0 + uPulse * 2.8);
             
             // Atmospheric outer neon Gaussian glow halo
             float glow = pow(clamp(1.0 - dist, 0.0, 1.0), 2.2);
@@ -154,7 +154,12 @@ const VolumetricLaserShader = {
             // Traveling high-frequency laser wave
             float wave = sin(vUv.y * 36.0 - uTime * 24.0) * 0.12 + 0.88;
             
-            vec3 finalCol = mix(uColor, vec3(1.0, 1.0, 1.0), clamp(core * 0.95, 0.0, 1.0));
+            // Retain 100% vibrant saturated color with intense emission rather than washing out to white
+            vec3 finalCol = uColor * (1.3 + uPulse * 1.8);
+            if (core > 0.88) {
+                finalCol = mix(finalCol, vec3(1.0, 1.0, 1.0), 0.28);
+            }
+
             float alpha = (core * uCoreIntensity + glow * uGlowIntensity) * lengthFade * wave;
             
             if (alpha < 0.005) discard;
@@ -163,58 +168,7 @@ const VolumetricLaserShader = {
     `
 };
 
-// Liquid Sky Laser Scan Sheet Shader
-const LiquidSkyLaserShader = {
-    uniforms: {
-        uColorA: { value: new THREE.Color(0x00ffcc) },
-        uColorB: { value: new THREE.Color(0xff0055) },
-        uTime: { value: 0.0 },
-        uBass: { value: 0.0 },
-        uScanSpeed: { value: 3.5 }
-    },
-    vertexShader: `
-        varying vec2 vUv;
-        varying vec3 vPos;
-        uniform float uTime;
-        uniform float uBass;
-        void main() {
-            vUv = uv;
-            vec3 pos = position;
-            pos.y += sin(pos.x * 0.35 + uTime * 4.0) * (0.35 + uBass * 1.0) * sin(pos.z * 0.2 + uTime * 2.0);
-            vPos = pos;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-        }
-    `,
-    fragmentShader: `
-        uniform vec3 uColorA;
-        uniform vec3 uColorB;
-        uniform float uTime;
-        uniform float uBass;
-        uniform float uScanSpeed;
-        varying vec2 vUv;
-        varying vec3 vPos;
-
-        void main() {
-            float scanlines = sin(vUv.y * 80.0 - uTime * 20.0) * 0.5 + 0.5;
-            float wave1 = sin(vUv.x * 24.0 + uTime * uScanSpeed) * 0.5 + 0.5;
-            float wave2 = cos(vUv.y * 18.0 - uTime * 3.0) * 0.5 + 0.5;
-            
-            float laserGrid = pow(wave1 * wave2, 2.5) * 1.8 + pow(scanlines, 6.0) * 0.8;
-            
-            float edgeFade = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x) *
-                             smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
-                             
-            vec3 col = mix(uColorA, uColorB, sin(vUv.x * 3.1415 + uTime * 0.8) * 0.5 + 0.5);
-            col += vec3(0.5, 0.5, 0.5) * pow(scanlines, 8.0);
-            
-            float alpha = laserGrid * edgeFade * (0.65 + uBass * 0.5);
-            if (alpha < 0.005) discard;
-            gl_FragColor = vec4(col * alpha, alpha);
-        }
-    `
-};
-
-// Saber DJ Multi-Beam Collimated Blade Shader
+// Saber DJ Multi-Beam Collimated Blade Shader (Ultra-Vivid Neon Saturation)
 const SaberBeamBladeShader = {
     uniforms: {
         uColor: { value: new THREE.Color(0x00ffff) },
@@ -239,14 +193,20 @@ const SaberBeamBladeShader = {
         void main() {
             float dist = abs(vUv.x - 0.5) * 2.0;
             
-            float blade = pow(clamp(1.0 - dist, 0.0, 1.0), 6.0);
-            float core = pow(clamp(1.0 - dist, 0.0, 1.0), 28.0) * uCoreBoost;
+            // Razor-sharp blade profile
+            float blade = pow(clamp(1.0 - dist, 0.0, 1.0), 5.5);
+            float core = pow(clamp(1.0 - dist, 0.0, 1.0), 24.0) * uCoreBoost;
             
             float lengthFade = smoothstep(0.0, 0.025, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
             float shimmer = sin(vUv.y * 40.0 - uTime * 30.0) * 0.1 + 0.9;
             
-            vec3 col = mix(uColor, vec3(1.0, 1.0, 1.0), clamp(core * 0.9, 0.0, 1.0));
-            float alpha = (blade * 1.1 + core * 1.8) * lengthFade * shimmer * uIntensity;
+            // Preserve rich, vivid color saturation
+            vec3 col = uColor * (1.2 + uIntensity * 1.5);
+            if (core > 0.90) {
+                col = mix(col, vec3(1.0, 1.0, 1.0), 0.25);
+            }
+
+            float alpha = (blade * 1.2 + core * 1.6) * lengthFade * shimmer * uIntensity;
             
             if (alpha < 0.005) discard;
             gl_FragColor = vec4(col * alpha, alpha);
@@ -254,7 +214,89 @@ const SaberBeamBladeShader = {
     `
 };
 
-// Liquid-Smooth Flowing Cyberpunk Synthwave Highway & Terrain Shader
+// Fluid Glowing Spectrum Wave Ribbon Shader (Less Wireframe, Highly Responsive)
+const FluidWaveRibbonShader = {
+    uniforms: {
+        uColorA: { value: new THREE.Color(0x00ffff) },
+        uColorB: { value: new THREE.Color(0xff007f) },
+        uColorC: { value: new THREE.Color(0xffaa00) },
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 },
+        uTreble: { value: 0.0 },
+        uRibbonIdx: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying float vWave;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uMid;
+        uniform float uTreble;
+        uniform float uRibbonIdx;
+
+        void main() {
+            vUv = uv;
+            vec3 pos = position;
+
+            // Deep audio-reactive wave harmonic displacement across ribbon
+            float xPhase = pos.x * 0.22 + uTime * 2.8 + uRibbonIdx * 0.42;
+            float bassSwell = sin(pos.x * 0.09 + uTime * 1.5) * (1.6 + uBass * 2.8);
+            float midRipple = cos(pos.x * 0.45 - uTime * 3.6 + uRibbonIdx * 0.6) * (0.45 + uMid * 1.6);
+            float trebleJitter = sin(pos.x * 1.1 + uTime * 7.0 + uRibbonIdx) * (0.15 + uTreble * 0.9);
+
+            float totalElevation = (bassSwell + midRipple + trebleJitter);
+            
+            // Soft damp at ribbon ends for floating aesthetic
+            float edgeDamp = smoothstep(-24.0, -16.0, pos.x) * smoothstep(24.0, 16.0, pos.x);
+            pos.y += totalElevation * edgeDamp;
+            vWave = totalElevation;
+
+            vec4 worldPos = modelMatrix * vec4(pos, 1.0);
+            vWorldPos = worldPos.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying float vWave;
+        uniform vec3 uColorA;
+        uniform vec3 uColorB;
+        uniform vec3 uColorC;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uRibbonIdx;
+
+        void main() {
+            // Smooth illuminated ribbon gradient
+            float edgeDist = abs(vUv.y - 0.5) * 2.0;
+            
+            // Glowing illuminated edge crests and luminous solid center
+            float crestGlow = pow(clamp(1.0 - edgeDist, 0.0, 1.0), 3.2) * 1.7;
+            float borderHighlight = smoothstep(0.68, 0.98, edgeDist) * 1.5;
+
+            // Vibrant color sweep along ribbon length and time
+            float colorT = sin(vUv.x * 3.1415 + uTime * 0.8 + uRibbonIdx * 0.28) * 0.5 + 0.5;
+            vec3 col = colorT < 0.5 ? mix(uColorA, uColorB, colorT * 2.0) : mix(uColorB, uColorC, (colorT - 0.5) * 2.0);
+            
+            // Elevation reactive luminescence
+            col += vec3(0.2, 0.2, 0.3) * clamp(vWave * 0.35, 0.0, 1.0);
+
+            float alpha = (crestGlow + borderHighlight) * (0.8 + uBass * 0.45);
+            
+            // Soft taper on horizontal ends
+            float lenFade = smoothstep(0.0, 0.08, vUv.x) * smoothstep(1.0, 0.92, vUv.x);
+            alpha *= lenFade;
+
+            if (alpha < 0.005) discard;
+            gl_FragColor = vec4(col * alpha * (1.3 + uBass * 0.7), alpha);
+        }
+    `
+};
+
+// Liquid-Smooth Flowing Cyberpunk Synthwave Highway & Multi-Palette Terrain Shader
 const SmoothSynthwaveShader = {
     uniforms: {
         uTime: { value: 0.0 },
@@ -274,7 +316,6 @@ const SmoothSynthwaveShader = {
             vUv = uv;
             vec3 pos = position;
 
-            // Smooth undulating synthwave highway terrain
             float worldY = pos.y + uTime * 22.0;
             float worldX = pos.x;
 
@@ -314,23 +355,72 @@ const SmoothSynthwaveShader = {
             float centerDash = step(0.4, fract(gridUv.y * 0.5));
             lineIntensity += centerLane * centerDash * 1.6;
 
-            // Elevation-based smooth color gradient
-            vec3 deepIndigo = vec3(0.03, 0.015, 0.14);
-            vec3 neonMagenta = vec3(1.0, 0.0, 0.55);
-            vec3 neonCyan = vec3(0.0, 1.0, 0.95);
-            vec3 sunsetGold = vec3(1.0, 0.85, 0.28);
+            // Multi-Palette Gradual Color Cycling (4 Distinct Vivid Moods)
+            float cycleTime = uTime * 0.08;
+            float palettePhase = fract(cycleTime);
+            int paletteIndex = int(floor(mod(cycleTime * 4.0, 4.0)));
+
+            // Palette 1: Cyberpunk Neon (Indigo / Hot Magenta / Pure Cyan / Sunset Gold)
+            vec3 p1_base = vec3(0.03, 0.015, 0.14);
+            vec3 p1_crest = vec3(1.0, 0.0, 0.55);
+            vec3 p1_line = vec3(0.0, 1.0, 0.95);
+            vec3 p1_strip = vec3(1.0, 0.85, 0.28);
+
+            // Palette 2: Emerald Synth (Deep Navy / Electric Teal / Neon Emerald / Lime Gold)
+            vec3 p2_base = vec3(0.01, 0.04, 0.12);
+            vec3 p2_crest = vec3(0.0, 0.95, 0.7);
+            vec3 p2_line = vec3(0.2, 1.0, 0.45);
+            vec3 p2_strip = vec3(0.9, 1.0, 0.3);
+
+            // Palette 3: Solar Flare / Sunset (Deep Obsidian / Molten Tangerine / Hot Coral / Radiant Amber)
+            vec3 p3_base = vec3(0.12, 0.02, 0.05);
+            vec3 p3_crest = vec3(1.0, 0.25, 0.1);
+            vec3 p3_line = vec3(1.0, 0.75, 0.15);
+            vec3 p3_strip = vec3(1.0, 0.95, 0.4);
+
+            // Palette 4: Ultraviolet Dream (Deep Midnight / Electric Orchid / Ultraviolet / Neon Pink)
+            vec3 p4_base = vec3(0.05, 0.01, 0.15);
+            vec3 p4_crest = vec3(0.7, 0.1, 1.0);
+            vec3 p4_line = vec3(1.0, 0.2, 0.85);
+            vec3 p4_strip = vec3(0.4, 0.9, 1.0);
+
+            vec3 cur_base, cur_crest, cur_line, cur_strip;
+            float blendT = fract(cycleTime * 4.0);
+            blendT = blendT * blendT * (3.0 - 2.0 * blendT); // Smooth Hermite
+
+            if (paletteIndex == 0) {
+                cur_base = mix(p1_base, p2_base, blendT);
+                cur_crest = mix(p1_crest, p2_crest, blendT);
+                cur_line = mix(p1_line, p2_line, blendT);
+                cur_strip = mix(p1_strip, p2_strip, blendT);
+            } else if (paletteIndex == 1) {
+                cur_base = mix(p2_base, p3_base, blendT);
+                cur_crest = mix(p2_crest, p3_crest, blendT);
+                cur_line = mix(p2_line, p3_line, blendT);
+                cur_strip = mix(p2_strip, p3_strip, blendT);
+            } else if (paletteIndex == 2) {
+                cur_base = mix(p3_base, p4_base, blendT);
+                cur_crest = mix(p3_crest, p4_crest, blendT);
+                cur_line = mix(p3_line, p4_line, blendT);
+                cur_strip = mix(p3_strip, p4_strip, blendT);
+            } else {
+                cur_base = mix(p4_base, p1_base, blendT);
+                cur_crest = mix(p4_crest, p1_crest, blendT);
+                cur_line = mix(p4_line, p1_line, blendT);
+                cur_strip = mix(p4_strip, p1_strip, blendT);
+            }
 
             float elevNorm = clamp((vElevation + 2.5) / 6.0, 0.0, 1.0);
-            vec3 surfaceCol = mix(deepIndigo, neonMagenta * 0.4, elevNorm);
+            vec3 surfaceCol = mix(cur_base, cur_crest * 0.45, elevNorm);
 
-            // Neon glowing grid line color
-            vec3 lineCol = mix(neonCyan, sunsetGold, clamp(elevNorm * 1.2 + uBass * 0.3, 0.0, 1.0));
-            vec3 finalCol = surfaceCol + lineCol * lineIntensity * (1.35 + uBass * 0.75);
+            // Glowing animated grid lines
+            vec3 activeLineCol = mix(cur_line, cur_strip, clamp(elevNorm * 1.2 + uBass * 0.3, 0.0, 1.0));
+            vec3 finalCol = surfaceCol + activeLineCol * lineIntensity * (1.35 + uBass * 0.75);
 
-            // Atmospheric horizon fade (prevents hard clipping at far horizon)
+            // Atmospheric horizon fade
             float horizonFade = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
             float sideFade = smoothstep(0.0, 0.06, vUv.x) * smoothstep(1.0, 0.94, vUv.x);
-            float alpha = clamp(0.22 + lineIntensity * 0.88, 0.0, 1.0) * horizonFade * sideFade;
+            float alpha = clamp(0.25 + lineIntensity * 0.88, 0.0, 1.0) * horizonFade * sideFade;
 
             if (alpha < 0.005) discard;
             gl_FragColor = vec4(finalCol * alpha, alpha);
@@ -338,7 +428,7 @@ const SmoothSynthwaveShader = {
     `
 };
 
-// Procedural Multi-Color Spiral Galaxy & Cosmic Plasma Shader (Airy, Ethereal & Less Dense)
+// Immersive Full-Screen Spiral Galaxy Cosmic Vortex Shader
 const PlasmaNebulaShader = {
     uniforms: {
         uTime: { value: 0.0 },
@@ -401,22 +491,23 @@ const PlasmaNebulaShader = {
         }
 
         void main() {
-            vec2 uv = (vUv - 0.5) * 2.4;
-            float t = uTime * 0.12;
+            // Full-screen wide aspect mapping
+            vec2 uv = (vUv - 0.5) * vec2(2.6, 1.6);
+            float t = uTime * 0.16;
 
             float r = length(uv);
             float theta = atan(uv.y, uv.x);
 
-            // Defined, Airy 2-Arm Logarithmic Spiral Structure with clean voids
-            float spiralAngle = theta - 3.4 * log(max(0.07, r)) - t * 0.45;
-            float armProfile1 = pow(clamp(cos(spiralAngle) * 0.5 + 0.5, 0.0, 1.0), 5.0);
-            float armProfile2 = pow(clamp(cos(spiralAngle + 3.14159) * 0.5 + 0.5, 0.0, 1.0), 5.0);
-            float spiralArms = (armProfile1 + armProfile2) * smoothstep(1.3, 0.18, r);
+            // Deep Inward Vortex Accretion Flow (Camera Diving into the Core)
+            float vortexPull = theta - 3.8 * log(max(0.04, r)) - t * 0.7;
+            float armProfile1 = pow(clamp(cos(vortexPull) * 0.5 + 0.5, 0.0, 1.0), 4.2);
+            float armProfile2 = pow(clamp(cos(vortexPull + 3.14159) * 0.5 + 0.5, 0.0, 1.0), 4.2);
+            float spiralArms = (armProfile1 + armProfile2) * smoothstep(1.8, 0.12, r);
 
-            // Ethereal, low-density cosmic dust filaments
-            vec2 swirl = vec2(cos(theta + t * 0.18), sin(theta + t * 0.18)) * r;
-            float dustNoise = fbm(swirl * 1.5 + vec2(t * 0.2, t * 0.15));
-            float dustFilament = pow(clamp(dustNoise - 0.28, 0.0, 1.0) / 0.72, 2.2) * 0.45;
+            // Dense Swirling Cosmic Gas Filaments
+            vec2 swirl = vec2(cos(theta + t * 0.25), sin(theta + t * 0.25)) * r;
+            float dustNoise = fbm(swirl * 1.8 + vec2(t * 0.3, t * 0.2));
+            float dustFilament = pow(clamp(dustNoise - 0.22, 0.0, 1.0) / 0.78, 2.0) * 0.6;
 
             // Multi-Color Palette Cycling
             float colorPhase = sin(uTime * 0.07) * 0.5 + 0.5;
@@ -446,22 +537,22 @@ const PlasmaNebulaShader = {
                 c_core = mix(p2_core, p3_core, w);
             }
 
-            // Crisp, airy galaxy composition
-            vec3 col = c_glow * dustFilament * 0.7;
-            col += c_arm * spiralArms * (1.4 + uBass * 0.4);
+            // Immense Galaxy Vortex Composition
+            vec3 col = c_glow * dustFilament * 0.85;
+            col += c_arm * spiralArms * (1.6 + uBass * 0.5);
 
-            // Galactic Nucleus & Accretion Core
-            float nucleus = pow(smoothstep(0.38, 0.0, r), 3.0) * (2.2 + uBass * 0.8 + uPulse * 0.5);
+            // Gravitational Singularity Core & Accretion Halo
+            float nucleus = pow(smoothstep(0.42, 0.0, r), 2.8) * (2.6 + uBass * 1.0 + uPulse * 0.6);
             col += c_core * nucleus;
 
-            float alpha = smoothstep(1.35, 0.15, r) * clamp(length(col) * 1.4, 0.0, 0.95);
+            float alpha = smoothstep(1.9, 0.1, r) * clamp(length(col) * 1.35, 0.0, 0.98);
             if (alpha < 0.005) discard;
             gl_FragColor = vec4(col * alpha, alpha);
         }
     `
 };
 
-// Offscreen Circular Round Star / Particle Texture Generator (No Square Artifacts)
+// Offscreen Circular Round Star / Particle Texture Generator
 function createRoundStarTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 64;
@@ -486,7 +577,7 @@ function createRoundStarTexture() {
     return tex;
 }
 
-// Offscreen 8-Point Star Lens Flare Generator for Projectors & Mirror Ball Glints
+// Offscreen 8-Point Star Lens Flare Generator for Projectors
 function createStarburstTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -495,7 +586,6 @@ function createStarburstTexture() {
     const cx = 64;
     const cy = 64;
 
-    // Center radial core
     const radGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 60);
     radGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
     radGrad.addColorStop(0.15, 'rgba(200, 255, 255, 0.8)');
@@ -504,7 +594,6 @@ function createStarburstTexture() {
     ctx.fillStyle = radGrad;
     ctx.fillRect(0, 0, 128, 128);
 
-    // 8-pointed star rays
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = 1.5;
     for (let angle = 0; angle < Math.PI; angle += Math.PI / 4) {
@@ -559,7 +648,7 @@ export function createVFXScene(container) {
     composer.addPass(nightclubPass);
     composer.addPass(outputPass);
 
-    // 3. Shared Global Lights & Cinematic PBR Illumination
+    // 3. Shared Global Lights
     const ambientLight = new THREE.AmbientLight(0x0a0a14, 1.4);
     scene.add(ambientLight);
 
@@ -745,7 +834,7 @@ export function createVFXScene(container) {
     }
 
     // =========================================================================
-    // CATEGORIZED VFX BANK: 10 Distinct Scenes
+    // CATEGORIZED VFX BANK: 9 Distinct Scenes
     // =========================================================================
     const fxRoots = [];
     let currentFXIndex = 0;
@@ -768,11 +857,10 @@ export function createVFXScene(container) {
     const gEQBars = createFXGroup();
     gEQBars.visible = true;
 
-    const eqCols = 44;               // 44 Frequency Columns in an amphitheater curve
-    const eqRows = 16;               // 16 Discrete LED Bricks per Column
+    const eqCols = 44;
+    const eqRows = 16;
     const totalLEDs = eqCols * eqRows;
 
-    // InstancedMesh for 704 individual glowing LED Bricks
     const brickGeo = new THREE.BoxGeometry(0.38, 0.28, 0.35);
     const brickMat = new THREE.MeshBasicMaterial({
         color: 0xffffff,
@@ -809,7 +897,7 @@ export function createVFXScene(container) {
     const ledBaseY = -4.5;
     const eqArcRadius = 18.0;
     const eqArcAngle = Math.PI * 0.92;
-    const colDark = new THREE.Color(0x060810);     // Inactive off state
+    const colDark = new THREE.Color(0x060810);
 
     const eqPeakCaps = [];
 
@@ -827,8 +915,6 @@ export function createVFXScene(container) {
             dummy.scale.set(1, 1, 1);
             dummy.updateMatrix();
             ledInstancedMesh.setMatrixAt(idx, dummy.matrix);
-
-            // Default dark off color
             ledInstancedMesh.setColorAt(idx, colDark);
         }
 
@@ -885,170 +971,57 @@ export function createVFXScene(container) {
     gCircSpec.add(cRingOut);
 
     // -------------------------------------------------------------------------
-    // FX 2: SPECTRUM WAVE MATRIX
+    // FX 2: FLUID GLOWING WAVE MATRIX (Illuminated Ribbons, Highly Responsive)
     // -------------------------------------------------------------------------
     const gWaveMatrix = createFXGroup();
-    const ribbonCount = 12;
-    const ribbonSegments = 60;
-    const waveRibbons = [];
+    const ribbonCount = 16;
+    const ribbonSegments = 120;
+    const waveRibbonItems = [];
 
-    for (let r = 0; r < ribbonCount; r++) {
-        const rGeo = new THREE.PlaneGeometry(40, 0.2, ribbonSegments, 1);
-        const rMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color().setHSL((r / ribbonCount) * 0.8, 1.0, 0.55),
-            wireframe: true,
-            side: THREE.DoubleSide
-        });
-        const rMesh = new THREE.Mesh(rGeo, rMat);
-        rMesh.position.set(0, -3.0 + r * 0.6, -r * 1.5);
-        rMesh.rotation.x = -Math.PI / 3;
-        gWaveMatrix.add(rMesh);
-        waveRibbons.push(rMesh);
-    }
-
-    // =========================================================================
-    // CATEGORY 2: 🕸️ WIREFRAME GRAPHICS & QUANTUM STRUCTURES
-    // =========================================================================
-
-    // -------------------------------------------------------------------------
-    // FX 3: MONUMENTAL QUANTUM STARGATE & RESONATOR PILLARS
-    // -------------------------------------------------------------------------
-    const gTorus = createFXGroup();
-
-    // 1. Central Hyper-Prism Monolith Core (8-Faceted Diamond Obelisk)
-    const monolithCoreGeo = new THREE.CylinderGeometry(0.0, 1.9, 5.8, 8, 1);
-    const monolithCoreMat = new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        roughness: 0.14,
-        metalness: 0.92,
-        flatShading: true,
-        emissive: 0x003344,
-        emissiveIntensity: 0.6
-    });
-    const monolithCore = new THREE.Mesh(monolithCoreGeo, monolithCoreMat);
-    gTorus.add(monolithCore);
-
-    // Outer Faceted Wireframe Quantum Lattice Cage
-    const monolithWireGeo = new THREE.OctahedronGeometry(2.8, 1);
-    const monolithWireMat = new THREE.MeshBasicMaterial({
-        color: 0xff007f,
-        wireframe: true,
-        transparent: true,
-        opacity: 0.85
-    });
-    const monolithWire = new THREE.Mesh(monolithWireGeo, monolithWireMat);
-    gTorus.add(monolithWire);
-
-    // Inner Glowing Singularity Core
-    const monolithHeartGeo = new THREE.IcosahedronGeometry(1.0, 2);
-    const monolithHeartMat = new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        emissive: 0x00ffff,
-        emissiveIntensity: 1.5,
-        roughness: 0.05,
-        metalness: 0.95
-    });
-    const monolithHeart = new THREE.Mesh(monolithHeartGeo, monolithHeartMat);
-    gTorus.add(monolithHeart);
-
-    // 2. Nested Gyroscopic Astrolabe Gimbal Rings (3 Rings)
-    const astrolabeRings = [];
-    const astrolabeConfigs = [
-        { radius: 4.8, tube: 0.05, color: 0x00ffff, rotSpeed: 0.8, axis: 'x' },
-        { radius: 6.0, tube: 0.05, color: 0xff007f, rotSpeed: -0.7, axis: 'y' },
-        { radius: 7.2, tube: 0.06, color: 0xffea00, rotSpeed: 0.6, axis: 'z' }
+    const ribbonPalettes = [
+        { colA: new THREE.Color(0x00ffff), colB: new THREE.Color(0x9900ff), colC: new THREE.Color(0xff007f) },
+        { colA: new THREE.Color(0x00ff88), colB: new THREE.Color(0x00e5ff), colC: new THREE.Color(0x7c3aed) },
+        { colA: new THREE.Color(0xff0055), colB: new THREE.Color(0xffaa00), colC: new THREE.Color(0x00ffff) },
+        { colA: new THREE.Color(0x38bdf8), colB: new THREE.Color(0xf43f5e), colC: new THREE.Color(0xfbbf24) }
     ];
 
-    astrolabeConfigs.forEach(cfg => {
-        const ringGeo = new THREE.TorusGeometry(cfg.radius, cfg.tube, 12, 96);
-        const ringMat = new THREE.MeshBasicMaterial({ color: cfg.color, wireframe: true });
-        const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-        gTorus.add(ringMesh);
-        astrolabeRings.push({ mesh: ringMesh, cfg });
-    });
-
-    // 3. Amphitheater Resonator Pillars (16 Floating Crystal Obelisks in Circle)
-    const numPillars = 16;
-    const pillarRadius = 7.6;
-    const pillarItems = [];
-    const resonatorBeams = [];
-
-    const beamLineGeo = new THREE.BufferGeometry();
-    beamLineGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
-
-    for (let p = 0; p < numPillars; p++) {
-        const angle = (p / numPillars) * Math.PI * 2;
-        const px = Math.cos(angle) * pillarRadius;
-        const pz = Math.sin(angle) * pillarRadius;
-        const hue = p / numPillars;
-        const pColor = new THREE.Color().setHSL(hue, 1.0, 0.55);
-
-        const pillarGroup = new THREE.Group();
-        pillarGroup.position.set(px, 0, pz);
-
-        // Faceted Obelisk Crystal Pillar
-        const crystalGeo = new THREE.CylinderGeometry(0.18, 0.38, 3.2, 6);
-        const crystalMat = new THREE.MeshStandardMaterial({
-            color: pColor,
-            roughness: 0.15,
-            metalness: 0.85,
-            flatShading: true,
-            emissive: pColor.clone().multiplyScalar(0.4),
-            emissiveIntensity: 0.6
+    for (let r = 0; r < ribbonCount; r++) {
+        const pal = ribbonPalettes[r % ribbonPalettes.length];
+        const rGeo = new THREE.PlaneGeometry(48, 0.42, ribbonSegments, 1);
+        const rMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColorA: { value: pal.colA },
+                uColorB: { value: pal.colB },
+                uColorC: { value: pal.colC },
+                uTime: { value: 0.0 },
+                uBass: { value: 0.0 },
+                uMid: { value: 0.0 },
+                uTreble: { value: 0.0 },
+                uRibbonIdx: { value: r }
+            },
+            vertexShader: FluidWaveRibbonShader.vertexShader,
+            fragmentShader: FluidWaveRibbonShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
         });
-        const crystalMesh = new THREE.Mesh(crystalGeo, crystalMat);
-        pillarGroup.add(crystalMesh);
 
-        // Halo Ring around Pillar
-        const haloGeo = new THREE.TorusGeometry(0.55, 0.03, 8, 24);
-        const haloMat = new THREE.MeshBasicMaterial({ color: pColor, wireframe: true });
-        const haloMesh = new THREE.Mesh(haloGeo, haloMat);
-        haloMesh.rotation.x = Math.PI / 2;
-        pillarGroup.add(haloMesh);
-
-        gTorus.add(pillarGroup);
-        pillarItems.push({ group: pillarGroup, crystal: crystalMesh, halo: haloMesh, basePos: new THREE.Vector3(px, 0, pz), angle, color: pColor, pIdx: p });
-
-        // Energy Flux Line connecting pillar to monolith core
-        const beamMat = new THREE.LineBasicMaterial({ color: pColor, transparent: true, opacity: 0.75, linewidth: 2 });
-        const beamLine = new THREE.Line(beamLineGeo.clone(), beamMat);
-        gTorus.add(beamLine);
-        resonatorBeams.push({ line: beamLine, mat: beamMat, pIdx: p });
+        const rMesh = new THREE.Mesh(rGeo, rMat);
+        const posY = -4.0 + r * 0.52;
+        const posZ = -r * 1.4 + 2.0;
+        rMesh.position.set(0, posY, posZ);
+        rMesh.rotation.x = -Math.PI / 3.4;
+        gWaveMatrix.add(rMesh);
+        waveRibbonItems.push({ mesh: rMesh, mat: rMat, rIdx: r });
     }
 
-    // 4. Ambient Gentle Stardust Nebula (300 Ethereal Round Stars)
-    const stardust3Count = 300;
-    const stardust3Geo = new THREE.BufferGeometry();
-    const stardust3Pos = new Float32Array(stardust3Count * 3);
-    const stardust3Col = new Float32Array(stardust3Count * 3);
-    const starHueA = new THREE.Color(0x00ffff);
-    const starHueB = new THREE.Color(0xff007f);
-
-    for (let i = 0; i < stardust3Count * 3; i += 3) {
-        const r = 5.0 + Math.random() * 18.0;
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos((Math.random() * 2) - 1);
-        stardust3Pos[i] = r * Math.sin(phi) * Math.cos(theta);
-        stardust3Pos[i + 1] = r * Math.sin(phi) * Math.sin(theta);
-        stardust3Pos[i + 2] = r * Math.cos(phi);
-        const c = starHueA.clone().lerp(starHueB, Math.random());
-        stardust3Col[i] = c.r; stardust3Col[i + 1] = c.g; stardust3Col[i + 2] = c.b;
-    }
-    stardust3Geo.setAttribute('position', new THREE.BufferAttribute(stardust3Pos, 3));
-    stardust3Geo.setAttribute('color', new THREE.BufferAttribute(stardust3Col, 3));
-    const stardust3Mat = new THREE.PointsMaterial({
-        size: 0.28,
-        map: roundStarTex,
-        vertexColors: true,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    });
-    const monolithStardust = new THREE.Points(stardust3Geo, stardust3Mat);
-    gTorus.add(monolithStardust);
+    // =========================================================================
+    // CATEGORY 2: 🕸️ CYBER HIGHWAY & SYNTHWAVE
+    // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 4: LIQUID-SMOOTH SYNTHWAVE CYBER HIGHWAY & ROLLING TERRAIN
+    // FX 3: LIQUID-SMOOTH SYNTHWAVE HIGHWAY & MULTI-PALETTE COLOR CYCLING
     // -------------------------------------------------------------------------
     const gGrid = createFXGroup();
     const gridDimX = 96;
@@ -1074,7 +1047,6 @@ export function createVFXScene(container) {
     gridMesh.position.z = -16.0;
     gGrid.add(gridMesh);
 
-    // Glowing Neon Horizon Line
     const horizonLineGeo = new THREE.BufferGeometry();
     const horizonLinePos = new Float32Array([-42, 0, 0, 42, 0, 0]);
     horizonLineGeo.setAttribute('position', new THREE.BufferAttribute(horizonLinePos, 3));
@@ -1083,11 +1055,11 @@ export function createVFXScene(container) {
     gGrid.add(horizonLine);
 
     // =========================================================================
-    // CATEGORY 3: 🌌 SPACE & NEBULA
+    // CATEGORY 3: 🌌 SPACE & GALAXY
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 5: WARP SPEED STARFIELD (WHITE STARS & RADIANT WARM YELLOW STARS)
+    // FX 4: WARP SPEED STARFIELD (WHITE & RADIANT WARM YELLOW STARS)
     // -------------------------------------------------------------------------
     const gStarfield = createFXGroup();
     const warpStarCount = 2500;
@@ -1097,7 +1069,7 @@ export function createVFXScene(container) {
     const warpStarVelocities = new Float32Array(warpStarCount);
 
     const colWhiteStar = new THREE.Color(0xffffff);
-    const colYellowStar = new THREE.Color(0xffea3d); // Radiant warm golden-yellow
+    const colYellowStar = new THREE.Color(0xffea3d);
 
     for (let i = 0; i < warpStarCount; i++) {
         warpStarPositions[i * 3] = (Math.random() - 0.5) * 60;
@@ -1105,7 +1077,6 @@ export function createVFXScene(container) {
         warpStarPositions[i * 3 + 2] = -Math.random() * 80;
         warpStarVelocities[i] = 0.5 + Math.random() * 1.5;
 
-        // ~18% odd warm yellow stars, remaining diamond white
         const isYellow = Math.random() < 0.18;
         const starC = isYellow ? colYellowStar : colWhiteStar;
         warpStarColors[i * 3] = starC.r;
@@ -1126,11 +1097,12 @@ export function createVFXScene(container) {
     gStarfield.add(warpStarSystem);
 
     // -------------------------------------------------------------------------
-    // FX 6: COSMIC SPIRAL GALAXY (AIRY, LESS DENSE, ETHEREAL DISK)
+    // FX 5: SPIRAL GALAXY COSMIC VORTEX (IMMERSIVE FULL-SCREEN 3D ACCRETION DIVE)
     // -------------------------------------------------------------------------
     const gPlasmaNebula = createFXGroup();
 
-    const plasmaGeo = new THREE.PlaneGeometry(44, 28, 1, 1);
+    // Full-screen wide nebula plane filling all peripheral screen space
+    const plasmaGeo = new THREE.PlaneGeometry(68, 44, 1, 1);
     const plasmaMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
@@ -1146,54 +1118,77 @@ export function createVFXScene(container) {
         depthWrite: false
     });
     const plasmaMesh = new THREE.Mesh(plasmaGeo, plasmaMat);
-    plasmaMesh.position.set(0, 0, -10.0);
+    plasmaMesh.position.set(0, 0, -12.0);
     gPlasmaNebula.add(plasmaMesh);
 
-    // 320 Round Stars in airy logarithmic spiral arms
-    const stardustCount = 320;
-    const stardustGeo = new THREE.BufferGeometry();
-    const stardustPos = new Float32Array(stardustCount * 3);
-    const stardustCol = new Float32Array(stardustCount * 3);
-    const starColA = new THREE.Color(0x00ffff);
-    const starColB = new THREE.Color(0xff00ff);
-    const starColC = new THREE.Color(0xffea3d);
+    // 1,400 3D Clustered Stars spiraling deep into the singularity funnel
+    const vortexStarCount = 1400;
+    const vortexStarGeo = new THREE.BufferGeometry();
+    const vortexStarPos = new Float32Array(vortexStarCount * 3);
+    const vortexStarCol = new Float32Array(vortexStarCount * 3);
+    const vortexStarData = [];
 
-    for (let i = 0; i < stardustCount; i++) {
+    const vColA = new THREE.Color(0x00ffff);
+    const vColB = new THREE.Color(0xff00ff);
+    const vColC = new THREE.Color(0xffea3d);
+    const vColWhite = new THREE.Color(0xffffff);
+
+    for (let i = 0; i < vortexStarCount; i++) {
         const arm = i % 2;
         const armOffset = arm * Math.PI;
-        const dist = 0.8 + Math.pow(Math.random(), 1.5) * 14.5;
-        const theta = dist * 0.42 + armOffset + (Math.random() - 0.5) * 0.55;
+        // Exponential distribution: dense clustering near the core, trailing outward
+        const rad = 0.5 + Math.pow(Math.random(), 2.0) * 26.0;
+        const theta = rad * 0.48 + armOffset + (Math.random() - 0.5) * 0.65;
+        const zDepth = -10.0 - (28.0 / (rad + 1.2)); // 3D funnel cone towards singularity
 
-        stardustPos[i * 3] = Math.cos(theta) * dist;
-        stardustPos[i * 3 + 1] = Math.sin(theta) * dist * 0.65;
-        stardustPos[i * 3 + 2] = (Math.random() - 0.5) * 2.5 - 9.5;
+        vortexStarPos[i * 3] = Math.cos(theta) * rad * 1.35;
+        vortexStarPos[i * 3 + 1] = Math.sin(theta) * rad * 0.85;
+        vortexStarPos[i * 3 + 2] = zDepth;
 
         const mix = Math.random();
-        const c = mix < 0.5 ? starColA.clone().lerp(starColB, mix * 2.0) : starColB.clone().lerp(starColC, (mix - 0.5) * 2.0);
-        stardustCol[i * 3] = c.r;
-        stardustCol[i * 3 + 1] = c.g;
-        stardustCol[i * 3 + 2] = c.b;
+        let c;
+        if (rad < 2.5) {
+            c = vColWhite.clone().lerp(vColC, Math.random() * 0.5);
+        } else if (mix < 0.5) {
+            c = vColA.clone().lerp(vColB, mix * 2.0);
+        } else {
+            c = vColB.clone().lerp(vColC, (mix - 0.5) * 2.0);
+        }
+
+        vortexStarCol[i * 3] = c.r;
+        vortexStarCol[i * 3 + 1] = c.g;
+        vortexStarCol[i * 3 + 2] = c.b;
+
+        vortexStarData.push({
+            rad,
+            armOffset,
+            theta,
+            orbitSpeed: 0.6 + (2.5 / (rad + 0.8)),
+            inwardSpeed: 0.8 + Math.random() * 1.4,
+            jitter: (Math.random() - 0.5) * 0.65
+        });
     }
-    stardustGeo.setAttribute('position', new THREE.BufferAttribute(stardustPos, 3));
-    stardustGeo.setAttribute('color', new THREE.BufferAttribute(stardustCol, 3));
-    const stardustMat = new THREE.PointsMaterial({
-        size: 0.28,
+
+    vortexStarGeo.setAttribute('position', new THREE.BufferAttribute(vortexStarPos, 3));
+    vortexStarGeo.setAttribute('color', new THREE.BufferAttribute(vortexStarCol, 3));
+    const vortexStarMat = new THREE.PointsMaterial({
+        size: 0.32,
         map: roundStarTex,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         transparent: true,
         depthWrite: false,
-        opacity: 0.85
+        opacity: 0.9
     });
-    const stardustSystem = new THREE.Points(stardustGeo, stardustMat);
-    gPlasmaNebula.add(stardustSystem);
+    const vortexStarSystem = new THREE.Points(vortexStarGeo, vortexStarMat);
+    gPlasmaNebula.add(vortexStarSystem);
 
     // =========================================================================
-    // CATEGORY 4: ⚡ LASERS & CLUB LIGHT SHOW (FESTIVAL GRADE)
+    // CATEGORY 4: ⚡ LASERS & CLUB LIGHT SHOW
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 7: DUAL-BANK VOLUMETRIC SEARCHLIGHTS (FULL-BLEED TOP & BOTTOM RIGS)
+    // FX 6: DUAL-BANK VOLUMETRIC SEARCHLIGHTS (FULL-BLEED TOP & BOTTOM RIGS)
     // -------------------------------------------------------------------------
     const gLasers = createFXGroup();
     const starburstTex = createStarburstTexture();
@@ -1202,12 +1197,11 @@ export function createVFXScene(container) {
     const botLaserBeams = [];
     const allLaserBeams = [];
     const laserApertureFlares = [];
-    const laserImpactSpots = [];
 
     const topLaserHues = [0x00ffff, 0xff0055, 0x00ff88, 0xffaa00, 0x00e5ff, 0xff007f, 0x39ff14, 0x00ffff];
     const botLaserHues = [0xff007f, 0x00ffcc, 0xffcc00, 0x00ffff, 0x39ff14, 0x9900ff, 0x00e5ff, 0xffffff];
 
-    const laserBeamLength = 62.0;
+    const laserBeamLength = 64.0;
     const laserCylinderGeo = new THREE.CylinderGeometry(0.018, 0.28, laserBeamLength, 8, 1, true);
     laserCylinderGeo.translate(0, laserBeamLength / 2, 0);
     laserCylinderGeo.rotateX(Math.PI / 2);
@@ -1223,7 +1217,7 @@ export function createVFXScene(container) {
             uniforms: {
                 uColor: { value: color },
                 uCoreIntensity: { value: 2.5 },
-                uGlowIntensity: { value: 0.95 },
+                uGlowIntensity: { value: 1.2 },
                 uPulse: { value: 0.0 },
                 uTime: { value: 0.0 }
             },
@@ -1245,18 +1239,12 @@ export function createVFXScene(container) {
         gLasers.add(pBox);
 
         // Aperture Lens Flare
-        const flareMat = new THREE.SpriteMaterial({ map: starburstTex, color: color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 });
+        const flareMat = new THREE.SpriteMaterial({ map: starburstTex, color: color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.95 });
         const flareSprite = new THREE.Sprite(flareMat);
         flareSprite.position.copy(basePos);
         flareSprite.scale.set(1.5, 1.5, 1.0);
         gLasers.add(flareSprite);
         laserApertureFlares.push(flareSprite);
-
-        // Impact Spot
-        const impMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-        const impMesh = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.45, 16), impMat);
-        gLasers.add(impMesh);
-        laserImpactSpots.push(impMesh);
 
         const item = { mesh: beamMesh, basePos, mat: laserMat, color, type: 'top', idx: i };
         topLaserBeams.push(item);
@@ -1274,7 +1262,7 @@ export function createVFXScene(container) {
             uniforms: {
                 uColor: { value: color },
                 uCoreIntensity: { value: 2.5 },
-                uGlowIntensity: { value: 0.95 },
+                uGlowIntensity: { value: 1.2 },
                 uPulse: { value: 0.0 },
                 uTime: { value: 0.0 }
             },
@@ -1294,24 +1282,19 @@ export function createVFXScene(container) {
         pBox.position.copy(basePos);
         gLasers.add(pBox);
 
-        const flareMat = new THREE.SpriteMaterial({ map: starburstTex, color: color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 });
+        const flareMat = new THREE.SpriteMaterial({ map: starburstTex, color: color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.95 });
         const flareSprite = new THREE.Sprite(flareMat);
         flareSprite.position.copy(basePos);
         flareSprite.scale.set(1.5, 1.5, 1.0);
         gLasers.add(flareSprite);
         laserApertureFlares.push(flareSprite);
 
-        const impMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-        const impMesh = new THREE.Mesh(new THREE.RingGeometry(0.15, 0.45, 16), impMat);
-        gLasers.add(impMesh);
-        laserImpactSpots.push(impMesh);
-
         const item = { mesh: beamMesh, basePos, mat: laserMat, color, type: 'bot', idx: i };
         botLaserBeams.push(item);
         allLaserBeams.push(item);
     }
 
-    // 3. Laser Arena Haze Motes (Round Glowing Particles)
+    // 3. Laser Arena Haze Motes
     const laserHazeCount = 700;
     const laserHazeGeo = new THREE.BufferGeometry();
     const laserHazePos = new Float32Array(laserHazeCount * 3);
@@ -1334,17 +1317,17 @@ export function createVFXScene(container) {
     gLasers.add(laserHaze);
 
     // -------------------------------------------------------------------------
-    // FX 8: SABER MULTI-BEAM DJ FIXTURES (4 PODS, 32 RAZOR BLADES)
+    // FX 7: SABER MULTI-BEAM DJ FIXTURES (4 PODS, 32 RAZOR BLADES, ULTRA-VIVID)
     // -------------------------------------------------------------------------
     const gSaberDisco = createFXGroup();
 
     const saberPods = [];
     const saberBladeBeams = [];
     const saberPodPositions = [
-        { x: -12.5, y: 6.8, z: -6.0, rotDir: 1 },  // Top-Left
-        { x: 12.5, y: 6.8, z: -6.0, rotDir: -1 },  // Top-Right
-        { x: -12.5, y: -4.8, z: -6.0, rotDir: -1 }, // Bottom-Left
-        { x: 12.5, y: -4.8, z: -6.0, rotDir: 1 }   // Bottom-Right
+        { x: -12.5, y: 6.8, z: -6.0, rotDir: 1 },
+        { x: 12.5, y: 6.8, z: -6.0, rotDir: -1 },
+        { x: -12.5, y: -4.8, z: -6.0, rotDir: -1 },
+        { x: 12.5, y: -4.8, z: -6.0, rotDir: 1 }
     ];
 
     const saberBladeHues = [0x00ffff, 0xff0055, 0x00ff88, 0xffaa00, 0xffffff, 0x9900ff, 0x00e5ff, 0xff007f];
@@ -1358,7 +1341,6 @@ export function createVFXScene(container) {
         podGroup.position.set(podCfg.x, podCfg.y, podCfg.z);
         gSaberDisco.add(podGroup);
 
-        // Hardware Housing
         const podChassis = new THREE.Mesh(
             new THREE.CylinderGeometry(0.8, 1.0, 0.6, 12),
             new THREE.MeshBasicMaterial({ color: 0x151525 })
@@ -1372,7 +1354,7 @@ export function createVFXScene(container) {
         const blades = [];
         const numBladesPerPod = 8;
         for (let b = 0; b < numBladesPerPod; b++) {
-            const fanAngle = ((b / (numBladesPerPod - 1)) - 0.5) * (Math.PI * 0.72); // ~130 degree fan
+            const fanAngle = ((b / (numBladesPerPod - 1)) - 0.5) * (Math.PI * 0.72);
             const bladeColor = new THREE.Color(saberBladeHues[(b + pIdx * 2) % saberBladeHues.length]);
 
             const bladeMat = new THREE.ShaderMaterial({
@@ -1395,7 +1377,6 @@ export function createVFXScene(container) {
             bladeMesh.rotation.x = Math.sin(b * 1.5) * 0.15;
             podRotatingHead.add(bladeMesh);
 
-            // Lens Aperture
             const lensMesh = new THREE.Mesh(
                 new THREE.CylinderGeometry(0.12, 0.12, 0.1, 8),
                 new THREE.MeshBasicMaterial({ color: bladeColor })
@@ -1417,7 +1398,6 @@ export function createVFXScene(container) {
         });
     });
 
-    // Swirling Reflected Saber Light Dots (Round Caustic Motes)
     const saberCausticCount = 1200;
     const saberCausticGeo = new THREE.BufferGeometry();
     const saberCausticPos = new Float32Array(saberCausticCount * 3);
@@ -1454,7 +1434,7 @@ export function createVFXScene(container) {
     gSaberDisco.add(saberCaustics);
 
     // -------------------------------------------------------------------------
-    // FX 9: STROBE HYPER-RINGS & LASER MATRIX
+    // FX 8: STROBE HYPER-RINGS & LASER MATRIX
     // -------------------------------------------------------------------------
     const gRings = createFXGroup();
     const hyperRings = [];
@@ -1638,7 +1618,6 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         if (currentFXIndex === 0) {
             for (let c = 0; c < eqCols; c++) {
-                // Map column to frequency bin with logarithmic curve
                 const binIdx = Math.floor(Math.pow(c / (eqCols - 1), 1.2) * 56) + 1;
                 const amp = dataArr[binIdx] ? dataArr[binIdx] / 255 : 0;
                 const targetActiveRows = Math.min(eqRows, Math.floor(amp * (eqRows + 2) + (c < 8 ? bassPop * 3 : 0)));
@@ -1646,7 +1625,6 @@ export function createVFXScene(container) {
                 for (let r = 0; r < eqRows; r++) {
                     const idx = c * eqRows + r;
                     if (r < targetActiveRows) {
-                        // Subtle OLED gradient tier
                         const activeCol = eqRowColors[r];
                         ledInstancedMesh.setColorAt(idx, activeCol);
                     } else {
@@ -1686,96 +1664,35 @@ export function createVFXScene(container) {
             cRingOut.scale.setScalar(1.0 + bassPop * 0.15);
         }
         // ---------------------------------------------------------------------
-        // FX 2: Spectrum Wave Matrix
+        // FX 2: Fluid Glowing Wave Matrix (Illuminated Ribbons, Highly Responsive)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 2) {
-            waveRibbons.forEach((ribbon, r) => {
-                const posAttr = ribbon.geometry.attributes.position;
-                for (let s = 0; s < posAttr.count; s++) {
-                    const x = posAttr.getX(s);
-                    const bin = Math.abs(Math.floor(s % 32));
-                    const sample = dataArr[bin] ? dataArr[bin] / 255 : 0;
-                    const wave = Math.sin(x * 0.4 + elapsedTime * 3.0 + r * 0.5) * (0.8 + bassPop * 1.5) + (sample * 2.0);
-                    posAttr.setY(s, wave);
-                }
-                posAttr.needsUpdate = true;
+            waveRibbonItems.forEach((item) => {
+                item.mat.uniforms.uTime.value = elapsedTime;
+                item.mat.uniforms.uBass.value = bassPop;
+                item.mat.uniforms.uMid.value = audio.smoothedMid || 0;
+                item.mat.uniforms.uTreble.value = audio.smoothedTreble || 0;
             });
-            gWaveMatrix.position.z = Math.sin(elapsedTime) * 1.0;
+
+            // Smooth undulating whole-group wave camera drift
+            gWaveMatrix.position.y = Math.sin(elapsedTime * 0.8) * 0.35 + (bassPop * 0.4);
+            gWaveMatrix.rotation.z = Math.sin(elapsedTime * 0.4) * 0.04;
         }
         // ---------------------------------------------------------------------
-        // FX 3: Monumental Quantum Stargate & Resonator Pillars
+        // FX 3: Liquid-Smooth Synthwave Highway (Multi-Palette Color Cycling)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 3) {
-            // Animate Monolith Core & Heart
-            monolithCore.rotation.y += speed * 0.6;
-            monolithCore.rotation.x = Math.sin(elapsedTime * 0.8) * 0.12;
-            const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.4 + (transient * 0.25);
-            monolithCore.scale.set(coreScale, 1.0 + (bassPop * 0.3), coreScale);
-
-            monolithWire.rotation.x += speed * 0.5;
-            monolithWire.rotation.y -= speed * 0.7;
-            const wireScale = 1.0 + (bassPop * 0.35) + (transient * 0.3);
-            monolithWire.scale.setScalar(wireScale);
-
-            monolithHeart.rotation.y -= speed * 1.8;
-            monolithHeart.scale.setScalar(1.0 + (bassPop * 0.8) + (transient * 0.6));
-
-            // Animate Astrolabe Gimbal Rings
-            astrolabeRings.forEach(item => {
-                const cfg = item.cfg;
-                if (cfg.axis === 'x') {
-                    item.mesh.rotation.x += speed * cfg.rotSpeed;
-                    item.mesh.rotation.z += delta * 0.2;
-                } else if (cfg.axis === 'y') {
-                    item.mesh.rotation.y += speed * cfg.rotSpeed;
-                    item.mesh.rotation.x += delta * 0.25;
-                } else {
-                    item.mesh.rotation.z += speed * cfg.rotSpeed;
-                    item.mesh.rotation.y += delta * 0.15;
-                }
-                const ringPop = 1.0 + (transient * 0.08) + (bassPop * 0.05);
-                item.mesh.scale.setScalar(ringPop);
-            });
-
-            // Animate Resonator Pillars & Laser Flux Beams
-            pillarItems.forEach((pItem, pIdx) => {
-                const bin = Math.floor((pIdx / numPillars) * 48) + 1;
-                const amp = dataArr[bin] ? dataArr[bin] / 255 : 0;
-
-                const elev = Math.sin(elapsedTime * 2.0 + pIdx * 0.4) * 0.6 + (amp * 2.5) + (pIdx % 4 === 0 ? bassPop * 1.2 : 0);
-                pItem.group.position.y = elev;
-                pItem.crystal.rotation.y += delta * (0.8 + amp * 2.0);
-                pItem.halo.rotation.z += delta * 1.5;
-
-                // Update Beam Line from Pillar to Monolith Core
-                const beam = resonatorBeams[pIdx];
-                const posAttr = beam.line.geometry.attributes.position;
-                posAttr.setXYZ(0, pItem.group.position.x, pItem.group.position.y, pItem.group.position.z);
-                posAttr.setXYZ(1, 0, Math.sin(elapsedTime * 1.2) * 0.2, 0);
-                posAttr.needsUpdate = true;
-
-                beam.mat.opacity = 0.25 + amp * 0.75 + (bassPop * 0.4);
-            });
-
-            monolithStardust.rotation.y += delta * 0.05;
-            monolithStardust.rotation.z += delta * 0.02;
-        }
-        // ---------------------------------------------------------------------
-        // FX 4: Liquid-Smooth Synthwave Cyber Highway & Rolling Terrain
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 4) {
             gridPlaneMat.uniforms.uTime.value = elapsedTime;
             gridPlaneMat.uniforms.uBass.value = bassPop;
             gridPlaneMat.uniforms.uMid.value = audio.smoothedMid || 0;
 
-            // Gentle cinematic banking tilt
             gridMesh.rotation.z = Math.sin(elapsedTime * 0.15) * 0.035;
             gridMesh.position.x = Math.sin(elapsedTime * 0.12) * 1.2;
         }
         // ---------------------------------------------------------------------
-        // FX 5: Warp Speed Starfield (White & Warm Radiant Yellow Stars)
+        // FX 4: Warp Speed Starfield (White & Warm Radiant Yellow Stars)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 5) {
+        else if (currentFXIndex === 4) {
             const positions = warpStarGeo.attributes.position.array;
             const warpVelocity = (22.0 + bassPop * 40.0 + transient * 50.0) * delta;
 
@@ -1793,43 +1710,66 @@ export function createVFXScene(container) {
             warpStarSystem.rotation.z += delta * 0.03;
         }
         // ---------------------------------------------------------------------
-        // FX 6: Cosmic Spiral Galaxy (Airy, Ethereal & Less Dense Disk)
+        // FX 5: Spiral Galaxy Cosmic Vortex (Inward Singularity Fly-Through)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 6) {
+        else if (currentFXIndex === 5) {
             plasmaMat.uniforms.uTime.value = elapsedTime;
             plasmaMat.uniforms.uBass.value = bassPop;
             plasmaMat.uniforms.uMid.value = audio.smoothedMid || 0;
             plasmaMat.uniforms.uPulse.value = transient;
 
-            stardustSystem.rotation.z -= delta * 0.04;
-            const scale = 1.0 + (bassPop * 0.08) + (transient * 0.05);
-            plasmaMesh.scale.set(scale, scale, 1.0);
+            // Animate 3D Stars Spiraling Continuously Inward into the Singularity Cone
+            const starPos = vortexStarGeo.attributes.position.array;
+            const flowSpeed = (0.35 + bassPop * 0.6 + transient * 0.4) * delta;
+
+            for (let i = 0; i < vortexStarCount; i++) {
+                const s = vortexStarData[i];
+                
+                // Inward radial pull
+                s.rad -= s.inwardSpeed * flowSpeed * 3.5;
+                if (s.rad < 0.45) {
+                    // Respawn at outer galaxy rim for seamless continuous dive
+                    s.rad = 22.0 + Math.random() * 6.0;
+                }
+
+                // Spiral angular velocity increases near the singularity
+                s.theta += (0.5 + (3.2 / (s.rad + 0.6))) * delta * (1.0 + bassPop * 0.5);
+
+                const currentX = Math.cos(s.theta) * s.rad * 1.35;
+                const currentY = Math.sin(s.theta) * s.rad * 0.85;
+                const currentZ = -10.0 - (28.0 / (s.rad + 1.2));
+
+                starPos[i * 3] = currentX;
+                starPos[i * 3 + 1] = currentY;
+                starPos[i * 3 + 2] = currentZ;
+            }
+            vortexStarGeo.attributes.position.needsUpdate = true;
+
+            // Gentle forward zoom into core on heavy beats
+            plasmaMesh.scale.setScalar(1.0 + (bassPop * 0.08) + (transient * 0.06));
         }
         // ---------------------------------------------------------------------
-        // FX 7: Dual-Bank Volumetric Searchlights (Full-Bleed Top & Bottom Rigs)
+        // FX 6: Dual-Bank Volumetric Searchlights (Ultra-Vivid Neon, Full-Bleed Rigs)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 7) {
-            const sweepTime = elapsedTime * 1.4; // Calm, majestic sweep
+        else if (currentFXIndex === 6) {
+            const sweepTime = elapsedTime * 1.4;
             const choreoPhase = Math.floor(elapsedTime * 0.15) % 3;
             const fanSpread = Math.sin(sweepTime * 0.5) * 0.5 + 0.5;
 
-            // 1. Overhead Laser Projectors (8 Beams shooting DOWN from top screen margin)
+            // 1. Overhead Laser Projectors (8 Beams shooting DOWN)
             topLaserBeams.forEach((laser, idx) => {
                 const normIdx = (idx / (numTopLasers - 1)) - 0.5;
                 let targetX = 0, targetY = 0, targetZ = -22.0;
 
                 if (choreoPhase === 0) {
-                    // Wide Scissor Crosshair Sweep into Arena
                     targetX = normIdx * (22.0 + fanSpread * 26.0) + Math.sin(sweepTime + idx * 0.25) * 6.0;
                     targetY = -5.0 + Math.cos(sweepTime * 1.1 + normIdx * 2.0) * 2.5;
                     targetZ = -20.0 + Math.sin(sweepTime * 0.6) * 4.0;
                 } else if (choreoPhase === 1) {
-                    // Concert Fan Sweep Across Screen Width
                     targetX = normIdx * 42.0 + Math.sin(sweepTime * 1.1) * 10.0;
                     targetY = -3.5 + Math.sin(sweepTime * 1.4 + idx * 0.25) * 2.0;
                     targetZ = -22.0;
                 } else {
-                    // Wave Cascade Across Arena
                     const waveOffset = Math.sin(sweepTime * 2.0 - idx * 0.5);
                     targetX = normIdx * 38.0;
                     targetY = -3.0 + waveOffset * 4.5;
@@ -1840,31 +1780,23 @@ export function createVFXScene(container) {
                 laser.mesh.lookAt(targetVec);
 
                 laser.mat.uniforms.uTime.value = elapsedTime;
-                laser.mat.uniforms.uPulse.value = transient * 0.6 + bassPop * 0.3;
-
-                const splash = laserImpactSpots[idx];
-                splash.position.copy(targetVec);
-                splash.lookAt(laser.basePos);
-                splash.scale.setScalar(1.0 + bassPop * 0.4 + transient * 0.5);
+                laser.mat.uniforms.uPulse.value = transient * 0.7 + bassPop * 0.4;
             });
 
-            // 2. Stage Floor Laser Projectors (8 Beams shooting UP from bottom screen margin)
+            // 2. Stage Floor Laser Projectors (8 Beams shooting UP)
             botLaserBeams.forEach((laser, idx) => {
                 const normIdx = (idx / (numBotLasers - 1)) - 0.5;
                 let targetX = 0, targetY = 0, targetZ = -22.0;
 
                 if (choreoPhase === 0) {
-                    // Counter-Scissor Upward Fan
                     targetX = -normIdx * (22.0 + fanSpread * 26.0) - Math.sin(sweepTime + idx * 0.25) * 6.0;
                     targetY = 5.5 - Math.cos(sweepTime * 1.1 + normIdx * 2.0) * 2.5;
                     targetZ = -20.0 + Math.cos(sweepTime * 0.6) * 4.0;
                 } else if (choreoPhase === 1) {
-                    // Counter Parallel Fan
                     targetX = normIdx * 42.0 - Math.sin(sweepTime * 1.1) * 10.0;
                     targetY = 4.5 + Math.cos(sweepTime * 1.4 + idx * 0.25) * 2.0;
                     targetZ = -22.0;
                 } else {
-                    // Counter Wave Cascade
                     const waveOffset = Math.cos(sweepTime * 2.0 + idx * 0.5);
                     targetX = normIdx * 38.0;
                     targetY = 4.0 + waveOffset * 4.5;
@@ -1875,26 +1807,21 @@ export function createVFXScene(container) {
                 laser.mesh.lookAt(targetVec);
 
                 laser.mat.uniforms.uTime.value = elapsedTime;
-                laser.mat.uniforms.uPulse.value = transient * 0.6 + bassPop * 0.3;
-
-                const splash = laserImpactSpots[numTopLasers + idx];
-                splash.position.copy(targetVec);
-                splash.lookAt(laser.basePos);
-                splash.scale.setScalar(1.0 + bassPop * 0.4 + transient * 0.5);
+                laser.mat.uniforms.uPulse.value = transient * 0.7 + bassPop * 0.4;
             });
 
             // Aperture Lens Flares
             laserApertureFlares.forEach((flare, idx) => {
-                const flareScale = (1.2 + bassPop * 0.5 + transient * 0.6) * (Math.sin(elapsedTime * 4.0 + idx) * 0.1 + 0.9);
+                const flareScale = (1.25 + bassPop * 0.5 + transient * 0.6) * (Math.sin(elapsedTime * 4.0 + idx) * 0.1 + 0.9);
                 flare.scale.set(flareScale, flareScale, 1.0);
             });
 
             laserHaze.rotation.y += delta * 0.03;
         }
         // ---------------------------------------------------------------------
-        // FX 8: Saber Multi-Beam DJ Fixtures (Smooth, Majestic Sweeps)
+        // FX 7: Saber Multi-Beam DJ Fixtures (Ultra-Vivid Neon)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 8) {
+        else if (currentFXIndex === 7) {
             saberPods.forEach((pod, pIdx) => {
                 const dir = pod.cfg.rotDir;
                 pod.head.rotation.z += speed * (0.35 + pIdx * 0.06) * dir;
@@ -1904,22 +1831,21 @@ export function createVFXScene(container) {
                 pod.blades.forEach((blade, bIdx) => {
                     blade.mat.uniforms.uTime.value = elapsedTime;
                     const bladeAudio = (transient * 0.8) + (bassPop * 0.4);
-                    blade.mat.uniforms.uIntensity.value = 0.85 + bladeAudio * 1.0;
-                    blade.mat.uniforms.uCoreBoost.value = 2.4 + (transient * 1.5);
+                    blade.mat.uniforms.uIntensity.value = 0.9 + bladeAudio * 1.1;
+                    blade.mat.uniforms.uCoreBoost.value = 2.4 + (transient * 1.2);
 
                     const spreadMod = Math.sin(elapsedTime * 0.5 + bIdx * 0.4) * 0.08;
                     blade.mesh.rotation.y = blade.baseAngle + spreadMod;
                 });
             });
 
-            // Slow Swirling Caustics
             saberCaustics.rotation.y += speed * 0.12;
             saberCaustics.rotation.x += delta * 0.03;
         }
         // ---------------------------------------------------------------------
-        // FX 9: Strobe Hyper-Rings & Laser Matrix
+        // FX 8: Strobe Hyper-Rings & Laser Matrix
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 9) {
+        else if (currentFXIndex === 8) {
             hyperRings.forEach((hr, idx) => {
                 const dir = (idx % 2 === 0) ? 1 : -1;
                 hr.rotation.x += speed * (0.5 + idx * 0.15) * dir;
