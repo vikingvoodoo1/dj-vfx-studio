@@ -1,20 +1,20 @@
 /**
  * High-Performance Audio Engine & Transient Bass Beat Detector for DJ-VFX
- * Supports dynamic thresholding, multi-band frequency analysis, and gain calibration
+ * Balanced gain scaling so beat sensitivity drives motion & physics without blinding brightness
  */
 export async function setupAudio() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.75; // Snappier response for transient kick detection
+    analyser.smoothingTimeConstant = 0.75;
 
     let isConnected = false;
 
-    // Configurable parameters
-    let gainMultiplier = 2.2;        // General input boost (0.5 to 5.0)
-    let bassSensitivity = 2.0;       // Bass punch multiplier (0.5 to 4.0)
-    let beatThreshold = 1.35;        // Ratio above rolling average required for beat hit
-    let decayRate = 0.88;            // Transient impulse decay speed
+    // Configurable parameters with calibrated baselines
+    let gainMultiplier = 1.2;        // General input boost (0.2 to 3.0)
+    let bassSensitivity = 1.2;       // Bass punch multiplier (0.2 to 3.0)
+    let beatThreshold = 1.25;        // Ratio above rolling average required for transient hit
+    let decayRate = 0.85;            // Transient impulse decay speed
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,7 +41,7 @@ export async function setupAudio() {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     
     // Dynamic Transient Detection State
-    const historyLength = 24;
+    const historyLength = 20;
     const bassEnergyHistory = new Float32Array(historyLength);
     let historyIndex = 0;
     let transientImpulse = 0.0;
@@ -54,9 +54,9 @@ export async function setupAudio() {
         isConnected: () => isConnected,
 
         // Calibration Control Setters
-        setGain: (val) => { gainMultiplier = Math.max(0.2, Math.min(6.0, Number(val))); },
-        setBassSensitivity: (val) => { bassSensitivity = Math.max(0.2, Math.min(5.0, Number(val))); },
-        setBeatThreshold: (val) => { beatThreshold = Math.max(1.05, Math.min(3.0, Number(val))); },
+        setGain: (val) => { gainMultiplier = Math.max(0.1, Math.min(4.0, Number(val))); },
+        setBassSensitivity: (val) => { bassSensitivity = Math.max(0.1, Math.min(4.0, Number(val))); },
+        setBeatThreshold: (val) => { beatThreshold = Math.max(1.05, Math.min(2.5, Number(val))); },
 
         getAudioData: () => {
             const now = performance.now();
@@ -70,7 +70,7 @@ export async function setupAudio() {
                 for (let i = 1; i <= bassBins; i++) {
                     bassSum += dataArray[i];
                 }
-                const rawBass = (bassSum / bassBins / 255) * gainMultiplier * bassSensitivity;
+                const rawBass = Math.min(1.0, (bassSum / bassBins / 255) * gainMultiplier * bassSensitivity);
 
                 // 2. Mid Range Band (bins 11 to 45: ~450Hz - 2kHz)
                 let midSum = 0;
@@ -78,7 +78,7 @@ export async function setupAudio() {
                 for (let i = 11; i <= 45; i++) {
                     midSum += dataArray[i];
                 }
-                const rawMid = (midSum / midBins / 255) * gainMultiplier;
+                const rawMid = Math.min(1.0, (midSum / midBins / 255) * gainMultiplier);
 
                 // 3. Treble Range Band (bins 46 to 120: ~2kHz - 5kHz+)
                 let trebleSum = 0;
@@ -86,51 +86,46 @@ export async function setupAudio() {
                 for (let i = 46; i <= 120; i++) {
                     trebleSum += dataArray[i];
                 }
-                const rawTreble = (trebleSum / trebleBins / 255) * gainMultiplier;
+                const rawTreble = Math.min(1.0, (trebleSum / trebleBins / 255) * gainMultiplier);
 
                 // 4. Dynamic Transient / Kick Drum Onset Detection
-                // Calculate rolling average energy of recent frames
                 let avgEnergy = 0;
                 for (let i = 0; i < historyLength; i++) {
                     avgEnergy += bassEnergyHistory[i];
                 }
                 avgEnergy /= historyLength;
 
-                // Store current raw bass energy in circular buffer
                 bassEnergyHistory[historyIndex] = rawBass;
                 historyIndex = (historyIndex + 1) % historyLength;
 
-                // Detect transient spike: energy exceeds rolling average by threshold
                 let isOnset = false;
-                const minTimeBetweenHitsMs = 160; // Max ~375 BPM detection
-                if (rawBass > 0.25 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
+                const minTimeBetweenHitsMs = 150; // Max ~400 BPM detection
+                if (rawBass > 0.18 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;
                     lastHitTime = now;
                 } else {
-                    // Decay impulse smoothly
                     transientImpulse *= decayRate;
                 }
 
                 // Smooth frequency channels
-                smoothedBass = Math.min(1.0, smoothedBass * 0.65 + rawBass * 0.35);
-                smoothedMid = Math.min(1.0, smoothedMid * 0.7 + rawMid * 0.3);
-                smoothedTreble = Math.min(1.0, smoothedTreble * 0.75 + rawTreble * 0.25);
+                smoothedBass = Math.min(1.0, smoothedBass * 0.7 + rawBass * 0.3);
+                smoothedMid = Math.min(1.0, smoothedMid * 0.75 + rawMid * 0.25);
+                smoothedTreble = Math.min(1.0, smoothedTreble * 0.8 + rawTreble * 0.2);
 
-                const clampedBass = Math.min(1.0, rawBass);
-                const combinedBassImpact = Math.min(1.0, clampedBass * 0.6 + transientImpulse * 0.8);
+                const combinedBassImpact = Math.min(1.0, smoothedBass * 0.75 + transientImpulse * 0.4);
 
                 return {
                     dataArray,
-                    bass: clampedBass,
+                    bass: rawBass,
                     smoothedBass,
-                    bassImpact: combinedBassImpact, // Snappy bass + transient spike for explosive visuals
-                    transientImpulse,              // Pure 0.0-1.0 kick transient
-                    mid: Math.min(1.0, rawMid),
+                    bassImpact: combinedBassImpact,
+                    transientImpulse,
+                    mid: rawMid,
                     smoothedMid,
-                    treble: Math.min(1.0, rawTreble),
+                    treble: rawTreble,
                     smoothedTreble,
-                    overall: (clampedBass * 0.5 + Math.min(1.0, rawMid) * 0.3 + Math.min(1.0, rawTreble) * 0.2),
+                    overall: (rawBass * 0.5 + rawMid * 0.3 + rawTreble * 0.2),
                     isOnset
                 };
             }
@@ -138,16 +133,16 @@ export async function setupAudio() {
             // Synthetic Fallback Generator
             const t = now * 0.003;
             const synthCycle = Math.sin(t * 3.0);
-            const synthBass = Math.max(0, synthCycle > 0.6 ? 1.0 : synthCycle * 0.4);
-            const synthImpulse = synthCycle > 0.85 ? 1.0 : 0.0;
-            const synthMid = Math.max(0, Math.sin(t * 4.5 + 1.2)) * 0.6;
-            const synthTreble = Math.max(0, Math.cos(t * 6.0)) * 0.4;
+            const synthBass = Math.max(0, synthCycle > 0.6 ? 0.9 : synthCycle * 0.3);
+            const synthImpulse = synthCycle > 0.9 ? 1.0 : 0.0;
+            const synthMid = Math.max(0, Math.sin(t * 4.5 + 1.2)) * 0.5;
+            const synthTreble = Math.max(0, Math.cos(t * 6.0)) * 0.3;
 
             return {
                 dataArray: new Uint8Array(256),
                 bass: synthBass,
                 smoothedBass: synthBass,
-                bassImpact: Math.min(1.0, synthBass + synthImpulse * 0.5),
+                bassImpact: Math.min(1.0, synthBass + synthImpulse * 0.3),
                 transientImpulse: synthImpulse,
                 mid: synthMid,
                 smoothedMid: synthMid,

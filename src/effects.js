@@ -5,7 +5,7 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// Custom Nightclub FX Shader (Chromatic Aberration Glitch & Strobe Flash)
+// Custom Nightclub FX Shader (Subtle Chromatic Aberration & Strobe Flash)
 const NightclubPostFX = {
     uniforms: {
         tDiffuse: { value: null },
@@ -30,20 +30,18 @@ const NightclubPostFX = {
         void main() {
             vec2 center = vec2(0.5, 0.5);
             vec2 uv = vUv;
-            vec2 offset = (uv - center) * (uAberration * 0.045);
+            vec2 offset = (uv - center) * (uAberration * 0.02); // Subtle RGB shift for style without text distortion
 
-            // Radial Chromatic Aberration RGB Shift
             float r = texture2D(tDiffuse, uv + offset).r;
             float g = texture2D(tDiffuse, uv).g;
             float b = texture2D(tDiffuse, uv - offset).b;
             vec3 color = vec3(r, g, b);
 
-            // Subdued Vignette for Nightclub Tunnel Focus
             float dist = distance(uv, center);
             float vignette = smoothstep(1.3, 0.4, dist);
             color *= vignette;
 
-            // Strobe flash injection
+            // Flash
             color += vec3(uFlash * 0.75, uFlash * 0.7, uFlash * 0.85);
 
             gl_FragColor = vec4(color, 1.0);
@@ -56,9 +54,9 @@ const HighClarityLogoShader = {
     uniforms: {
         map: { value: null },
         uOpacity: { value: 1.0 },
-        uContrast: { value: 1.45 },
-        uBrightness: { value: 1.15 },
-        uLumaCutoff: { value: 0.07 },
+        uContrast: { value: 1.35 },
+        uBrightness: { value: 1.05 },
+        uLumaCutoff: { value: 0.08 },
         uLumaSmooth: { value: 0.06 },
         uBlendMode: { value: 0 } // 0: Crisp Luma Key (Normal), 1: Additive Holo, 2: Direct
     },
@@ -85,7 +83,7 @@ const HighClarityLogoShader = {
             // Contrast & Brightness Enhancer
             vec3 col = texColor.rgb;
             col = (col - 0.5) * uContrast + 0.5 + (uBrightness - 1.0);
-            col = clamp(col, 0.0, 1.5);
+            col = clamp(col, 0.0, 1.3);
 
             float luma = dot(texColor.rgb, vec3(0.299, 0.587, 0.114));
             float alpha = texColor.a;
@@ -124,17 +122,17 @@ export function createVFXScene(container) {
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
-    renderer.toneMappingExposure = 1.1;
+    renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
 
-    // 2. Post-Processing Chain
+    // 2. Post-Processing Chain (Tuned Bloom Threshold & Radius)
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        2.2,
-        0.5,
-        0.12
+        1.2,   // Controlled base bloom strength (not blinding)
+        0.4,   // Bloom radius
+        0.32   // Higher threshold so only glowing neon lines bloom, keeping scene & logo sharp
     );
 
     const nightclubPass = new ShaderPass(NightclubPostFX);
@@ -146,15 +144,15 @@ export function createVFXScene(container) {
     composer.addPass(nightclubPass);
     composer.addPass(outputPass);
 
-    // 3. Shared Global Lights
+    // 3. Shared Global Lights (Controlled Intensities)
     const ambientLight = new THREE.AmbientLight(0x0a0a14, 1.2);
     scene.add(ambientLight);
 
-    const lightCyan = new THREE.PointLight(0x00ffff, 4, 40);
+    const lightCyan = new THREE.PointLight(0x00ffff, 2.5, 40);
     lightCyan.position.set(6, 6, 6);
     scene.add(lightCyan);
 
-    const lightMagenta = new THREE.PointLight(0xff007f, 4, 40);
+    const lightMagenta = new THREE.PointLight(0xff007f, 2.5, 40);
     lightMagenta.position.set(-6, -6, 6);
     scene.add(lightMagenta);
 
@@ -162,7 +160,7 @@ export function createVFXScene(container) {
     // HIGH-CLARITY LOGO & VIDEO LAYER
     // ==========================================
     const logoGroup = new THREE.Group();
-    logoGroup.renderOrder = 999; // Render in crisp focus
+    logoGroup.renderOrder = 999;
     scene.add(logoGroup);
 
     let logoVideoElement = null;
@@ -173,13 +171,13 @@ export function createVFXScene(container) {
     let logoMode = 'hologram'; // 'hologram', 'backdrop', 'overlay'
     let logoBaseOpacity = 1.0;
     let logoBaseScale = 1.0;
-    let logoBassPulseAmount = 0.5;
+    let logoBassPulseAmount = 0.4;
     let logoAspectRatio = 16 / 9;
-    let logoContrast = 1.45;
-    let logoBrightness = 1.15;
+    let logoContrast = 1.35;
+    let logoBrightness = 1.05;
     let isShieldActive = true;
 
-    // Dark Contrast Shield (prevents background wireframes/lasers from obscuring logo text)
+    // Dark Contrast Shield behind logo text
     const shieldCanvas = document.createElement('canvas');
     shieldCanvas.width = 256;
     shieldCanvas.height = 256;
@@ -210,7 +208,7 @@ export function createVFXScene(container) {
             uOpacity: { value: logoBaseOpacity },
             uContrast: { value: logoContrast },
             uBrightness: { value: logoBrightness },
-            uLumaCutoff: { value: 0.07 },
+            uLumaCutoff: { value: 0.08 },
             uLumaSmooth: { value: 0.06 },
             uBlendMode: { value: 0 }
         },
@@ -230,7 +228,6 @@ export function createVFXScene(container) {
         if (!logoMesh) return;
 
         if (logoMode === 'backdrop') {
-            // Positioned behind 3D objects as animated wallpaper
             logoMesh.position.set(0, 0, -22);
             const w = 58 * logoBaseScale;
             const h = (58 / logoAspectRatio) * logoBaseScale;
@@ -238,7 +235,7 @@ export function createVFXScene(container) {
             logoShaderMat.blending = THREE.AdditiveBlending;
             if (logoShieldMesh) logoShieldMesh.visible = false;
         } else if (logoMode === 'hologram') {
-            // Crisp 3D placement floating in front of center geometry (z = 3.5)
+            // Front focus position in front of rotating shapes
             logoMesh.position.set(0, 0, 3.5);
             const w = 13.5 * logoBaseScale;
             const h = (13.5 / logoAspectRatio) * logoBaseScale;
@@ -251,7 +248,6 @@ export function createVFXScene(container) {
                 logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
             }
         } else if (logoMode === 'overlay') {
-            // Front HUD watermark
             logoMesh.position.set(0, 0, 11);
             const w = 7.0 * logoBaseScale;
             const h = (7.0 / logoAspectRatio) * logoBaseScale;
@@ -527,8 +523,8 @@ export function createVFXScene(container) {
                 grp.visible = (idx === index);
             });
             currentFXIndex = index;
-            nightclubPass.uniforms.uAberration.value = 0.8;
-            manualFlash = 0.6;
+            nightclubPass.uniforms.uAberration.value = 0.4;
+            manualFlash = 0.4;
         }
     }
 
@@ -547,7 +543,7 @@ export function createVFXScene(container) {
     }
 
     function setBloomMultiplier(val) {
-        bloomMultiplier = Math.max(0.2, Math.min(4.0, Number(val)));
+        bloomMultiplier = Math.max(0.2, Math.min(3.0, Number(val)));
     }
 
     // Logo Control API
@@ -621,32 +617,32 @@ export function createVFXScene(container) {
         const bps = currentBPM / 60.0;
         const speed = bps * delta;
 
-        // Animate Logo Layer (Razor-Sharp Audio Reactivity)
+        // 1. Animate Logo Layer (Physical Scale & Motion Pulse without blinding brightness)
         if (logoVisible && logoMesh) {
-            const logoPulse = (bassPop * logoBassPulseAmount * 0.3) + (transient * logoBassPulseAmount * 0.2);
+            const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
 
             if (logoMode === 'backdrop') {
-                const w = 58 * logoBaseScale * (1.0 + logoPulse * 0.35);
-                const h = (58 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.35);
+                const w = 58 * logoBaseScale * (1.0 + logoPulse * 0.25);
+                const h = (58 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.25);
                 logoMesh.scale.set(w / 16, h / 9, 1);
             } else if (logoMode === 'hologram') {
-                const w = 13.5 * logoBaseScale * (1.0 + logoPulse * 0.45);
-                const h = (13.5 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.45);
+                const w = 13.5 * logoBaseScale * (1.0 + logoPulse * 0.35);
+                const h = (13.5 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.35);
                 logoMesh.scale.set(w / 16, h / 9, 1);
-                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.25;
+                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.2;
 
                 if (logoShieldMesh && isShieldActive) {
                     logoShieldMesh.position.y = logoMesh.position.y;
                     logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
                 }
             } else if (logoMode === 'overlay') {
-                const w = 7.0 * logoBaseScale * (1.0 + logoPulse * 0.25);
-                const h = (7.0 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.25);
+                const w = 7.0 * logoBaseScale * (1.0 + logoPulse * 0.2);
+                const h = (7.0 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.2);
                 logoMesh.scale.set(w / 16, h / 9, 1);
             }
         }
 
-        // Animate Active Scene
+        // 2. Animate Active Scene
         if (currentFXIndex === 0) {
             gTorus.rotation.x += speed * 0.4;
             gTorus.rotation.y += speed * 0.6;
@@ -655,9 +651,10 @@ export function createVFXScene(container) {
             torusRing2.rotation.z -= speed * 0.7;
             torusParticles.rotation.y += delta * 0.05;
 
-            const scale = 1.0 + (bassPop * 0.65) + (transient * 0.35) + (beatTriggerPulse * 0.2);
+            // Scale physics surge on bass
+            const scale = 1.0 + (bassPop * 0.5) + (transient * 0.25) + (beatTriggerPulse * 0.15);
             torusKnot.scale.set(scale, scale, scale);
-            const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.7;
+            const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.5;
             torusCore.scale.set(coreScale, coreScale, coreScale);
 
             const hue = (elapsedTime * 0.06) % 1.0;
@@ -665,7 +662,7 @@ export function createVFXScene(container) {
             coreMat.color.setHSL((hue + 0.5) % 1.0, 1.0, 0.65);
         }
         else if (currentFXIndex === 1) {
-            const tunnelSpeed = (18.0 + (bassPop * 40.0) + (transient * 50.0)) * delta;
+            const tunnelSpeed = (18.0 + (bassPop * 30.0) + (transient * 40.0)) * delta;
             tunnelRings.forEach((ring, idx) => {
                 ring.position.z += tunnelSpeed;
                 ring.rotation.z += delta * (0.5 + idx * 0.05);
@@ -673,7 +670,7 @@ export function createVFXScene(container) {
                 if (ring.position.z > 5) {
                     ring.position.z -= tunnelRingCount * tunnelSpacing;
                 }
-                const ringScale = 1.0 + Math.sin(elapsedTime * 4 + idx * 0.2) * 0.15 + (transient * 0.3);
+                const ringScale = 1.0 + Math.sin(elapsedTime * 4 + idx * 0.2) * 0.12 + (transient * 0.2);
                 ring.scale.set(ringScale, ringScale, 1.0);
             });
             gTunnel.rotation.z += delta * 0.15;
@@ -685,12 +682,12 @@ export function createVFXScene(container) {
                 const x = posAttr.getX(i);
                 const y = posAttr.getY(i);
                 const freqSample = dataArr[(i % 32)] ? dataArr[(i % 32)] / 255 : 0;
-                const wave = Math.sin(x * 0.3 + elapsedTime * 4.0) * Math.cos(y * 0.2 + elapsedTime * 3.0) * (1.5 + bassPop * 3.0) + (freqSample * 2.5);
+                const wave = Math.sin(x * 0.3 + elapsedTime * 4.0) * Math.cos(y * 0.2 + elapsedTime * 3.0) * (1.2 + bassPop * 2.2) + (freqSample * 2.0);
                 posAttr.setZ(i, wave);
             }
             posAttr.needsUpdate = true;
 
-            const sunScale = 1.0 + (bassPop * 0.4) + (transient * 0.3);
+            const sunScale = 1.0 + (bassPop * 0.3) + (transient * 0.2);
             sunMesh.scale.set(sunScale, sunScale, 1.0);
             sunMat.color.setHSL((elapsedTime * 0.05 + bassPop * 0.2) % 1.0, 1.0, 0.6);
         }
@@ -704,8 +701,8 @@ export function createVFXScene(container) {
                 const by = orbBasePositions[i * 3 + 1];
                 const bz = orbBasePositions[i * 3 + 2];
                 const bin = (i % 64);
-                const amp = dataArr[bin] ? (dataArr[bin] / 255) * (1.2 + bassPop * 2.5) : 0;
-                const disp = 1.0 + amp * 0.45;
+                const amp = dataArr[bin] ? (dataArr[bin] / 255) * (1.0 + bassPop * 2.0) : 0;
+                const disp = 1.0 + amp * 0.4;
                 posAttr.setXYZ(i, bx * disp, by * disp, bz * disp);
             }
             posAttr.needsUpdate = true;
@@ -722,24 +719,25 @@ export function createVFXScene(container) {
                 hr.rotation.y += speed * (0.6 + idx * 0.2) * dir;
                 hr.rotation.z += delta * (0.4 + idx * 0.1);
 
-                const ringPop = 1.0 + (transient * (0.2 + idx * 0.1)) + (bassPop * 0.2);
+                const ringPop = 1.0 + (transient * (0.15 + idx * 0.08)) + (bassPop * 0.15);
                 hr.scale.set(ringPop, ringPop, ringPop);
             });
             centerOcta.rotation.x -= delta * 2.0;
             centerOcta.rotation.y += delta * 1.5;
-            const octaScale = 1.0 + transient * 0.8 + bassPop * 0.5;
+            const octaScale = 1.0 + transient * 0.6 + bassPop * 0.4;
             centerOcta.scale.set(octaScale, octaScale, octaScale);
         }
 
-        // Post-Processing Dynamic Glow & Chromatic Shockwave
-        const targetBloom = (1.8 + (bassPop * 2.2) + (transient * 2.0) + (manualFlash * 2.0)) * bloomMultiplier;
-        bloomPass.strength = THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.25);
+        // 3. Post-Processing: Controlled, Tasteful Bloom Glow (Clamped, Never Washes Out Logo)
+        const targetBloom = Math.min(2.5, (1.15 + (bassPop * 0.45) + (manualFlash * 0.9)) * bloomMultiplier);
+        bloomPass.strength = THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.2);
 
-        const targetAberration = (transient * 1.2) + (bassPop > 0.7 ? 0.6 : 0.0) + (manualFlash * 1.0);
+        // Subtle Chromatic Aberration Shockwave (doesn't distort text)
+        const targetAberration = (transient * 0.25) + (manualFlash * 0.6);
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(
             nightclubPass.uniforms.uAberration.value,
             targetAberration,
-            0.3
+            0.25
         );
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -757,13 +755,14 @@ export function createVFXScene(container) {
 
         nightclubPass.uniforms.uTime.value = elapsedTime;
 
+        // Controlled Point Lights (Steady base illumination)
         lightCyan.position.x = Math.sin(elapsedTime * 2.0) * 10;
         lightCyan.position.y = Math.cos(elapsedTime * 1.5) * 8;
-        lightCyan.intensity = (3.0 + bassPop * 8.0) * bloomMultiplier;
+        lightCyan.intensity = Math.min(5.0, (2.2 + bassPop * 1.5) * bloomMultiplier);
 
         lightMagenta.position.x = -Math.sin(elapsedTime * 1.8) * 10;
         lightMagenta.position.y = -Math.cos(elapsedTime * 1.4) * 8;
-        lightMagenta.intensity = (3.0 + (audio.smoothedMid || 0) * 6.0) * bloomMultiplier;
+        lightMagenta.intensity = Math.min(5.0, (2.2 + (audio.smoothedMid || 0) * 1.5) * bloomMultiplier);
 
         composer.render();
     }
