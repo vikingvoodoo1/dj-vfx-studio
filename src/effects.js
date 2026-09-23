@@ -121,7 +121,7 @@ export function createVFXScene(container) {
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
 
-    // 2. Post-Processing Chain (Crisp, High-Contrast Neon Bloom)
+    // 2. Post-Processing Chain
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
@@ -340,45 +340,84 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 0: 3D STUDIO GRAPHIC EQUALIZER BARS (Linear Stadium Array)
+    // FX 0: PREMIUM 3D STUDIO LED EQUALIZER WALL (Amphitheater Segmented Blocks)
     // -------------------------------------------------------------------------
     const gEQBars = createFXGroup();
-    gEQBars.visible = true; // Default active
+    gEQBars.visible = true;
 
-    const eqBarCount = 32;
-    const eqBars = [];
-    const eqCaps = [];
-    const barSpacing = 0.55;
-    const eqStartX = -((eqBarCount - 1) * barSpacing) / 2;
+    const eqCols = 44;               // 44 Frequency Columns in an amphitheater curve
+    const eqRows = 16;               // 16 Discrete LED Bricks per Column
+    const totalLEDs = eqCols * eqRows;
 
-    for (let i = 0; i < eqBarCount; i++) {
-        // Base segmented bar
-        const bGeo = new THREE.BoxGeometry(0.38, 1.0, 0.38);
-        bGeo.translate(0, 0.5, 0); // Origin at base
+    // InstancedMesh for 704 individual glowing LED Bricks
+    const brickGeo = new THREE.BoxGeometry(0.38, 0.28, 0.35);
+    const brickMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.95
+    });
+    const ledInstancedMesh = new THREE.InstancedMesh(brickGeo, brickMat, totalLEDs);
+    ledInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    gEQBars.add(ledInstancedMesh);
 
-        const hue = (i / eqBarCount) * 0.7; // Cyan to Magenta gradient
-        const bMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color().setHSL(hue, 1.0, 0.5),
-            wireframe: false
-        });
-        const bMesh = new THREE.Mesh(bGeo, bMat);
-        bMesh.position.set(eqStartX + i * barSpacing, -4.5, -2.0);
-        gEQBars.add(bMesh);
-        eqBars.push(bMesh);
+    // Pre-calculate positions & colors for each LED brick
+    const dummy = new THREE.Object3D();
+    const ledColors = new Float32Array(totalLEDs * 3);
+    const ledBaseY = -4.5;
+    const eqArcRadius = 18.0;
+    const eqArcAngle = Math.PI * 0.92;
 
-        // Peak Hold LED Cap
-        const capGeo = new THREE.BoxGeometry(0.42, 0.12, 0.42);
+    const colCyan = new THREE.Color(0x00ffcc);     // Low tier (1-9)
+    const colYellow = new THREE.Color(0xffcc00);   // Mid tier (10-13)
+    const colRed = new THREE.Color(0xff0055);      // Peak tier (14-16)
+    const colDark = new THREE.Color(0x080c14);     // Inactive off state
+
+    const eqPeakCaps = [];
+
+    for (let c = 0; c < eqCols; c++) {
+        const angle = ((c / (eqCols - 1)) - 0.5) * eqArcAngle;
+        const posX = Math.sin(angle) * eqArcRadius;
+        const posZ = -Math.cos(angle) * eqArcRadius + 14.5;
+
+        for (let r = 0; r < eqRows; r++) {
+            const idx = c * eqRows + r;
+            const posY = ledBaseY + r * 0.38;
+
+            dummy.position.set(posX, posY, posZ);
+            dummy.rotation.y = angle;
+            dummy.scale.set(1, 1, 1);
+            dummy.updateMatrix();
+            ledInstancedMesh.setMatrixAt(idx, dummy.matrix);
+
+            // Default dark off color
+            ledInstancedMesh.setColorAt(idx, colDark);
+        }
+
+        // Peak Hold Glowing Cap
+        const capGeo = new THREE.BoxGeometry(0.44, 0.12, 0.40);
         const capMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
         const capMesh = new THREE.Mesh(capGeo, capMat);
-        capMesh.position.set(eqStartX + i * barSpacing, -4.4, -2.0);
+        capMesh.position.set(posX, ledBaseY + 0.2, posZ);
+        capMesh.rotation.y = angle;
         gEQBars.add(capMesh);
-        eqCaps.push({ mesh: capMesh, peakY: -4.4, peakVel: 0 });
+        eqPeakCaps.push({ mesh: capMesh, peakY: ledBaseY + 0.2, peakVel: 0, posX, posZ, angle });
     }
 
-    // Floor Mirror Grid for Equalizer
-    const eqGridFloor = new THREE.GridHelper(30, 30, 0x00ffff, 0x220044);
-    eqGridFloor.position.set(0, -4.6, -2.0);
-    gEQBars.add(eqGridFloor);
+    ledInstancedMesh.instanceMatrix.needsUpdate = true;
+    if (ledInstancedMesh.instanceColor) ledInstancedMesh.instanceColor.needsUpdate = true;
+
+    // Glossy Reflective Stage Floor with Neon Grid
+    const eqStageFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(50, 30),
+        new THREE.MeshBasicMaterial({ color: 0x050510, side: THREE.DoubleSide })
+    );
+    eqStageFloor.rotation.x = -Math.PI / 2;
+    eqStageFloor.position.set(0, ledBaseY - 0.05, 0);
+    gEQBars.add(eqStageFloor);
+
+    const eqFloorGrid = new THREE.GridHelper(40, 40, 0x00ffff, 0x180033);
+    eqFloorGrid.position.set(0, ledBaseY - 0.04, 0);
+    gEQBars.add(eqFloorGrid);
 
     // -------------------------------------------------------------------------
     // FX 1: CIRCULAR SPECTRUM MANDALA
@@ -405,14 +444,13 @@ export function createVFXScene(container) {
         circBeams.push(beamMesh);
     }
 
-    // Inner & Outer Neon Ring Enclosures
     const cRingIn = new THREE.Mesh(new THREE.RingGeometry(circRadius - 0.1, circRadius, 64), new THREE.MeshBasicMaterial({ color: 0x00ffff, side: THREE.DoubleSide }));
     const cRingOut = new THREE.Mesh(new THREE.RingGeometry(circRadius + 3.0, circRadius + 3.05, 64), new THREE.MeshBasicMaterial({ color: 0xff007f, side: THREE.DoubleSide }));
     gCircSpec.add(cRingIn);
     gCircSpec.add(cRingOut);
 
     // -------------------------------------------------------------------------
-    // FX 2: SPECTRUM WAVE MATRIX (Audio Ribbon Horizon)
+    // FX 2: SPECTRUM WAVE MATRIX
     // -------------------------------------------------------------------------
     const gWaveMatrix = createFXGroup();
     const ribbonCount = 12;
@@ -438,7 +476,7 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 3: QUANTUM TORUS KNOT & CORE
+    // FX 3: QUANTUM TORUS KNOT
     // -------------------------------------------------------------------------
     const gTorus = createFXGroup();
     const knotGeo = new THREE.TorusKnotGeometry(4.2, 1.1, 140, 28);
@@ -485,7 +523,7 @@ export function createVFXScene(container) {
     gTorus.add(torusParticles);
 
     // -------------------------------------------------------------------------
-    // FX 4: SYNTHWAVE CYBER GRID & HORIZON SUN
+    // FX 4: SYNTHWAVE CYBER GRID
     // -------------------------------------------------------------------------
     const gGrid = createFXGroup();
     const gridDim = 36;
@@ -525,7 +563,7 @@ export function createVFXScene(container) {
     }
 
     // -------------------------------------------------------------------------
-    // FX 5: 4D WIREFRAME HYPER-CUBE (Tesseract)
+    // FX 5: 4D WIREFRAME HYPER-CUBE
     // -------------------------------------------------------------------------
     const gHyperCube = createFXGroup();
     const outerCube = new THREE.Mesh(
@@ -539,7 +577,6 @@ export function createVFXScene(container) {
     gHyperCube.add(outerCube);
     gHyperCube.add(innerCube);
 
-    // Connecting Diagonal Vertex Beams
     const tesseractLineGeo = new THREE.BufferGeometry();
     const tesseractLinePositions = new Float32Array(8 * 2 * 3);
     tesseractLineGeo.setAttribute('position', new THREE.BufferAttribute(tesseractLinePositions, 3));
@@ -552,7 +589,7 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 6: WARP SPEED STARFIELD (Hyperspace Drive)
+    // FX 6: WARP SPEED STARFIELD
     // -------------------------------------------------------------------------
     const gStarfield = createFXGroup();
     const warpStarCount = 2500;
@@ -597,7 +634,7 @@ export function createVFXScene(container) {
     }
 
     // -------------------------------------------------------------------------
-    // FX 8: COSMIC NEBULA GALAXY (Double Spiral Vortex)
+    // FX 8: COSMIC NEBULA GALAXY
     // -------------------------------------------------------------------------
     const gGalaxy = createFXGroup();
     const galCount = 3000;
@@ -629,72 +666,184 @@ export function createVFXScene(container) {
     gGalaxy.add(galaxySystem);
 
     // =========================================================================
-    // CATEGORY 4: ⚡ LASERS & CLUB LIGHT SHOW
+    // CATEGORY 4: ⚡ LASERS & CLUB LIGHT SHOW (FESTIVAL GRADE)
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 9: FESTIVAL LASER ARRAY (Stage Sweeping Beams)
+    // FX 9: MEGA-FESTIVAL VOLUMETRIC LASER ARRAY
     // -------------------------------------------------------------------------
     const gLasers = createFXGroup();
-    const laserCount = 18;
-    const laserLines = [];
-    const laserColors = [0x00ffcc, 0xff0055, 0x00ffff, 0xffaa00, 0x9900ff];
+    const numLasers = 16;
+    const laserBeams = [];
+    const laserTargetSpots = [];
+    const laserHues = [0x00ffcc, 0xff0055, 0x00ffff, 0x39ff14, 0xffaa00, 0x9900ff];
 
-    for (let i = 0; i < laserCount; i++) {
-        const lGeo = new THREE.BufferGeometry();
-        const lPositions = new Float32Array([0, -8, -5, 0, 15, -40]);
-        lGeo.setAttribute('position', new THREE.BufferAttribute(lPositions, 3));
-        const lMat = new THREE.LineBasicMaterial({
-            color: laserColors[i % laserColors.length],
-            linewidth: 2,
+    // Stage Laser Projector Rig Truss
+    const laserRigTruss = new THREE.Mesh(
+        new THREE.BoxGeometry(32, 0.4, 0.6),
+        new THREE.MeshBasicMaterial({ color: 0x222233, wireframe: true })
+    );
+    laserRigTruss.position.set(0, -6.5, -6.0);
+    gLasers.add(laserRigTruss);
+
+    // Volumetric 3D Laser Beam Geometry (thick glowing beam shafts)
+    const beamLength = 48.0;
+    const beamCylinderGeo = new THREE.CylinderGeometry(0.04, 0.22, beamLength, 8, 1, true);
+    beamCylinderGeo.translate(0, beamLength / 2, 0); // Origin at projector
+    beamCylinderGeo.rotateX(Math.PI / 2);
+
+    for (let i = 0; i < numLasers; i++) {
+        const colorHex = laserHues[i % laserHues.length];
+
+        // Volumetric Glow Beam
+        const beamMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
             transparent: true,
-            opacity: 0.95
+            opacity: 0.75,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
         });
-        const lLine = new THREE.Line(lGeo, lMat);
-        gLasers.add(lLine);
-        laserLines.push(lLine);
+        const beamMesh = new THREE.Mesh(beamCylinderGeo, beamMat);
+
+        const projectorX = ((i / (numLasers - 1)) - 0.5) * 28.0;
+        beamMesh.position.set(projectorX, -6.5, -6.0);
+        gLasers.add(beamMesh);
+
+        // Projector Hardware Housing
+        const projBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.6, 0.6, 0.8),
+            new THREE.MeshBasicMaterial({ color: 0x111122 })
+        );
+        projBox.position.set(projectorX, -6.5, -6.0);
+        gLasers.add(projBox);
+
+        // Beam Ground / Wall Target Splash Ring
+        const splashMat = new THREE.MeshBasicMaterial({
+            color: colorHex,
+            transparent: true,
+            opacity: 0.9,
+            side: THREE.DoubleSide,
+            blending: THREE.AdditiveBlending
+        });
+        const splashMesh = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.5, 16), splashMat);
+        gLasers.add(splashMesh);
+
+        laserBeams.push({ mesh: beamMesh, basePos: new THREE.Vector3(projectorX, -6.5, -6.0), colorHex });
+        laserTargetSpots.push(splashMesh);
     }
 
+    // Atmospheric Floating Laser Dust Haze
+    const hazeCount = 600;
+    const hazeGeo = new THREE.BufferGeometry();
+    const hazePos = new Float32Array(hazeCount * 3);
+    for (let i = 0; i < hazeCount * 3; i += 3) {
+        hazePos[i] = (Math.random() - 0.5) * 36;
+        hazePos[i + 1] = (Math.random() - 0.5) * 20;
+        hazePos[i + 2] = (Math.random() - 0.5) * 30 - 10;
+    }
+    hazeGeo.setAttribute('position', new THREE.BufferAttribute(hazePos, 3));
+    const hazeMat = new THREE.PointsMaterial({ color: 0x00ffcc, size: 0.14, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.6 });
+    const laserHaze = new THREE.Points(hazeGeo, hazeMat);
+    gLasers.add(laserHaze);
+
     // -------------------------------------------------------------------------
-    // FX 10: FLASHING DISCO LIGHTS & MOVING HEADS
+    // FX 10: ARENA DISCO LIGHTS & FACETED CRYSTAL MIRROR BALL
     // -------------------------------------------------------------------------
     const gDisco = createFXGroup();
-    const discoSpotCount = 6;
-    const discoSpots = [];
-    const discoCones = [];
 
-    for (let i = 0; i < discoSpotCount; i++) {
-        const cGeo = new THREE.ConeGeometry(3.5, 20, 16, 1, true);
-        cGeo.translate(0, 10, 0);
-        cGeo.rotateX(Math.PI / 2);
+    // Central Faceted Mirror Ball
+    const mirrorBallGeo = new THREE.IcosahedronGeometry(2.2, 3);
+    const mirrorBallMat = new THREE.MeshBasicMaterial({
+        color: 0xcccccc,
+        wireframe: true
+    });
+    const mirrorBall = new THREE.Mesh(mirrorBallGeo, mirrorBallMat);
+    mirrorBall.position.set(0, 4.0, -4.0);
+    gDisco.add(mirrorBall);
 
-        const cMat = new THREE.MeshBasicMaterial({
-            color: new THREE.Color().setHSL((i / discoSpotCount), 1.0, 0.5),
+    // Mirror Ball Hanging Rod
+    const rodGeo = new THREE.CylinderGeometry(0.04, 0.04, 6.0);
+    const rodMesh = new THREE.Mesh(rodGeo, new THREE.MeshBasicMaterial({ color: 0x444455 }));
+    rodMesh.position.set(0, 7.0, -4.0);
+    gDisco.add(rodMesh);
+
+    // 1,500 Swirling Reflected Disco Light Dots (Caustics)
+    const discoCausticCount = 1400;
+    const discoCausticGeo = new THREE.BufferGeometry();
+    const discoCausticPos = new Float32Array(discoCausticCount * 3);
+    const discoCausticCol = new Float32Array(discoCausticCount * 3);
+    const cPalette = [new THREE.Color(0xff007f), new THREE.Color(0x00ffff), new THREE.Color(0xffcc00), new THREE.Color(0x00ff88), new THREE.Color(0xffffff)];
+
+    for (let i = 0; i < discoCausticCount; i++) {
+        const u = Math.random();
+        const v = Math.random();
+        const theta = u * 2.0 * Math.PI;
+        const phi = Math.acos(2.0 * v - 1.0);
+        const r = 10.0 + Math.random() * 25.0;
+
+        discoCausticPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        discoCausticPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        discoCausticPos[i * 3 + 2] = r * Math.cos(phi) - 4.0;
+
+        const c = cPalette[i % cPalette.length];
+        discoCausticCol[i * 3] = c.r;
+        discoCausticCol[i * 3 + 1] = c.g;
+        discoCausticCol[i * 3 + 2] = c.b;
+    }
+    discoCausticGeo.setAttribute('position', new THREE.BufferAttribute(discoCausticPos, 3));
+    discoCausticGeo.setAttribute('color', new THREE.BufferAttribute(discoCausticCol, 3));
+    const discoCausticMat = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, blending: THREE.AdditiveBlending });
+    const discoCaustics = new THREE.Points(discoCausticGeo, discoCausticMat);
+    gDisco.add(discoCaustics);
+
+    // 8 Overhead Volumetric Moving Head Spotlights with Floor Projection Pools
+    const numMovingHeads = 8;
+    const movingHeadBeams = [];
+    const movingHeadFloorPools = [];
+    const spotConeLength = 24.0;
+    const spotConeGeo = new THREE.ConeGeometry(3.5, spotConeLength, 16, 1, true);
+    spotConeGeo.translate(0, -spotConeLength / 2, 0); // Origin at top fixture
+
+    const mhTruss = new THREE.Mesh(
+        new THREE.BoxGeometry(32, 0.4, 0.6),
+        new THREE.MeshBasicMaterial({ color: 0x222233, wireframe: true })
+    );
+    mhTruss.position.set(0, 9.0, -4.0);
+    gDisco.add(mhTruss);
+
+    for (let i = 0; i < numMovingHeads; i++) {
+        const mhX = ((i / (numMovingHeads - 1)) - 0.5) * 26.0;
+        const mhColor = cPalette[i % cPalette.length];
+
+        const spotMat = new THREE.MeshBasicMaterial({
+            color: mhColor,
             transparent: true,
             opacity: 0.35,
             side: THREE.DoubleSide,
             blending: THREE.AdditiveBlending,
             depthWrite: false
         });
-        const cMesh = new THREE.Mesh(cGeo, cMat);
-        cMesh.position.set(0, 8, -5);
-        gDisco.add(cMesh);
-        discoCones.push(cMesh);
-    }
+        const spotMesh = new THREE.Mesh(spotConeGeo, spotMat);
+        spotMesh.position.set(mhX, 9.0, -4.0);
+        gDisco.add(spotMesh);
 
-    // Floating Mirror Ball Dots
-    const dotCount = 600;
-    const dotGeo = new THREE.BufferGeometry();
-    const dotPos = new Float32Array(dotCount * 3);
-    for (let i = 0; i < dotCount * 3; i += 3) {
-        dotPos[i] = (Math.random() - 0.5) * 45;
-        dotPos[i + 1] = (Math.random() - 0.5) * 30;
-        dotPos[i + 2] = (Math.random() - 0.5) * 40;
+        // Stage Floor Light Pool
+        const poolMat = new THREE.MeshBasicMaterial({
+            color: mhColor,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide
+        });
+        const poolMesh = new THREE.Mesh(new THREE.CircleGeometry(2.0, 16), poolMat);
+        poolMesh.rotation.x = -Math.PI / 2;
+        poolMesh.position.set(mhX, -5.5, -4.0);
+        gDisco.add(poolMesh);
+
+        movingHeadBeams.push({ mesh: spotMesh, posX: mhX, mat: spotMat, baseColor: mhColor });
+        movingHeadFloorPools.push(poolMesh);
     }
-    dotGeo.setAttribute('position', new THREE.BufferAttribute(dotPos, 3));
-    const dotMat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.16, blending: THREE.AdditiveBlending });
-    const discoDots = new THREE.Points(dotGeo, dotMat);
-    gDisco.add(discoDots);
 
     // -------------------------------------------------------------------------
     // FX 11: STROBE HYPER-RINGS & LASER MATRIX
@@ -874,34 +1023,50 @@ export function createVFXScene(container) {
 
         // 2. Animate Active Scene
         // ---------------------------------------------------------------------
-        // FX 0: 3D Studio Graphic Equalizer Bars
+        // FX 0: PREMIUM 3D STUDIO LED EQUALIZER WALL
         // ---------------------------------------------------------------------
         if (currentFXIndex === 0) {
-            eqBars.forEach((bar, i) => {
-                const binIdx = Math.floor((i / eqBarCount) * 48) + 1;
-                const rawAmp = dataArr[binIdx] ? dataArr[binIdx] / 255 : 0;
-                const targetHeight = Math.max(0.15, rawAmp * 7.5 + (i < 6 ? bassPop * 3.0 : 0));
+            let colorsChanged = false;
 
-                bar.scale.y = THREE.MathUtils.lerp(bar.scale.y, targetHeight, 0.35);
+            for (let c = 0; c < eqCols; c++) {
+                // Map column to frequency bin with logarithmic curve
+                const binIdx = Math.floor(Math.pow(c / (eqCols - 1), 1.2) * 56) + 1;
+                const amp = dataArr[binIdx] ? dataArr[binIdx] / 255 : 0;
+                const targetActiveRows = Math.min(eqRows, Math.floor(amp * (eqRows + 2) + (c < 8 ? bassPop * 3 : 0)));
+
+                for (let r = 0; r < eqRows; r++) {
+                    const idx = c * eqRows + r;
+                    if (r < targetActiveRows) {
+                        // Determine LED Color Tier
+                        const activeCol = r < 10 ? colCyan : (r < 14 ? colYellow : colRed);
+                        ledInstancedMesh.setColorAt(idx, activeCol);
+                    } else {
+                        ledInstancedMesh.setColorAt(idx, colDark);
+                    }
+                }
 
                 // Peak Cap Physics
-                const cap = eqCaps[i];
-                const currentTop = -4.5 + bar.scale.y;
-                if (currentTop > cap.peakY) {
-                    cap.peakY = currentTop;
+                const cap = eqPeakCaps[c];
+                const currentTopY = ledBaseY + targetActiveRows * 0.38 + 0.1;
+                if (currentTopY > cap.peakY) {
+                    cap.peakY = currentTopY;
                     cap.peakVel = 0;
                 } else {
-                    cap.peakVel += delta * 12.0; // Gravity
+                    cap.peakVel += delta * 14.0;
                     cap.peakY -= cap.peakVel * delta;
-                    if (cap.peakY < -4.4) cap.peakY = -4.4;
+                    if (cap.peakY < ledBaseY + 0.2) cap.peakY = ledBaseY + 0.2;
                 }
-                cap.mesh.position.y = cap.peakY + 0.08;
-            });
-            eqGridFloor.position.z = -2.0 + Math.sin(elapsedTime * 0.5) * 0.5;
+                cap.mesh.position.y = cap.peakY;
+            }
+
+            if (ledInstancedMesh.instanceColor) {
+                ledInstancedMesh.instanceColor.needsUpdate = true;
+            }
+            eqFloorGrid.position.z = -Math.sin(elapsedTime * 0.3) * 1.5;
         }
         // ---------------------------------------------------------------------
         // FX 1: Circular Spectrum Mandala
-        // -------------------------------------------------------------------------
+        // ---------------------------------------------------------------------
         else if (currentFXIndex === 1) {
             circBeams.forEach((beam, i) => {
                 const bin = (i % 32) + 1;
@@ -982,7 +1147,6 @@ export function createVFXScene(container) {
             outerCube.scale.set(popScale, popScale, popScale);
             innerCube.scale.set(popScale * 0.9, popScale * 0.9, popScale * 0.9);
 
-            // Connect outer and inner vertices
             const pos = tesseractLineGeo.attributes.position.array;
             const b = 3.5 * popScale;
             const ib = 1.75 * popScale * 0.9;
@@ -1042,40 +1206,70 @@ export function createVFXScene(container) {
             galaxySystem.scale.set(galScale, galScale, galScale);
         }
         // ---------------------------------------------------------------------
-        // FX 9: Festival Laser Array
+        // FX 9: MEGA-FESTIVAL VOLUMETRIC LASERS
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 9) {
-            laserLines.forEach((laser, idx) => {
-                const pos = laser.geometry.attributes.position.array;
-                const fanAngle = ((idx / laserCount) - 0.5) * Math.PI * 1.2;
-                const sweep = Math.sin(elapsedTime * 2.5 + idx * 0.4) * 12.0;
-                const vertSweep = Math.cos(elapsedTime * 3.0 + idx * 0.3) * 8.0;
+            const sweepSpeed = elapsedTime * 2.2;
+            const fanSpread = Math.sin(sweepSpeed * 0.8) * 0.5 + 0.5; // 0.0 to 1.0 dynamic fan expansion
 
-                pos[0] = Math.sin(fanAngle) * 14.0;
-                pos[1] = -7.0;
-                pos[2] = -5.0;
+            laserBeams.forEach((laser, idx) => {
+                const normIdx = (idx / (numLasers - 1)) - 0.5; // -0.5 to 0.5
+                
+                // Choreographed Sweep Target Vector
+                const targetX = normIdx * (30.0 + fanSpread * 40.0) + Math.sin(sweepSpeed + idx * 0.3) * 8.0;
+                const targetY = 10.0 + Math.cos(sweepSpeed * 1.2 + idx * 0.4) * 6.0 + (transient * 4.0);
+                const targetZ = -36.0 + Math.sin(sweepSpeed * 0.7) * 8.0;
 
-                pos[3] = Math.sin(fanAngle) * 35.0 + sweep;
-                pos[4] = 8.0 + vertSweep + (transient * 5.0);
-                pos[5] = -35.0;
+                const targetVec = new THREE.Vector3(targetX, targetY, targetZ);
+                laser.mesh.lookAt(targetVec);
 
-                laser.geometry.attributes.position.needsUpdate = true;
+                // Beam scale pulse with transient audio
+                const beamScaleX = 1.0 + (transient * 0.8) + (bassPop * 0.4);
+                laser.mesh.scale.set(beamScaleX, beamScaleX, 1.0);
+
+                // Update Impact Splash Ring position
+                const splash = laserTargetSpots[idx];
+                splash.position.copy(targetVec);
+                splash.lookAt(laser.basePos);
+                splash.scale.setScalar(1.0 + bassPop * 0.6 + transient * 0.8);
             });
+
+            // Gentle haze drift
+            laserHaze.rotation.y += delta * 0.06;
         }
         // ---------------------------------------------------------------------
-        // FX 10: Flashing Disco Lights & Moving Heads
+        // FX 10: ARENA DISCO LIGHTS & FACETED CRYSTAL MIRROR BALL
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 10) {
-            discoCones.forEach((cone, idx) => {
-                const sweepX = Math.sin(elapsedTime * 2.0 + idx * 1.0) * 0.8;
-                const sweepY = Math.cos(elapsedTime * 1.8 + idx * 0.9) * 0.8;
-                cone.rotation.set(Math.PI / 2 + sweepX, sweepY, 0);
+            // Spin Mirror Ball to Tempo
+            mirrorBall.rotation.y += speed * 0.8;
+            mirrorBall.rotation.x = Math.sin(elapsedTime * 1.2) * 0.15;
+            const ballScale = 1.0 + (bassPop * 0.2) + (transient * 0.15);
+            mirrorBall.scale.set(ballScale, ballScale, ballScale);
 
-                const flashOpacity = 0.2 + (dataArr[(idx * 8) % 32] / 255) * 0.5 + (transient * 0.4);
-                cone.material.opacity = flashOpacity;
+            // Swirl 1,400 Mirror Ball Reflected Caustics
+            discoCaustics.rotation.y += speed * 0.6;
+            discoCaustics.rotation.x += delta * 0.1;
+
+            // Animate 8 Moving Heads in Synchronized Concert Pan/Tilt Figure-8
+            movingHeadBeams.forEach((mh, idx) => {
+                const offset = idx * (Math.PI / 4);
+                const pan = Math.sin(elapsedTime * 2.0 + offset) * 0.75;
+                const tilt = (Math.cos(elapsedTime * 1.5 + offset) * 0.5 + 0.6); // Angle down to floor
+
+                mh.mesh.rotation.set(tilt, pan, 0);
+
+                // Beam pulse brightness
+                const amp = dataArr[(idx * 6) % 32] ? dataArr[(idx * 6) % 32] / 255 : 0;
+                mh.mat.opacity = 0.25 + amp * 0.5 + (transient * 0.35);
+
+                // Floor Pool Projection Tracking
+                const floorX = mh.posX + Math.sin(pan) * 14.0;
+                const floorZ = -4.0 + Math.sin(tilt) * 12.0;
+                const pool = movingHeadFloorPools[idx];
+                pool.position.set(floorX, -5.5, floorZ);
+                pool.scale.setScalar(1.0 + amp * 0.8 + (transient * 0.5));
             });
-            discoDots.rotation.y += delta * 0.4;
-            discoDots.rotation.x += delta * 0.2;
         }
         // ---------------------------------------------------------------------
         // FX 11: Strobe Hyper-Rings
