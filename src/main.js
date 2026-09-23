@@ -26,7 +26,7 @@ async function init() {
     const sensVal = document.getElementById('sens-val');
     const bloomVal = document.getElementById('bloom-val');
 
-    // High-Clarity Logo Layer Controls
+    // Logo Layer Controls
     const logoBadge = document.getElementById('logo-badge');
     const logoFilename = document.getElementById('logo-filename');
     const modePills = document.querySelectorAll('.mode-pill[data-mode]');
@@ -45,15 +45,24 @@ async function init() {
     const fileLogo = document.getElementById('file-logo');
     const dropZone = document.getElementById('drop-zone');
 
+    // FX Category & Presets Elements
+    const catTabs = document.querySelectorAll('.cat-tab');
+    const fxButtons = document.querySelectorAll('.fx-btn');
+    const btnAutoVJ = document.getElementById('btn-auto-vj');
+    const btnFlash = document.getElementById('btn-flash');
+
     // 1. Initialize Three.js VFX Scene
     const vfx = createVFXScene(container);
-    vfx.setBloomMultiplier(0.4); // Start with clean, crisp, subtle laser glow
+    vfx.setBloomMultiplier(0.4);
 
     // Load Default Animated Logo Video (JK McLaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
 
     let audioProcessor = null;
     let isLogoActive = true;
+    let isAutoVJ = false;
+    let autoVJBeatCounter = 0;
+    const TOTAL_FX = 12;
 
     // 2. Audio & Media Activation on User Click
     async function enableAudioAndMedia() {
@@ -96,11 +105,8 @@ async function init() {
         }
     }
 
-    if (logoBadge) {
-        logoBadge.addEventListener('click', toggleLogo);
-    }
+    if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
 
-    // Position Mode (3D Front, Backdrop, Watermark)
     modePills.forEach((pill) => {
         pill.addEventListener('click', () => {
             const mode = pill.getAttribute('data-mode');
@@ -110,7 +116,6 @@ async function init() {
         });
     });
 
-    // Blend / Knockout Mode (Crisp Cutout, Holo Glow, Direct)
     blendPills.forEach((pill) => {
         pill.addEventListener('click', () => {
             const blend = pill.getAttribute('data-blend');
@@ -120,7 +125,6 @@ async function init() {
         });
     });
 
-    // Contrast & Brightness Sliders
     if (sliderLogoContrast) {
         sliderLogoContrast.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
@@ -161,15 +165,10 @@ async function init() {
 
     // Custom File Loading
     if (btnLoadCustom && fileLogo) {
-        btnLoadCustom.addEventListener('click', () => {
-            fileLogo.click();
-        });
-
+        btnLoadCustom.addEventListener('click', () => fileLogo.click());
         fileLogo.addEventListener('change', (e) => {
             const file = e.target.files[0];
-            if (file) {
-                loadCustomFile(file);
-            }
+            if (file) loadCustomFile(file);
         });
     }
 
@@ -187,33 +186,31 @@ async function init() {
         logoFilename.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
     }
 
-    // Drag & Drop Media Loading
+    // Drag & Drop
     window.addEventListener('dragover', (e) => {
         e.preventDefault();
         if (dropZone) dropZone.style.display = 'flex';
     });
 
     window.addEventListener('dragleave', (e) => {
-        if (e.relatedTarget === null && dropZone) {
-            dropZone.style.display = 'none';
-        }
+        if (e.relatedTarget === null && dropZone) dropZone.style.display = 'none';
     });
 
     window.addEventListener('drop', (e) => {
         e.preventDefault();
         if (dropZone) dropZone.style.display = 'none';
         if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-            const file = e.dataTransfer.files[0];
-            loadCustomFile(file);
+            loadCustomFile(e.dataTransfer.files[0]);
         }
     });
 
-    // 4. FX Bank Switching
-    const fxButtons = document.querySelectorAll('.fx-btn');
+    // 4. Categorized FX Bank Switching & Filtering
     function selectFX(index) {
-        vfx.switchFX(index);
-        fxButtons.forEach((btn, idx) => {
-            btn.classList.toggle('active', idx === index);
+        const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
+        vfx.switchFX(targetIndex);
+        fxButtons.forEach((btn) => {
+            const btnIdx = parseInt(btn.getAttribute('data-fx'), 10);
+            btn.classList.toggle('active', btnIdx === targetIndex);
         });
     }
 
@@ -224,14 +221,41 @@ async function init() {
         });
     });
 
-    const btnFlash = document.getElementById('btn-flash');
-    if (btnFlash) {
-        btnFlash.addEventListener('click', () => {
-            vfx.triggerManualFlash();
+    // Category Tabs Filtering
+    catTabs.forEach((tab) => {
+        tab.addEventListener('click', () => {
+            const cat = tab.getAttribute('data-category');
+            catTabs.forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+
+            fxButtons.forEach((btn) => {
+                const btnCat = btn.getAttribute('data-cat');
+                if (cat === 'all' || btnCat === cat) {
+                    btn.style.display = 'inline-flex';
+                } else {
+                    btn.style.display = 'none';
+                }
+            });
         });
+    });
+
+    // Auto-VJ Mode
+    function toggleAutoVJ() {
+        isAutoVJ = !isAutoVJ;
+        if (btnAutoVJ) {
+            btnAutoVJ.classList.toggle('active', isAutoVJ);
+            btnAutoVJ.innerHTML = isAutoVJ ? `<span class="fx-key">A</span> AUTO VJ: ON` : `<span class="fx-key">A</span> AUTO VJ`;
+        }
     }
 
-    // 5. Audio & Glow Calibration Sliders
+    if (btnAutoVJ) btnAutoVJ.addEventListener('click', toggleAutoVJ);
+
+    // Strobe Button
+    if (btnFlash) {
+        btnFlash.addEventListener('click', () => vfx.triggerManualFlash());
+    }
+
+    // 5. Calibration Sliders
     if (sliderGain) {
         sliderGain.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
@@ -251,7 +275,7 @@ async function init() {
     if (sliderBloom) {
         sliderBloom.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
-            bloomVal.textContent = `${val.toFixed(1)}x`;
+            bloomVal.textContent = `${val.toFixed(2)}x`;
             vfx.setBloomMultiplier(val);
         });
     }
@@ -270,6 +294,16 @@ async function init() {
             setTimeout(() => {
                 bpmVal.style.transform = 'scale(1.0)';
             }, 90);
+
+            // Auto-VJ Transition every 32 beats (8 bars)
+            if (isAutoVJ) {
+                autoVJBeatCounter++;
+                if (autoVJBeatCounter >= 32) {
+                    autoVJBeatCounter = 0;
+                    const nextFX = (vfx.getCurrentFX() + 1) % TOTAL_FX;
+                    selectFX(nextFX);
+                }
+            }
         },
         onTrack: (trackData) => {
             if (trackData.title) trackTitle.textContent = trackData.title;
@@ -277,6 +311,12 @@ async function init() {
             if (trackData.bpm) {
                 bpmVal.textContent = Number(trackData.bpm).toFixed(1);
                 vfx.setBPM(trackData.bpm);
+            }
+
+            // Trigger fresh scene on track change if Auto-VJ active
+            if (isAutoVJ) {
+                const nextFX = (vfx.getCurrentFX() + 1) % TOTAL_FX;
+                selectFX(nextFX);
             }
         },
         onStatusChange: (status) => {
@@ -289,11 +329,26 @@ async function init() {
     });
 
     // 7. Keyboard Shortcuts
+    const hotkeyMap = {
+        '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5,
+        '7': 6, '8': 7, '9': 8, '0': 9, '-': 10, '=': 11
+    };
+
     window.addEventListener('keydown', (e) => {
-        // [1] - [5] for instant FX Bank switching
-        if (['1', '2', '3', '4', '5'].includes(e.key)) {
-            const fxIdx = parseInt(e.key, 10) - 1;
-            selectFX(fxIdx);
+        // [1] - [9], [0], [-], [=] for instant FX switching
+        if (hotkeyMap[e.key] !== undefined) {
+            selectFX(hotkeyMap[e.key]);
+        }
+        // Left & Right Arrow keys to cycle previous / next preset
+        else if (e.key === 'ArrowRight') {
+            selectFX(vfx.getCurrentFX() + 1);
+        }
+        else if (e.key === 'ArrowLeft') {
+            selectFX(vfx.getCurrentFX() - 1);
+        }
+        // [A] to toggle Auto-VJ mode
+        else if (e.key === 'a' || e.key === 'A') {
+            toggleAutoVJ();
         }
         // [L] to toggle Logo layer
         else if (e.key === 'l' || e.key === 'L') {

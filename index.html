@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DJ VFX - Nightclub Visual Engine, FX Bank & High-Clarity Branding</title>
+    <title>DJ VFX - Nightclub Visual Engine, Categorized FX Bank & Branding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
@@ -41,7 +41,7 @@
             top: 16px;
             left: 16px;
             z-index: 20;
-            background: rgba(10, 10, 22, 0.82);
+            background: rgba(10, 10, 22, 0.84);
             backdrop-filter: blur(24px);
             -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.14);
@@ -273,23 +273,24 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        /* Bottom FX Bank Selector Bar */
+        /* Categorized Bottom FX Bank Selector Toolbar */
         #fx-bank-panel {
             position: absolute;
-            bottom: 20px;
+            bottom: 16px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 20;
-            background: rgba(10, 10, 24, 0.85);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
+            background: rgba(10, 10, 24, 0.88);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            padding: 8px 12px;
-            border-radius: 20px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.85);
+            padding: 10px 14px;
+            border-radius: 18px;
+            box-shadow: 0 14px 45px rgba(0, 0, 0, 0.9);
             display: flex;
-            align-items: center;
+            flex-direction: column;
             gap: 8px;
+            max-width: 96vw;
             transition: all 0.3s ease;
         }
 
@@ -299,43 +300,124 @@
             transform: translate(-50%, 20px);
         }
 
+        /* Category Filter Tabs Bar */
+        .category-tabs {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 6px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 6px;
+        }
+
+        .cat-tab-group {
+            display: flex;
+            gap: 6px;
+        }
+
+        .cat-tab {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.65);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .cat-tab:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .cat-tab.active {
+            background: rgba(0, 255, 204, 0.2);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        /* FX Preset Cards Grid / Flex */
+        .fx-presets-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            overflow-x: auto;
+            scrollbar-width: none;
+            max-width: 100%;
+        }
+
+        .fx-presets-row::-webkit-scrollbar {
+            display: none;
+        }
+
         .fx-btn {
-            background: rgba(255, 255, 255, 0.06);
+            background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            color: rgba(255, 255, 255, 0.8);
-            padding: 8px 16px;
-            border-radius: 12px;
+            color: rgba(255, 255, 255, 0.85);
+            padding: 6px 12px;
+            border-radius: 10px;
             font-family: 'Outfit', sans-serif;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 600;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 8px;
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+            gap: 6px;
+            white-space: nowrap;
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
         }
 
         .fx-btn:hover {
             background: rgba(255, 255, 255, 0.15);
             color: #ffffff;
-            transform: translateY(-2px);
+            transform: translateY(-1px);
         }
 
         .fx-btn.active {
-            background: linear-gradient(135deg, rgba(0, 255, 255, 0.25), rgba(255, 0, 127, 0.25));
-            border-color: #00ffff;
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.3), rgba(255, 0, 127, 0.3));
+            border-color: #00ffcc;
             color: #ffffff;
-            box-shadow: 0 0 16px rgba(0, 255, 255, 0.4), inset 0 0 8px rgba(0, 255, 255, 0.2);
+            box-shadow: 0 0 14px rgba(0, 255, 204, 0.4), inset 0 0 6px rgba(0, 255, 204, 0.2);
         }
 
         .fx-key {
             font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 2px 6px;
+            font-size: 9px;
+            background: rgba(0, 0, 0, 0.5);
+            padding: 2px 5px;
             border-radius: 4px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.15);
             color: #00ffcc;
+        }
+
+        .vj-actions {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+        }
+
+        .auto-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 11px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            transition: all 0.2s ease;
+        }
+
+        .auto-btn.active {
+            background: rgba(0, 255, 204, 0.25);
+            border-color: #00ffcc;
+            color: #00ffcc;
+            box-shadow: 0 0 12px rgba(0, 255, 204, 0.4);
         }
 
         .flash-btn {
@@ -343,16 +425,18 @@
             border: none;
             color: #ffffff;
             font-weight: 800;
-            padding: 8px 18px;
-            border-radius: 12px;
+            padding: 6px 14px;
+            border-radius: 10px;
+            font-size: 12px;
             cursor: pointer;
-            box-shadow: 0 0 15px rgba(255, 0, 127, 0.5);
+            box-shadow: 0 0 12px rgba(255, 0, 127, 0.4);
+            white-space: nowrap;
             transition: all 0.1s ease;
         }
 
         .flash-btn:active {
             transform: scale(0.95);
-            box-shadow: 0 0 25px rgba(255, 255, 255, 0.9);
+            box-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
         }
 
         /* Top-Right Track Banner */
@@ -405,7 +489,6 @@
             50% { opacity: 0.4; }
         }
 
-        /* Drag & Drop Indicator */
         #drop-zone {
             position: absolute;
             top: 0;
@@ -428,7 +511,6 @@
 </head>
 
 <body>
-    <!-- Drag and drop zone -->
     <div id="drop-zone">⚡ DROP LOGO / VIDEO TO LOAD (MP4, GIF, PNG, JPG)</div>
 
     <!-- Nightclub HUD -->
@@ -508,14 +590,12 @@
                 <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
             </div>
 
-            <!-- Position Mode -->
             <div class="mode-pills">
                 <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
                 <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
                 <div class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</div>
             </div>
 
-            <!-- Blend / Knockout Mode -->
             <div class="mode-pills">
                 <div class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</div>
                 <div class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</div>
@@ -525,17 +605,17 @@
             <div class="slider-row">
                 <div class="slider-header">
                     <span>CONTRAST BOOSTER</span>
-                    <span class="val" id="logo-contrast-val">1.45x</span>
+                    <span class="val" id="logo-contrast-val">1.35x</span>
                 </div>
-                <input type="range" id="slider-logo-contrast" min="0.8" max="2.5" step="0.05" value="1.45">
+                <input type="range" id="slider-logo-contrast" min="0.8" max="2.5" step="0.05" value="1.35">
             </div>
 
             <div class="slider-row">
                 <div class="slider-header">
                     <span>BRIGHTNESS PUNCH</span>
-                    <span class="val" id="logo-bright-val">1.15x</span>
+                    <span class="val" id="logo-bright-val">1.05x</span>
                 </div>
-                <input type="range" id="slider-logo-bright" min="0.6" max="2.0" step="0.05" value="1.15">
+                <input type="range" id="slider-logo-bright" min="0.6" max="2.0" step="0.05" value="1.05">
             </div>
 
             <div class="slider-row">
@@ -549,9 +629,9 @@
             <div class="slider-row">
                 <div class="slider-header">
                     <span>BASS PULSE IMPACT</span>
-                    <span class="val" id="logo-pulse-val">50%</span>
+                    <span class="val" id="logo-pulse-val">35%</span>
                 </div>
-                <input type="range" id="slider-logo-pulse" min="0" max="150" step="10" value="50">
+                <input type="range" id="slider-logo-pulse" min="0" max="150" step="5" value="35">
             </div>
 
             <div class="hud-row" style="margin-top:6px;">
@@ -569,11 +649,12 @@
         </div>
 
         <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 9px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
-            <span>[1-5] Switch FX</span>
+            <span>[1-9,0,-,=] FX</span>
+            <span>[A] Auto VJ</span>
             <span>[L] Logo</span>
             <span>[Space] Flash</span>
             <span>[F] Fullscreen</span>
-            <span>[H] Hide HUD</span>
+            <span>[H] Hide</span>
         </div>
     </div>
 
@@ -586,14 +667,45 @@
         </div>
     </div>
 
-    <!-- Bottom FX Bank Selector Bar -->
+    <!-- Categorized Bottom FX Bank Selector Toolbar -->
     <div id="fx-bank-panel">
-        <button class="fx-btn active" data-fx="0"><span class="fx-key">1</span> Quantum Torus</button>
-        <button class="fx-btn" data-fx="1"><span class="fx-key">2</span> Cyber Tunnel</button>
-        <button class="fx-btn" data-fx="2"><span class="fx-key">3</span> Synthwave Grid</button>
-        <button class="fx-btn" data-fx="3"><span class="fx-key">4</span> Spectrum Orb</button>
-        <button class="fx-btn" data-fx="4"><span class="fx-key">5</span> Hyper Rings</button>
-        <button class="flash-btn" id="btn-flash">⚡ STROBE</button>
+        <!-- Category Filter Tabs -->
+        <div class="category-tabs">
+            <div class="cat-tab-group">
+                <button class="cat-tab active" data-category="all">⚡ All (12)</button>
+                <button class="cat-tab" data-category="eq">📊 Equalizers</button>
+                <button class="cat-tab" data-category="wire">🕸️ Wireframes</button>
+                <button class="cat-tab" data-category="space">🌌 Space & Warp</button>
+                <button class="cat-tab" data-category="laser">⚡ Lasers & Lights</button>
+            </div>
+            <div class="vj-actions">
+                <button class="auto-btn" id="btn-auto-vj" title="Toggle Auto VJ Mode (Cycles FX automatically)"><span class="fx-key">A</span> AUTO VJ</button>
+                <button class="flash-btn" id="btn-flash">⚡ STROBE</button>
+            </div>
+        </div>
+
+        <!-- FX Preset Buttons Row -->
+        <div class="fx-presets-row" id="fx-presets-row">
+            <!-- 📊 Equalizers -->
+            <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
+            <button class="fx-btn" data-fx="1" data-cat="eq"><span class="fx-key">2</span> 🎯 Circular Spectrum</button>
+            <button class="fx-btn" data-fx="2" data-cat="eq"><span class="fx-key">3</span> 🌊 Wave Matrix</button>
+
+            <!-- 🕸️ Wireframes -->
+            <button class="fx-btn" data-fx="3" data-cat="wire"><span class="fx-key">4</span> 🍩 Quantum Torus</button>
+            <button class="fx-btn" data-fx="4" data-cat="wire"><span class="fx-key">5</span> 🌅 Synthwave Grid</button>
+            <button class="fx-btn" data-fx="5" data-cat="wire"><span class="fx-key">6</span> 🧊 Hyper-Cube 4D</button>
+
+            <!-- 🌌 Space & Warp -->
+            <button class="fx-btn" data-fx="6" data-cat="space"><span class="fx-key">7</span> 🚀 Warp Starfield</button>
+            <button class="fx-btn" data-fx="7" data-cat="space"><span class="fx-key">8</span> 🌀 Cyber Tunnel</button>
+            <button class="fx-btn" data-fx="8" data-cat="space"><span class="fx-key">9</span> 🌌 Nebula Galaxy</button>
+
+            <!-- ⚡ Lasers & Lights -->
+            <button class="fx-btn" data-fx="9" data-cat="laser"><span class="fx-key">0</span> ⚡ Club Lasers</button>
+            <button class="fx-btn" data-fx="10" data-cat="laser"><span class="fx-key">-</span> 🪩 Disco Lights</button>
+            <button class="fx-btn" data-fx="11" data-cat="laser"><span class="fx-key">=</span> 💫 Strobe Rings</button>
+        </div>
     </div>
 
     <!-- 3D Canvas -->
