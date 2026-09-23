@@ -125,14 +125,14 @@ export function createVFXScene(container) {
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
 
-    // 2. Post-Processing Chain (Tuned Bloom Threshold & Radius)
+    // 2. Post-Processing Chain (Crisp, High-Contrast Neon Bloom)
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        1.2,   // Controlled base bloom strength (not blinding)
-        0.4,   // Bloom radius
-        0.32   // Higher threshold so only glowing neon lines bloom, keeping scene & logo sharp
+        0.5,   // Crisp, subtle base bloom
+        0.35,  // Tight bloom radius (no large blurry haze)
+        0.45   // High threshold: only intense laser lines glow, scene stays pitch black & sharp
     );
 
     const nightclubPass = new ShaderPass(NightclubPostFX);
@@ -728,9 +728,9 @@ export function createVFXScene(container) {
             centerOcta.scale.set(octaScale, octaScale, octaScale);
         }
 
-        // 3. Post-Processing: Controlled, Tasteful Bloom Glow (Clamped, Never Washes Out Logo)
-        const targetBloom = Math.min(2.5, (1.15 + (bassPop * 0.45) + (manualFlash * 0.9)) * bloomMultiplier);
-        bloomPass.strength = THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.2);
+        // 3. Post-Processing: Crisp, Tight Neon Bloom (Never Washes Out Scene or Logo)
+        const targetBloom = Math.min(1.8, (0.45 + (bassPop * 0.25) + (manualFlash * 0.7)) * bloomMultiplier);
+        bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.2);
 
         // Subtle Chromatic Aberration Shockwave (doesn't distort text)
         const targetAberration = (transient * 0.25) + (manualFlash * 0.6);
