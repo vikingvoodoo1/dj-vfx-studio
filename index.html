@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DJ VFX - Nightclub Visual Engine & FX Bank</title>
+    <title>DJ VFX - Nightclub Visual Engine, FX Bank & Branding Layer</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
@@ -38,18 +38,25 @@
         /* Top-Left Nightclub Glassmorphic HUD */
         #hud {
             position: absolute;
-            top: 20px;
-            left: 20px;
+            top: 16px;
+            left: 16px;
             z-index: 20;
-            background: rgba(10, 10, 20, 0.75);
+            background: rgba(10, 10, 22, 0.78);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8), inset 0 0 15px rgba(0, 255, 255, 0.08);
-            padding: 16px 20px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.85), inset 0 0 15px rgba(0, 255, 255, 0.08);
+            padding: 14px 18px;
             border-radius: 14px;
-            min-width: 320px;
+            width: 320px;
+            max-height: 94vh;
+            overflow-y: auto;
+            scrollbar-width: none;
             transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        #hud::-webkit-scrollbar {
+            display: none;
         }
 
         #hud.hidden {
@@ -64,11 +71,11 @@
             justify-content: space-between;
             border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             padding-bottom: 8px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
         }
 
         .hud-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: 900;
             letter-spacing: 1.5px;
             text-transform: uppercase;
@@ -89,8 +96,8 @@
         }
 
         .hud-section {
-            margin-bottom: 10px;
-            font-size: 12px;
+            margin-bottom: 8px;
+            font-size: 11px;
             font-family: 'JetBrains Mono', monospace;
         }
 
@@ -98,19 +105,19 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 6px;
+            margin-bottom: 5px;
             color: rgba(255, 255, 255, 0.8);
         }
 
         .hud-label {
             color: rgba(255, 255, 255, 0.5);
-            font-size: 11px;
+            font-size: 10px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
 
         .bpm-display {
-            font-size: 26px;
+            font-size: 24px;
             font-weight: 800;
             color: #00ffff;
             text-shadow: 0 0 15px rgba(0, 255, 255, 0.6);
@@ -120,7 +127,7 @@
         }
 
         .bpm-unit {
-            font-size: 12px;
+            font-size: 11px;
             color: rgba(255, 255, 255, 0.5);
             margin-left: 4px;
         }
@@ -128,10 +135,10 @@
         /* Frequency VU Meters */
         .eq-bars {
             display: flex;
-            gap: 5px;
-            height: 16px;
+            gap: 4px;
+            height: 14px;
             align-items: flex-end;
-            margin-top: 6px;
+            margin-top: 5px;
         }
 
         .eq-bar {
@@ -168,13 +175,25 @@
 
         /* Calibration Controls Panel (Sliders) */
         .control-group {
-            margin-top: 10px;
-            padding-top: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
             border-top: 1px solid rgba(255, 255, 255, 0.08);
         }
 
+        .group-title {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            color: rgba(255, 255, 255, 0.4);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .slider-row {
-            margin-bottom: 8px;
+            margin-bottom: 6px;
         }
 
         .slider-header {
@@ -183,7 +202,7 @@
             font-size: 10px;
             font-family: 'JetBrains Mono', monospace;
             color: rgba(255, 255, 255, 0.6);
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .slider-header span.val {
@@ -210,10 +229,55 @@
             box-shadow: 0 0 8px #00ffff;
         }
 
+        /* Mode Selector Pill Buttons */
+        .mode-pills {
+            display: flex;
+            gap: 4px;
+            margin-top: 4px;
+            margin-bottom: 6px;
+        }
+
+        .mode-pill {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 9px;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+
+        .mode-pill.active {
+            background: rgba(0, 255, 204, 0.2);
+            border-color: #00ffcc;
+            color: #ffffff;
+            font-weight: 700;
+        }
+
+        .btn-mini {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 10px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            transition: all 0.2s ease;
+        }
+
+        .btn-mini:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
         /* Bottom FX Bank Selector Bar */
         #fx-bank-panel {
             position: absolute;
-            bottom: 24px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
             z-index: 20;
@@ -295,13 +359,13 @@
         /* Top-Right Track Banner */
         #track-banner {
             position: absolute;
-            top: 20px;
-            right: 20px;
+            top: 16px;
+            right: 16px;
             z-index: 20;
             background: rgba(10, 10, 20, 0.75);
             backdrop-filter: blur(16px);
             border: 1px solid rgba(255, 255, 255, 0.12);
-            padding: 10px 20px;
+            padding: 10px 18px;
             border-radius: 12px;
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.7);
             display: flex;
@@ -341,10 +405,33 @@
             0%, 100% { opacity: 1; }
             50% { opacity: 0.4; }
         }
+
+        /* Drag & Drop Overlay Indicator */
+        #drop-zone {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            background: rgba(0, 255, 204, 0.2);
+            border: 4px dashed #00ffcc;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            font-weight: 800;
+            color: #00ffcc;
+            pointer-events: none;
+            backdrop-filter: blur(8px);
+        }
     </style>
 </head>
 
 <body>
+    <!-- Drag and drop zone -->
+    <div id="drop-zone">⚡ DROP LOGO / VIDEO TO LOAD (MP4, GIF, PNG, JPG)</div>
+
     <!-- Nightclub HUD -->
     <div id="hud">
         <div class="hud-header">
@@ -369,7 +456,7 @@
             </div>
             <!-- Frequency EQ meters -->
             <div class="eq-bars">
-                <div class="eq-bar" title="Transient Sub-Bass"><div class="eq-fill" id="eq-bass"></div></div>
+                <div class="eq-bar" title="Sub-Bass"><div class="eq-fill" id="eq-bass"></div></div>
                 <div class="eq-bar" title="Mid Range"><div class="eq-fill" id="eq-mid"></div></div>
                 <div class="eq-bar" title="High Treble"><div class="eq-fill" id="eq-treble"></div></div>
             </div>
@@ -382,8 +469,9 @@
             </div>
         </div>
 
-        <!-- Calibration Controls -->
+        <!-- Audio & Glow Calibration -->
         <div class="control-group">
+            <div class="group-title">🎛️ Calibration & Glow</div>
             <div class="slider-row">
                 <div class="slider-header">
                     <span>🔊 BASS GAIN / PUNCH</span>
@@ -402,16 +490,66 @@
 
             <div class="slider-row">
                 <div class="slider-header">
-                    <span>✨ BLOOM / NEON GLOW</span>
+                    <span>✨ BLOOM / GLOW</span>
                     <span class="val" id="bloom-val">1.2x</span>
                 </div>
                 <input type="range" id="slider-bloom" min="0.4" max="3.0" step="0.1" value="1.2">
             </div>
         </div>
 
-        <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 10px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
+        <!-- Logo / Branding Layer Controls -->
+        <div class="control-group">
+            <div class="group-title">
+                <span>⚡ Logo / Video Layer</span>
+                <span id="logo-badge" class="hud-badge" style="cursor:pointer;">ACTIVE [L]</span>
+            </div>
+
+            <div class="hud-row" style="margin-top:4px;">
+                <span class="hud-label">MEDIA SOURCE</span>
+                <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
+            </div>
+
+            <div class="mode-pills">
+                <div class="mode-pill active" data-mode="hologram">3D Hologram</div>
+                <div class="mode-pill" data-mode="backdrop">Backdrop</div>
+                <div class="mode-pill" data-mode="overlay">Watermark</div>
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>OPACITY / KNOCKOUT</span>
+                    <span class="val" id="logo-op-val">85%</span>
+                </div>
+                <input type="range" id="slider-logo-op" min="0" max="100" step="5" value="85">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>LOGO SCALE</span>
+                    <span class="val" id="logo-scale-val">1.0x</span>
+                </div>
+                <input type="range" id="slider-logo-scale" min="0.4" max="2.5" step="0.1" value="1.0">
+            </div>
+
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>BASS PULSE PUNCH</span>
+                    <span class="val" id="logo-pulse-val">60%</span>
+                </div>
+                <input type="range" id="slider-logo-pulse" min="0" max="150" step="10" value="60">
+            </div>
+
+            <div style="display:flex; gap:6px; margin-top:8px;">
+                <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom File</button>
+                <button class="btn-mini" id="btn-reset-shock" title="Reset to JK McLaren Shock MP4">↺ Shock</button>
+                <input type="file" id="file-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
+            </div>
+        </div>
+
+        <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 9px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
             <span>[1-5] Switch FX</span>
-            <span>[Space] Strobe</span>
+            <span>[L] Logo</span>
+            <span>[Space] Flash</span>
             <span>[F] Fullscreen</span>
             <span>[H] Hide HUD</span>
         </div>

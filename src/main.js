@@ -18,7 +18,7 @@ async function init() {
     const eqMid = document.getElementById('eq-mid');
     const eqTreble = document.getElementById('eq-treble');
 
-    // Calibration Slider Elements
+    // Calibration Sliders
     const sliderGain = document.getElementById('slider-gain');
     const sliderSens = document.getElementById('slider-sens');
     const sliderBloom = document.getElementById('slider-bloom');
@@ -26,13 +26,34 @@ async function init() {
     const sensVal = document.getElementById('sens-val');
     const bloomVal = document.getElementById('bloom-val');
 
-    // 1. Initialize Three.js VFX Scene with FX Bank & Shaders
+    // Logo Layer Controls
+    const logoBadge = document.getElementById('logo-badge');
+    const logoFilename = document.getElementById('logo-filename');
+    const modePills = document.querySelectorAll('.mode-pill');
+    const sliderLogoOp = document.getElementById('slider-logo-op');
+    const sliderLogoScale = document.getElementById('slider-logo-scale');
+    const sliderLogoPulse = document.getElementById('slider-logo-pulse');
+    const logoOpVal = document.getElementById('logo-op-val');
+    const logoScaleVal = document.getElementById('logo-scale-val');
+    const logoPulseVal = document.getElementById('logo-pulse-val');
+    const btnLoadCustom = document.getElementById('btn-load-custom');
+    const btnResetShock = document.getElementById('btn-reset-shock');
+    const fileLogo = document.getElementById('file-logo');
+    const dropZone = document.getElementById('drop-zone');
+
+    // 1. Initialize Three.js VFX Scene
     const vfx = createVFXScene(container);
 
-    let audioProcessor = null;
+    // Load Default Logo / Animated Video (JK McLaren Shock MP4)
+    vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
 
-    // 2. Audio Activation on User Interaction
-    async function enableAudio() {
+    let audioProcessor = null;
+    let isLogoActive = true;
+
+    // 2. Audio & Video Activation on User Click
+    async function enableAudioAndMedia() {
+        vfx.playLogoVideo();
+
         if (!audioProcessor) {
             audioProcessor = await setupAudio();
             if (audioProcessor.isConnected()) {
@@ -45,22 +66,120 @@ async function init() {
                 hudStatus.textContent = 'SIM ACTIVE';
             }
 
-            // Apply initial slider values
-            audioProcessor.setGain(sliderGain.value);
-            audioProcessor.setBassSensitivity(sliderSens.value);
+            if (sliderGain) audioProcessor.setGain(sliderGain.value);
+            if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
         }
     }
 
     window.addEventListener('click', (e) => {
-        // Only trigger audio enable if not clicking sliders/buttons directly
         if (!e.target.closest('#hud') && !e.target.closest('#fx-bank-panel')) {
-            enableAudio();
-        } else if (!audioProcessor) {
-            enableAudio();
+            enableAudioAndMedia();
+        } else {
+            vfx.playLogoVideo();
+            if (!audioProcessor) enableAudioAndMedia();
         }
     });
 
-    // 3. FX Bank Switching
+    // 3. Logo Layer Event Handlers
+    function toggleLogo() {
+        isLogoActive = !isLogoActive;
+        vfx.setLogoVisible(isLogoActive);
+        if (logoBadge) {
+            logoBadge.textContent = isLogoActive ? 'ACTIVE [L]' : 'MUTED [L]';
+            logoBadge.style.color = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
+            logoBadge.style.borderColor = isLogoActive ? 'rgba(0,255,204,0.3)' : 'rgba(255,255,255,0.1)';
+        }
+    }
+
+    if (logoBadge) {
+        logoBadge.addEventListener('click', toggleLogo);
+    }
+
+    // Logo Mode Selector (Hologram, Backdrop, Watermark)
+    modePills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const mode = pill.getAttribute('data-mode');
+            modePills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setLogoMode(mode);
+        });
+    });
+
+    // Logo Sliders
+    if (sliderLogoOp) {
+        sliderLogoOp.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            logoOpVal.textContent = `${val}%`;
+            vfx.setLogoOpacity(val / 100);
+        });
+    }
+
+    if (sliderLogoScale) {
+        sliderLogoScale.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            logoScaleVal.textContent = `${val.toFixed(1)}x`;
+            vfx.setLogoScale(val);
+        });
+    }
+
+    if (sliderLogoPulse) {
+        sliderLogoPulse.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            logoPulseVal.textContent = `${val}%`;
+            vfx.setLogoBassPulse(val / 100);
+        });
+    }
+
+    // Custom File Loading (MP4, GIF, PNG, JPG)
+    if (btnLoadCustom && fileLogo) {
+        btnLoadCustom.addEventListener('click', () => {
+            fileLogo.click();
+        });
+
+        fileLogo.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                loadCustomFile(file);
+            }
+        });
+    }
+
+    if (btnResetShock) {
+        btnResetShock.addEventListener('click', () => {
+            vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
+            logoFilename.textContent = 'jkmclaren_shock.mp4';
+        });
+    }
+
+    function loadCustomFile(file) {
+        const url = URL.createObjectURL(file);
+        const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
+        vfx.loadLogoMedia(url, isVideo);
+        logoFilename.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
+    }
+
+    // Drag & Drop Media Loading
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (dropZone) dropZone.style.display = 'flex';
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget === null && dropZone) {
+            dropZone.style.display = 'none';
+        }
+    });
+
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dropZone) dropZone.style.display = 'none';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            loadCustomFile(file);
+        }
+    });
+
+    // 4. FX Bank Switching
     const fxButtons = document.querySelectorAll('.fx-btn');
     function selectFX(index) {
         vfx.switchFX(index);
@@ -76,7 +195,6 @@ async function init() {
         });
     });
 
-    // Strobe Button
     const btnFlash = document.getElementById('btn-flash');
     if (btnFlash) {
         btnFlash.addEventListener('click', () => {
@@ -84,7 +202,7 @@ async function init() {
         });
     }
 
-    // 4. Calibration Sliders Events
+    // 5. Audio & Glow Calibration Sliders
     if (sliderGain) {
         sliderGain.addEventListener('input', (e) => {
             const val = parseFloat(e.target.value);
@@ -109,7 +227,7 @@ async function init() {
         });
     }
 
-    // 5. Connect to StageLinq Companion Bridge via WebSocket
+    // 6. Connect to StageLinq Companion Bridge via WebSocket
     setupStageLinqClient({
         onBPM: (bpm, deck) => {
             if (bpm) {
@@ -141,19 +259,23 @@ async function init() {
         }
     });
 
-    // 6. Keyboard Shortcuts
+    // 7. Keyboard Shortcuts
     window.addEventListener('keydown', (e) => {
-        // Number keys 1-5 for instant FX Bank switching
+        // [1] - [5] for instant FX Bank switching
         if (['1', '2', '3', '4', '5'].includes(e.key)) {
             const fxIdx = parseInt(e.key, 10) - 1;
             selectFX(fxIdx);
         }
-        // Spacebar for manual beat flash / strobe
+        // [L] to toggle Logo layer
+        else if (e.key === 'l' || e.key === 'L') {
+            toggleLogo();
+        }
+        // [Space] for manual beat strobe / flash
         else if (e.code === 'Space') {
             e.preventDefault();
             vfx.triggerManualFlash();
         }
-        // F for Fullscreen on external display
+        // [F] for Fullscreen on external HDMI output
         else if (e.key === 'f' || e.key === 'F') {
             if (!document.fullscreenElement) {
                 document.documentElement.requestFullscreen().catch(err => console.log(err));
@@ -161,7 +283,7 @@ async function init() {
                 document.exitFullscreen().catch(err => console.log(err));
             }
         }
-        // H to toggle HUD & FX Toolbar
+        // [H] to toggle HUD & FX Toolbar
         else if (e.key === 'h' || e.key === 'H') {
             hud.classList.toggle('hidden');
             fxBankPanel.classList.toggle('hidden');
@@ -169,11 +291,10 @@ async function init() {
         }
     });
 
-    // 7. Start VFX Render Loop
+    // 8. Start Real-Time VFX Render Loop
     vfx.animate(() => {
         if (audioProcessor) {
             const data = audioProcessor.getAudioData();
-            // Update UI mini EQ bars with transient punch
             if (eqBass) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
             if (eqMid) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
             if (eqTreble) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;

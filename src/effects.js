@@ -43,7 +43,7 @@ const NightclubPostFX = {
             float vignette = smoothstep(1.3, 0.4, dist);
             color *= vignette;
 
-            // Strobe flash flashbang injection
+            // Strobe flash injection
             color += vec3(uFlash * 0.75, uFlash * 0.7, uFlash * 0.85);
 
             gl_FragColor = vec4(color, 1.0);
@@ -69,14 +69,14 @@ export function createVFXScene(container) {
     renderer.toneMappingExposure = 1.1;
     container.appendChild(renderer.domElement);
 
-    // 2. Post-Processing Chain (RenderPass -> UnrealBloomPass -> NightclubShaderPass -> OutputPass)
+    // 2. Post-Processing Chain
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        2.2,   // Base bloom strength
-        0.5,   // Bloom radius
-        0.12   // Low threshold so neon wireframes and particles bloom intensely
+        2.2,
+        0.5,
+        0.12
     );
 
     const nightclubPass = new ShaderPass(NightclubPostFX);
@@ -101,12 +101,134 @@ export function createVFXScene(container) {
     scene.add(lightMagenta);
 
     // ==========================================
+    // LOGO & VIDEO BACKDROP LAYER SUBSYSTEM
+    // ==========================================
+    const logoGroup = new THREE.Group();
+    scene.add(logoGroup);
+
+    let logoVideoElement = null;
+    let logoTexture = null;
+    let logoMesh = null;
+    let logoVisible = true;
+    let logoMode = 'hologram'; // 'hologram', 'backdrop', 'overlay'
+    let logoBaseOpacity = 0.85;
+    let logoBaseScale = 1.0;
+    let logoBassPulseAmount = 0.6;
+    let logoAspectRatio = 16 / 9;
+
+    // Create Logo Mesh Geometry & Material
+    const logoGeo = new THREE.PlaneGeometry(16, 9);
+    const logoMat = new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: logoBaseOpacity,
+        blending: THREE.AdditiveBlending, // Knocks out black background and produces glowing neon hologram
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    logoMesh = new THREE.Mesh(logoGeo, logoMat);
+    logoGroup.add(logoMesh);
+    applyLogoPlacement();
+
+    function applyLogoPlacement() {
+        if (!logoMesh) return;
+
+        if (logoMode === 'backdrop') {
+            // Positioned behind 3D objects
+            logoMesh.position.set(0, 0, -22);
+            const w = 56 * logoBaseScale;
+            const h = (56 / logoAspectRatio) * logoBaseScale;
+            logoMesh.scale.set(w / 16, h / 9, 1);
+            logoMat.blending = THREE.AdditiveBlending;
+        } else if (logoMode === 'hologram') {
+            // Center 3D hologram integrated inside the visualizer
+            logoMesh.position.set(0, 0, -1.0);
+            const w = 14 * logoBaseScale;
+            const h = (14 / logoAspectRatio) * logoBaseScale;
+            logoMesh.scale.set(w / 16, h / 9, 1);
+            logoMat.blending = THREE.AdditiveBlending;
+        } else if (logoMode === 'overlay') {
+            // Foreground watermark
+            logoMesh.position.set(0, 0, 10);
+            const w = 6 * logoBaseScale;
+            const h = (6 / logoAspectRatio) * logoBaseScale;
+            logoMesh.scale.set(w / 16, h / 9, 1);
+            logoMat.blending = THREE.NormalBlending;
+        }
+    }
+
+    function loadLogoMedia(sourceUrl, isVideo = true, mimeType = '') {
+        try {
+            // Clean up previous video element if any
+            if (logoVideoElement) {
+                logoVideoElement.pause();
+                logoVideoElement.removeAttribute('src');
+                logoVideoElement.load();
+                logoVideoElement = null;
+            }
+
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.src = sourceUrl;
+                video.crossOrigin = 'anonymous';
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.autoplay = true;
+
+                video.addEventListener('loadedmetadata', () => {
+                    if (video.videoWidth && video.videoHeight) {
+                        logoAspectRatio = video.videoWidth / video.videoHeight;
+                        applyLogoPlacement();
+                    }
+                });
+
+                video.play().catch(e => {
+                    console.log("[Logo] Video autoplay waiting for user interaction:", e);
+                });
+
+                logoVideoElement = video;
+                logoTexture = new THREE.VideoTexture(video);
+                logoTexture.minFilter = THREE.LinearFilter;
+                logoTexture.magFilter = THREE.LinearFilter;
+                logoTexture.generateMipmaps = false;
+
+                logoMat.map = logoTexture;
+                logoMat.needsUpdate = true;
+            } else {
+                // Image / GIF
+                const textureLoader = new THREE.TextureLoader();
+                textureLoader.load(sourceUrl, (tex) => {
+                    logoTexture = tex;
+                    logoTexture.minFilter = THREE.LinearFilter;
+                    logoTexture.magFilter = THREE.LinearFilter;
+                    if (tex.image && tex.image.width && tex.image.height) {
+                        logoAspectRatio = tex.image.width / tex.image.height;
+                        applyLogoPlacement();
+                    }
+                    logoMat.map = logoTexture;
+                    logoMat.needsUpdate = true;
+                });
+            }
+        } catch (err) {
+            console.error("[Logo] Error loading logo media:", err);
+        }
+    }
+
+    function playLogoVideo() {
+        if (logoVideoElement && logoVideoElement.paused) {
+            logoVideoElement.play().catch(() => {});
+        }
+    }
+
+    // ==========================================
     // FX BANK: 5 Distinct Visual Scenes
     // ==========================================
     const fxRoots = [];
     let currentFXIndex = 0;
 
-    // Helper to register an FX root
     function createFXGroup() {
         const group = new THREE.Group();
         group.visible = false;
@@ -119,7 +241,7 @@ export function createVFXScene(container) {
     // FX 0: QUANTUM NEON TORUS & CORE
     // ------------------------------------------
     const gTorus = createFXGroup();
-    gTorus.visible = true; // Default scene
+    gTorus.visible = true;
 
     const knotGeo = new THREE.TorusKnotGeometry(4.2, 1.1, 140, 28);
     const knotMat = new THREE.MeshBasicMaterial({ color: 0x9900ff, wireframe: true });
@@ -140,7 +262,6 @@ export function createVFXScene(container) {
     gTorus.add(torusRing1);
     gTorus.add(torusRing2);
 
-    // Particle Cloud
     const pCount = 1500;
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(pCount * 3);
@@ -166,7 +287,7 @@ export function createVFXScene(container) {
     gTorus.add(torusParticles);
 
     // ------------------------------------------
-    // FX 1: CYBER WARP TUNNEL (Vortex)
+    // FX 1: CYBER WARP TUNNEL
     // ------------------------------------------
     const gTunnel = createFXGroup();
     const tunnelRings = [];
@@ -185,7 +306,6 @@ export function createVFXScene(container) {
         tunnelRings.push(mesh);
     }
 
-    // Floating tunnel stars
     const starCount = 800;
     const starGeo = new THREE.BufferGeometry();
     const starPos = new Float32Array(starCount * 3);
@@ -202,7 +322,7 @@ export function createVFXScene(container) {
     gTunnel.add(tunnelStars);
 
     // ------------------------------------------
-    // FX 2: SYNTHWAVE LASER GRID & HORIZON SUN
+    // FX 2: SYNTHWAVE LASER GRID
     // ------------------------------------------
     const gGrid = createFXGroup();
     const gridDim = 36;
@@ -219,7 +339,6 @@ export function createVFXScene(container) {
     gridMesh.position.z = -15.0;
     gGrid.add(gridMesh);
 
-    // Horizon Synthwave Sun
     const sunGeo = new THREE.CircleGeometry(7.0, 32);
     const sunMat = new THREE.MeshBasicMaterial({
         color: 0xffaa00,
@@ -230,24 +349,20 @@ export function createVFXScene(container) {
     sunMesh.position.set(0, 2.0, -35.0);
     gGrid.add(sunMesh);
 
-    // Side Monolith Pyramids
-    const pyramids = [];
     for (let i = 0; i < 8; i++) {
         const pyrGeo = new THREE.ConeGeometry(2, 6, 4);
         const pyrMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
         const pLeft = new THREE.Mesh(pyrGeo, pyrMat);
         pLeft.position.set(-14 - Math.random() * 4, -2.0, -i * 10);
         gGrid.add(pLeft);
-        pyramids.push(pLeft);
 
         const pRight = new THREE.Mesh(pyrGeo, pyrMat);
         pRight.position.set(14 + Math.random() * 4, -2.0, -i * 10);
         gGrid.add(pRight);
-        pyramids.push(pRight);
     }
 
     // ------------------------------------------
-    // FX 3: AUDIO SPECTRUM ORB (FFT Deformed Sphere)
+    // FX 3: AUDIO SPECTRUM ORB
     // ------------------------------------------
     const gOrb = createFXGroup();
     const orbGeo = new THREE.IcosahedronGeometry(4.2, 5);
@@ -261,7 +376,6 @@ export function createVFXScene(container) {
     const orbMesh = new THREE.Mesh(orbGeo, orbMat);
     gOrb.add(orbMesh);
 
-    // Orbit Equator Laser Rings
     const eqRing1 = new THREE.Mesh(new THREE.RingGeometry(5.8, 5.9, 64), new THREE.MeshBasicMaterial({ color: 0xff007f, side: THREE.DoubleSide }));
     const eqRing2 = new THREE.Mesh(new THREE.RingGeometry(6.4, 6.5, 64), new THREE.MeshBasicMaterial({ color: 0x9900ff, side: THREE.DoubleSide }));
     eqRing2.rotation.x = Math.PI / 2;
@@ -269,7 +383,7 @@ export function createVFXScene(container) {
     gOrb.add(eqRing2);
 
     // ------------------------------------------
-    // FX 4: STROBE HYPER-RINGS & LASER MATRIX
+    // FX 4: STROBE HYPER-RINGS
     // ------------------------------------------
     const gRings = createFXGroup();
     const hyperRings = [];
@@ -284,7 +398,6 @@ export function createVFXScene(container) {
         hyperRings.push(hrMesh);
     });
 
-    // Central Laser Diamond
     const centerOcta = new THREE.Mesh(
         new THREE.OctahedronGeometry(1.8, 1),
         new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
@@ -321,7 +434,6 @@ export function createVFXScene(container) {
                 grp.visible = (idx === index);
             });
             currentFXIndex = index;
-            // Visual switch punch
             nightclubPass.uniforms.uAberration.value = 0.8;
             manualFlash = 0.6;
         }
@@ -345,13 +457,38 @@ export function createVFXScene(container) {
         bloomMultiplier = Math.max(0.2, Math.min(4.0, Number(val)));
     }
 
+    // Logo Control API
+    function setLogoVisible(visible) {
+        logoVisible = !!visible;
+        logoGroup.visible = logoVisible;
+    }
+
+    function setLogoOpacity(val) {
+        logoBaseOpacity = Math.max(0.0, Math.min(1.0, Number(val)));
+        logoMat.opacity = logoBaseOpacity;
+    }
+
+    function setLogoScale(val) {
+        logoBaseScale = Math.max(0.2, Math.min(3.0, Number(val)));
+        applyLogoPlacement();
+    }
+
+    function setLogoMode(mode) {
+        logoMode = mode;
+        applyLogoPlacement();
+    }
+
+    function setLogoBassPulse(val) {
+        logoBassPulseAmount = Math.max(0.0, Math.min(2.0, Number(val)));
+    }
+
     function animate(getAudioDataFn) {
         requestAnimationFrame(() => animate(getAudioDataFn));
 
         const delta = clock.getDelta();
         const elapsedTime = clock.getElapsedTime();
 
-        // 1. Fetch Audio Analysis
+        // 1. Audio Data
         const audio = (typeof getAudioDataFn === 'function') ? getAudioDataFn() : {
             bass: 0,
             smoothedBass: 0,
@@ -370,9 +507,33 @@ export function createVFXScene(container) {
         const bps = currentBPM / 60.0;
         const speed = bps * delta;
 
-        // 2. Animate Active Scene
+        // 2. Animate Logo Layer (Audio Reactivity)
+        if (logoVisible && logoMesh) {
+            const logoPulse = (bassPop * logoBassPulseAmount * 0.35) + (transient * logoBassPulseAmount * 0.25);
+            
+            // Dynamic scale pulse
+            if (logoMode === 'backdrop') {
+                const w = 56 * logoBaseScale * (1.0 + logoPulse * 0.4);
+                const h = (56 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.4);
+                logoMesh.scale.set(w / 16, h / 9, 1);
+            } else if (logoMode === 'hologram') {
+                const w = 14 * logoBaseScale * (1.0 + logoPulse * 0.6);
+                const h = (14 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.6);
+                logoMesh.scale.set(w / 16, h / 9, 1);
+                // Subtle floating motion
+                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.3;
+            } else if (logoMode === 'overlay') {
+                const w = 6 * logoBaseScale * (1.0 + logoPulse * 0.3);
+                const h = (6 / logoAspectRatio) * logoBaseScale * (1.0 + logoPulse * 0.3);
+                logoMesh.scale.set(w / 16, h / 9, 1);
+            }
+
+            // Dynamic opacity surge on beat
+            logoMat.opacity = Math.min(1.0, logoBaseOpacity + (bassPop * 0.25));
+        }
+
+        // 3. Animate Active Scene
         if (currentFXIndex === 0) {
-            // FX 0: Torus
             gTorus.rotation.x += speed * 0.4;
             gTorus.rotation.y += speed * 0.6;
             torusCore.rotation.x -= speed * 1.2;
@@ -380,25 +541,21 @@ export function createVFXScene(container) {
             torusRing2.rotation.z -= speed * 0.7;
             torusParticles.rotation.y += delta * 0.05;
 
-            // Explosive scale pop on transient kick
             const scale = 1.0 + (bassPop * 0.65) + (transient * 0.35) + (beatTriggerPulse * 0.2);
             torusKnot.scale.set(scale, scale, scale);
             const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.7;
             torusCore.scale.set(coreScale, coreScale, coreScale);
 
-            // Dynamic Neon Color Hue Shift
             const hue = (elapsedTime * 0.06) % 1.0;
             knotMat.color.setHSL(hue, 1.0, 0.55);
             coreMat.color.setHSL((hue + 0.5) % 1.0, 1.0, 0.65);
         }
         else if (currentFXIndex === 1) {
-            // FX 1: Cyber Warp Tunnel
             const tunnelSpeed = (18.0 + (bassPop * 40.0) + (transient * 50.0)) * delta;
             tunnelRings.forEach((ring, idx) => {
                 ring.position.z += tunnelSpeed;
                 ring.rotation.z += delta * (0.5 + idx * 0.05);
 
-                // Recycle ring once past camera
                 if (ring.position.z > 5) {
                     ring.position.z -= tunnelRingCount * tunnelSpacing;
                 }
@@ -408,7 +565,6 @@ export function createVFXScene(container) {
             gTunnel.rotation.z += delta * 0.15;
         }
         else if (currentFXIndex === 2) {
-            // FX 2: Synthwave Grid & Sun
             const posAttr = gridPlaneGeo.attributes.position;
             const dataArr = audio.dataArray || [];
             for (let i = 0; i < posAttr.count; i++) {
@@ -425,7 +581,6 @@ export function createVFXScene(container) {
             sunMat.color.setHSL((elapsedTime * 0.05 + bassPop * 0.2) % 1.0, 1.0, 0.6);
         }
         else if (currentFXIndex === 3) {
-            // FX 3: Spectrum Orb (FFT Displacement)
             const posAttr = orbGeo.attributes.position;
             const dataArr = audio.dataArray || [];
             const vertCount = posAttr.count;
@@ -437,7 +592,6 @@ export function createVFXScene(container) {
                 const bin = (i % 64);
                 const amp = dataArr[bin] ? (dataArr[bin] / 255) * (1.2 + bassPop * 2.5) : 0;
                 const disp = 1.0 + amp * 0.45;
-
                 posAttr.setXYZ(i, bx * disp, by * disp, bz * disp);
             }
             posAttr.needsUpdate = true;
@@ -448,7 +602,6 @@ export function createVFXScene(container) {
             eqRing2.rotation.x += delta * 0.6;
         }
         else if (currentFXIndex === 4) {
-            // FX 4: Strobe Hyper-Rings
             hyperRings.forEach((hr, idx) => {
                 const dir = (idx % 2 === 0) ? 1 : -1;
                 hr.rotation.x += speed * (0.8 + idx * 0.3) * dir;
@@ -464,12 +617,10 @@ export function createVFXScene(container) {
             centerOcta.scale.set(octaScale, octaScale, octaScale);
         }
 
-        // 3. Post-Processing Dynamic Nightclub Glow & Chromatic Shockwave
-        // Dynamic Bloom Strength based on bass pops
+        // 4. Post-Processing Dynamic Glow & Chromatic Shockwave
         const targetBloom = (1.8 + (bassPop * 2.2) + (transient * 2.0) + (manualFlash * 2.0)) * bloomMultiplier;
         bloomPass.strength = THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.25);
 
-        // Chromatic Aberration Spike on Kick / Bass Drops
         const targetAberration = (transient * 1.2) + (bassPop > 0.7 ? 0.6 : 0.0) + (manualFlash * 1.0);
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(
             nightclubPass.uniforms.uAberration.value,
@@ -477,7 +628,6 @@ export function createVFXScene(container) {
             0.3
         );
 
-        // Strobe Flash decay
         nightclubPass.uniforms.uFlash.value = manualFlash;
         if (manualFlash > 0.01) {
             manualFlash *= 0.82;
@@ -493,7 +643,6 @@ export function createVFXScene(container) {
 
         nightclubPass.uniforms.uTime.value = elapsedTime;
 
-        // Dynamic Point Lights
         lightCyan.position.x = Math.sin(elapsedTime * 2.0) * 10;
         lightCyan.position.y = Math.cos(elapsedTime * 1.5) * 8;
         lightCyan.intensity = (3.0 + bassPop * 8.0) * bloomMultiplier;
@@ -502,7 +651,6 @@ export function createVFXScene(container) {
         lightMagenta.position.y = -Math.cos(elapsedTime * 1.4) * 8;
         lightMagenta.intensity = (3.0 + (audio.smoothedMid || 0) * 6.0) * bloomMultiplier;
 
-        // Render Frame
         composer.render();
     }
 
@@ -513,6 +661,13 @@ export function createVFXScene(container) {
         triggerManualFlash,
         setBPM,
         setBloomMultiplier,
+        loadLogoMedia,
+        playLogoVideo,
+        setLogoVisible,
+        setLogoOpacity,
+        setLogoScale,
+        setLogoMode,
+        setLogoBassPulse,
         getCurrentFX: () => currentFXIndex
     };
 }
