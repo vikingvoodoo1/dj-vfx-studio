@@ -5,11 +5,12 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
-// Custom Nightclub FX Shader (Subtle Chromatic Aberration & Strobe Flash)
+// Custom Nightclub FX Shader (Dynamic Chromatic Aberration, Strobe Flash & Bass Drop Glitch)
 const NightclubPostFX = {
     uniforms: {
         tDiffuse: { value: null },
         uAberration: { value: 0.0 },
+        uGlitch: { value: 0.0 },
         uFlash: { value: 0.0 },
         uTime: { value: 0.0 }
     },
@@ -23,6 +24,7 @@ const NightclubPostFX = {
     fragmentShader: `
         uniform sampler2D tDiffuse;
         uniform float uAberration;
+        uniform float uGlitch;
         uniform float uFlash;
         uniform float uTime;
         varying vec2 vUv;
@@ -30,19 +32,29 @@ const NightclubPostFX = {
         void main() {
             vec2 center = vec2(0.5, 0.5);
             vec2 uv = vUv;
-            vec2 offset = (uv - center) * (uAberration * 0.02);
+
+            // Horizontal scanline slice glitch on heavy bass drops
+            if (uGlitch > 0.02) {
+                float slice = floor(uv.y * 32.0);
+                float sliceNoise = fract(sin(slice * 183.35 + floor(uTime * 45.0)) * 43758.5453);
+                if (sliceNoise > 0.72) {
+                    uv.x += (sliceNoise - 0.5) * uGlitch * 0.06;
+                }
+            }
+
+            vec2 offset = (uv - center) * (uAberration * 0.025);
 
             float r = texture2D(tDiffuse, uv + offset).r;
             float g = texture2D(tDiffuse, uv).g;
             float b = texture2D(tDiffuse, uv - offset).b;
             vec3 color = vec3(r, g, b);
 
-            float dist = distance(uv, center);
-            float vignette = smoothstep(1.3, 0.4, dist);
+            float dist = distance(vUv, center);
+            float vignette = smoothstep(1.35, 0.42, dist);
             color *= vignette;
 
             // Strobe Flash
-            color += vec3(uFlash * 0.75, uFlash * 0.7, uFlash * 0.85);
+            color += vec3(uFlash * 0.85, uFlash * 0.8, uFlash * 0.95);
 
             gl_FragColor = vec4(color, 1.0);
         }
@@ -415,15 +427,19 @@ export function createVFXScene(container) {
     composer.addPass(nightclubPass);
     composer.addPass(outputPass);
 
-    // 3. Shared Global Lights
-    const ambientLight = new THREE.AmbientLight(0x0a0a14, 1.2);
+    // 3. Shared Global Lights & Cinematic PBR Illumination
+    const ambientLight = new THREE.AmbientLight(0x0a0a14, 1.4);
     scene.add(ambientLight);
 
-    const lightCyan = new THREE.PointLight(0x00ffff, 2.5, 40);
+    const dirKeyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    dirKeyLight.position.set(0, 15, 12);
+    scene.add(dirKeyLight);
+
+    const lightCyan = new THREE.PointLight(0x00ffff, 2.8, 45);
     lightCyan.position.set(6, 6, 6);
     scene.add(lightCyan);
 
-    const lightMagenta = new THREE.PointLight(0xff007f, 2.5, 40);
+    const lightMagenta = new THREE.PointLight(0xff007f, 2.8, 45);
     lightMagenta.position.set(-6, -6, 6);
     scene.add(lightMagenta);
 
@@ -751,28 +767,110 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 3: QUANTUM TORUS KNOT
+    // FX 3: QUANTUM CRYSTAL SHARD VORTEX (1,400 INSTANCED SHARDS & SINGULARITY)
     // -------------------------------------------------------------------------
     const gTorus = createFXGroup();
-    const knotGeo = new THREE.TorusKnotGeometry(4.2, 1.1, 140, 28);
-    const knotMat = new THREE.MeshBasicMaterial({ color: 0x9900ff, wireframe: true });
-    const torusKnot = new THREE.Mesh(knotGeo, knotMat);
-    gTorus.add(torusKnot);
+    const shardCount = 1400;
 
-    const coreGeo = new THREE.IcosahedronGeometry(2.1, 2);
-    const coreMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
-    const torusCore = new THREE.Mesh(coreGeo, coreMat);
-    gTorus.add(torusCore);
+    // Elongated Faceted Diamond Crystal Shard Geometry
+    const shardGeo = new THREE.OctahedronGeometry(0.24, 0);
+    shardGeo.scale(0.75, 1.85, 0.75);
 
-    const ringGeo = new THREE.RingGeometry(6.6, 6.66, 64);
-    const ringMat = new THREE.MeshBasicMaterial({ color: 0x00ffcc, side: THREE.DoubleSide });
-    const torusRing1 = new THREE.Mesh(ringGeo, ringMat);
-    const torusRing2 = torusRing1.clone();
+    // Festival-grade PBR material with high metallic sheen
+    const shardMat = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        roughness: 0.18,
+        metalness: 0.88,
+        flatShading: true,
+        wireframe: false
+    });
+
+    const shardInstancedMesh = new THREE.InstancedMesh(shardGeo, shardMat, shardCount);
+    shardInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    gTorus.add(shardInstancedMesh);
+
+    // Dynamic Instance Metadata
+    const shardData = [];
+    const shardDummy = new THREE.Object3D();
+    const shardP = 2; // Torus knot winding p
+    const shardQ = 3; // Torus knot winding q
+    const shardMajorR = 3.8;
+    const shardMinorR = 1.35;
+
+    const shardPalette = [
+        new THREE.Color(0x00ffff), // Neon Cyan
+        new THREE.Color(0xff007f), // Hot Magenta
+        new THREE.Color(0x9900ff), // Ultraviolet
+        new THREE.Color(0x00ff88), // Spring Neon Green
+        new THREE.Color(0xffcc00), // Electric Gold
+        new THREE.Color(0xffffff)  // Diamond White
+    ];
+
+    for (let i = 0; i < shardCount; i++) {
+        const uBase = i / shardCount;
+        const tubeAngle = Math.random() * Math.PI * 2;
+        const tubeRadius = 0.25 + Math.random() * 1.35;
+        const spinSpeedX = (Math.random() - 0.5) * 4.0;
+        const spinSpeedY = (Math.random() - 0.5) * 4.0;
+        const spinSpeedZ = (Math.random() - 0.5) * 4.0;
+        const baseScale = 0.55 + Math.random() * 0.75;
+        const color = shardPalette[i % shardPalette.length].clone();
+
+        shardData.push({
+            uBase,
+            tubeAngle,
+            tubeRadius,
+            spinSpeedX,
+            spinSpeedY,
+            spinSpeedZ,
+            rotX: Math.random() * Math.PI,
+            rotY: Math.random() * Math.PI,
+            rotZ: Math.random() * Math.PI,
+            baseScale,
+            color
+        });
+
+        shardInstancedMesh.setColorAt(i, color);
+    }
+    if (shardInstancedMesh.instanceColor) shardInstancedMesh.instanceColor.needsUpdate = true;
+
+    // Glowing Singularity Core (Inner faceted gem + outer wireframe shield)
+    const coreInnerGeo = new THREE.IcosahedronGeometry(1.6, 1);
+    const coreInnerMat = new THREE.MeshStandardMaterial({
+        color: 0x00ffff,
+        roughness: 0.1,
+        metalness: 0.9,
+        wireframe: false,
+        emissive: 0x004466,
+        emissiveIntensity: 0.8
+    });
+    const torusCoreInner = new THREE.Mesh(coreInnerGeo, coreInnerMat);
+    gTorus.add(torusCoreInner);
+
+    const coreWireGeo = new THREE.IcosahedronGeometry(2.3, 1);
+    const coreWireMat = new THREE.MeshBasicMaterial({
+        color: 0xff007f,
+        wireframe: true,
+        transparent: true,
+        opacity: 0.8
+    });
+    const torusCoreWire = new THREE.Mesh(coreWireGeo, coreWireMat);
+    gTorus.add(torusCoreWire);
+
+    // Planetary Gimbal Quantum Energy Rings
+    const ringGeo1 = new THREE.TorusGeometry(6.4, 0.06, 12, 80);
+    const ringMat1 = new THREE.MeshBasicMaterial({ color: 0x00ffcc, wireframe: true });
+    const torusRing1 = new THREE.Mesh(ringGeo1, ringMat1);
+    gTorus.add(torusRing1);
+
+    const ringGeo2 = new THREE.TorusGeometry(5.4, 0.06, 12, 80);
+    const ringMat2 = new THREE.MeshBasicMaterial({ color: 0xff007f, wireframe: true });
+    const torusRing2 = new THREE.Mesh(ringGeo2, ringMat2);
     torusRing2.rotation.x = Math.PI / 3;
     torusRing2.rotation.y = Math.PI / 4;
-    gTorus.add(torusRing1);
     gTorus.add(torusRing2);
 
+    // Ambient Stardust Nebula Field (1,500 particles)
     const pCount = 1500;
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(pCount * 3);
@@ -781,7 +879,7 @@ export function createVFXScene(container) {
     const colB = new THREE.Color(0x00ffff);
 
     for (let i = 0; i < pCount * 3; i += 3) {
-        const r = 8 + Math.random() * 32;
+        const r = 6 + Math.random() * 28;
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos((Math.random() * 2) - 1);
         pPos[i] = r * Math.sin(phi) * Math.cos(theta);
@@ -1455,24 +1553,83 @@ export function createVFXScene(container) {
             gWaveMatrix.position.z = Math.sin(elapsedTime) * 1.0;
         }
         // ---------------------------------------------------------------------
-        // FX 3: Quantum Torus Knot
+        // FX 3: Quantum Crystal Shard Vortex (Instanced Mesh Matrix)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 3) {
-            gTorus.rotation.x += speed * 0.4;
-            gTorus.rotation.y += speed * 0.6;
-            torusCore.rotation.x -= speed * 1.2;
-            torusRing1.rotation.z += speed * 0.5;
-            torusRing2.rotation.z -= speed * 0.7;
-            torusParticles.rotation.y += delta * 0.05;
+            const knotFlowSpeed = elapsedTime * 0.18 + (audio.smoothedBass || 0) * 0.25;
+            const bassExpansion = 1.0 + (bassPop * 1.4) + (transient * 0.8);
+            const midWave = (audio.smoothedMid || 0) * 2.5;
 
-            const scale = 1.0 + (bassPop * 0.45) + (transient * 0.25);
-            torusKnot.scale.set(scale, scale, scale);
-            const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.5;
-            torusCore.scale.set(coreScale, coreScale, coreScale);
+            // Animate 1,400 Instanced Shards
+            for (let i = 0; i < shardCount; i++) {
+                const s = shardData[i];
+                const u = ((s.uBase + knotFlowSpeed) % 1.0) * Math.PI * 2;
 
-            const hue = (elapsedTime * 0.06) % 1.0;
-            knotMat.color.setHSL(hue, 1.0, 0.55);
-            coreMat.color.setHSL((hue + 0.5) % 1.0, 1.0, 0.65);
+                const qu = shardQ * u;
+                const pu = shardP * u;
+                const r = shardMajorR + shardMinorR * Math.cos(qu);
+
+                const px = r * Math.cos(pu);
+                const py = r * Math.sin(pu);
+                const pz = -shardMinorR * 1.8 * Math.sin(qu);
+
+                const dr_du = -shardMinorR * shardQ * Math.sin(qu);
+                const tx = dr_du * Math.cos(pu) - r * shardP * Math.sin(pu);
+                const ty = dr_du * Math.sin(pu) + r * shardP * Math.cos(pu);
+                const tz = -shardMinorR * 1.8 * shardQ * Math.cos(qu);
+
+                const tLen = Math.hypot(tx, ty, tz) || 1.0;
+                const ntx = tx / tLen, nty = ty / tLen, ntz = tz / tLen;
+
+                const tubeA = s.tubeAngle + elapsedTime * (0.8 + s.spinSpeedZ * 0.2);
+                const currentTubeR = s.tubeRadius * bassExpansion + Math.sin(u * 6.0 + elapsedTime * 4.0) * (0.15 * midWave);
+
+                const nx = -nty, ny = ntx, nz = 0;
+                const bx = nty * nz - ntz * ny;
+                const by = ntz * nx - ntx * nz;
+                const bz = ntx * ny - nty * nx;
+
+                const offX = (nx * Math.cos(tubeA) + bx * Math.sin(tubeA)) * currentTubeR;
+                const offY = (ny * Math.cos(tubeA) + by * Math.sin(tubeA)) * currentTubeR;
+                const offZ = (nz * Math.cos(tubeA) + bz * Math.sin(tubeA)) * currentTubeR;
+
+                shardDummy.position.set(px + offX, py + offY, pz + offZ);
+
+                s.rotX += s.spinSpeedX * delta * (1.0 + bassPop * 2.0);
+                s.rotY += s.spinSpeedY * delta * (1.0 + (audio.smoothedTreble || 0) * 3.0);
+                s.rotZ += s.spinSpeedZ * delta;
+
+                shardDummy.rotation.set(s.rotX, s.rotY, s.rotZ);
+
+                const scale = s.baseScale * (1.0 + transient * 0.35 + bassPop * 0.2);
+                shardDummy.scale.set(scale, scale * (1.0 + (audio.smoothedTreble || 0) * 0.5), scale);
+
+                shardDummy.updateMatrix();
+                shardInstancedMesh.setMatrixAt(i, shardDummy.matrix);
+            }
+            shardInstancedMesh.instanceMatrix.needsUpdate = true;
+
+            // Animate Singularity Core & Gimbal Rings
+            gTorus.rotation.x += speed * 0.3;
+            gTorus.rotation.y += speed * 0.5;
+
+            torusCoreInner.rotation.x -= speed * 1.5;
+            torusCoreInner.rotation.y += speed * 1.2;
+            const coreScale = 1.0 + (audio.smoothedMid || 0) * 0.8 + (transient * 0.4);
+            torusCoreInner.scale.setScalar(coreScale);
+
+            torusCoreWire.rotation.x += speed * 0.8;
+            torusCoreWire.rotation.z -= speed * 1.0;
+            const wireScale = 1.0 + (bassPop * 0.5);
+            torusCoreWire.scale.setScalar(wireScale);
+
+            torusRing1.rotation.z += speed * 0.8;
+            torusRing1.rotation.x += delta * 0.3;
+            torusRing2.rotation.z -= speed * 0.9;
+            torusRing2.rotation.y += delta * 0.4;
+
+            torusParticles.rotation.y += delta * 0.08;
+            torusParticles.rotation.z += delta * 0.04;
         }
         // ---------------------------------------------------------------------
         // FX 4: Synthwave Cyber Grid (Directional Shifting Terrain & Sun)
@@ -1684,7 +1841,17 @@ export function createVFXScene(container) {
             centerOcta.scale.set(octaScale, octaScale, octaScale);
         }
 
-        // 3. Post-Processing: Crisp, Tight Neon Bloom (Never Washes Out Logo)
+        // 3. Subwoofer Camera Recoil & Micro-Shake (Visceral Bass Impact)
+        const bassShakeAmt = Math.min(0.35, (bassPop * 0.15) + (transient * 0.22));
+        const shakeX = (Math.random() - 0.5) * 2.0 * bassShakeAmt;
+        const shakeY = (Math.random() - 0.5) * 2.0 * bassShakeAmt;
+        const shakeZ = (Math.random() - 0.5) * 1.5 * bassShakeAmt;
+
+        camera.position.x = THREE.MathUtils.lerp(camera.position.x, shakeX, 0.45);
+        camera.position.y = THREE.MathUtils.lerp(camera.position.y, shakeY, 0.45);
+        camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + shakeZ, 0.35);
+
+        // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch Tearing
         const targetBloom = Math.min(1.8, (0.45 + (bassPop * 0.25) + (manualFlash * 0.7)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.2);
 
@@ -1693,6 +1860,13 @@ export function createVFXScene(container) {
             nightclubPass.uniforms.uAberration.value,
             targetAberration,
             0.25
+        );
+
+        const targetGlitch = (transient > 0.6) ? (transient * 0.35) : 0.0;
+        nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(
+            nightclubPass.uniforms.uGlitch.value,
+            targetGlitch,
+            0.35
         );
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
