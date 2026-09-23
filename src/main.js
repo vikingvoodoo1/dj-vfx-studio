@@ -53,7 +53,7 @@ async function init() {
 
     // 1. Initialize Three.js VFX Scene
     const vfx = createVFXScene(container);
-    vfx.setBloomMultiplier(0.4);
+    vfx.setBloomMultiplier(0.35);
 
     // Load Default Animated Logo Video (JK McLaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);

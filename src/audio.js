@@ -1,20 +1,20 @@
 /**
- * High-Performance Audio Engine & Transient Bass Beat Detector for DJ-VFX
- * Balanced gain scaling so beat sensitivity drives motion & physics without blinding brightness
+ * High-Performance Calibrated Audio Engine & Transient Bass Beat Detector for DJ-VFX
+ * Smooth, musical physics with inertia and gentle damping to eliminate twitchy jitter
  */
 export async function setupAudio() {
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     const analyser = audioCtx.createAnalyser();
     analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.75;
+    analyser.smoothingTimeConstant = 0.86; // Higher smoothing for calm, stable FFT
 
     let isConnected = false;
 
-    // Configurable parameters with calibrated baselines
-    let gainMultiplier = 1.2;        // General input boost (0.2 to 3.0)
-    let bassSensitivity = 1.2;       // Bass punch multiplier (0.2 to 3.0)
-    let beatThreshold = 1.25;        // Ratio above rolling average required for transient hit
-    let decayRate = 0.85;            // Transient impulse decay speed
+    // Calibrated baseline parameters for smooth, impactful response
+    let gainMultiplier = 1.0;
+    let bassSensitivity = 1.0;
+    let beatThreshold = 1.30;
+    let decayRate = 0.91; // Smooth gradual decay
 
     try {
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -41,7 +41,7 @@ export async function setupAudio() {
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     
     // Dynamic Transient Detection State
-    const historyLength = 20;
+    const historyLength = 24;
     const bassEnergyHistory = new Float32Array(historyLength);
     let historyIndex = 0;
     let transientImpulse = 0.0;
@@ -49,6 +49,11 @@ export async function setupAudio() {
     let smoothedMid = 0.0;
     let smoothedTreble = 0.0;
     let lastHitTime = 0;
+
+    // Synthetic generator state for calm, rhythmic club thuds
+    let synthBassLevel = 0.0;
+    let synthImpulseLevel = 0.0;
+    let lastSynthBeat = 0;
 
     return {
         isConnected: () => isConnected,
@@ -64,26 +69,26 @@ export async function setupAudio() {
             if (isConnected) {
                 analyser.getByteFrequencyData(dataArray);
 
-                // 1. Kick & Bass Punch Frequency Band (bins 1 to 10: ~40Hz - 430Hz)
+                // 1. Kick & Bass Punch Frequency Band (bins 1 to 8: ~40Hz - 350Hz)
                 let bassSum = 0;
-                const bassBins = 10;
+                const bassBins = 8;
                 for (let i = 1; i <= bassBins; i++) {
                     bassSum += dataArray[i];
                 }
                 const rawBass = Math.min(1.0, (bassSum / bassBins / 255) * gainMultiplier * bassSensitivity);
 
-                // 2. Mid Range Band (bins 11 to 45: ~450Hz - 2kHz)
+                // 2. Mid Range Band (bins 9 to 40: ~390Hz - 1.8kHz)
                 let midSum = 0;
-                const midBins = 35;
-                for (let i = 11; i <= 45; i++) {
+                const midBins = 32;
+                for (let i = 9; i <= 40; i++) {
                     midSum += dataArray[i];
                 }
                 const rawMid = Math.min(1.0, (midSum / midBins / 255) * gainMultiplier);
 
-                // 3. Treble Range Band (bins 46 to 120: ~2kHz - 5kHz+)
+                // 3. Treble Range Band (bins 41 to 100: ~1.8kHz - 4.5kHz)
                 let trebleSum = 0;
-                const trebleBins = 75;
-                for (let i = 46; i <= 120; i++) {
+                const trebleBins = 60;
+                for (let i = 41; i <= 100; i++) {
                     trebleSum += dataArray[i];
                 }
                 const rawTreble = Math.min(1.0, (trebleSum / trebleBins / 255) * gainMultiplier);
@@ -99,8 +104,8 @@ export async function setupAudio() {
                 historyIndex = (historyIndex + 1) % historyLength;
 
                 let isOnset = false;
-                const minTimeBetweenHitsMs = 150; // Max ~400 BPM detection
-                if (rawBass > 0.18 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
+                const minTimeBetweenHitsMs = 220; // Natural minimum spacing between bass hits
+                if (rawBass > 0.20 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;
                     lastHitTime = now;
@@ -108,12 +113,12 @@ export async function setupAudio() {
                     transientImpulse *= decayRate;
                 }
 
-                // Smooth frequency channels
-                smoothedBass = Math.min(1.0, smoothedBass * 0.7 + rawBass * 0.3);
-                smoothedMid = Math.min(1.0, smoothedMid * 0.75 + rawMid * 0.25);
-                smoothedTreble = Math.min(1.0, smoothedTreble * 0.8 + rawTreble * 0.2);
+                // Smooth frequency channels with inertia to eliminate nervous jitter
+                smoothedBass = smoothedBass * 0.82 + rawBass * 0.18;
+                smoothedMid = smoothedMid * 0.84 + rawMid * 0.16;
+                smoothedTreble = smoothedTreble * 0.86 + rawTreble * 0.14;
 
-                const combinedBassImpact = Math.min(1.0, smoothedBass * 0.75 + transientImpulse * 0.4);
+                const combinedBassImpact = Math.min(1.0, smoothedBass * 0.7 + transientImpulse * 0.35);
 
                 return {
                     dataArray,
@@ -125,31 +130,38 @@ export async function setupAudio() {
                     smoothedMid,
                     treble: rawTreble,
                     smoothedTreble,
-                    overall: (rawBass * 0.5 + rawMid * 0.3 + rawTreble * 0.2),
+                    overall: (smoothedBass * 0.5 + smoothedMid * 0.3 + smoothedTreble * 0.2),
                     isOnset
                 };
             }
 
-            // Synthetic Fallback Generator
-            const t = now * 0.003;
-            const synthCycle = Math.sin(t * 3.0);
-            const synthBass = Math.max(0, synthCycle > 0.6 ? 0.9 : synthCycle * 0.3);
-            const synthImpulse = synthCycle > 0.9 ? 1.0 : 0.0;
-            const synthMid = Math.max(0, Math.sin(t * 4.5 + 1.2)) * 0.5;
-            const synthTreble = Math.max(0, Math.cos(t * 6.0)) * 0.3;
+            // Calm, Rhythmic Synthetic Mode (Smooth 126 BPM 4/4 Kick Thud)
+            const beatIntervalMs = (60.0 / 126.0) * 1000;
+            if (now - lastSynthBeat > beatIntervalMs) {
+                synthBassLevel = 0.85;
+                synthImpulseLevel = 0.9;
+                lastSynthBeat = now;
+            } else {
+                synthBassLevel *= 0.92;
+                synthImpulseLevel *= 0.88;
+            }
+
+            const t = now * 0.001;
+            const synthMid = Math.max(0, Math.sin(t * 1.5) * 0.4 + 0.1);
+            const synthTreble = Math.max(0, Math.cos(t * 2.2) * 0.25 + 0.1);
 
             return {
                 dataArray: new Uint8Array(256),
-                bass: synthBass,
-                smoothedBass: synthBass,
-                bassImpact: Math.min(1.0, synthBass + synthImpulse * 0.3),
-                transientImpulse: synthImpulse,
+                bass: synthBassLevel,
+                smoothedBass: synthBassLevel,
+                bassImpact: Math.min(1.0, synthBassLevel * 0.75 + synthImpulseLevel * 0.25),
+                transientImpulse: synthImpulseLevel,
                 mid: synthMid,
                 smoothedMid: synthMid,
                 treble: synthTreble,
                 smoothedTreble: synthTreble,
-                overall: synthBass * 0.5 + synthMid * 0.5,
-                isOnset: synthImpulse > 0.5
+                overall: synthBassLevel * 0.5 + synthMid * 0.3 + synthTreble * 0.2,
+                isOnset: synthImpulseLevel > 0.8
             };
         }
     };
