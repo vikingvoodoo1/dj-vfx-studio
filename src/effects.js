@@ -245,6 +245,105 @@ const SaberBeamBladeShader = {
     `
 };
 
+// Procedural Organic Plasma Nebula Shader (Smooth Gradual Fluid Gradients)
+const PlasmaNebulaShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 },
+        uPulse: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uMid;
+        uniform float uPulse;
+        varying vec2 vUv;
+
+        // Smooth Procedural Simplex / FBM Noise
+        vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec2 mod289(vec2 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec3 permute(vec3 x) { return mod289(((x * 34.0) + 1.0) * x); }
+
+        float snoise(vec2 v) {
+            const vec4 C = vec4(0.211324865405187, 0.366025403784439, -0.577350269189626, 0.024390243902439);
+            vec2 i  = floor(v + dot(v, C.yy));
+            vec2 x0 = v -   i + dot(i, C.xx);
+            vec2 i1 = (x0.x > x0.y) ? vec2(1.0, 0.0) : vec2(0.0, 1.0);
+            vec4 x12 = x0.xyxy + C.xxzz;
+            x12.xy -= i1;
+            i = mod289(i);
+            vec3 p = permute(permute(i.y + vec3(0.0, i1.y, 1.0)) + i.x + vec3(0.0, i1.x, 1.0));
+            vec3 m = max(0.5 - vec3(dot(x0, x0), dot(x12.xy, x12.xy), dot(x12.zw, x12.zw)), 0.0);
+            m = m * m; m = m * m;
+            vec3 x = 2.0 * fract(p * C.www) - 1.0;
+            vec3 h = abs(x) - 0.5;
+            vec3 ox = floor(x + 0.5);
+            vec3 a0 = x - ox;
+            m *= 1.79284291400159 - 0.85373472095314 * (a0 * a0 + h * h);
+            vec3 g;
+            g.x  = a0.x  * x0.x  + h.x  * x0.y;
+            g.yz = a0.yz * x12.xz + h.yz * x12.yw;
+            return 130.0 * dot(m, g);
+        }
+
+        float fbm(vec2 p) {
+            float v = 0.0;
+            float a = 0.52;
+            vec2 shift = vec2(100.0);
+            mat2 rot = mat2(cos(0.55), sin(0.55), -sin(0.55), cos(0.55));
+            for (int i = 0; i < 5; ++i) {
+                v += a * (snoise(p) * 0.5 + 0.5);
+                p = rot * p * 2.05 + shift;
+                a *= 0.5;
+            }
+            return v;
+        }
+
+        void main() {
+            vec2 uv = (vUv - 0.5) * 2.2;
+            float t = uTime * 0.22;
+            
+            // Cosmic vortex swirl
+            float r = length(uv);
+            float theta = atan(uv.y, uv.x) + (r * (0.6 + uBass * 0.4)) - t * 0.5;
+            vec2 swirl = vec2(cos(theta), sin(theta)) * r;
+
+            // Multi-tier domain warping for fluid plasma blending
+            vec2 q = vec2(fbm(swirl + vec2(0.0, 0.0) + t * 0.6), fbm(swirl + vec2(5.2, 1.3) + t * 0.4));
+            vec2 warp = vec2(fbm(swirl + 3.5 * q + vec2(1.7, 9.2) + t * 0.3), fbm(swirl + 3.5 * q + vec2(8.3, 2.8) + t * 0.5));
+            float f = fbm(swirl + 3.0 * warp);
+
+            // Gradual fluid color palette (Smooth deep indigo, ultraviolet, vibrant magenta, turquoise mist, stardust gold)
+            vec3 colDeepSpace = vec3(0.03, 0.04, 0.18);
+            vec3 colUltraviolet = vec3(0.35, 0.02, 0.65);
+            vec3 colHotMagenta = vec3(0.95, 0.08, 0.55);
+            vec3 colCyanPlasma = vec3(0.0, 0.95, 0.88);
+            vec3 colGoldCore = vec3(1.0, 0.88, 0.45);
+
+            vec3 col = mix(colDeepSpace, colUltraviolet, clamp(f * 2.2, 0.0, 1.0));
+            col = mix(col, colHotMagenta, clamp(pow(length(q), 1.8), 0.0, 1.0));
+            col = mix(col, colCyanPlasma, clamp(pow(length(warp.x), 2.2) * 0.85, 0.0, 1.0));
+
+            // Core stardust luminescence
+            float coreGlow = smoothstep(1.2, 0.0, r) * (1.1 + uBass * 0.8 + uPulse * 0.6);
+            col += colGoldCore * (pow(f, 4.0) * 1.6 + pow(smoothstep(0.65, 0.0, r), 3.0) * 0.75);
+            col *= coreGlow;
+
+            float alpha = smoothstep(1.35, 0.15, r) * clamp(length(col) * 1.3, 0.0, 1.0);
+            if (alpha < 0.005) discard;
+            gl_FragColor = vec4(col, alpha);
+        }
+    `
+};
+
 // Offscreen 8-Point Star Lens Flare Generator for Projectors & Mirror Ball Glints
 function createStarburstTexture() {
     const canvas = document.createElement('canvas');
@@ -699,73 +798,56 @@ export function createVFXScene(container) {
     gTorus.add(torusParticles);
 
     // -------------------------------------------------------------------------
-    // FX 4: SYNTHWAVE CYBER GRID
+    // FX 4: SYNTHWAVE CYBER GRID (DIRECTIONAL SHIFTING TERRAIN & SUN)
     // -------------------------------------------------------------------------
     const gGrid = createFXGroup();
-    const gridDim = 36;
-    const gridPlaneGeo = new THREE.PlaneGeometry(60, 80, gridDim, gridDim);
+    const gridDimX = 48;
+    const gridDimY = 64;
+    const gridPlaneGeo = new THREE.PlaneGeometry(64, 90, gridDimX, gridDimY);
     const gridPlaneMat = new THREE.MeshBasicMaterial({
         color: 0xff007f,
         wireframe: true,
         transparent: true,
-        opacity: 0.9
+        opacity: 0.95
     });
     const gridMesh = new THREE.Mesh(gridPlaneGeo, gridPlaneMat);
     gridMesh.rotation.x = -Math.PI / 2.2;
-    gridMesh.position.y = -5.0;
-    gridMesh.position.z = -15.0;
+    gridMesh.position.y = -5.2;
+    gridMesh.position.z = -16.0;
     gGrid.add(gridMesh);
 
-    const sunGeo = new THREE.CircleGeometry(7.0, 32);
+    // Synthwave Horizon Sun with Segmented Glow Lines
+    const sunGroup = new THREE.Group();
+    sunGroup.position.set(0, 2.5, -38.0);
+    gGrid.add(sunGroup);
+
+    const sunGeo = new THREE.CircleGeometry(8.0, 48);
     const sunMat = new THREE.MeshBasicMaterial({
         color: 0xffaa00,
-        wireframe: true,
+        wireframe: false,
         side: THREE.DoubleSide
     });
     const sunMesh = new THREE.Mesh(sunGeo, sunMat);
-    sunMesh.position.set(0, 2.0, -35.0);
-    gGrid.add(sunMesh);
+    sunGroup.add(sunMesh);
 
-    for (let i = 0; i < 8; i++) {
-        const pyrGeo = new THREE.ConeGeometry(2, 6, 4);
-        const pyrMat = new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true });
-        const pLeft = new THREE.Mesh(pyrGeo, pyrMat);
-        pLeft.position.set(-14 - Math.random() * 4, -2.0, -i * 10);
-        gGrid.add(pLeft);
+    // Glowing Neon Horizon Line
+    const horizonLineGeo = new THREE.BufferGeometry();
+    const horizonLinePos = new Float32Array([-40, 0, 0, 40, 0, 0]);
+    horizonLineGeo.setAttribute('position', new THREE.BufferAttribute(horizonLinePos, 3));
+    const horizonLine = new THREE.Line(horizonLineGeo, new THREE.LineBasicMaterial({ color: 0x00ffff, linewidth: 2 }));
+    horizonLine.position.set(0, -4.8, -36.0);
+    gGrid.add(horizonLine);
 
-        const pRight = new THREE.Mesh(pyrGeo, pyrMat);
-        pRight.position.set(14 + Math.random() * 4, -2.0, -i * 10);
-        gGrid.add(pRight);
-    }
-
-    // -------------------------------------------------------------------------
-    // FX 5: 4D WIREFRAME HYPER-CUBE
-    // -------------------------------------------------------------------------
-    const gHyperCube = createFXGroup();
-    const outerCube = new THREE.Mesh(
-        new THREE.BoxGeometry(7.0, 7.0, 7.0),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true })
-    );
-    const innerCube = new THREE.Mesh(
-        new THREE.BoxGeometry(3.5, 3.5, 3.5),
-        new THREE.MeshBasicMaterial({ color: 0xff007f, wireframe: true })
-    );
-    gHyperCube.add(outerCube);
-    gHyperCube.add(innerCube);
-
-    const tesseractLineGeo = new THREE.BufferGeometry();
-    const tesseractLinePositions = new Float32Array(8 * 2 * 3);
-    tesseractLineGeo.setAttribute('position', new THREE.BufferAttribute(tesseractLinePositions, 3));
-    const tesseractLineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc });
-    const tesseractLines = new THREE.LineSegments(tesseractLineGeo, tesseractLineMat);
-    gHyperCube.add(tesseractLines);
+    // Synthwave motion state
+    let synthScrollX = 0;
+    let synthScrollY = 0;
 
     // =========================================================================
-    // CATEGORY 3: 🌌 SPACE & VORTEX TRAVEL
+    // CATEGORY 3: 🌌 SPACE & NEBULA
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 6: WARP SPEED STARFIELD
+    // FX 5: WARP SPEED STARFIELD
     // -------------------------------------------------------------------------
     const gStarfield = createFXGroup();
     const warpStarCount = 2500;
@@ -790,83 +872,74 @@ export function createVFXScene(container) {
     gStarfield.add(warpStarSystem);
 
     // -------------------------------------------------------------------------
-    // FX 7: CYBER WARP TUNNEL
+    // FX 6: SMOOTH PLASMA NEBULA (ORGANIC FLUID GRADIENTS)
     // -------------------------------------------------------------------------
-    const gTunnel = createFXGroup();
-    const tunnelRings = [];
-    const tunnelRingCount = 40;
-    const tunnelSpacing = 2.0;
+    const gPlasmaNebula = createFXGroup();
 
-    for (let i = 0; i < tunnelRingCount; i++) {
-        const tRingGeo = new THREE.TorusGeometry(5.0 + Math.sin(i * 0.3) * 0.5, 0.08, 8, 36);
-        const tRingMat = new THREE.MeshBasicMaterial({
-            color: i % 2 === 0 ? 0x00ffff : 0xff007f,
-            wireframe: true
-        });
-        const mesh = new THREE.Mesh(tRingGeo, tRingMat);
-        mesh.position.z = -i * tunnelSpacing;
-        gTunnel.add(mesh);
-        tunnelRings.push(mesh);
+    const plasmaGeo = new THREE.PlaneGeometry(44, 28, 1, 1);
+    const plasmaMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 },
+            uPulse: { value: 0.0 }
+        },
+        vertexShader: PlasmaNebulaShader.vertexShader,
+        fragmentShader: PlasmaNebulaShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const plasmaMesh = new THREE.Mesh(plasmaGeo, plasmaMat);
+    plasmaMesh.position.set(0, 0, -10.0);
+    gPlasmaNebula.add(plasmaMesh);
+
+    // Ambient Stardust Mist Particles
+    const stardustCount = 600;
+    const stardustGeo = new THREE.BufferGeometry();
+    const stardustPos = new Float32Array(stardustCount * 3);
+    const stardustCol = new Float32Array(stardustCount * 3);
+    const starColA = new THREE.Color(0x00ffff);
+    const starColB = new THREE.Color(0xff00ff);
+
+    for (let i = 0; i < stardustCount; i++) {
+        stardustPos[i * 3] = (Math.random() - 0.5) * 36;
+        stardustPos[i * 3 + 1] = (Math.random() - 0.5) * 22;
+        stardustPos[i * 3 + 2] = (Math.random() - 0.5) * 20 - 5;
+        const c = starColA.clone().lerp(starColB, Math.random());
+        stardustCol[i * 3] = c.r;
+        stardustCol[i * 3 + 1] = c.g;
+        stardustCol[i * 3 + 2] = c.b;
     }
+    stardustGeo.setAttribute('position', new THREE.BufferAttribute(stardustPos, 3));
+    stardustGeo.setAttribute('color', new THREE.BufferAttribute(stardustCol, 3));
+    const stardustMat = new THREE.PointsMaterial({ size: 0.15, vertexColors: true, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.7 });
+    const stardustSystem = new THREE.Points(stardustGeo, stardustMat);
+    gPlasmaNebula.add(stardustSystem);
 
-    // -------------------------------------------------------------------------
-    // FX 8: COSMIC NEBULA GALAXY
-    // -------------------------------------------------------------------------
-    const gGalaxy = createFXGroup();
-    const galCount = 3000;
-    const galGeo = new THREE.BufferGeometry();
-    const galPos = new Float32Array(galCount * 3);
-    const galCol = new Float32Array(galCount * 3);
-    const galColA = new THREE.Color(0x00ffff);
-    const galColB = new THREE.Color(0xff00aa);
-
-    for (let i = 0; i < galCount; i++) {
-        const arm = i % 2;
-        const dist = Math.random() * 22;
-        const angle = dist * 0.6 + (arm * Math.PI) + (Math.random() - 0.5) * 0.5;
-
-        galPos[i * 3] = Math.cos(angle) * dist;
-        galPos[i * 3 + 1] = (Math.random() - 0.5) * (3.0 / (dist * 0.2 + 1));
-        galPos[i * 3 + 2] = Math.sin(angle) * dist - 8.0;
-
-        const c = galColA.clone().lerp(galColB, dist / 22);
-        galCol[i * 3] = c.r;
-        galCol[i * 3 + 1] = c.g;
-        galCol[i * 3 + 2] = c.b;
-    }
-    galGeo.setAttribute('position', new THREE.BufferAttribute(galPos, 3));
-    galGeo.setAttribute('color', new THREE.BufferAttribute(galCol, 3));
-    const galMat = new THREE.PointsMaterial({ size: 0.16, vertexColors: true, blending: THREE.AdditiveBlending });
-    const galaxySystem = new THREE.Points(galGeo, galMat);
-    galaxySystem.rotation.x = Math.PI / 4;
-    gGalaxy.add(galaxySystem);
-
-    // =========================================================================
     // =========================================================================
     // CATEGORY 4: ⚡ LASERS & CLUB LIGHT SHOW (FESTIVAL GRADE)
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 9: MEGA-FESTIVAL CYBER LASER ARENA & LIQUID SKY SHOW
+    // FX 7: DUAL-BANK VOLUMETRIC SEARCHLIGHTS & LASERS (TOP & BOTTOM RIGS)
     // -------------------------------------------------------------------------
     const gLasers = createFXGroup();
     const starburstTex = createStarburstTexture();
 
-    // Projector Rigs
     const topLaserBeams = [];
     const botLaserBeams = [];
-    const centerLaserBeams = [];
     const allLaserBeams = [];
     const laserApertureFlares = [];
     const laserImpactSpots = [];
 
-    const topLaserHues = [0x00ffff, 0xff0055, 0x00ff88, 0xffaa00, 0x9900ff, 0x00e5ff, 0xff007f, 0x39ff14, 0x00ffff, 0xffffff];
-    const botLaserHues = [0xff007f, 0x00ffcc, 0xffcc00, 0x00ffff, 0xff0055, 0x39ff14, 0x9900ff, 0x00e5ff, 0xffaa00, 0xffffff];
-    const centerLaserHues = [0x00ffff, 0xff007f, 0x39ff14, 0xffaa00, 0x00ffcc, 0xff0055, 0x9900ff, 0xffffff];
+    const topLaserHues = [0x00ffff, 0xff0055, 0x00ff88, 0xffaa00, 0x00e5ff, 0xff007f, 0x39ff14, 0x00ffff];
+    const botLaserHues = [0xff007f, 0x00ffcc, 0xffcc00, 0x00ffff, 0x39ff14, 0x9900ff, 0x00e5ff, 0xffffff];
 
-    const laserBeamLength = 60.0;
+    const laserBeamLength = 58.0;
     const laserCylinderGeo = new THREE.CylinderGeometry(0.018, 0.28, laserBeamLength, 8, 1, true);
-    laserCylinderGeo.translate(0, laserBeamLength / 2, 0); // Origin at lens
+    laserCylinderGeo.translate(0, laserBeamLength / 2, 0);
     laserCylinderGeo.rotateX(Math.PI / 2);
 
     // Overhead High-Truss & Floor Truss
@@ -884,10 +957,10 @@ export function createVFXScene(container) {
     laserBotTruss.position.set(0, -6.8, -8.0);
     gLasers.add(laserBotTruss);
 
-    // 1. Overhead Laser Projectors (10 Beams)
-    const numTopLasers = 10;
+    // 1. Overhead Laser Projectors (8 Beams)
+    const numTopLasers = 8;
     for (let i = 0; i < numTopLasers; i++) {
-        const x = ((i / (numTopLasers - 1)) - 0.5) * 30.0;
+        const x = ((i / (numTopLasers - 1)) - 0.5) * 28.0;
         const basePos = new THREE.Vector3(x, 8.5, -8.0);
         const color = new THREE.Color(topLaserHues[i % topLaserHues.length]);
 
@@ -935,10 +1008,10 @@ export function createVFXScene(container) {
         allLaserBeams.push(item);
     }
 
-    // 2. Stage Floor Laser Projectors (10 Beams)
-    const numBotLasers = 10;
+    // 2. Stage Floor Laser Projectors (8 Beams)
+    const numBotLasers = 8;
     for (let i = 0; i < numBotLasers; i++) {
-        const x = ((i / (numBotLasers - 1)) - 0.5) * 30.0;
+        const x = ((i / (numBotLasers - 1)) - 0.5) * 28.0;
         const basePos = new THREE.Vector3(x, -6.8, -8.0);
         const color = new THREE.Color(botLaserHues[i % botLaserHues.length]);
 
@@ -983,58 +1056,7 @@ export function createVFXScene(container) {
         allLaserBeams.push(item);
     }
 
-    // 3. Center Radial Projector Turret (8 Beams)
-    const numCenterLasers = 8;
-    const centerLaserCenter = new THREE.Vector3(0, 0.5, -14.0);
-    for (let i = 0; i < numCenterLasers; i++) {
-        const ang = (i / numCenterLasers) * Math.PI * 2;
-        const r = 2.4;
-        const basePos = new THREE.Vector3(centerLaserCenter.x + Math.cos(ang) * r, centerLaserCenter.y + Math.sin(ang) * r, centerLaserCenter.z);
-        const color = new THREE.Color(centerLaserHues[i % centerLaserHues.length]);
-
-        const laserMat = new THREE.ShaderMaterial({
-            uniforms: {
-                uColor: { value: color },
-                uCoreIntensity: { value: 2.8 },
-                uGlowIntensity: { value: 1.0 },
-                uPulse: { value: 0.0 },
-                uTime: { value: 0.0 }
-            },
-            vertexShader: VolumetricLaserShader.vertexShader,
-            fragmentShader: VolumetricLaserShader.fragmentShader,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-
-        const beamMesh = new THREE.Mesh(laserCylinderGeo, laserMat);
-        beamMesh.position.copy(basePos);
-        gLasers.add(beamMesh);
-
-        const flareMat = new THREE.SpriteMaterial({ map: starburstTex, color: color, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.9 });
-        const flareSprite = new THREE.Sprite(flareMat);
-        flareSprite.position.copy(basePos);
-        flareSprite.scale.set(1.6, 1.6, 1.0);
-        gLasers.add(flareSprite);
-        laserApertureFlares.push(flareSprite);
-
-        const impMat = new THREE.MeshBasicMaterial({ color: color, transparent: true, opacity: 0.85, side: THREE.DoubleSide, blending: THREE.AdditiveBlending });
-        const impMesh = new THREE.Mesh(new THREE.RingGeometry(0.2, 0.6, 16), impMat);
-        gLasers.add(impMesh);
-        laserImpactSpots.push(impMesh);
-
-        const item = { mesh: beamMesh, basePos, mat: laserMat, color, type: 'center', idx: i, angle: ang };
-        centerLaserBeams.push(item);
-        allLaserBeams.push(item);
-    }
-
-    // Center Turret Frame Ring
-    const turretRing = new THREE.Mesh(new THREE.TorusGeometry(2.4, 0.12, 8, 32), new THREE.MeshBasicMaterial({ color: 0x334466, wireframe: true }));
-    turretRing.position.copy(centerLaserCenter);
-    gLasers.add(turretRing);
-
-    // 4. Liquid Sky Laser Scan Sheets (Top & Mid Venue)
+    // 3. Liquid Sky Laser Scan Sheets (Top & Mid Venue)
     const liquidSkyGeo = new THREE.PlaneGeometry(50, 42, 48, 48);
     const liquidSkyMatTop = new THREE.ShaderMaterial({
         uniforms: {
@@ -1056,46 +1078,8 @@ export function createVFXScene(container) {
     liquidSkyMeshTop.position.set(0, 3.5, -12.0);
     gLasers.add(liquidSkyMeshTop);
 
-    const liquidSkyMatBot = new THREE.ShaderMaterial({
-        uniforms: {
-            uColorA: { value: new THREE.Color(0x00e5ff) },
-            uColorB: { value: new THREE.Color(0x39ff14) },
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 },
-            uScanSpeed: { value: 3.5 }
-        },
-        vertexShader: LiquidSkyLaserShader.vertexShader,
-        fragmentShader: LiquidSkyLaserShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const liquidSkyMeshBot = new THREE.Mesh(liquidSkyGeo, liquidSkyMatBot);
-    liquidSkyMeshBot.rotation.x = -Math.PI / 2 - 0.06;
-    liquidSkyMeshBot.position.set(0, -3.5, -12.0);
-    gLasers.add(liquidSkyMeshBot);
-
-    // 5. Expanding Concentric Laser Tunnel Rings
-    const laserTunnelRings = [];
-    const numLaserRings = 7;
-    for (let r = 0; r < numLaserRings; r++) {
-        const ringRad = 2.0 + r * 1.5;
-        const ltRingGeo = new THREE.TorusGeometry(ringRad, 0.035, 6, 32);
-        const ltRingMat = new THREE.MeshBasicMaterial({
-            color: topLaserHues[r % topLaserHues.length],
-            transparent: true,
-            opacity: 0.8,
-            blending: THREE.AdditiveBlending
-        });
-        const ltRingMesh = new THREE.Mesh(ltRingGeo, ltRingMat);
-        ltRingMesh.position.set(0, 0.5, -28.0 + r * 4.2);
-        gLasers.add(ltRingMesh);
-        laserTunnelRings.push({ mesh: ltRingMesh, baseZ: -28.0 + r * 4.2, baseRad: ringRad, mat: ltRingMat });
-    }
-
-    // 6. Laser Arena Haze Motes
-    const laserHazeCount = 900;
+    // 4. Laser Arena Haze Motes
+    const laserHazeCount = 700;
     const laserHazeGeo = new THREE.BufferGeometry();
     const laserHazePos = new Float32Array(laserHazeCount * 3);
     for (let i = 0; i < laserHazeCount * 3; i += 3) {
@@ -1109,11 +1093,10 @@ export function createVFXScene(container) {
     gLasers.add(laserHaze);
 
     // -------------------------------------------------------------------------
-    // FX 10: SABER DUAL-DERBY & ARENA DISCO SHOW (SABER DJ FIXTURES)
+    // FX 8: SABER MULTI-BEAM DJ FIXTURES (4 PODS, 32 RAZOR BLADES)
     // -------------------------------------------------------------------------
-    const gDisco = createFXGroup();
+    const gSaberDisco = createFXGroup();
 
-    // 1. 4 Saber Multi-Beam DJ Fixtures (8 Razor Blades per Fixture = 32 Blades)
     const saberPods = [];
     const saberBladeBeams = [];
     const saberPodPositions = [
@@ -1132,7 +1115,7 @@ export function createVFXScene(container) {
     saberPodPositions.forEach((podCfg, pIdx) => {
         const podGroup = new THREE.Group();
         podGroup.position.set(podCfg.x, podCfg.y, podCfg.z);
-        gDisco.add(podGroup);
+        gSaberDisco.add(podGroup);
 
         // Hardware Housing
         const podChassis = new THREE.Mesh(
@@ -1193,156 +1176,37 @@ export function createVFXScene(container) {
         });
     });
 
-    // 2. Central Faceted Crystal Mirror Ball
-    const mirrorBallCenter = new THREE.Vector3(0, 3.8, -4.5);
-    const mirrorBallGeo = new THREE.IcosahedronGeometry(2.4, 4);
-    const mirrorBallMat = new THREE.MeshStandardMaterial({
-        color: 0xdddddd,
-        metalness: 0.95,
-        roughness: 0.05,
-        wireframe: false
-    });
-    const mirrorBall = new THREE.Mesh(mirrorBallGeo, mirrorBallMat);
-    mirrorBall.position.copy(mirrorBallCenter);
-    gDisco.add(mirrorBall);
+    // Swirling Reflected Saber Light Dots (Caustics)
+    const saberCausticCount = 1200;
+    const saberCausticGeo = new THREE.BufferGeometry();
+    const saberCausticPos = new Float32Array(saberCausticCount * 3);
+    const saberCausticCol = new Float32Array(saberCausticCount * 3);
+    const sPalette = [new THREE.Color(0xff007f), new THREE.Color(0x00ffff), new THREE.Color(0xffcc00), new THREE.Color(0x00ff88), new THREE.Color(0xffffff), new THREE.Color(0x9900ff)];
 
-    // Facet Wireframe Glisten Overlay
-    const mirrorBallWireMat = new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true, transparent: true, opacity: 0.45 });
-    const mirrorBallWire = new THREE.Mesh(mirrorBallGeo, mirrorBallWireMat);
-    mirrorBall.add(mirrorBallWire);
-
-    // Mirror Ball Hanging Rod
-    const rodGeo = new THREE.CylinderGeometry(0.04, 0.04, 7.0);
-    const rodMesh = new THREE.Mesh(rodGeo, new THREE.MeshBasicMaterial({ color: 0x444455 }));
-    rodMesh.position.set(0, 7.5, -4.5);
-    gDisco.add(rodMesh);
-
-    // Mirror Ball Sparkling Glint Flares (12 Starbursts attached to surface)
-    const mirrorBallGlints = [];
-    for (let g = 0; g < 12; g++) {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos(Math.random() * 2 - 1);
-        const rad = 2.45;
-        const glintMat = new THREE.SpriteMaterial({ map: starburstTex, color: 0xffffff, blending: THREE.AdditiveBlending, transparent: true, opacity: 0.8 });
-        const glintSprite = new THREE.Sprite(glintMat);
-        glintSprite.position.set(rad * Math.sin(phi) * Math.cos(theta), rad * Math.sin(phi) * Math.sin(theta), rad * Math.cos(phi));
-        glintSprite.scale.set(1.2, 1.2, 1.0);
-        mirrorBall.add(glintSprite);
-        mirrorBallGlints.push({ sprite: glintSprite, phase: Math.random() * Math.PI * 2 });
-    }
-
-    // 3. 4 Precision Corner Pinspots Focused on Mirror Ball
-    const pinspotBeams = [];
-    const pinspotOrigins = [
-        new THREE.Vector3(-18.0, 10.0, 6.0),
-        new THREE.Vector3(18.0, 10.0, 6.0),
-        new THREE.Vector3(-18.0, -8.0, 6.0),
-        new THREE.Vector3(18.0, -8.0, 6.0)
-    ];
-    const pinspotHues = [0x00ffff, 0xff007f, 0xffcc00, 0x00ff88];
-
-    pinspotOrigins.forEach((orig, idx) => {
-        const pinColor = new THREE.Color(pinspotHues[idx]);
-        const distToBall = orig.distanceTo(mirrorBallCenter);
-        const pinConeGeo = new THREE.CylinderGeometry(0.03, 0.85, distToBall, 8, 1, true);
-        pinConeGeo.translate(0, distToBall / 2, 0);
-        pinConeGeo.rotateX(Math.PI / 2);
-
-        const pinMat = new THREE.MeshBasicMaterial({
-            color: pinColor,
-            transparent: true,
-            opacity: 0.5,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        const pinMesh = new THREE.Mesh(pinConeGeo, pinMat);
-        pinMesh.position.copy(orig);
-        pinMesh.lookAt(mirrorBallCenter);
-        gDisco.add(pinMesh);
-
-        pinspotBeams.push({ mesh: pinMesh, mat: pinMat, baseColor: pinColor });
-    });
-
-    // 4. 1,800 Swirling Reflected Disco Light Dots (Caustics)
-    const discoCausticCount = 1800;
-    const discoCausticGeo = new THREE.BufferGeometry();
-    const discoCausticPos = new Float32Array(discoCausticCount * 3);
-    const discoCausticCol = new Float32Array(discoCausticCount * 3);
-    const cPalette = [new THREE.Color(0xff007f), new THREE.Color(0x00ffff), new THREE.Color(0xffcc00), new THREE.Color(0x00ff88), new THREE.Color(0xffffff), new THREE.Color(0x9900ff)];
-
-    for (let i = 0; i < discoCausticCount; i++) {
+    for (let i = 0; i < saberCausticCount; i++) {
         const u = Math.random();
         const v = Math.random();
         const theta = u * 2.0 * Math.PI;
         const phi = Math.acos(2.0 * v - 1.0);
-        const r = 10.0 + Math.random() * 28.0;
+        const r = 10.0 + Math.random() * 26.0;
 
-        discoCausticPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        discoCausticPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-        discoCausticPos[i * 3 + 2] = r * Math.cos(phi) - 4.5;
+        saberCausticPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        saberCausticPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        saberCausticPos[i * 3 + 2] = r * Math.cos(phi) - 4.5;
 
-        const c = cPalette[i % cPalette.length];
-        discoCausticCol[i * 3] = c.r;
-        discoCausticCol[i * 3 + 1] = c.g;
-        discoCausticCol[i * 3 + 2] = c.b;
+        const c = sPalette[i % sPalette.length];
+        saberCausticCol[i * 3] = c.r;
+        saberCausticCol[i * 3 + 1] = c.g;
+        saberCausticCol[i * 3 + 2] = c.b;
     }
-    discoCausticGeo.setAttribute('position', new THREE.BufferAttribute(discoCausticPos, 3));
-    discoCausticGeo.setAttribute('color', new THREE.BufferAttribute(discoCausticCol, 3));
-    const discoCausticMat = new THREE.PointsMaterial({ size: 0.25, vertexColors: true, blending: THREE.AdditiveBlending });
-    const discoCaustics = new THREE.Points(discoCausticGeo, discoCausticMat);
-    gDisco.add(discoCaustics);
-
-    // 5. 6 Overhead Volumetric Moving Head Spotlights with Floor Pools
-    const numMovingHeads = 6;
-    const movingHeadBeams = [];
-    const movingHeadFloorPools = [];
-    const spotConeLength = 26.0;
-    const spotConeGeo = new THREE.ConeGeometry(3.8, spotConeLength, 16, 1, true);
-    spotConeGeo.translate(0, -spotConeLength / 2, 0);
-
-    const mhTruss = new THREE.Mesh(
-        new THREE.BoxGeometry(34, 0.4, 0.6),
-        new THREE.MeshBasicMaterial({ color: 0x222233, wireframe: true })
-    );
-    mhTruss.position.set(0, 9.2, -4.5);
-    gDisco.add(mhTruss);
-
-    for (let i = 0; i < numMovingHeads; i++) {
-        const mhX = ((i / (numMovingHeads - 1)) - 0.5) * 28.0;
-        const mhColor = cPalette[i % cPalette.length];
-
-        const spotMat = new THREE.MeshBasicMaterial({
-            color: mhColor,
-            transparent: true,
-            opacity: 0.38,
-            side: THREE.DoubleSide,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false
-        });
-        const spotMesh = new THREE.Mesh(spotConeGeo, spotMat);
-        spotMesh.position.set(mhX, 9.2, -4.5);
-        gDisco.add(spotMesh);
-
-        // Floor Light Pool
-        const poolMat = new THREE.MeshBasicMaterial({
-            color: mhColor,
-            transparent: true,
-            opacity: 0.65,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide
-        });
-        const poolMesh = new THREE.Mesh(new THREE.CircleGeometry(2.2, 16), poolMat);
-        poolMesh.rotation.x = -Math.PI / 2;
-        poolMesh.position.set(mhX, -5.8, -4.5);
-        gDisco.add(poolMesh);
-
-        movingHeadBeams.push({ mesh: spotMesh, posX: mhX, mat: spotMat, baseColor: mhColor });
-        movingHeadFloorPools.push(poolMesh);
-    }
+    saberCausticGeo.setAttribute('position', new THREE.BufferAttribute(saberCausticPos, 3));
+    saberCausticGeo.setAttribute('color', new THREE.BufferAttribute(saberCausticCol, 3));
+    const saberCausticMat = new THREE.PointsMaterial({ size: 0.22, vertexColors: true, blending: THREE.AdditiveBlending });
+    const saberCaustics = new THREE.Points(saberCausticGeo, saberCausticMat);
+    gSaberDisco.add(saberCaustics);
 
     // -------------------------------------------------------------------------
-    // FX 11: STROBE HYPER-RINGS & LASER MATRIX
+    // FX 9: STROBE HYPER-RINGS & LASER MATRIX
     // -------------------------------------------------------------------------
     const gRings = createFXGroup();
     const hyperRings = [];
@@ -1611,55 +1475,48 @@ export function createVFXScene(container) {
             coreMat.color.setHSL((hue + 0.5) % 1.0, 1.0, 0.65);
         }
         // ---------------------------------------------------------------------
-        // FX 4: Synthwave Grid & Sun
+        // FX 4: Synthwave Cyber Grid (Directional Shifting Terrain & Sun)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 4) {
+            // Smoothly changing direction over time (forward -> bank right -> bank left -> wave surge)
+            const movePhase = (elapsedTime * 0.15) % (Math.PI * 2);
+            const dirX = Math.sin(movePhase) * 1.2;
+            const dirY = 1.0 + Math.cos(movePhase * 0.5) * 0.5;
+
+            synthScrollX += dirX * (8.0 + bassPop * 12.0) * delta;
+            synthScrollY += dirY * (14.0 + bassPop * 18.0) * delta;
+
+            // Tilt the perspective plane when banking/veering
+            gridMesh.rotation.z = -Math.sin(movePhase) * 0.12;
+            gridMesh.position.x = -Math.sin(movePhase) * 2.5;
+
             const posAttr = gridPlaneGeo.attributes.position;
             for (let i = 0; i < posAttr.count; i++) {
-                const x = posAttr.getX(i);
-                const y = posAttr.getY(i);
-                const freqSample = dataArr[(i % 32)] ? dataArr[(i % 32)] / 255 : 0;
-                const wave = Math.sin(x * 0.3 + elapsedTime * 4.0) * Math.cos(y * 0.2 + elapsedTime * 3.0) * (1.0 + bassPop * 1.8) + (freqSample * 1.8);
-                posAttr.setZ(i, wave);
+                const origX = posAttr.getX(i);
+                const origY = posAttr.getY(i);
+
+                const worldX = origX + synthScrollX;
+                const worldY = origY + synthScrollY;
+
+                const freqBin = Math.abs(Math.floor(i % 32));
+                const freqSample = dataArr[freqBin] ? dataArr[freqBin] / 255 : 0;
+
+                // Procedural rolling terrain waves
+                const hillWave = Math.sin(worldX * 0.18) * Math.cos(worldY * 0.12) * (2.2 + bassPop * 2.8);
+                const detailWave = Math.sin(worldX * 0.45 + worldY * 0.3) * (0.8 + freqSample * 1.5);
+                posAttr.setZ(i, hillWave + detailWave);
             }
             posAttr.needsUpdate = true;
 
-            const sunScale = 1.0 + (bassPop * 0.25) + (transient * 0.15);
-            sunMesh.scale.set(sunScale, sunScale, 1.0);
-            sunMat.color.setHSL((elapsedTime * 0.05 + bassPop * 0.2) % 1.0, 1.0, 0.6);
+            // Animate Sun scale & color
+            const sunScale = 1.0 + (bassPop * 0.2) + (transient * 0.15);
+            sunGroup.scale.set(sunScale, sunScale, 1.0);
+            sunMat.color.setHSL((elapsedTime * 0.04 + bassPop * 0.15) % 1.0, 1.0, 0.55);
         }
         // ---------------------------------------------------------------------
-        // FX 5: 4D Wireframe Tesseract
+        // FX 5: Warp Speed Starfield
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 5) {
-            outerCube.rotation.x += speed * 0.5;
-            outerCube.rotation.y += speed * 0.7;
-            outerCube.rotation.z += delta * 0.2;
-
-            innerCube.rotation.x -= speed * 0.9;
-            innerCube.rotation.y -= speed * 1.1;
-
-            const popScale = 1.0 + bassPop * 0.4 + transient * 0.3;
-            outerCube.scale.set(popScale, popScale, popScale);
-            innerCube.scale.set(popScale * 0.9, popScale * 0.9, popScale * 0.9);
-
-            const pos = tesseractLineGeo.attributes.position.array;
-            const b = 3.5 * popScale;
-            const ib = 1.75 * popScale * 0.9;
-            const corners = [
-                [-1, -1, -1], [1, -1, -1], [1, 1, -1], [-1, 1, -1],
-                [-1, -1, 1], [1, -1, 1], [1, 1, 1], [-1, 1, 1]
-            ];
-            corners.forEach((c, idx) => {
-                pos[idx * 6] = c[0] * b; pos[idx * 6 + 1] = c[1] * b; pos[idx * 6 + 2] = c[2] * b;
-                pos[idx * 6 + 3] = c[0] * ib; pos[idx * 6 + 4] = c[1] * ib; pos[idx * 6 + 5] = c[2] * ib;
-            });
-            tesseractLineGeo.attributes.position.needsUpdate = true;
-        }
-        // ---------------------------------------------------------------------
-        // FX 6: Warp Speed Starfield
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 6) {
             const positions = warpStarGeo.attributes.position.array;
             const warpVelocity = (30.0 + bassPop * 120.0 + transient * 160.0) * delta;
 
@@ -1677,108 +1534,83 @@ export function createVFXScene(container) {
             warpStarSystem.rotation.z += delta * 0.08;
         }
         // ---------------------------------------------------------------------
-        // FX 7: Cyber Warp Tunnel
+        // FX 6: Smooth Plasma Nebula (Organic Fluid Gradients)
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 6) {
+            plasmaMat.uniforms.uTime.value = elapsedTime;
+            plasmaMat.uniforms.uBass.value = bassPop;
+            plasmaMat.uniforms.uMid.value = audio.smoothedMid || 0;
+            plasmaMat.uniforms.uPulse.value = transient;
+
+            stardustSystem.rotation.z += delta * 0.08;
+            stardustSystem.rotation.y += delta * 0.04;
+            const scale = 1.0 + (bassPop * 0.15) + (transient * 0.1);
+            plasmaMesh.scale.set(scale, scale, 1.0);
+        }
+        // ---------------------------------------------------------------------
+        // FX 7: Dual-Bank Volumetric Searchlights & Lasers (Top & Bottom Rigs)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 7) {
-            const tunnelSpeed = (18.0 + (bassPop * 30.0) + (transient * 40.0)) * delta;
-            tunnelRings.forEach((ring, idx) => {
-                ring.position.z += tunnelSpeed;
-                ring.rotation.z += delta * (0.5 + idx * 0.05);
+            const sweepTime = elapsedTime * 2.2;
+            const choreoPhase = Math.floor(elapsedTime * 0.2) % 3; // 3 clean concert modes
+            const fanSpread = Math.sin(sweepTime * 0.6) * 0.5 + 0.5;
 
-                if (ring.position.z > 5) {
-                    ring.position.z -= tunnelRingCount * tunnelSpacing;
-                }
-                const ringScale = 1.0 + Math.sin(elapsedTime * 4 + idx * 0.2) * 0.12 + (transient * 0.2);
-                ring.scale.set(ringScale, ringScale, 1.0);
-            });
-            gTunnel.rotation.z += delta * 0.15;
-        }
-        // ---------------------------------------------------------------------
-        // FX 8: Cosmic Nebula Galaxy
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 8) {
-            galaxySystem.rotation.z += delta * (0.12 + bassPop * 0.3);
-            const galScale = 1.0 + bassPop * 0.2;
-            galaxySystem.scale.set(galScale, galScale, galScale);
-        }
-        // ---------------------------------------------------------------------
-        // FX 9: MEGA-FESTIVAL CYBER LASER ARENA & LIQUID SKY SHOW
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 9) {
-            const sweepTime = elapsedTime * 2.4;
-            const choreoPhase = Math.floor(elapsedTime * 0.18) % 4; // 4 Choreography modes
-            const fanSpread = Math.sin(sweepTime * 0.7) * 0.5 + 0.5;
-
-            // 1. Animate Overhead Top Laser Array (10 Beams)
+            // 1. Overhead Laser Projectors (8 Beams)
             topLaserBeams.forEach((laser, idx) => {
-                const normIdx = (idx / (numTopLasers - 1)) - 0.5; // -0.5 to 0.5
+                const normIdx = (idx / (numTopLasers - 1)) - 0.5;
                 let targetX = 0, targetY = 0, targetZ = -26.0;
 
                 if (choreoPhase === 0) {
-                    // Symmetrical Scissor Crosshair Sweep
-                    targetX = normIdx * (18.0 + fanSpread * 32.0) + Math.sin(sweepTime + idx * 0.4) * 6.0;
-                    targetY = -5.0 + Math.cos(sweepTime * 1.4 + normIdx * 3.0) * 3.5;
-                    targetZ = -22.0 + Math.sin(sweepTime * 0.8) * 8.0;
+                    // Scissor Crosshair Sweep
+                    targetX = normIdx * (16.0 + fanSpread * 32.0) + Math.sin(sweepTime + idx * 0.35) * 6.0;
+                    targetY = -5.5 + Math.cos(sweepTime * 1.3 + normIdx * 2.5) * 3.0;
+                    targetZ = -22.0 + Math.sin(sweepTime * 0.7) * 6.0;
                 } else if (choreoPhase === 1) {
-                    // Liquid Sky Aerial Slice (Horizontal scanning fan)
-                    targetX = normIdx * 45.0 + Math.sin(sweepTime * 1.5) * 8.0;
-                    targetY = 1.0 + Math.sin(sweepTime * 2.0 + idx * 0.3) * 2.0 + (transient * 3.0);
-                    targetZ = -30.0 + Math.cos(sweepTime * 0.9) * 6.0;
-                } else if (choreoPhase === 2) {
-                    // Radial Vortex Sweep
-                    const vAngle = sweepTime * 1.6 + idx * (Math.PI * 2 / numTopLasers);
-                    targetX = Math.cos(vAngle) * (14.0 + fanSpread * 18.0);
-                    targetY = Math.sin(vAngle) * (10.0 + fanSpread * 8.0) + 1.0;
-                    targetZ = -24.0;
+                    // Parallel Concert Fan Sweep
+                    targetX = normIdx * 38.0 + Math.sin(sweepTime * 1.4) * 10.0;
+                    targetY = -4.0 + Math.sin(sweepTime * 1.8 + idx * 0.3) * 2.5 + (transient * 2.5);
+                    targetZ = -25.0;
                 } else {
-                    // High-Speed Sweeping Fan Matrix
-                    const waveOffset = Math.sin(sweepTime * 3.0 - idx * 0.5);
-                    targetX = normIdx * 38.0;
-                    targetY = -3.0 + waveOffset * 7.0;
-                    targetZ = -25.0 + waveOffset * 5.0;
+                    // Wave Cascade
+                    const waveOffset = Math.sin(sweepTime * 2.8 - idx * 0.6);
+                    targetX = normIdx * 34.0;
+                    targetY = -3.5 + waveOffset * 6.0;
+                    targetZ = -24.0 + waveOffset * 4.0;
                 }
 
                 const targetVec = new THREE.Vector3(targetX, targetY, targetZ);
                 laser.mesh.lookAt(targetVec);
 
-                // Update Shader Uniforms
                 laser.mat.uniforms.uTime.value = elapsedTime;
                 laser.mat.uniforms.uPulse.value = transient * 0.8 + bassPop * 0.4;
 
-                // Update Impact Ring
                 const splash = laserImpactSpots[idx];
                 splash.position.copy(targetVec);
                 splash.lookAt(laser.basePos);
-                splash.scale.setScalar(1.0 + bassPop * 0.7 + transient * 0.9);
+                splash.scale.setScalar(1.0 + bassPop * 0.6 + transient * 0.8);
             });
 
-            // 2. Animate Stage Floor Laser Array (10 Beams)
+            // 2. Stage Floor Laser Projectors (8 Beams)
             botLaserBeams.forEach((laser, idx) => {
                 const normIdx = (idx / (numBotLasers - 1)) - 0.5;
                 let targetX = 0, targetY = 0, targetZ = -26.0;
 
                 if (choreoPhase === 0) {
-                    // Counter-Scissor Upward Aerial Fan
-                    targetX = -normIdx * (18.0 + fanSpread * 32.0) - Math.sin(sweepTime + idx * 0.4) * 6.0;
-                    targetY = 6.0 - Math.cos(sweepTime * 1.4 + normIdx * 3.0) * 3.5;
-                    targetZ = -22.0 + Math.cos(sweepTime * 0.8) * 8.0;
+                    // Counter-Scissor Upward Fan
+                    targetX = -normIdx * (16.0 + fanSpread * 32.0) - Math.sin(sweepTime + idx * 0.35) * 6.0;
+                    targetY = 6.0 - Math.cos(sweepTime * 1.3 + normIdx * 2.5) * 3.0;
+                    targetZ = -22.0 + Math.cos(sweepTime * 0.7) * 6.0;
                 } else if (choreoPhase === 1) {
-                    // Upward Liquid Sky Beam Matrix
-                    targetX = normIdx * 45.0 - Math.sin(sweepTime * 1.5) * 8.0;
-                    targetY = 4.0 + Math.cos(sweepTime * 2.0 + idx * 0.3) * 3.0 + (transient * 3.0);
-                    targetZ = -28.0;
-                } else if (choreoPhase === 2) {
-                    // Reverse Spiral Vortex
-                    const vAngle = -sweepTime * 1.6 + idx * (Math.PI * 2 / numBotLasers);
-                    targetX = Math.cos(vAngle) * (14.0 + fanSpread * 18.0);
-                    targetY = Math.sin(vAngle) * (10.0 + fanSpread * 8.0) + 1.0;
-                    targetZ = -24.0;
+                    // Counter Parallel Fan
+                    targetX = normIdx * 38.0 - Math.sin(sweepTime * 1.4) * 10.0;
+                    targetY = 5.0 + Math.cos(sweepTime * 1.8 + idx * 0.3) * 2.5 + (transient * 2.5);
+                    targetZ = -25.0;
                 } else {
-                    // Counter Wave Waterfall
-                    const waveOffset = Math.cos(sweepTime * 3.0 + idx * 0.5);
-                    targetX = normIdx * 38.0;
-                    targetY = 4.0 + waveOffset * 7.0;
-                    targetZ = -25.0 + waveOffset * 5.0;
+                    // Counter Wave Cascade
+                    const waveOffset = Math.cos(sweepTime * 2.8 + idx * 0.6);
+                    targetX = normIdx * 34.0;
+                    targetY = 4.5 + waveOffset * 6.0;
+                    targetZ = -24.0 + waveOffset * 4.0;
                 }
 
                 const targetVec = new THREE.Vector3(targetX, targetY, targetZ);
@@ -1790,59 +1622,27 @@ export function createVFXScene(container) {
                 const splash = laserImpactSpots[numTopLasers + idx];
                 splash.position.copy(targetVec);
                 splash.lookAt(laser.basePos);
-                splash.scale.setScalar(1.0 + bassPop * 0.7 + transient * 0.9);
+                splash.scale.setScalar(1.0 + bassPop * 0.6 + transient * 0.8);
             });
 
-            // 3. Animate Center Radial Projector Turret (8 Beams)
-            centerLaserBeams.forEach((laser, idx) => {
-                const rot = sweepTime * 2.0 + laser.angle;
-                const rScan = 12.0 + fanSpread * 20.0 + (transient * 10.0);
-                const targetVec = new THREE.Vector3(
-                    Math.cos(rot) * rScan,
-                    Math.sin(rot) * (rScan * 0.65) + 0.5,
-                    -1.0 + Math.sin(sweepTime * 1.2 + idx) * 4.0
-                );
-                laser.mesh.lookAt(targetVec);
-
-                laser.mat.uniforms.uTime.value = elapsedTime;
-                laser.mat.uniforms.uPulse.value = transient * 1.2 + bassPop * 0.6;
-
-                const splash = laserImpactSpots[numTopLasers + numBotLasers + idx];
-                splash.position.copy(targetVec);
-                splash.lookAt(laser.basePos);
-                splash.scale.setScalar(1.2 + bassPop * 0.9 + transient * 1.2);
-            });
-
-            // 4. Animate Aperture Lens Flares
+            // Aperture Lens Flares
             laserApertureFlares.forEach((flare, idx) => {
-                const flareScale = (1.2 + bassPop * 0.8 + (transient * 1.4)) * (Math.sin(elapsedTime * 8.0 + idx) * 0.15 + 0.85);
+                const flareScale = (1.2 + bassPop * 0.8 + (transient * 1.2)) * (Math.sin(elapsedTime * 8.0 + idx) * 0.15 + 0.85);
                 flare.scale.set(flareScale, flareScale, 1.0);
             });
 
-            // 5. Animate Liquid Sky Scanning Sheets
+            // Liquid Sky Scanning Sheet
             liquidSkyMatTop.uniforms.uTime.value = elapsedTime;
             liquidSkyMatTop.uniforms.uBass.value = bassPop + transient * 0.6;
-            liquidSkyMatBot.uniforms.uTime.value = elapsedTime;
-            liquidSkyMatBot.uniforms.uBass.value = bassPop + transient * 0.6;
 
-            // 6. Animate Expanding Concentric Laser Tunnel
-            laserTunnelRings.forEach((ring, idx) => {
-                ring.mesh.rotation.z += delta * (0.8 + idx * 0.15);
-                const pulseScale = 1.0 + Math.sin(elapsedTime * 4.0 + idx * 0.4) * 0.15 + (transient * 0.3) + (bassPop * 0.2);
-                ring.mesh.scale.set(pulseScale, pulseScale, 1.0);
-            });
-
-            // 7. Atmospheric Laser Haze Rotation
-            laserHaze.rotation.y += delta * 0.08;
-            laserHaze.rotation.x += delta * 0.04;
+            laserHaze.rotation.y += delta * 0.06;
         }
         // ---------------------------------------------------------------------
-        // FX 10: SABER DUAL-DERBY & ARENA DISCO SHOW (SABER DJ FIXTURES)
+        // FX 8: Saber Multi-Beam DJ Fixtures (4 Pods, 32 Razor Blades)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 10) {
+        else if (currentFXIndex === 8) {
             const derbySpeed = elapsedTime * 2.8;
 
-            // 1. Animate 4 Saber Multi-Beam DJ Fixtures
             saberPods.forEach((pod, pIdx) => {
                 const dir = pod.cfg.rotDir;
                 // High-speed energetic rotation matching Saber DJ fixture
@@ -1850,66 +1650,25 @@ export function createVFXScene(container) {
                 pod.head.rotation.x = Math.sin(derbySpeed * 1.2 + pIdx * 1.5) * 0.65;
                 pod.head.rotation.y = Math.cos(derbySpeed * 0.9 + pIdx * 1.2) * 0.55;
 
-                // Animate Razor Blades within pod
                 pod.blades.forEach((blade, bIdx) => {
                     blade.mat.uniforms.uTime.value = elapsedTime;
-                    // Dynamic blade pulse and transient flash
                     const bladeAudio = (transient * 1.2) + (bassPop * 0.5);
                     blade.mat.uniforms.uIntensity.value = 0.85 + bladeAudio * 1.5;
                     blade.mat.uniforms.uCoreBoost.value = 2.8 + (transient * 3.0);
 
-                    // Dynamic scissor spreading
                     const spreadMod = Math.sin(derbySpeed * 2.0 + bIdx * 0.4) * 0.15;
                     blade.mesh.rotation.y = blade.baseAngle + spreadMod;
                 });
             });
 
-            // 2. Spin Diamond Faceted Mirror Ball
-            mirrorBall.rotation.y += speed * 0.75;
-            mirrorBall.rotation.x = Math.sin(elapsedTime * 1.1) * 0.12;
-            const ballScale = 1.0 + (bassPop * 0.22) + (transient * 0.18);
-            mirrorBall.scale.set(ballScale, ballScale, ballScale);
-
-            // Animate Mirror Ball Glint Flares
-            mirrorBallGlints.forEach((glint) => {
-                const gSparkle = Math.sin(elapsedTime * 12.0 + glint.phase) * 0.5 + 0.5;
-                const gScale = (0.8 + gSparkle * 0.9 + transient * 1.0);
-                glint.sprite.scale.set(gScale, gScale, 1.0);
-                glint.sprite.material.opacity = 0.4 + gSparkle * 0.6 + transient * 0.4;
-            });
-
-            // 3. Pulse 4 Precision Pinspots
-            pinspotBeams.forEach((pin) => {
-                pin.mat.opacity = 0.45 + (transient * 0.4) + (bassPop * 0.25);
-            });
-
-            // 4. Swirl 1,800 Mirror Ball Reflected Caustics
-            discoCaustics.rotation.y += speed * 0.65;
-            discoCaustics.rotation.x += delta * 0.12;
-
-            // 5. Animate 6 Overhead Moving Heads in Synchronized Concert Figure-8
-            movingHeadBeams.forEach((mh, idx) => {
-                const offset = idx * (Math.PI / 3);
-                const pan = Math.sin(elapsedTime * 2.2 + offset) * 0.75;
-                const tilt = (Math.cos(elapsedTime * 1.6 + offset) * 0.45 + 0.62);
-
-                mh.mesh.rotation.set(tilt, pan, 0);
-
-                const amp = dataArr[(idx * 5) % 32] ? dataArr[(idx * 5) % 32] / 255 : 0;
-                mh.mat.opacity = 0.3 + amp * 0.55 + (transient * 0.4);
-
-                // Floor Pool Projection Tracking
-                const floorX = mh.posX + Math.sin(pan) * 15.0;
-                const floorZ = -4.5 + Math.sin(tilt) * 13.0;
-                const pool = movingHeadFloorPools[idx];
-                pool.position.set(floorX, -5.8, floorZ);
-                pool.scale.setScalar(1.0 + amp * 0.9 + (transient * 0.6));
-            });
+            // Swirl Reflected Saber Caustics
+            saberCaustics.rotation.y += speed * 0.7;
+            saberCaustics.rotation.x += delta * 0.12;
         }
         // ---------------------------------------------------------------------
-        // FX 11: Strobe Hyper-Rings
+        // FX 9: Strobe Hyper-Rings & Laser Matrix
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 11) {
+        else if (currentFXIndex === 9) {
             hyperRings.forEach((hr, idx) => {
                 const dir = (idx % 2 === 0) ? 1 : -1;
                 hr.rotation.x += speed * (0.8 + idx * 0.3) * dir;

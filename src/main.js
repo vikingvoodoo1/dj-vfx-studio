@@ -62,7 +62,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 12;
+    const TOTAL_FX = 10;
 
     // 2. Audio & Media Activation on User Click
     async function enableAudioAndMedia() {
@@ -330,8 +330,8 @@ async function init() {
 
     // 7. Keyboard Shortcuts
     const hotkeyMap = {
-        '1': 0, '2': 1, '3': 2, '4': 3, '5': 4, '6': 5,
-        '7': 6, '8': 7, '9': 8, '0': 9, '-': 10, '=': 11
+        '1': 0, '2': 1, '3': 2, '4': 3, '5': 4,
+        '6': 5, '7': 6, '8': 7, '9': 8, '0': 9
     };
 
     window.addEventListener('keydown', (e) => {
