@@ -590,6 +590,11 @@
                 <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
             </div>
 
+            <div class="mode-pills" id="logo-vis-pills" style="margin-top:2px; margin-bottom:4px;">
+                <div class="mode-pill active" data-vis="on" title="Turn Logo Layer ON">LOGO ON</div>
+                <div class="mode-pill" data-vis="off" title="Turn Logo Layer OFF">LOGO OFF</div>
+            </div>
+
             <div class="mode-pills">
                 <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
                 <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
@@ -607,9 +612,12 @@
             </div>
             <div class="mode-pills" id="logo-pos-pills" style="flex-wrap:wrap; gap:3px;">
                 <div class="mode-pill active" data-pos="center" style="flex:1 1 28%;">Center</div>
+                <div class="mode-pill" data-pos="center-top" style="flex:1 1 28%;">Top-C</div>
+                <div class="mode-pill" data-pos="top-quarter" style="flex:1 1 28%;">Top-1/4</div>
+                <div class="mode-pill" data-pos="center-bottom-quarter" style="flex:1 1 28%;">Bot-1/4</div>
+                <div class="mode-pill" data-pos="center-bottom" style="flex:1 1 28%;">Bot-C</div>
                 <div class="mode-pill" data-pos="top-left" style="flex:1 1 28%;">Top-L</div>
                 <div class="mode-pill" data-pos="top-right" style="flex:1 1 28%;">Top-R</div>
-                <div class="mode-pill" data-pos="top-quarter" style="flex:1 1 28%;">Top-1/4</div>
                 <div class="mode-pill" data-pos="bottom-left" style="flex:1 1 28%;">Bot-L</div>
                 <div class="mode-pill" data-pos="bottom-right" style="flex:1 1 28%;">Bot-R</div>
             </div>
@@ -661,7 +669,7 @@
         </div>
 
         <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 9px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between;">
-            <span>[1-9,0,-,=,Q,W,E,R] 16 FX</span>
+            <span>[1-9,0,-,=,Q,W,E,R,T] 17 FX</span>
             <span>[A] Auto VJ</span>
             <span>[L] Logo</span>
             <span>[Space] Flash</span>
@@ -684,7 +692,7 @@
         <!-- Category Filter Tabs -->
         <div class="category-tabs">
             <div class="cat-tab-group">
-                <button class="cat-tab active" data-category="all">⚡ All (16)</button>
+                <button class="cat-tab active" data-category="all">⚡ All (17)</button>
                 <button class="cat-tab" data-category="eq">📊 Equalizers & Decks</button>
                 <button class="cat-tab" data-category="laser">⚡ Lasers & Disco</button>
                 <button class="cat-tab" data-category="wire">🕸️ Cyber & Retro</button>
@@ -696,7 +704,7 @@
             </div>
         </div>
 
-        <!-- FX Preset Buttons Row (16 Presets) -->
+        <!-- FX Preset Buttons Row (17 Presets) -->
         <div class="fx-presets-row" id="fx-presets-row">
             <!-- 📊 Equalizers & Decks -->
             <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
@@ -721,6 +729,7 @@
             <!-- 🌌 Space & Galaxy -->
             <button class="fx-btn" data-fx="14" data-cat="space"><span class="fx-key">E</span> 🚀 Warp Starfield</button>
             <button class="fx-btn" data-fx="15" data-cat="space"><span class="fx-key">R</span> 🌌 Spiral Galaxy Vortex</button>
+            <button class="fx-btn" data-fx="16" data-cat="space"><span class="fx-key">T</span> ✨ Hyper Particle Stream</button>
         </div>
     </div>
 

@@ -2,6 +2,21 @@ import { setupAudio } from './audio.js';
 import { createVFXScene } from './effects.js';
 import { setupStageLinqClient } from './stagelinq.js';
 
+// DJ-VFX Engine Build Metadata
+const BUILD_VERSION = 'v2.7.0';
+const BUILD_NUMBER = '20260925.1125.00';
+console.log(
+    `%c⚡ DJ-VFX ENGINE %c ${BUILD_VERSION} (Build #${BUILD_NUMBER}) %c- ONLINE`,
+    'background:#ff007f; color:#fff; font-weight:bold; padding:4px 8px; border-radius:3px 0 0 3px;',
+    'background:#00ffff; color:#020208; font-weight:bold; padding:4px 8px;',
+    'background:#12121e; color:#00ffcc; font-weight:bold; padding:4px 8px; border-radius:0 3px 3px 0;'
+);
+window.__DJ_VFX_BUILD__ = {
+    version: BUILD_VERSION,
+    buildNumber: BUILD_NUMBER,
+    timestamp: '2026-09-25T11:25:00Z'
+};
+
 async function init() {
     const container = document.getElementById('canvas-container');
     const hud = document.getElementById('hud');
@@ -29,6 +44,7 @@ async function init() {
     // Logo Layer Controls
     const logoBadge = document.getElementById('logo-badge');
     const logoFilename = document.getElementById('logo-filename');
+    const visPills = document.querySelectorAll('#logo-vis-pills .mode-pill[data-vis]');
     const modePills = document.querySelectorAll('.mode-pill[data-mode]');
     const blendPills = document.querySelectorAll('.mode-pill[data-blend]');
     const posPills = document.querySelectorAll('#logo-pos-pills .mode-pill[data-pos]');
@@ -63,7 +79,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 16;
+    const TOTAL_FX = 17;
 
     // 2. Audio & Media Activation on User Click
     async function enableAudioAndMedia() {
@@ -96,17 +112,32 @@ async function init() {
     });
 
     // 3. Logo Layer Controls
-    function toggleLogo() {
-        isLogoActive = !isLogoActive;
+    function updateLogoVisibility(active) {
+        isLogoActive = !!active;
         vfx.setLogoVisible(isLogoActive);
         if (logoBadge) {
-            logoBadge.textContent = isLogoActive ? 'ACTIVE [L]' : 'MUTED [L]';
+            logoBadge.textContent = isLogoActive ? 'ACTIVE [L]' : 'OFF [L]';
             logoBadge.style.color = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
             logoBadge.style.borderColor = isLogoActive ? 'rgba(0,255,204,0.3)' : 'rgba(255,255,255,0.1)';
         }
+        visPills.forEach(p => {
+            const vis = p.getAttribute('data-vis');
+            p.classList.toggle('active', (vis === 'on' && isLogoActive) || (vis === 'off' && !isLogoActive));
+        });
+    }
+
+    function toggleLogo() {
+        updateLogoVisibility(!isLogoActive);
     }
 
     if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
+
+    visPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const vis = pill.getAttribute('data-vis');
+            updateLogoVisibility(vis === 'on');
+        });
+    });
 
     modePills.forEach((pill) => {
         pill.addEventListener('click', () => {
@@ -338,7 +369,7 @@ async function init() {
         }
     });
 
-    // 7. Keyboard Shortcuts (16 Presets)
+    // 7. Keyboard Shortcuts (17 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
         '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
@@ -346,7 +377,8 @@ async function init() {
         'q': 12, 'Q': 12,
         'w': 13, 'W': 13,
         'e': 14, 'E': 14,
-        'r': 15, 'R': 15
+        'r': 15, 'R': 15,
+        't': 16, 'T': 16
     };
 
     window.addEventListener('keydown', (e) => {

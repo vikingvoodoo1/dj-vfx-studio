@@ -197,6 +197,173 @@ const SaberBeamBladeShader = {
     `
 };
 
+// Volumetric Pinspot Beam Shader (Physical Light Ray with Atmospheric Fog, Sharp Core & Impact Bloom)
+const VolumetricPinspotShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0x00ffff) },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 1.0 },
+        uShine: { value: 0.0 },
+        uTime: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+
+        void main() {
+            vUv = uv;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldPos = worldPos.xyz;
+            vNormal = normalize(normalMatrix * normal);
+            vViewDir = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uShine;
+        uniform float uTime;
+
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+
+        void main() {
+            // Transverse / Volumetric rim-to-core falloff (Fresnel / limb integration)
+            float limb = 1.0 - abs(dot(vViewDir, vNormal));
+            float softHaze = pow(limb, 1.6);
+            float hotCore = pow(limb, 7.5);
+
+            // Longitudinal position along the beam: 0.0 (fixture lens) to 1.0 (disco ball surface)
+            float y = vUv.y;
+
+            // 1. Exponential source emission near fixture lens
+            float sourceFlare = exp(-y * 5.2) * 3.4;
+
+            // 2. Atmospheric column haze decay through air
+            float columnHaze = pow(1.0 - y * 0.32, 1.4);
+
+            // 3. Impact hit bloom where beam strikes the mirror ball (y -> 1.0)
+            float hitZone = smoothstep(0.68, 0.98, y);
+            float hitBloom = pow(hitZone, 2.8) * (2.6 + uShine * 4.5);
+
+            // 4. Procedural Atmospheric Smoke / Fog turbulence drifting through beam
+            float fog1 = sin(vWorldPos.x * 0.85 + vWorldPos.y * 1.1 + uTime * 2.4) * cos(vWorldPos.z * 0.85 - uTime * 1.8);
+            float fog2 = sin(vWorldPos.y * 2.2 - uTime * 3.5) * cos(vWorldPos.x * 1.5 + vWorldPos.z * 1.5);
+            float fogDrift = 0.80 + 0.20 * (fog1 * 0.6 + fog2 * 0.4);
+
+            // 5. Sparkling micro-dust particles catching the high-intensity light
+            float dustSeed = dot(floor(vWorldPos * 6.5), vec3(12.9898, 78.233, 45.5432));
+            float dust = pow(fract(sin(dustSeed) * 43758.5453), 32.0);
+            float dustGlow = dust * (0.9 + uShine * 2.4) * (1.0 - y * 0.4);
+
+            // Total alpha composition
+            float longProfile = sourceFlare + columnHaze + hitBloom;
+            float alpha = (softHaze * 0.65 + hotCore * 0.75) * longProfile * fogDrift * (0.38 + uShine * 0.62);
+            alpha += dustGlow * 0.35;
+            alpha *= uIntensity;
+
+            if (alpha < 0.003) discard;
+
+            // Color blending: saturated neon at edges, brilliant white-hot at core and impact
+            float coreBlend = clamp(hotCore * 0.85 + hitBloom * 0.45 + sourceFlare * 0.5 + uShine * 0.4, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uShine * 2.2);
+
+            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
+// Concert Stage Moving-Head Beam Shader (Striated Ray Shafts, Atmospheric Fog & Aperture Flare)
+const ConcertStageBeamShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0x00ff33) },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 1.0 },
+        uPulse: { value: 0.0 },
+        uTime: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+        varying vec3 vLocalPos;
+
+        void main() {
+            vUv = uv;
+            vLocalPos = position;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vWorldPos = worldPos.xyz;
+            vNormal = normalize(normalMatrix * normal);
+            vViewDir = normalize(-(modelViewMatrix * vec4(position, 1.0)).xyz);
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uPulse;
+        uniform float uTime;
+
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+        varying vec3 vLocalPos;
+
+        void main() {
+            // Transverse limb/Fresnel integration (volumetric cylinder/cone view angle)
+            float limb = 1.0 - abs(dot(vViewDir, vNormal));
+            float softHaze = pow(limb, 1.35);
+            float hotCore = pow(limb, 4.8);
+
+            // Longitudinal position along the beam: 0.0 (fixture lens) to 1.0 (far end)
+            float y = vUv.y;
+
+            // 1. Sharp Aperture Lens Emission Flare
+            float sourceFlare = exp(-y * 8.0) * 4.5;
+
+            // 2. Collimated Stage Striations (Internal Ray Filaments matching concert moving-heads)
+            float angle = atan(vLocalPos.x, vLocalPos.z);
+            float rayPattern1 = abs(sin(angle * 8.0 + y * 2.0));
+            float rayPattern2 = abs(sin(angle * 14.0 - y * 4.0 + uTime * 0.4));
+            float striations = pow(rayPattern1 * 0.65 + rayPattern2 * 0.35, 2.2);
+            float rayStructure = 0.50 + 0.50 * striations;
+
+            // 3. Atmospheric Column Haze Decay
+            float columnHaze = pow(clamp(1.0 - y * 0.70, 0.0, 1.0), 1.3);
+
+            // 4. Smooth tip fade at distance
+            float endFade = smoothstep(1.0, 0.82, y);
+
+            // 5. Procedural Smoke / Fog turbulence drifting through light beam
+            float fog = sin(vWorldPos.x * 0.6 + vWorldPos.y * 0.8 + uTime * 1.8) *
+                        cos(vWorldPos.z * 0.7 - uTime * 1.4);
+            float fogDrift = 0.82 + 0.18 * fog;
+
+            // Composite alpha
+            float longProfile = (sourceFlare + columnHaze) * endFade;
+            float alpha = (softHaze * 0.6 + hotCore * 0.8) * rayStructure * longProfile * fogDrift * (0.55 + uPulse * 0.45);
+            alpha *= uIntensity;
+
+            if (alpha < 0.003) discard;
+
+            // Color blending: vivid saturated neon on edges/rays, brilliant white-hot core
+            float coreBlend = clamp(hotCore * 0.75 + sourceFlare * 0.6 + uPulse * 0.35, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.1 + uPulse * 1.5);
+
+            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
 // Fluid Glowing Spectrum Wave Ribbon Shader
 const FluidWaveRibbonShader = {
     uniforms: {
@@ -794,6 +961,285 @@ const RetroArcadeShader = {
     `
 };
 
+// =============================================================================
+// Particle Stream GLSL Shader (Inspired by Szenia Zadvornykh @zadvorsky)
+// Features 3D Multi-Strand Spline Flow, Simplex 3D Curl Noise & Smooth Soft Audio Reactivity
+// =============================================================================
+const ParticleStreamShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uFlowProgress: { value: 0.0 },
+        uCurveTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 },
+        uTreble: { value: 0.0 },
+        uColorCycle: { value: 0.0 }
+    },
+    vertexShader: `
+        uniform float uTime;
+        uniform float uFlowProgress;
+        uniform float uCurveTime;
+        uniform float uBass;
+        uniform float uMid;
+        uniform float uTreble;
+        uniform float uColorCycle;
+
+        attribute vec3 aOffset;
+        attribute float aProgress;
+        attribute float aSpeed;
+        attribute float aStrand;
+        attribute float aSize;
+        attribute vec3 aColor;
+        attribute vec2 aSeed;
+
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vSparkle;
+        varying float vCoreGlow;
+
+        // Simplex Noise 3D helper functions
+        vec4 permute(vec4 x) { return mod(((x * 34.0) + 1.0) * x, 289.0); }
+        vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoise(vec3 v) {
+            const vec2 C = vec2(1.0 / 6.0, 1.0 / 3.0);
+            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+
+            vec3 i  = floor(v + dot(v, C.yyy));
+            vec3 x0 = v - i + dot(i, C.xxx);
+
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min(g.xyz, l.zxy);
+            vec3 i2 = max(g.xyz, l.zxy);
+
+            vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+            vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+            vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+
+            i = mod(i, 289.0);
+            vec4 p = permute(permute(permute(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                    + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+
+            float n_ = 1.0 / 7.0;
+            vec3  ns = n_ * D.wyz - D.xzx;
+
+            vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_);
+
+            vec4 x = x_ * ns.x + ns.yyyy;
+            vec4 y = y_ * ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+
+            vec4 b0 = vec4(x.xy, y.xy);
+            vec4 b1 = vec4(x.zw, y.zw);
+
+            vec4 s0 = floor(b0) * 2.0 + 1.0;
+            vec4 s1 = floor(b1) * 2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+
+            vec4 a0 = b0.xzyw + s0.xzyw * sh.xxyy;
+            vec4 a1 = b1.xzyw + s1.xzyw * sh.zzww;
+
+            vec3 p0 = vec3(a0.xy, h.x);
+            vec3 p1 = vec3(a0.zw, h.y);
+            vec3 p2 = vec3(a1.xy, h.z);
+            vec3 p3 = vec3(a1.zw, h.w);
+
+            vec4 norm = taylorInvSqrt(vec4(dot(p0, p0), dot(p1, p1), dot(p2, p2), dot(p3, p3)));
+            p0 *= norm.x;
+            p1 *= norm.y;
+            p2 *= norm.z;
+            p3 *= norm.w;
+
+            vec4 m = max(0.6 - vec4(dot(x0, x0), dot(x1, x1), dot(x2, x2), dot(x3, x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot(m * m, vec4(dot(p0, x0), dot(p1, x1), dot(p2, x2), dot(p3, x3)));
+        }
+
+        vec3 snoise3(vec3 p) {
+            return vec3(
+                snoise(p),
+                snoise(p + vec3(43.12, 17.54, 91.32)),
+                snoise(p + vec3(119.87, 63.21, 33.45))
+            );
+        }
+
+        // Analytical 3D Curl Noise for fluid micro-vortices
+        vec3 curlNoise(vec3 p) {
+            const float e = 0.1;
+            vec3 dx = vec3(e, 0.0, 0.0);
+            vec3 dy = vec3(0.0, e, 0.0);
+            vec3 dz = vec3(0.0, 0.0, e);
+
+            vec3 p_x0 = snoise3(p - dx);
+            vec3 p_x1 = snoise3(p + dx);
+            vec3 p_y0 = snoise3(p - dy);
+            vec3 p_y1 = snoise3(p + dy);
+            vec3 p_z0 = snoise3(p - dz);
+            vec3 p_z1 = snoise3(p + dz);
+
+            float x = (p_y1.z - p_y0.z) - (p_z1.y - p_z0.y);
+            float y = (p_z1.x - p_z0.x) - (p_x1.z - p_x0.z);
+            float z = (p_x1.y - p_x0.y) - (p_y1.x - p_y0.x);
+
+            return vec3(x, y, z) / (2.0 * e);
+        }
+
+        // 3D Space Curve Generator for Stream Strands (Graceful & Majestic Flow)
+        vec3 getCurvePoint(float t, float strand, float curveTime) {
+            const float PI = 3.14159265359;
+            vec3 p = vec3(0.0);
+
+            // Longitudinal translation along Z axis: deep background (-55.0) to foreground (+12.0)
+            float z = -55.0 + t * 68.0;
+
+            if (strand < 0.5) {
+                // Strand 0: Central serpentine wave
+                float wave1 = sin(t * PI * 2.0 + curveTime * 0.15);
+                float wave2 = cos(t * PI * 4.0 - curveTime * 0.10);
+                p.x = wave1 * 8.5 + sin(t * PI * 5.0) * 2.0;
+                p.y = wave2 * 5.0 + cos(t * PI * 2.5) * 1.5;
+                p.z = z;
+            } else if (strand < 1.5) {
+                // Strand 1: Clockwise corkscrew helix braiding around central stream
+                float theta = t * PI * 10.0 + curveTime * 0.25;
+                float r = 4.5 + sin(t * PI * 3.0 + curveTime * 0.12) * 1.5;
+                float cx = sin(t * PI * 2.0 + curveTime * 0.15) * 8.5;
+                float cy = cos(t * PI * 4.0 - curveTime * 0.10) * 5.0;
+                p.x = cx + cos(theta) * r;
+                p.y = cy + sin(theta) * r;
+                p.z = z;
+            } else if (strand < 2.5) {
+                // Strand 2: Counter-clockwise interwoven ribbon
+                float theta = -t * PI * 10.0 - curveTime * 0.25 + PI;
+                float r = 4.5 + cos(t * PI * 3.0 + curveTime * 0.12) * 1.5;
+                float cx = sin(t * PI * 2.0 + curveTime * 0.15) * 8.5;
+                float cy = cos(t * PI * 4.0 - curveTime * 0.10) * 5.0;
+                p.x = cx + cos(theta) * r;
+                p.y = cy + sin(theta) * r;
+                p.z = z;
+            } else if (strand < 3.5) {
+                // Strand 3: Sweeping Infinity figure-8 orbital wing
+                float angle = t * PI * 2.0;
+                p.x = sin(angle + curveTime * 0.08) * 15.0;
+                p.y = sin(angle * 2.0 + curveTime * 0.06) * 7.0;
+                p.z = -50.0 + pow(sin(t * PI), 0.75) * 62.0;
+            } else {
+                // Strand 4: Core particle beam with soft gentle spiral
+                float slowTheta = t * PI * 14.0 + curveTime * 0.4;
+                float tightR = 1.6 + sin(t * PI * 4.0) * 0.6;
+                p.x = sin(t * PI * 2.0 + curveTime * 0.15) * 4.5 + cos(slowTheta) * tightR;
+                p.y = cos(t * PI * 2.0 + curveTime * 0.15) * 3.0 + sin(slowTheta) * tightR;
+                p.z = z;
+            }
+
+            return p;
+        }
+
+        void main() {
+            const float PI = 3.14159265359;
+
+            // Smooth monotonic progressive flow (ZERO phase snapping / silky smooth flow)
+            float t = fract(aProgress + uFlowProgress * aSpeed);
+
+            // Compute smooth curve point
+            vec3 curvePos = getCurvePoint(t, aStrand, uCurveTime);
+
+            // Soft, gentle radial dispersion modulated softly by bass
+            float spreadMultiplier = 1.0 + uBass * 0.35;
+            vec3 offsetVec = aOffset * spreadMultiplier;
+
+            // Slow, fluid curl noise turbulence
+            vec3 noiseLookup = (curvePos * 0.06) + vec3(uTime * 0.04, uTime * 0.03, uTime * 0.02);
+            vec3 curl = curlNoise(noiseLookup);
+            float turbAmp = 0.5 + uBass * 0.75;
+            vec3 turbulentDisplacement = curl * turbAmp;
+
+            // Gentle harmonic micro wave ripple
+            float ripple = sin(t * PI * 8.0 + uTime * 1.5 + aSeed.x * 6.28) * (uMid * 0.25 + uTreble * 0.15);
+            vec3 rippleVec = vec3(sin(aSeed.y * PI * 2.0), cos(aSeed.y * PI * 2.0), 0.0) * ripple;
+
+            // Final 3D particle world position
+            vec3 finalPos = curvePos + offsetVec + turbulentDisplacement + rippleVec;
+
+            vec4 mvPosition = modelViewMatrix * vec4(finalPos, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // Smooth, gentle lifecycle fade-in and fade-out along stream path
+            float lifecycle = smoothstep(0.0, 0.15, t) * smoothstep(1.0, 0.85, t);
+
+            // Distance attenuation
+            float distToCam = -mvPosition.z;
+            float depthScale = clamp(170.0 / max(distToCam, 0.1), 0.2, 7.0);
+
+            // Soft size pulse
+            float sizePulse = 1.0 + uBass * 0.30;
+            gl_PointSize = aSize * sizePulse * lifecycle * (depthScale / 14.0);
+
+            // Curated dynamic color palettes
+            vec3 colA = vec3(0.0, 0.95, 1.0);    // Neon Cyan
+            vec3 colB = vec3(0.55, 0.05, 1.0);   // Electric Purple
+            vec3 colC = vec3(1.0, 0.08, 0.65);   // Hot Magenta
+            vec3 colD = vec3(1.0, 0.75, 0.15);   // Solar Gold
+            vec3 colWhite = vec3(1.0, 1.0, 1.0); // Hot Core
+
+            float colorPhase = fract(t * 1.5 + aStrand * 0.20 + uColorCycle);
+            vec3 dynamicColor;
+            if (colorPhase < 0.33) {
+                dynamicColor = mix(colA, colB, colorPhase * 3.0);
+            } else if (colorPhase < 0.66) {
+                dynamicColor = mix(colB, colC, (colorPhase - 0.33) * 3.0);
+            } else {
+                dynamicColor = mix(colC, colD, (colorPhase - 0.66) * 3.0);
+            }
+
+            // Smoothly blend base color with dynamic palette
+            vec3 blendedColor = mix(aColor, dynamicColor, 0.70);
+
+            // Soft core whitening on higher bass energy
+            if (uBass > 0.4) {
+                blendedColor = mix(blendedColor, colWhite, (uBass - 0.4) * 0.6);
+            }
+
+            vColor = blendedColor;
+            vAlpha = lifecycle * clamp(0.4 + uBass * 0.35, 0.25, 0.95);
+            vSparkle = sin(uTime * 2.5 + aSeed.x * 12.56) * 0.5 + 0.5;
+            vCoreGlow = clamp(uBass * 0.6, 0.0, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform float uTime;
+        uniform float uBass;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vSparkle;
+        varying float vCoreGlow;
+
+        void main() {
+            vec2 coord = gl_PointCoord - vec2(0.5);
+            float dist = length(coord);
+            if (dist > 0.5) discard;
+
+            // Soft, silky radial glow with smooth core
+            float halo = pow(1.0 - dist * 2.0, 2.0);
+            float core = smoothstep(0.16, 0.0, dist);
+
+            // Gentle sparkle glimmer
+            float sparkleFactor = 0.90 + vSparkle * 0.25;
+
+            vec3 finalRgb = mix(vColor * sparkleFactor, vec3(1.0), core * (0.6 + vCoreGlow * 0.4));
+            float intensity = (halo * 1.3 + core * 2.0) * (1.0 + uBass * 0.35);
+
+            gl_FragColor = vec4(finalRgb * intensity * vAlpha, vAlpha * halo);
+        }
+    `
+};
+
 // Offscreen Round Star Texture Generator
 function createRoundStarTexture() {
     const canvas = document.createElement('canvas');
@@ -851,9 +1297,359 @@ function createStarburstTexture() {
     return tex;
 }
 
+// Offscreen Anamorphic Lens Flare & Diffraction Starburst Generator
+function createAnamorphicFlareTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const cx = 128;
+    const cy = 128;
+
+    // Center circular glow
+    const radGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 120);
+    radGrad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+    radGrad.addColorStop(0.12, 'rgba(230, 255, 255, 0.9)');
+    radGrad.addColorStop(0.35, 'rgba(0, 220, 255, 0.45)');
+    radGrad.addColorStop(0.7, 'rgba(0, 150, 255, 0.12)');
+    radGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = radGrad;
+    ctx.fillRect(0, 0, 256, 256);
+
+    // Horizontal Anamorphic Streak
+    const streakGrad = ctx.createLinearGradient(0, cy, 256, cy);
+    streakGrad.addColorStop(0, 'rgba(255, 255, 255, 0.0)');
+    streakGrad.addColorStop(0.3, 'rgba(180, 240, 255, 0.3)');
+    streakGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+    streakGrad.addColorStop(0.7, 'rgba(180, 240, 255, 0.3)');
+    streakGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+
+    ctx.fillStyle = streakGrad;
+    ctx.fillRect(0, cy - 3, 256, 6);
+
+    // Cross Diffraction Spikes
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 1.8;
+    [0, Math.PI / 4, Math.PI / 2, 3 * Math.PI / 4].forEach(angle => {
+        ctx.beginPath();
+        ctx.moveTo(cx - Math.cos(angle) * 110, cy - Math.sin(angle) * 110);
+        ctx.lineTo(cx + Math.cos(angle) * 110, cy + Math.sin(angle) * 110);
+        ctx.stroke();
+    });
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Procedural Disco Ball Glass Facet Tangent Normal Map
+function createDiscoNormalMap() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    const numCols = 80; // 80 facet columns
+    const numRows = 40; // 40 facet rings
+    const tileW = 1024 / numCols;
+    const tileH = 512 / numRows;
+
+    // Neutral normal background (128, 128, 255)
+    ctx.fillStyle = 'rgb(128, 128, 255)';
+    ctx.fillRect(0, 0, 1024, 512);
+
+    for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
+            const x = c * tileW;
+            const y = r * tileH;
+
+            // Deterministic micro-tilt angle per mirror facet
+            const seedX = Math.sin(r * 157.3 + c * 271.9) * 43758.5453;
+            const seedY = Math.cos(r * 193.7 + c * 313.1) * 28941.6127;
+            const tiltX = (seedX - Math.floor(seedX) - 0.5) * 0.40; // -0.20 .. +0.20
+            const tiltY = (seedY - Math.floor(seedY) - 0.5) * 0.40; // -0.20 .. +0.20
+            const tiltZ = Math.sqrt(Math.max(0.05, 1.0 - tiltX * tiltX - tiltY * tiltY));
+
+            const rCol = Math.floor((tiltX * 0.5 + 0.5) * 255);
+            const gCol = Math.floor((tiltY * 0.5 + 0.5) * 255);
+            const bCol = Math.floor((tiltZ * 0.5 + 0.5) * 255);
+
+            // Fill individual flat mirror tile
+            ctx.fillStyle = `rgb(${rCol}, ${gCol}, ${bCol})`;
+            ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
+
+            // Grout border (neutral normal)
+            ctx.fillStyle = 'rgb(128, 128, 255)';
+            ctx.fillRect(x, y, tileW, 1);
+            ctx.fillRect(x, y, 1, tileH);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Procedural Disco Ball Roughness Map (Glass Tiles = Ultra-Smooth, Grout = Matte)
+function createDiscoRoughnessMap() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    const numCols = 80;
+    const numRows = 40;
+    const tileW = 1024 / numCols;
+    const tileH = 512 / numRows;
+
+    // Grout lines: high roughness (matte)
+    ctx.fillStyle = '#dddddd';
+    ctx.fillRect(0, 0, 1024, 512);
+
+    for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
+            const x = c * tileW;
+            const y = r * tileH;
+
+            // Mirror tile interior: ultra-smooth (roughness ~0.04)
+            ctx.fillStyle = '#0a0a0a';
+            ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Procedural Disco Ball Metalness Map (Glass Mirror = Pure Metalness, Grout = Non-Metal)
+function createDiscoMetalnessMap() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    const numCols = 80;
+    const numRows = 40;
+    const tileW = 1024 / numCols;
+    const tileH = 512 / numRows;
+
+    // Grout lines: low metalness
+    ctx.fillStyle = '#222222';
+    ctx.fillRect(0, 0, 1024, 512);
+
+    for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
+            const x = c * tileW;
+            const y = r * tileH;
+
+            // Mirror tile interior: pure 1.0 metalness for high-contrast reflections
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Procedural Disco Ball Mirror Tile Normal/Bump Texture
+function createDiscoTileTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Base dark grout seam color
+    ctx.fillStyle = '#141418';
+    ctx.fillRect(0, 0, 1024, 512);
+
+    const numRows = 40; // 40 vertical rings
+    const numCols = 80; // 80 horizontal facet columns
+    const tileW = 1024 / numCols;
+    const tileH = 512 / numRows;
+
+    for (let r = 0; r < numRows; r++) {
+        for (let c = 0; c < numCols; c++) {
+            const x = c * tileW;
+            const y = r * tileH;
+
+            // Deterministic micro-tilt brightness variation per mirror tile
+            const seed = Math.sin(r * 127.1 + c * 311.7) * 43758.5453123;
+            const rand = seed - Math.floor(seed);
+            const baseLum = Math.floor(190 + (rand - 0.5) * 75); // 150..225
+
+            // Tile body
+            ctx.fillStyle = `rgb(${baseLum}, ${baseLum}, ${baseLum})`;
+            ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
+
+            // Subtle top/left bevel highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            ctx.fillRect(x + 1, y + 1, tileW - 2, 1);
+            ctx.fillRect(x + 1, y + 1, 1, tileH - 2);
+
+            // Subtle bottom/right bevel shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fillRect(x + 1, y + tileH - 2, tileW - 2, 1);
+            ctx.fillRect(x + tileW - 2, y + 1, 1, tileH - 2);
+        }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Nightclub Equirectangular Environment Map for PMREM Reflections
+function createClubEnvironmentMap(renderer) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Deep nightclub ambient backdrop
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    bgGrad.addColorStop(0, '#020206');
+    bgGrad.addColorStop(0.25, '#060a18');
+    bgGrad.addColorStop(0.75, '#120318');
+    bgGrad.addColorStop(1, '#010104');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // High-contrast neon spotlights, lasers, stage washes
+    const neonSources = [
+        { x: 180, y: 130, r: 90, col: '#00ffff' },
+        { x: 820, y: 130, r: 90, col: '#ff007f' },
+        { x: 512, y: 80, r: 110, col: '#0066ff' },
+        { x: 340, y: 220, r: 75, col: '#ff0055' },
+        { x: 680, y: 220, r: 75, col: '#00ffcc' },
+        { x: 100, y: 280, r: 60, col: '#ffea00' },
+        { x: 920, y: 280, r: 60, col: '#aa00ff' },
+        { x: 512, y: 290, r: 130, col: '#ffffff' },
+        { x: 260, y: 380, r: 50, col: '#00ffff' },
+        { x: 760, y: 380, r: 50, col: '#ff00aa' }
+    ];
+
+    neonSources.forEach(s => {
+        const grad = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, s.r);
+        grad.addColorStop(0, '#ffffff');
+        grad.addColorStop(0.18, s.col);
+        grad.addColorStop(0.6, s.col + '55');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Overhead truss neon light strip bars
+    ctx.strokeStyle = '#00ffff';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 50); ctx.lineTo(1024, 50);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#ff007f';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 110); ctx.lineTo(1024, 110);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#0044ff';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 170); ctx.lineTo(1024, 170);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.needsUpdate = true;
+
+    const pmremGen = new THREE.PMREMGenerator(renderer);
+    const rt = pmremGen.fromEquirectangular(tex);
+    tex.dispose();
+    pmremGen.dispose();
+    return rt.texture;
+}
+
+// Offscreen Volumetric Laser/Spotlight Gradient Beam Texture (Smooth longitudinal & lateral falloff)
+function createVolumetricBeamTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Longitudinal gradient: Brightest at source (Y=0), smoothly fading out into the haze (Y=512)
+    const vGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    vGrad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+    vGrad.addColorStop(0.06, 'rgba(255, 255, 255, 0.9)');
+    vGrad.addColorStop(0.20, 'rgba(255, 255, 255, 0.6)');
+    vGrad.addColorStop(0.50, 'rgba(255, 255, 255, 0.22)');
+    vGrad.addColorStop(0.80, 'rgba(255, 255, 255, 0.05)');
+    vGrad.addColorStop(1.0, 'rgba(255, 255, 255, 0.0)');
+    ctx.fillStyle = vGrad;
+    ctx.fillRect(0, 0, 128, 512);
+
+    // Lateral cosine feathering: Soft edge falloff to eliminate polygonal edges
+    const hGrad = ctx.createLinearGradient(0, 0, 128, 0);
+    hGrad.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
+    hGrad.addColorStop(0.22, 'rgba(255, 255, 255, 0.65)');
+    hGrad.addColorStop(0.5, 'rgba(255, 255, 255, 1.0)');
+    hGrad.addColorStop(0.78, 'rgba(255, 255, 255, 0.65)');
+    hGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+
+    ctx.globalCompositeOperation = 'multiply';
+    ctx.fillStyle = hGrad;
+    ctx.fillRect(0, 0, 128, 512);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Floor Tile Grid Texture for Dark Reflective Nightclub Dancefloor
+function createFloorTileTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#06060c';
+    ctx.fillRect(0, 0, 512, 512);
+
+    const gridSize = 64;
+    ctx.strokeStyle = '#12121e';
+    ctx.lineWidth = 2;
+
+    for (let i = 0; i <= 512; i += gridSize) {
+        ctx.beginPath();
+        ctx.moveTo(i, 0); ctx.lineTo(i, 512);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0, i); ctx.lineTo(512, i);
+        ctx.stroke();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(6, 6);
+    return tex;
+}
+
 export function createVFXScene(container) {
     const roundStarTex = createRoundStarTexture();
     const starburstTex = createStarburstTexture();
+    const anamorphicFlareTex = createAnamorphicFlareTexture();
+    let pinspotShineEnvelope = 0.0;
 
     // 1. Scene, Camera, WebGL Renderer
     const scene = new THREE.Scene();
@@ -872,14 +1668,14 @@ export function createVFXScene(container) {
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
 
-    // 2. Post-Processing Chain
+    // 2. Post-Processing Chain (Crisp Dark Nightclub Contrast)
     const renderScene = new RenderPass(scene, camera);
 
     const bloomPass = new UnrealBloomPass(
         new THREE.Vector2(window.innerWidth, window.innerHeight),
-        0.5,
-        0.35,
-        0.45
+        0.32, // Controlled bloom strength (no whiteout)
+        0.65, // Bloom radius
+        0.65  // High threshold so only specular glints and beam cores bloom
     );
 
     const nightclubPass = new ShaderPass(NightclubPostFX);
@@ -891,19 +1687,19 @@ export function createVFXScene(container) {
     composer.addPass(nightclubPass);
     composer.addPass(outputPass);
 
-    // 3. Shared Global Lights
-    const ambientLight = new THREE.AmbientLight(0x0a0a14, 1.4);
+    // 3. Shared Global Lights (Moody Dark Atmosphere)
+    const ambientLight = new THREE.AmbientLight(0x06060c, 0.35);
     scene.add(ambientLight);
 
-    const dirKeyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    const dirKeyLight = new THREE.DirectionalLight(0xffffff, 0.5);
     dirKeyLight.position.set(0, 15, 12);
     scene.add(dirKeyLight);
 
-    const lightCyan = new THREE.PointLight(0x00ffff, 2.8, 45);
+    const lightCyan = new THREE.PointLight(0x00ffff, 0.8, 45);
     lightCyan.position.set(6, 6, 6);
     scene.add(lightCyan);
 
-    const lightMagenta = new THREE.PointLight(0xff007f, 2.8, 45);
+    const lightMagenta = new THREE.PointLight(0xff007f, 0.8, 45);
     lightMagenta.position.set(-6, -6, 6);
     scene.add(lightMagenta);
 
@@ -946,13 +1742,15 @@ export function createVFXScene(container) {
         map: shieldTexture,
         transparent: true,
         opacity: 0.85,
+        depthTest: false,
         depthWrite: false,
         fog: false
     });
     logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 11), shieldMat);
+    logoShieldMesh.renderOrder = 9998;
     logoGroup.add(logoShieldMesh);
 
-    // Logo Mesh with High-Clarity Shader
+    // Logo Mesh with High-Clarity Shader (Renders in front of all 3D scene objects)
     const logoGeo = new THREE.PlaneGeometry(16, 9);
     const logoShaderMat = new THREE.ShaderMaterial({
         uniforms: {
@@ -967,19 +1765,21 @@ export function createVFXScene(container) {
         vertexShader: HighClarityLogoShader.vertexShader,
         fragmentShader: HighClarityLogoShader.fragmentShader,
         transparent: true,
+        depthTest: false,
         depthWrite: false,
         fog: false,
         side: THREE.DoubleSide
     });
 
     logoMesh = new THREE.Mesh(logoGeo, logoShaderMat);
+    logoMesh.renderOrder = 9999;
     logoGroup.add(logoMesh);
     applyLogoPlacement();
 
     function applyLogoPlacement() {
         if (!logoMesh) return;
 
-        let baseZ = 3.5;
+        let baseZ = 6.8;
         let baseW = 13.5 * logoBaseScale;
         let posX = 0, posY = 0;
 
@@ -989,19 +1789,31 @@ export function createVFXScene(container) {
             logoShaderMat.blending = THREE.AdditiveBlending;
             if (logoShieldMesh) logoShieldMesh.visible = false;
         } else if (logoMode === 'overlay') {
-            baseZ = 11;
+            baseZ = 12.0;
             baseW = 6.5 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         } else {
-            baseZ = 3.5;
+            // Hologram (3D Front) - Guaranteed in front of disco ball (Z=5.2) and visualizers
+            baseZ = 6.8;
             baseW = 13.5 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         }
 
-        // Calculate 6-way Position Offsets
-        const scaleFactor = (logoPosition === 'center') ? 1.0 : (logoPosition === 'top-quarter' ? 0.85 : 0.65);
+        // Calculate Position Scale Factors
+        let scaleFactor = 1.0;
+        if (logoPosition === 'center') {
+            scaleFactor = 1.0;
+        } else if (logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
+            scaleFactor = 0.85;
+        } else if (logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
+            scaleFactor = 0.75;
+        } else {
+            // Corners: top-left, top-right, bottom-left, bottom-right
+            scaleFactor = 0.65;
+        }
+
         const w = baseW * scaleFactor;
         const h = (baseW / logoAspectRatio) * scaleFactor;
 
@@ -1018,9 +1830,18 @@ export function createVFXScene(container) {
         } else if (logoPosition === 'bottom-right') {
             posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
             posY = (logoMode === 'overlay' ? -1.25 : (logoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (logoPosition === 'top-quarter') {
+        } else if (logoPosition === 'center-top' || logoPosition === 'top-center') {
+            posX = 0;
+            posY = (logoMode === 'overlay' ? 1.35 : (logoMode === 'backdrop' ? 9.5 : 4.0));
+        } else if (logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter') {
             posX = 0;
             posY = (logoMode === 'overlay' ? 0.85 : (logoMode === 'backdrop' ? 7.0 : 2.5));
+        } else if (logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
+            posX = 0;
+            posY = (logoMode === 'overlay' ? -0.85 : (logoMode === 'backdrop' ? -7.0 : -2.5));
+        } else if (logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
+            posX = 0;
+            posY = (logoMode === 'overlay' ? -1.35 : (logoMode === 'backdrop' ? -9.5 : -4.0));
         } else {
             // Center
             posX = 0;
@@ -1103,7 +1924,7 @@ export function createVFXScene(container) {
     }
 
     // =========================================================================
-    // CATEGORIZED VFX BANK: 16 SCENES
+    // CATEGORIZED VFX BANK: 17 SCENES
     // =========================================================================
     const fxRoots = [];
     let currentFXIndex = 0;
@@ -1286,49 +2107,101 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 4: 🪩 SPINNING DISCO BALL [NEW]
+    // FX 4: 🪩 AUTHENTIC NIGHTCLUB MIRROR BALL RIG [TOP PINSPOTS & FLOOR REFLECTIONS]
     // -------------------------------------------------------------------------
     const gDiscoBall = createFXGroup();
 
-    // Chrome Faceted Disco Ball Sphere
-    const dBallGeo = new THREE.IcosahedronGeometry(2.8, 3);
-    const dBallMat = new THREE.MeshStandardMaterial({
-        color: 0xcccccc,
-        roughness: 0.08,
-        metalness: 0.96,
-        flatShading: true
+    // 1. Procedural Maps & PMREM Nightclub Environment
+    const discoNormalTex = createDiscoNormalMap();
+    const discoRoughnessTex = createDiscoRoughnessMap();
+    const discoMetalnessTex = createDiscoMetalnessMap();
+    const discoTileTex = createDiscoTileTexture();
+    const clubEnvMap = createClubEnvironmentMap(renderer);
+    const volumetricBeamTex = createVolumetricBeamTexture();
+    const floorTileTex = createFloorTileTexture();
+
+    // 2. Big Faceted Chrome Mirror Ball (MeshPhysicalMaterial with sharp glass facets)
+    const dBallGeo = new THREE.SphereGeometry(5.2, 96, 48);
+    const dBallMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffffff,
+        metalness: 1.0,
+        roughness: 0.04, // Mirror-smooth glass facets
+        normalMap: discoNormalTex,
+        normalScale: new THREE.Vector2(0.85, 0.85),
+        roughnessMap: discoRoughnessTex,
+        metalnessMap: discoMetalnessTex,
+        bumpMap: discoTileTex,
+        bumpScale: 0.03,
+        envMap: clubEnvMap,
+        envMapIntensity: 3.0,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.01,
+        reflectivity: 1.0
     });
     const dBallMesh = new THREE.Mesh(dBallGeo, dBallMat);
-    dBallMesh.position.set(0, 2.8, -2.0);
+    dBallMesh.position.set(0, 0.0, 0.0);
     gDiscoBall.add(dBallMesh);
 
-    // Overhead mount rod
-    const rodMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 8, 8), new THREE.MeshBasicMaterial({ color: 0x333344 }));
-    rodMesh.position.set(0, 7.0, -2.0);
-    gDiscoBall.add(rodMesh);
+    // Dedicated Multi-Directional Vibrant Stage Lights
+    const dBallKeyLight = new THREE.DirectionalLight(0xffffff, 1.8);
+    dBallKeyLight.position.set(4.0, 7.0, 8.0);
+    dBallKeyLight.target = dBallMesh;
+    gDiscoBall.add(dBallKeyLight);
 
-    // 1,600 Rotating Mirror Glints & Light Flares
-    const glintCount = 1600;
+    const dBallCyanLight = new THREE.DirectionalLight(0x00ffff, 1.4);
+    dBallCyanLight.position.set(-8.0, 3.0, 4.0);
+    dBallCyanLight.target = dBallMesh;
+    gDiscoBall.add(dBallCyanLight);
+
+    const dBallMagentaLight = new THREE.DirectionalLight(0xff007f, 1.4);
+    dBallMagentaLight.position.set(8.0, -2.0, 4.0);
+    dBallMagentaLight.target = dBallMesh;
+    gDiscoBall.add(dBallMagentaLight);
+
+    const dBallRimLight = new THREE.DirectionalLight(0x4488ff, 1.0);
+    dBallRimLight.position.set(0.0, -6.0, -5.0);
+    dBallRimLight.target = dBallMesh;
+    gDiscoBall.add(dBallRimLight);
+
+    const dBallPointCyan = new THREE.PointLight(0x00ffff, 2.5, 22.0, 1.2);
+    dBallPointCyan.position.set(-7.0, 4.0, 6.0);
+    gDiscoBall.add(dBallPointCyan);
+
+    const dBallPointMagenta = new THREE.PointLight(0xff007f, 2.5, 22.0, 1.2);
+    dBallPointMagenta.position.set(7.0, 4.0, 6.0);
+    gDiscoBall.add(dBallPointMagenta);
+
+    // 3. 1,200 Floating 3D Specular Starburst Glints & Sparkles
+    const glintCount = 1200;
     const glintGeo = new THREE.BufferGeometry();
     const glintPos = new Float32Array(glintCount * 3);
     const glintCol = new Float32Array(glintCount * 3);
-    const glintBaseRads = new Float32Array(glintCount);
     const glintThetas = new Float32Array(glintCount);
     const glintPhis = new Float32Array(glintCount);
+    const glintBaseRads = new Float32Array(glintCount);
 
-    const gHues = [new THREE.Color(0xffffff), new THREE.Color(0x00ffff), new THREE.Color(0xff007f), new THREE.Color(0xffea00), new THREE.Color(0x00ff88)];
+    const gHues = [
+        new THREE.Color(0xffffff),
+        new THREE.Color(0x88ffff),
+        new THREE.Color(0xff88cc),
+        new THREE.Color(0xaaccff),
+        new THREE.Color(0xffea88),
+        new THREE.Color(0x00ffff),
+        new THREE.Color(0xff007f)
+    ];
+
     for (let i = 0; i < glintCount; i++) {
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos((Math.random() * 2) - 1);
-        const r = 4.0 + Math.random() * 22.0;
+        const r = 5.8 + Math.random() * 22.0;
 
         glintThetas[i] = theta;
         glintPhis[i] = phi;
         glintBaseRads[i] = r;
 
         glintPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        glintPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta) + 2.8;
-        glintPos[i * 3 + 2] = r * Math.cos(phi) - 2.0;
+        glintPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        glintPos[i * 3 + 2] = r * Math.cos(phi);
 
         const c = gHues[i % gHues.length];
         glintCol[i * 3] = c.r; glintCol[i * 3 + 1] = c.g; glintCol[i * 3 + 2] = c.b;
@@ -1337,7 +2210,7 @@ export function createVFXScene(container) {
     glintGeo.setAttribute('color', new THREE.BufferAttribute(glintCol, 3));
     const glintMat = new THREE.PointsMaterial({
         size: 0.35,
-        map: roundStarTex,
+        map: starburstTex,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         transparent: true,
@@ -1347,10 +2220,11 @@ export function createVFXScene(container) {
     gDiscoBall.add(glintSystem);
 
     // -------------------------------------------------------------------------
-    // FX 5: 🕺 70S DISCO DANCEFLOOR & VINTAGE LIGHTS [NEW]
+    // FX 5: 🕺 70S DISCO DANCEFLOOR (CLEAN SATURDAY NIGHT FEVER FLOOR)
     // -------------------------------------------------------------------------
     const gDiscoFloor = createFXGroup();
 
+    // 1. Saturday Night Fever Illuminated Dancefloor
     const dfMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
@@ -1366,21 +2240,6 @@ export function createVFXScene(container) {
     dfMesh.rotation.x = -Math.PI / 2.3;
     dfMesh.position.set(0, -6.0, -8.0);
     gDiscoFloor.add(dfMesh);
-
-    // Vintage PAR can wash beams
-    const parBeams = [];
-    const parHues = [0xff0055, 0x00ffff, 0xffaa00, 0x9900ff];
-    for (let p = 0; p < 4; p++) {
-        const px = (p - 1.5) * 8.0;
-        const pBeam = new THREE.Mesh(
-            new THREE.ConeGeometry(3.5, 18, 16, 1, true),
-            new THREE.MeshBasicMaterial({ color: parHues[p], transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, side: THREE.DoubleSide })
-        );
-        pBeam.position.set(px, 10.0, -10.0);
-        pBeam.rotation.x = Math.PI / 1.35;
-        gDiscoFloor.add(pBeam);
-        parBeams.push({ mesh: pBeam, baseAngle: p });
-    }
 
     // -------------------------------------------------------------------------
     // FX 6: ⚡ DUAL-BANK VOLUMETRIC SEARCHLIGHTS
@@ -1856,6 +2715,186 @@ export function createVFXScene(container) {
     gPlasmaNebula.add(vortexStarSystem);
 
     // -------------------------------------------------------------------------
+    // FX 16: ✨ HYPER PARTICLE STREAM (GPU CURL NOISE & MULTI-STRAND BÉZIER FLOW)
+    // Inspired by Szenia Zadvornykh (@zadvorsky) with real-time sound reactivity
+    // -------------------------------------------------------------------------
+    const gParticleStream = createFXGroup();
+
+    const streamParticleCount = 48000;
+    const streamGeo = new THREE.BufferGeometry();
+
+    const streamPos = new Float32Array(streamParticleCount * 3); // Overridden in vertex shader
+    const streamOffset = new Float32Array(streamParticleCount * 3);
+    const streamProgress = new Float32Array(streamParticleCount);
+    const streamSpeed = new Float32Array(streamParticleCount);
+    const streamStrand = new Float32Array(streamParticleCount);
+    const streamSize = new Float32Array(streamParticleCount);
+    const streamColor = new Float32Array(streamParticleCount * 3);
+    const streamSeed = new Float32Array(streamParticleCount * 2);
+
+    const pColCyan = new THREE.Color(0x00f3ff);
+    const pColPurple = new THREE.Color(0x8a2be2);
+    const pColMagenta = new THREE.Color(0xff007f);
+    const pColGold = new THREE.Color(0xffb700);
+    const pColWhite = new THREE.Color(0xffffff);
+
+    for (let i = 0; i < streamParticleCount; i++) {
+        // Strand ID: 0 (core wave), 1 (clockwise helix), 2 (counter helix), 3 (orbital wing), 4 (hyper dart)
+        const strand = i % 5;
+        streamStrand[i] = strand;
+
+        // Progress phase along stream [0, 1)
+        streamProgress[i] = Math.random();
+
+        // Speed variation per particle
+        streamSpeed[i] = 0.75 + Math.random() * 0.75;
+
+        // Radial offset / Gaussian dispersion
+        const u1 = Math.max(0.0001, Math.random());
+        const u2 = Math.random();
+        const rad = Math.sqrt(-2.0 * Math.log(u1)) * (strand === 4 ? 0.35 : (strand === 0 ? 0.95 : 1.45));
+        const theta = u2 * Math.PI * 2.0;
+
+        streamOffset[i * 3] = Math.cos(theta) * rad;
+        streamOffset[i * 3 + 1] = Math.sin(theta) * rad;
+        streamOffset[i * 3 + 2] = (Math.random() - 0.5) * 1.5;
+
+        // Particle base size
+        const isSpark = Math.random() < 0.08;
+        streamSize[i] = isSpark ? (65.0 + Math.random() * 50.0) : (18.0 + Math.random() * 32.0);
+
+        // Individual base color gradient
+        const colLerp = Math.random();
+        let c;
+        if (strand === 0) {
+            c = pColCyan.clone().lerp(pColPurple, colLerp);
+        } else if (strand === 1) {
+            c = pColPurple.clone().lerp(pColMagenta, colLerp);
+        } else if (strand === 2) {
+            c = pColMagenta.clone().lerp(pColCyan, colLerp);
+        } else if (strand === 3) {
+            c = pColGold.clone().lerp(pColMagenta, colLerp);
+        } else {
+            c = isSpark ? pColWhite : pColCyan.clone().lerp(pColGold, colLerp);
+        }
+
+        streamColor[i * 3] = c.r;
+        streamColor[i * 3 + 1] = c.g;
+        streamColor[i * 3 + 2] = c.b;
+
+        // Random seeds for shimmer and curl variations
+        streamSeed[i * 2] = Math.random();
+        streamSeed[i * 2 + 1] = Math.random();
+    }
+
+    streamGeo.setAttribute('position', new THREE.BufferAttribute(streamPos, 3));
+    streamGeo.setAttribute('aOffset', new THREE.BufferAttribute(streamOffset, 3));
+    streamGeo.setAttribute('aProgress', new THREE.BufferAttribute(streamProgress, 1));
+    streamGeo.setAttribute('aSpeed', new THREE.BufferAttribute(streamSpeed, 1));
+    streamGeo.setAttribute('aStrand', new THREE.BufferAttribute(streamStrand, 1));
+    streamGeo.setAttribute('aSize', new THREE.BufferAttribute(streamSize, 1));
+    streamGeo.setAttribute('aColor', new THREE.BufferAttribute(streamColor, 3));
+    streamGeo.setAttribute('aSeed', new THREE.BufferAttribute(streamSeed, 2));
+
+    const streamMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uFlowProgress: { value: 0.0 },
+            uCurveTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 },
+            uTreble: { value: 0.0 },
+            uColorCycle: { value: 0.0 }
+        },
+        vertexShader: ParticleStreamShader.vertexShader,
+        fragmentShader: ParticleStreamShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+
+    const streamPoints = new THREE.Points(streamGeo, streamMat);
+    gParticleStream.add(streamPoints);
+
+    // Orbiting Pulsar Energy Flares
+    const pulsarCount = 3;
+    const pulsarSprites = [];
+    for (let p = 0; p < pulsarCount; p++) {
+        const pulsarMat = new THREE.SpriteMaterial({
+            map: starburstTex,
+            color: p === 0 ? 0x00ffff : (p === 1 ? 0xff00ff : 0xffaa00),
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            depthWrite: false
+        });
+        const pulsarSprite = new THREE.Sprite(pulsarMat);
+        pulsarSprite.scale.set(6.0, 6.0, 1.0);
+        gParticleStream.add(pulsarSprite);
+        pulsarSprites.push({
+            sprite: pulsarSprite,
+            strand: p,
+            progress: p * 0.33,
+            speed: 0.040 + p * 0.015
+        });
+    }
+
+    // Ambient floating star dust
+    const streamDustCount = 1800;
+    const streamDustGeo = new THREE.BufferGeometry();
+    const streamDustPos = new Float32Array(streamDustCount * 3);
+    const streamDustCol = new Float32Array(streamDustCount * 3);
+    for (let d = 0; d < streamDustCount; d++) {
+        streamDustPos[d * 3] = (Math.random() - 0.5) * 60;
+        streamDustPos[d * 3 + 1] = (Math.random() - 0.5) * 40;
+        streamDustPos[d * 3 + 2] = -50 + Math.random() * 55;
+
+        const dCol = Math.random() > 0.5 ? pColCyan : pColMagenta;
+        streamDustCol[d * 3] = dCol.r;
+        streamDustCol[d * 3 + 1] = dCol.g;
+        streamDustCol[d * 3 + 2] = dCol.b;
+    }
+    streamDustGeo.setAttribute('position', new THREE.BufferAttribute(streamDustPos, 3));
+    streamDustGeo.setAttribute('color', new THREE.BufferAttribute(streamDustCol, 3));
+    const streamDustMat = new THREE.PointsMaterial({
+        size: 0.40,
+        map: roundStarTex,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false,
+        opacity: 0.55
+    });
+    const streamDustSystem = new THREE.Points(streamDustGeo, streamDustMat);
+    gParticleStream.add(streamDustSystem);
+
+    function getStreamCurvePointJS(t, strand, curveTime) {
+        const PI = Math.PI;
+        const z = -55.0 + t * 68.0;
+        let x = 0, y = 0;
+        if (strand === 0) {
+            const wave1 = Math.sin(t * PI * 2.0 + curveTime * 0.15);
+            const wave2 = Math.cos(t * PI * 4.0 - curveTime * 0.10);
+            x = wave1 * 8.5 + Math.sin(t * PI * 5.0) * 2.0;
+            y = wave2 * 5.0 + Math.cos(t * PI * 2.5) * 1.5;
+        } else if (strand === 1) {
+            const theta = t * PI * 10.0 + curveTime * 0.25;
+            const r = 4.5 + Math.sin(t * PI * 3.0 + curveTime * 0.12) * 1.5;
+            const cx = Math.sin(t * PI * 2.0 + curveTime * 0.15) * 8.5;
+            const cy = Math.cos(t * PI * 4.0 - curveTime * 0.10) * 5.0;
+            x = cx + Math.cos(theta) * r;
+            y = cy + Math.sin(theta) * r;
+        } else {
+            const theta = -t * PI * 10.0 - curveTime * 0.25 + Math.PI;
+            const r = 4.5 + Math.cos(t * PI * 3.0 + curveTime * 0.12) * 1.5;
+            const cx = Math.sin(t * PI * 2.0 + curveTime * 0.15) * 8.5;
+            const cy = Math.cos(t * PI * 4.0 - curveTime * 0.10) * 5.0;
+            x = cx + Math.cos(theta) * r;
+            y = cy + Math.sin(theta) * r;
+        }
+        return { x, y, z };
+    }
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
@@ -1881,6 +2920,13 @@ export function createVFXScene(container) {
     let camRecoilX = 0.0;
     let camRecoilY = 0.0;
     let camRecoilZ = 0.0;
+
+    // Smooth state variables for Particle Stream (Silky smooth response)
+    let streamSmoothBass = 0.0;
+    let streamSmoothMid = 0.0;
+    let streamSmoothTreble = 0.0;
+    let streamFlowProgress = 0.0;
+    let streamCurveTime = 0.0;
 
     function switchFX(index) {
         if (index >= 0 && index < fxRoots.length) {
@@ -2069,31 +3115,43 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uBPM.value = currentBPM;
         }
         // ---------------------------------------------------------------------
-        // FX 4: 🪩 Spinning Disco Ball [NEW]
+        // FX 4: 🪩 Authentic Nightclub Mirror Ball Rig [Top Pinspots & Floor Reflections]
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 4) {
-            dBallMesh.rotation.y += speed * 0.8;
-            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.5) * 0.08;
+            // Audio-driven ball rotation speed & angular velocity
+            const ballSpinSpeed = (bps * 0.38 + (audio.energy || 0) * 0.45 + bassPop * 0.8) * speed;
+            dBallMesh.rotation.y += ballSpinSpeed * delta * 1.8;
+            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.6) * 0.03;
+            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.45) * 0.02;
 
-            // Swirl mirror glints across room
-            glintSystem.rotation.y += speed * 0.8;
-            glintSystem.rotation.x = Math.sin(elapsedTime * 0.4) * 0.12;
+            const bassVal = bassPop;
+            const midVal = audio.smoothedMid || 0;
 
-            const gScale = 1.0 + (bassPop * 0.25) + (transient * 0.3);
+            const isKick = audio.isOnset && (audio.bassImpact > 0.40 || bassPop > 0.50);
+            const pulse = isKick ? 1.0 : 0.0;
+
+            // Audio-reactive light pulses
+            dBallKeyLight.intensity = 1.8 + bassVal * 1.0 + pulse * 1.2;
+            dBallCyanLight.intensity = 1.4 + bassVal * 0.8 + midVal * 0.6;
+            dBallMagentaLight.intensity = 1.4 + bassVal * 0.8 + midVal * 0.6;
+            dBallPointCyan.intensity = (2.5 + bassVal * 4.0 + pulse * 5.0) * (bloomMultiplier + 0.5);
+            dBallPointMagenta.intensity = (2.5 + bassVal * 4.0 + pulse * 5.0) * (bloomMultiplier + 0.5);
+
+            // Orbiting 3D Specular Glints swirling around the big disco ball
+            glintSystem.position.set(0, 0, 0);
+            glintSystem.rotation.y += ballSpinSpeed * delta * 1.8;
+            glintSystem.rotation.x = Math.sin(elapsedTime * 0.4) * 0.05;
+            const gScale = 1.0 + (bassPop * 0.12) + (transient * 0.18);
             glintSystem.scale.setScalar(gScale);
+            glintMat.size = 0.35 * (1.0 + (bassPop * 0.35) + (transient * 0.30));
         }
         // ---------------------------------------------------------------------
-        // FX 5: 🕺 70s Disco Dancefloor & Vintage Lights [NEW]
+        // FX 5: 🕺 70s Disco Dancefloor (Clean Saturday Night Fever Floor)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 5) {
             dfMat.uniforms.uTime.value = elapsedTime;
             dfMat.uniforms.uBass.value = bassPop;
             dfMat.uniforms.uBPM.value = currentBPM;
-
-            parBeams.forEach((p, idx) => {
-                p.mesh.rotation.z = Math.sin(elapsedTime * 1.5 + idx) * 0.35;
-                p.mesh.rotation.y = Math.cos(elapsedTime * 1.2 + idx * 0.5) * 0.25;
-            });
         }
         // ---------------------------------------------------------------------
         // FX 6: ⚡ Dual-Bank Volumetric Searchlights
@@ -2283,6 +3341,45 @@ export function createVFXScene(container) {
             vortexStarGeo.attributes.position.needsUpdate = true;
             plasmaMesh.scale.setScalar(1.0 + (bassPop * 0.08) + (transient * 0.06));
         }
+        // ---------------------------------------------------------------------
+        // FX 16: ✨ Hyper Particle Stream (GPU Curl & Multi-Strand Spline Flow)
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 16) {
+            // Soft exponential smoothing for audio responsiveness (zero twitching)
+            const rawBass = (audio.smoothedBass || 0.0);
+            const rawMid = (audio.smoothedMid || 0.0);
+            const rawTreble = (audio.smoothedTreble || 0.0);
+
+            streamSmoothBass = THREE.MathUtils.lerp(streamSmoothBass, rawBass, 0.08);
+            streamSmoothMid = THREE.MathUtils.lerp(streamSmoothMid, rawMid, 0.08);
+            streamSmoothTreble = THREE.MathUtils.lerp(streamSmoothTreble, rawTreble, 0.08);
+
+            // Monotonic flow progress (slow, continuous, majestic)
+            streamFlowProgress += delta * (0.045 + streamSmoothBass * 0.035);
+            streamCurveTime += delta * 0.6;
+
+            streamMat.uniforms.uTime.value = elapsedTime;
+            streamMat.uniforms.uFlowProgress.value = streamFlowProgress;
+            streamMat.uniforms.uCurveTime.value = streamCurveTime;
+            streamMat.uniforms.uBass.value = streamSmoothBass;
+            streamMat.uniforms.uMid.value = streamSmoothMid;
+            streamMat.uniforms.uTreble.value = streamSmoothTreble;
+            streamMat.uniforms.uColorCycle.value = (elapsedTime * 0.015) % 1.0;
+
+            // Animate orbiting pulsar flares smoothly along stream strands
+            for (let p = 0; p < pulsarCount; p++) {
+                const ps = pulsarSprites[p];
+                ps.progress = (ps.progress + delta * (ps.speed + streamSmoothBass * 0.020)) % 1.0;
+                const pos = getStreamCurvePointJS(ps.progress, ps.strand, streamCurveTime);
+                ps.sprite.position.set(pos.x, pos.y, pos.z);
+                const targetScale = 5.0 + streamSmoothBass * 2.8;
+                ps.sprite.scale.x = THREE.MathUtils.lerp(ps.sprite.scale.x, targetScale, 0.12);
+                ps.sprite.scale.y = ps.sprite.scale.x;
+            }
+
+            // Serene ambient cosmic dust rotation
+            streamDustSystem.rotation.z = elapsedTime * 0.01;
+        }
 
         // 3. Subwoofer Spring-Damped Camera Recoil
         if (audio.isOnset) {
@@ -2298,14 +3395,15 @@ export function createVFXScene(container) {
         camera.position.y = THREE.MathUtils.lerp(camera.position.y, camRecoilY, 0.25);
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
-        // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch
-        const targetBloom = Math.min(1.4, (0.35 + (bassPop * 0.18) + (manualFlash * 0.6)) * bloomMultiplier);
+        // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
+        const fxBloomBoost = currentFXIndex === 4 ? (bassPop * 0.12 + transient * 0.10) : (bassPop * 0.18);
+        const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (transient > 0.7 ? 0.15 : 0.0) + (manualFlash * 0.5);
+        const targetAberration = (transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4);
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (transient > 0.85) ? (transient * 0.25) : 0.0;
+        const targetGlitch = (transient > 0.85) ? (transient * 0.20) : 0.0;
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -2319,11 +3417,11 @@ export function createVFXScene(container) {
 
         lightCyan.position.x = Math.sin(elapsedTime * 1.5) * 9;
         lightCyan.position.y = Math.cos(elapsedTime * 1.2) * 7;
-        lightCyan.intensity = Math.min(4.5, (1.8 + bassPop * 1.2) * (bloomMultiplier + 0.5));
+        lightCyan.intensity = Math.min(1.5, (0.7 + bassPop * 0.5) * (bloomMultiplier + 0.5));
 
         lightMagenta.position.x = -Math.sin(elapsedTime * 1.3) * 9;
         lightMagenta.position.y = -Math.cos(elapsedTime * 1.1) * 7;
-        lightMagenta.intensity = Math.min(4.5, (1.8 + (audio.smoothedMid || 0) * 1.2) * (bloomMultiplier + 0.5));
+        lightMagenta.intensity = Math.min(1.5, (0.7 + (audio.smoothedMid || 0) * 0.5) * (bloomMultiplier + 0.5));
 
         composer.render();
     }
