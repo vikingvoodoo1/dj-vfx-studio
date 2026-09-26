@@ -2545,7 +2545,6 @@ export function createVFXScene(container) {
     });
     logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 11), shieldMat);
     logoShieldMesh.renderOrder = 9998;
-    logoGroup.add(logoShieldMesh);
 
     // Logo Mesh with High-Clarity Shader (Renders in front of all 3D scene objects)
     const logoGeo = new THREE.PlaneGeometry(16, 9);
@@ -2570,7 +2569,12 @@ export function createVFXScene(container) {
 
     logoMesh = new THREE.Mesh(logoGeo, logoShaderMat);
     logoMesh.renderOrder = 9999;
-    logoGroup.add(logoMesh);
+
+    const logoPivot = new THREE.Group();
+    logoGroup.add(logoPivot);
+    logoPivot.add(logoShieldMesh);
+    logoPivot.add(logoMesh);
+
     applyLogoPlacement();
 
     function applyLogoPlacement() {
@@ -2650,14 +2654,16 @@ export function createVFXScene(container) {
         currentLogoBaseZ = baseZ;
         currentLogoScaleFactor = scaleFactor;
 
-        logoMesh.position.set(posX, posY, baseZ);
+        logoPivot.position.set(posX, posY, baseZ);
+        logoPivot.quaternion.copy(camera.quaternion);
+
+        logoMesh.position.set(0, 0, 0);
         logoMesh.scale.set(w / 16, h / 9, 1);
         logoMesh.rotation.order = 'YXZ';
-        logoMesh.rotation.x = 0;
-        logoMesh.rotation.z = 0;
+        logoMesh.rotation.set(0, 0, 0);
 
         if (logoShieldMesh && logoMode !== 'backdrop') {
-            logoShieldMesh.position.set(posX, posY, baseZ - 0.25);
+            logoShieldMesh.position.set(0, 0, -0.25);
             logoShieldMesh.rotation.set(0, 0, 0);
             logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
         }
@@ -3867,21 +3873,22 @@ export function createVFXScene(container) {
             const hBase = (wBase / logoAspectRatio);
             logoMesh.scale.set(wBase / 16, hBase / 9, 1);
 
-            // Anchor strictly to current layout coordinates (perfectly static, no vertical bobbing)
-            logoMesh.position.x = currentLogoPosX;
-            logoMesh.position.y = currentLogoPosY;
-            logoMesh.position.z = currentLogoBaseZ;
+            // Anchor pivot strictly to current layout coordinates & camera orientation
+            logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+            logoPivot.quaternion.copy(camera.quaternion);
 
+            // Shield stays stationary flat directly behind the logo
             if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
-                logoShieldMesh.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ - 0.25);
-                logoShieldMesh.rotation.set(0, 0, 0); // Strictly flat and stationary behind logo
+                logoShieldMesh.position.set(0, 0, -0.25);
+                logoShieldMesh.rotation.set(0, 0, 0);
             }
 
-            // Zero out any pitch or roll to guarantee 100% true vertical spindle rotation
+            // Pure horizontal rotation around screen vertical Y-axis
+            logoMesh.position.set(0, 0, 0);
+            logoMesh.rotation.order = 'YXZ';
             logoMesh.rotation.x = 0;
             logoMesh.rotation.z = 0;
 
-            // Pure horizontal 3D rotation around center Y-axis with 0 wobble
             if (logoSpinEnabled) {
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 logoMesh.rotation.y = logoSpinAngle;
