@@ -1350,6 +1350,53 @@ const RetroArcadeShader = {
             return max(ring, rays);
         }
 
+        // Electric Alien Zap, Lightning Arcs & Blast Effect
+        float drawAlienZap(vec2 uv, vec2 center, float age, float uTime) {
+            if (age < 0.0 || age > 1.0) return 0.0;
+            vec2 p = uv - center;
+            float r = length(p);
+            
+            // Expanding electric shockwave ring with lightning jitter
+            float jag = sin(atan(p.y, p.x) * 12.0 + uTime * 35.0) * 0.14;
+            float ring = smoothstep(0.20, 0.0, abs(r - (age * 2.6 + jag))) * (1.0 - age);
+            
+            // 8-Way radial electric lightning burst rays
+            float angle = atan(p.y, p.x);
+            float rays = step(0.62, sin(angle * 8.0 + uTime * 28.0)) * smoothstep(age * 3.0, 0.0, r) * (1.0 - age);
+            
+            // High-voltage electric crackles / sparks
+            float sparkHash = fract(sin(dot(floor(p * 9.0), vec2(17.3, 53.9)) + uTime * 45.0) * 43758.5453);
+            float sparks = step(0.84, sparkHash) * smoothstep(1.8, 0.2, r) * (1.0 - age);
+            
+            return max(ring, max(rays, sparks));
+        }
+
+        // Alien Hit Timing in Mode 3 (0.0s to 10.0s)
+        float getAlienHitTime(int row, int colIdx) {
+            // Row 0 (Bottom row aliens - hit first as cannon sweeps)
+            if (row == 0) {
+                if (colIdx == 1) return 1.0;
+                if (colIdx == 2) return 2.0;
+                if (colIdx == 0) return 3.1;
+                if (colIdx == -1) return 4.2;
+                if (colIdx == -2) return 5.3;
+                if (colIdx == 3) return 6.6;
+                if (colIdx == -3) return 7.8;
+            }
+            // Row 1 (Middle row aliens - hit once bottom row opens up)
+            else if (row == 1) {
+                if (colIdx == -1) return 6.0;
+                if (colIdx == 0) return 7.4;
+                if (colIdx == 1) return 8.5;
+                if (colIdx == 2) return 9.1;
+            }
+            // Row 2 (Top row boss alien)
+            else if (row == 2) {
+                if (colIdx == 0) return 9.4;
+            }
+            return 999.0;
+        }
+
         // Parametric perimeter position calculator (Bottom -> Right -> Top -> Left)
         void getPerimeterTransform(float s, out vec2 pos, out float angle, out vec2 lookDir) {
             float norm = fract(s);
@@ -1543,7 +1590,7 @@ const RetroArcadeShader = {
                 col += vec3(0.1, 1.0, 0.3) * cannon * (1.3 + uBass * 0.5);
                 totalAlpha = max(totalAlpha, cannon);
 
-                // 2. Invader Armada (3 rows of crabs)
+                // 2. Invader Armada (3 rows of aliens with authentic Zap & Disappear on laser hits)
                 float marchOffset = sin(uTime * 2.0) * 4.0;
                 float alienFrame = step(0.5, fract(uTime * 2.0));
                 for (int row = 0; row < 3; row++) {
@@ -1551,10 +1598,40 @@ const RetroArcadeShader = {
                     for (int colIdx = -3; colIdx <= 3; colIdx++) {
                         float colX = float(colIdx) * 3.4 + marchOffset;
                         vec2 aPos = vec2(colX, rowY);
-                        float alien = drawAlien(uv, aPos, alienFrame);
-                        vec3 aCol = row == 0 ? vec3(0.0, 1.0, 0.9) : (row == 1 ? vec3(1.0, 0.2, 0.8) : vec3(1.0, 0.9, 0.1));
-                        col += aCol * alien * (1.1 + uBass * 0.6);
-                        totalAlpha = max(totalAlpha, alien);
+                        float hitT = getAlienHitTime(row, colIdx);
+
+                        // State 1: ALIVE & MARCHING
+                        if (modeTime < hitT) {
+                            float alien = drawAlien(uv, aPos, alienFrame);
+                            vec3 aCol = row == 0 ? vec3(0.0, 1.0, 0.9) : (row == 1 ? vec3(1.0, 0.2, 0.8) : vec3(1.0, 0.9, 0.1));
+                            col += aCol * alien * (1.1 + uBass * 0.6);
+                            totalAlpha = max(totalAlpha, alien);
+                        }
+                        // State 2: ZAP & DISINTEGRATE (Laser Impact!)
+                        else if (modeTime < hitT + 0.45) {
+                            float zapAge = (modeTime - hitT) / 0.45;
+                            
+                            // High-voltage position jitter
+                            vec2 zapJitter = vec2(sin(uTime * 120.0 + float(colIdx) * 7.0), cos(uTime * 105.0 + float(row) * 11.0)) * (0.35 * (1.0 - zapAge));
+                            
+                            // Strobe chromatic flash
+                            float zapStrobe = step(0.5, fract(uTime * 36.0));
+                            vec3 zapFlashCol = mix(vec3(1.0, 1.0, 1.0), vec3(0.0, 1.0, 1.0), zapStrobe);
+                            zapFlashCol = mix(zapFlashCol, vec3(1.0, 0.9, 0.2), fract(uTime * 18.0));
+                            
+                            // Disintegrating pixel dissolve
+                            float pixelDissolve = fract(sin(dot(floor((uv - aPos) * 12.0), vec2(12.9898, 78.233))) * 43758.5453);
+                            float zapAlien = drawAlien(uv + zapJitter, aPos, alienFrame) * step(zapAge * 1.15, pixelDissolve);
+                            
+                            // Electric lightning arcs & blast shockwave
+                            float zapShock = drawAlienZap(uv, aPos, zapAge, uTime);
+                            
+                            col += zapFlashCol * zapAlien * 2.8;
+                            col += vec3(0.2, 1.0, 0.9) * zapShock * 3.0;
+                            totalAlpha = max(totalAlpha, clamp(zapAlien + zapShock, 0.0, 1.0));
+                        }
+                        // State 3: DESTROYED & DISAPPEARED (Completely Gone!)
+                        // (Alien is not drawn, leaving empty space)
                     }
                 }
 
