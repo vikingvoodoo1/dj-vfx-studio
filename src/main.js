@@ -33,6 +33,11 @@ async function init() {
     const eqMid = document.getElementById('eq-mid');
     const eqTreble = document.getElementById('eq-treble');
 
+    const audioDeviceSelect = document.getElementById('audio-device-select');
+    const btnListenAudio = document.getElementById('btn-listen-audio');
+    const deckBadge1 = document.getElementById('deck-badge-1');
+    const deckBadge2 = document.getElementById('deck-badge-2');
+
     // Calibration Sliders
     const sliderGain = document.getElementById('slider-gain');
     const sliderSens = document.getElementById('slider-sens');
@@ -85,25 +90,76 @@ async function init() {
     let autoVJBeatCounter = 0;
     const TOTAL_FX = 17;
 
-    // 2. Audio & Media Activation on User Click
-    async function enableAudioAndMedia() {
+    // Helper to populate audio devices in select dropdown
+    function updateDeviceDropdown(devices, currentId) {
+        if (!audioDeviceSelect) return;
+        audioDeviceSelect.innerHTML = '';
+        
+        const defaultOpt = document.createElement('option');
+        defaultOpt.value = 'default';
+        defaultOpt.textContent = 'Default System / Deck Input';
+        audioDeviceSelect.appendChild(defaultOpt);
+
+        devices.forEach((dev, index) => {
+            const opt = document.createElement('option');
+            opt.value = dev.deviceId;
+            opt.textContent = dev.label || `Audio Interface ${index + 1} (${dev.deviceId.slice(0, 8)}...)`;
+            if (dev.deviceId === currentId) opt.selected = true;
+            audioDeviceSelect.appendChild(opt);
+        });
+
+        if (currentId && currentId !== 'default') {
+            audioDeviceSelect.value = currentId;
+        }
+    }
+
+    // 2. Audio & Media Activation on User Click or Selection
+    async function enableAudioAndMedia(selectedDeviceId = 'default') {
         vfx.playLogoVideo();
 
         if (!audioProcessor) {
-            audioProcessor = await setupAudio();
-            if (audioProcessor.isConnected()) {
-                audioStatus.innerHTML = `<span style="color:#00ffcc">● Live Mic Active</span>`;
-                hudStatus.textContent = 'LIVE REACTIVE';
-                hudStatus.style.borderColor = '#00ffcc';
-                hudStatus.style.color = '#00ffcc';
-            } else {
-                audioStatus.innerHTML = `<span style="color:#ffaa00">● Simulated Audio</span>`;
-                hudStatus.textContent = 'SIM ACTIVE';
-            }
+            audioProcessor = await setupAudio((devs, activeId) => {
+                updateDeviceDropdown(devs, activeId);
+            });
+
+            const devs = await audioProcessor.getDevices();
+            updateDeviceDropdown(devs, audioProcessor.getCurrentDevice().id);
 
             if (sliderGain) audioProcessor.setGain(sliderGain.value);
             if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
+        } else if (selectedDeviceId) {
+            await audioProcessor.switchDevice(selectedDeviceId);
         }
+
+        await audioProcessor.resume();
+
+        if (audioProcessor.isConnected()) {
+            const devInfo = audioProcessor.getCurrentDevice();
+            const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
+            audioStatus.innerHTML = `<span style="color:#00ffcc" title="${devInfo.label}">● ${cleanLabel}</span>`;
+            hudStatus.textContent = 'LIVE REACTIVE';
+            hudStatus.style.borderColor = '#00ffcc';
+            hudStatus.style.color = '#00ffcc';
+        } else {
+            audioStatus.innerHTML = `<span style="color:#ffaa00">● Simulated Audio</span>`;
+            hudStatus.textContent = 'SIM ACTIVE';
+        }
+    }
+
+    // Connect Audio on startup or first click
+    enableAudioAndMedia();
+
+    if (audioDeviceSelect) {
+        audioDeviceSelect.addEventListener('change', async (e) => {
+            await enableAudioAndMedia(e.target.value);
+        });
+    }
+
+    if (btnListenAudio) {
+        btnListenAudio.addEventListener('click', async () => {
+            const chosenId = audioDeviceSelect ? audioDeviceSelect.value : 'default';
+            await enableAudioAndMedia(chosenId);
+        });
     }
 
     window.addEventListener('click', (e) => {
@@ -443,9 +499,16 @@ async function init() {
     // 6. Connect to StageLinq Companion Bridge via WebSocket
     setupStageLinqClient({
         onBPM: (bpm, deck) => {
-            if (bpm) {
+            if (bpm && bpm > 40 && bpm < 300) {
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
+            }
+            if (deck === 1 && deckBadge1) {
+                deckBadge1.style.borderColor = '#00ffcc';
+                deckBadge1.style.color = '#00ffcc';
+            } else if (deck === 2 && deckBadge2) {
+                deckBadge2.style.borderColor = '#00ffcc';
+                deckBadge2.style.color = '#00ffcc';
             }
         },
         onBeat: (deck, beatCount) => {
@@ -454,6 +517,17 @@ async function init() {
             setTimeout(() => {
                 bpmVal.style.transform = 'scale(1.0)';
             }, 90);
+
+            const activeBadge = (deck === 2 && deckBadge2) ? deckBadge2 : deckBadge1;
+            if (activeBadge) {
+                activeBadge.style.background = 'rgba(0, 255, 204, 0.35)';
+                activeBadge.style.color = '#ffffff';
+                activeBadge.textContent = `DECK ${deck || 1} • [BEAT ${beatCount || 1}]`;
+                setTimeout(() => {
+                    activeBadge.style.background = 'rgba(255, 255, 255, 0.05)';
+                    activeBadge.style.color = '#00ffcc';
+                }, 120);
+            }
 
             // Auto-VJ Transition every 32 beats (8 bars)
             if (isAutoVJ) {
@@ -468,9 +542,17 @@ async function init() {
         onTrack: (trackData) => {
             if (trackData.title) trackTitle.textContent = trackData.title;
             if (trackData.artist) trackArtist.textContent = `${trackData.artist} • Deck ${trackData.deck || 1}`;
-            if (trackData.bpm) {
+            if (trackData.bpm && trackData.bpm > 40 && trackData.bpm < 300) {
                 bpmVal.textContent = Number(trackData.bpm).toFixed(1);
                 vfx.setBPM(trackData.bpm);
+            }
+
+            const deckNum = trackData.deck || 1;
+            const targetBadge = (deckNum == 2 && deckBadge2) ? deckBadge2 : deckBadge1;
+            if (targetBadge) {
+                targetBadge.style.borderColor = '#00ffcc';
+                targetBadge.style.color = '#00ffcc';
+                targetBadge.textContent = `DECK ${deckNum}: ${trackData.artist ? trackData.artist.slice(0, 10) : 'PLAYING'}`;
             }
 
             // Trigger fresh scene on track change if Auto-VJ active

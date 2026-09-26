@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "bridge": "node server/stagelinq-bridge.js",
     "build": "vite build",
     "preview": "vite preview"
   },

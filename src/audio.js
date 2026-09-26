@@ -1,12 +1,14 @@
 /**
  * High-Performance Calibrated Audio Engine & Transient Bass Beat Detector for DJ-VFX
- * Smooth, musical physics with inertia and gentle damping to eliminate twitchy jitter
+ * Supports Live Deck Audio Interfaces, USB Mixers, Line-In, Microphones & Virtual Cables
  */
-export async function setupAudio() {
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 512;
-    analyser.smoothingTimeConstant = 0.86; // Higher smoothing for calm, stable FFT
+export async function setupAudio(onDeviceListChange) {
+    let audioCtx = null;
+    let analyser = null;
+    let currentStream = null;
+    let currentSource = null;
+    let currentDeviceId = 'default';
+    let currentDeviceLabel = 'Default Audio Input';
 
     let isConnected = false;
 
@@ -16,29 +18,97 @@ export async function setupAudio() {
     let beatThreshold = 1.30;
     let decayRate = 0.91; // Smooth gradual decay
 
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                echoCancellation: false,
-                noiseSuppression: false,
-                autoGainControl: false
-            },
-            video: false
-        });
-        const source = audioCtx.createMediaStreamSource(stream);
-        source.connect(analyser);
-
-        if (audioCtx.state === 'suspended') {
-            await audioCtx.resume();
+    function initAudioContext() {
+        if (!audioCtx) {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            analyser = audioCtx.createAnalyser();
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = 0.86;
         }
-
-        isConnected = true;
-        console.log("[Audio Engine] High-performance microphone stream connected.");
-    } catch (err) {
-        console.warn("[Audio Engine] Mic access denied/unavailable. Running synthetic audio mode.", err);
     }
 
-    const dataArray = new Uint8Array(analyser.frequencyBinCount);
+    initAudioContext();
+
+    async function getAudioDevices() {
+        try {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) {
+                return [];
+            }
+            const devices = await navigator.mediaDevices.enumerateDevices();
+            return devices.filter(d => d.kind === 'audioinput');
+        } catch (err) {
+            console.warn('[Audio Engine] Could not enumerate devices:', err);
+            return [];
+        }
+    }
+
+    async function connectDevice(deviceId = 'default') {
+        initAudioContext();
+
+        // Disconnect existing stream if any
+        if (currentStream) {
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+        }
+        if (currentSource) {
+            currentSource.disconnect();
+            currentSource = null;
+        }
+
+        try {
+            const constraints = {
+                audio: {
+                    deviceId: deviceId && deviceId !== 'default' ? { exact: deviceId } : undefined,
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    channelCount: 2
+                },
+                video: false
+            };
+
+            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            currentStream = stream;
+            currentDeviceId = deviceId;
+
+            const audioTrack = stream.getAudioTracks()[0];
+            currentDeviceLabel = audioTrack?.label || (deviceId === 'default' ? 'Default Audio Input' : 'Deck Audio Line-In');
+
+            currentSource = audioCtx.createMediaStreamSource(stream);
+            currentSource.connect(analyser);
+
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            isConnected = true;
+            console.log(`[Audio Engine] 🎧 Connected live audio input: "${currentDeviceLabel}"`);
+
+            if (onDeviceListChange) {
+                const devs = await getAudioDevices();
+                onDeviceListChange(devs, currentDeviceId);
+            }
+
+            return { success: true, label: currentDeviceLabel };
+        } catch (err) {
+            console.warn(`[Audio Engine] Audio connect failed for [${deviceId}]:`, err);
+            isConnected = false;
+            return { success: false, error: err.message };
+        }
+    }
+
+    // Auto-attempt initial connection
+    await connectDevice('default');
+
+    // Listen for device plug/unplug events (e.g. DJ deck USB connected)
+    if (navigator.mediaDevices && navigator.mediaDevices.addEventListener) {
+        navigator.mediaDevices.addEventListener('devicechange', async () => {
+            const devs = await getAudioDevices();
+            if (onDeviceListChange) onDeviceListChange(devs, currentDeviceId);
+        });
+    }
+
+    const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 256);
     
     // Dynamic Transient Detection State
     const historyLength = 24;
@@ -50,13 +120,21 @@ export async function setupAudio() {
     let smoothedTreble = 0.0;
     let lastHitTime = 0;
 
-    // Synthetic generator state for calm, rhythmic club thuds
+    // Synthetic generator state for standby mode
     let synthBassLevel = 0.0;
     let synthImpulseLevel = 0.0;
     let lastSynthBeat = 0;
 
     return {
         isConnected: () => isConnected,
+        getCurrentDevice: () => ({ id: currentDeviceId, label: currentDeviceLabel }),
+        getDevices: getAudioDevices,
+        switchDevice: connectDevice,
+        resume: async () => {
+            if (audioCtx && audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+        },
 
         // Calibration Control Setters
         setGain: (val) => { gainMultiplier = Math.max(0.1, Math.min(4.0, Number(val))); },
@@ -66,7 +144,7 @@ export async function setupAudio() {
         getAudioData: () => {
             const now = performance.now();
 
-            if (isConnected) {
+            if (isConnected && analyser) {
                 analyser.getByteFrequencyData(dataArray);
 
                 // 1. Kick & Bass Punch Frequency Band (bins 1 to 8: ~40Hz - 350Hz)
@@ -104,8 +182,8 @@ export async function setupAudio() {
                 historyIndex = (historyIndex + 1) % historyLength;
 
                 let isOnset = false;
-                const minTimeBetweenHitsMs = 220; // Natural minimum spacing between bass hits
-                if (rawBass > 0.20 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
+                const minTimeBetweenHitsMs = 200; // Natural minimum spacing between bass hits
+                if (rawBass > 0.18 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;
                     lastHitTime = now;
@@ -135,7 +213,7 @@ export async function setupAudio() {
                 };
             }
 
-            // Calm, Rhythmic Synthetic Mode (Smooth 126 BPM 4/4 Kick Thud)
+            // Standby synthetic mode
             const beatIntervalMs = (60.0 / 126.0) * 1000;
             if (now - lastSynthBeat > beatIntervalMs) {
                 synthBassLevel = 0.85;

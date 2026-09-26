@@ -257,6 +257,31 @@
             font-weight: 700;
         }
 
+        .hud-select {
+            width: 100%;
+            background: rgba(14, 14, 28, 0.95);
+            border: 1px solid rgba(0, 255, 204, 0.35);
+            color: #00ffcc;
+            padding: 4px 6px;
+            border-radius: 6px;
+            font-size: 10px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            cursor: pointer;
+            margin-top: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .hud-select:focus {
+            border-color: #00ffff;
+            box-shadow: 0 0 8px rgba(0, 255, 255, 0.35);
+        }
+
+        .hud-select option {
+            background: #0d0d1a;
+            color: #ffffff;
+        }
+
         .btn-mini {
             background: rgba(255, 255, 255, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.15);
@@ -536,13 +561,19 @@
         <div class="hud-section">
             <div class="hud-row">
                 <span class="hud-label">AUDIO INPUT</span>
-                <span class="hud-val" id="audio-status"><span class="click-prompt">Click to Enable Mic</span></span>
+                <span class="hud-val" id="audio-status"><span class="click-prompt">Click to Enable Audio</span></span>
             </div>
+            <select id="audio-device-select" class="hud-select" title="Select DJ Deck Sound Card / USB Audio / Line-In">
+                <option value="default">Default Audio Input</option>
+            </select>
             <!-- Frequency EQ meters -->
-            <div class="eq-bars">
+            <div class="eq-bars" style="margin-top:6px;">
                 <div class="eq-bar" title="Sub-Bass"><div class="eq-fill" id="eq-bass"></div></div>
                 <div class="eq-bar" title="Mid Range"><div class="eq-fill" id="eq-mid"></div></div>
                 <div class="eq-bar" title="High Treble"><div class="eq-fill" id="eq-treble"></div></div>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:6px;">
+                <button class="btn-mini" id="btn-listen-audio" style="flex:1; font-size:9px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-weight:700; padding:4px 6px;">🔴 RE-CONNECT AUDIO</button>
             </div>
         </div>
 
@@ -553,6 +584,10 @@
                     <span class="hud-label">STAGELINQ</span>
                 </div>
                 <span class="hud-val" id="stagelinq-status">Connecting...</span>
+            </div>
+            <div id="stagelinq-deck-badges" style="display:flex; gap:4px; margin-top:4px;">
+                <span class="hud-badge" id="deck-badge-1" style="flex:1; text-align:center; padding:2px 4px; font-size:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">DECK 1</span>
+                <span class="hud-badge" id="deck-badge-2" style="flex:1; text-align:center; padding:2px 4px; font-size:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">DECK 2</span>
             </div>
         </div>
 
