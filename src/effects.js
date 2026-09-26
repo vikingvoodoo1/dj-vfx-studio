@@ -2949,10 +2949,8 @@ export function createVFXScene(container) {
         let scaleFactor = 1.0;
         if (logoPosition === 'center') {
             scaleFactor = 1.0;
-        } else if (logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
-            scaleFactor = 0.85;
-        } else if (logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
-            scaleFactor = 0.75;
+        } else if (logoPosition === 'top' || logoPosition === 'bottom' || logoPosition === 'left' || logoPosition === 'right' || logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center' || logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
+            scaleFactor = 0.78;
         } else {
             // Corners: top-left, top-right, bottom-left, bottom-right
             scaleFactor = 0.65;
@@ -2974,18 +2972,24 @@ export function createVFXScene(container) {
         } else if (logoPosition === 'bottom-right') {
             posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
             posY = (logoMode === 'overlay' ? -1.25 : (logoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (logoPosition === 'center-top' || logoPosition === 'top-center') {
+        } else if (logoPosition === 'top' || logoPosition === 'center-top' || logoPosition === 'top-center') {
             posX = 0;
-            posY = (logoMode === 'overlay' ? 1.35 : (logoMode === 'backdrop' ? 9.5 : 4.0));
+            posY = (logoMode === 'overlay' ? 1.35 : (logoMode === 'backdrop' ? 9.5 : 3.8));
+        } else if (logoPosition === 'bottom' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
+            posX = 0;
+            posY = (logoMode === 'overlay' ? -1.35 : (logoMode === 'backdrop' ? -9.5 : -3.8));
+        } else if (logoPosition === 'left' || logoPosition === 'center-left') {
+            posX = (logoMode === 'overlay' ? -2.2 : (logoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = 0;
+        } else if (logoPosition === 'right' || logoPosition === 'center-right') {
+            posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = 0;
         } else if (logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter') {
             posX = 0;
             posY = (logoMode === 'overlay' ? 0.85 : (logoMode === 'backdrop' ? 7.0 : 2.5));
         } else if (logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
             posX = 0;
             posY = (logoMode === 'overlay' ? -0.85 : (logoMode === 'backdrop' ? -7.0 : -2.5));
-        } else if (logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
-            posX = 0;
-            posY = (logoMode === 'overlay' ? -1.35 : (logoMode === 'backdrop' ? -9.5 : -4.0));
         } else {
             // Center
             posX = 0;
@@ -4023,6 +4027,60 @@ export function createVFXScene(container) {
     }
 
     // -------------------------------------------------------------------------
+    // FX 17: ⏱️ TIME.IS LIVE PRECISION DJ CLOCK & AUDIO SPECTRUM [NEW]
+    // -------------------------------------------------------------------------
+    const gTimeisClock = createFXGroup();
+
+    const clockCanvas = document.createElement('canvas');
+    clockCanvas.width = 2048;
+    clockCanvas.height = 1024;
+    const clockCtx = clockCanvas.getContext('2d');
+    const clockTexture = new THREE.CanvasTexture(clockCanvas);
+    clockTexture.minFilter = THREE.LinearFilter;
+    clockTexture.magFilter = THREE.LinearFilter;
+
+    const clockPlaneMat = new THREE.MeshBasicMaterial({
+        map: clockTexture,
+        transparent: true,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    const clockPlaneMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 18), clockPlaneMat);
+    clockPlaneMesh.position.set(0, 0, 0);
+    gTimeisClock.add(clockPlaneMesh);
+
+    // 3D Concentric Neon Gyro Rings around Clock
+    const gyroRingGeo1 = new THREE.TorusGeometry(8.2, 0.08, 16, 100);
+    const gyroRingMat1 = new THREE.MeshBasicMaterial({ color: 0x00f3ff, transparent: true, opacity: 0.65, wireframe: true });
+    const gyroRing1 = new THREE.Mesh(gyroRingGeo1, gyroRingMat1);
+    gTimeisClock.add(gyroRing1);
+
+    const gyroRingGeo2 = new THREE.TorusGeometry(9.4, 0.06, 16, 100);
+    const gyroRingMat2 = new THREE.MeshBasicMaterial({ color: 0xff007f, transparent: true, opacity: 0.55, wireframe: true });
+    const gyroRing2 = new THREE.Mesh(gyroRingGeo2, gyroRingMat2);
+    gTimeisClock.add(gyroRing2);
+
+    const gyroRingGeo3 = new THREE.TorusGeometry(10.6, 0.05, 16, 100);
+    const gyroRingMat3 = new THREE.MeshBasicMaterial({ color: 0xffaa00, transparent: true, opacity: 0.45, wireframe: true });
+    const gyroRing3 = new THREE.Mesh(gyroRingGeo3, gyroRingMat3);
+    gTimeisClock.add(gyroRing3);
+
+    // Background floating cyber stars for Time.is depth
+    const clockStarCount = 1200;
+    const clockStarGeo = new THREE.BufferGeometry();
+    const clockStarPositions = new Float32Array(clockStarCount * 3);
+    for (let i = 0; i < clockStarCount; i++) {
+        clockStarPositions[i * 3] = (Math.random() - 0.5) * 60;
+        clockStarPositions[i * 3 + 1] = (Math.random() - 0.5) * 35;
+        clockStarPositions[i * 3 + 2] = -10 - Math.random() * 25;
+    }
+    clockStarGeo.setAttribute('position', new THREE.BufferAttribute(clockStarPositions, 3));
+    const clockStarMat = new THREE.PointsMaterial({ color: 0x00ffff, size: 0.25, transparent: true, opacity: 0.7 });
+    const clockStarPoints = new THREE.Points(clockStarGeo, clockStarMat);
+    gTimeisClock.add(clockStarPoints);
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
@@ -4132,8 +4190,8 @@ export function createVFXScene(container) {
     }
 
     function setLogoSpinMode(mode) {
-        if (mode === 'center' || mode === 'orbit') {
-            logoSpinMode = mode;
+        if (mode === 'center' || mode === 'orbit' || mode === 'freeroam' || mode === 'free_roam') {
+            logoSpinMode = (mode === 'free_roam') ? 'freeroam' : mode;
         } else if (mode === 'on' || mode === true) {
             logoSpinMode = 'center';
         } else {
@@ -4150,7 +4208,7 @@ export function createVFXScene(container) {
     }
 
     // =========================================================================
-    // MAIN RENDER LOOP (16 SCENES)
+    // MAIN RENDER LOOP (18 SCENES)
     // =========================================================================
     function animate(getAudioDataFn) {
         requestAnimationFrame(() => animate(getAudioDataFn));
@@ -4183,11 +4241,6 @@ export function createVFXScene(container) {
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
             const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 6.5 : 13.5)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
             const hBase = (wBase / logoAspectRatio);
-            logoMesh.scale.set(wBase / 16, hBase / 9, 1);
-
-            // Anchor pivot strictly to current layout coordinates & camera orientation
-            logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
-            logoPivot.quaternion.copy(camera.quaternion);
 
             // Shield stays stationary flat directly behind the logo
             if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
@@ -4195,9 +4248,12 @@ export function createVFXScene(container) {
                 logoShieldMesh.rotation.set(0, 0, 0);
             }
 
-            // Mode-specific Horizontal Rotation Logic
+            // Mode-specific Horizontal / 3D / Free Roam Rotation Logic
             if (logoSpinMode === 'center') {
                 // Mode 1: Pure Horizontal Center Spin (Symmetrical flat horizontal rotation on center point everywhere)
+                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                logoPivot.quaternion.copy(camera.quaternion);
+
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 const cosSpin = Math.cos(logoSpinAngle);
                 logoMesh.scale.set((wBase / 16) * cosSpin, hBase / 9, 1);
@@ -4205,6 +4261,9 @@ export function createVFXScene(container) {
                 logoMesh.rotation.set(0, 0, 0);
             } else if (logoSpinMode === 'orbit') {
                 // Mode 2: 3D Perspective Depth Offset Orbit Spin
+                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                logoPivot.quaternion.copy(camera.quaternion);
+
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 logoMesh.scale.set(wBase / 16, hBase / 9, 1);
                 logoMesh.position.set(0, 0, 0);
@@ -4212,14 +4271,40 @@ export function createVFXScene(container) {
                 logoMesh.rotation.y = logoSpinAngle;
                 logoMesh.rotation.x = 0;
                 logoMesh.rotation.z = 0;
-            } else {
-                // Mode 3: Static (Smooth recovery to front-facing)
+            } else if (logoSpinMode === 'freeroam') {
+                // Mode 3: Free Roam & 3D Drift across the entire display
+                logoSpinAngle += delta * logoSpinSpeed * 1.5;
+                const roamTime = elapsedTime * logoSpinSpeed * 0.45;
+
+                const boundX = logoMode === 'backdrop' ? 14.0 : (logoMode === 'overlay' ? 2.2 : 5.8);
+                const boundY = logoMode === 'backdrop' ? 8.0 : (logoMode === 'overlay' ? 1.2 : 3.4);
+
+                const freeX = Math.sin(roamTime * 1.1) * boundX + Math.sin(roamTime * 2.3) * (boundX * 0.2);
+                const freeY = Math.cos(roamTime * 0.9) * boundY + Math.cos(roamTime * 1.8) * (boundY * 0.15);
+                const freeZ = currentLogoBaseZ + Math.sin(roamTime * 0.7) * 1.0;
+
+                logoPivot.position.set(freeX, freeY, freeZ);
+                logoPivot.quaternion.copy(camera.quaternion);
+
                 logoMesh.scale.set(wBase / 16, hBase / 9, 1);
                 logoMesh.position.set(0, 0, 0);
-                if (Math.abs(logoMesh.rotation.y) > 0.001) {
+                logoMesh.rotation.order = 'YXZ';
+                logoMesh.rotation.y = logoSpinAngle;
+                logoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2;
+                logoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15;
+            } else {
+                // Mode 4: Static (Smooth recovery to front-facing)
+                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                logoPivot.quaternion.copy(camera.quaternion);
+
+                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.position.set(0, 0, 0);
+                if (Math.abs(logoMesh.rotation.y) > 0.001 || Math.abs(logoMesh.rotation.x) > 0.001 || Math.abs(logoMesh.rotation.z) > 0.001) {
                     logoMesh.rotation.y = THREE.MathUtils.lerp(logoMesh.rotation.y, 0, delta * 8.0);
+                    logoMesh.rotation.x = THREE.MathUtils.lerp(logoMesh.rotation.x, 0, delta * 8.0);
+                    logoMesh.rotation.z = THREE.MathUtils.lerp(logoMesh.rotation.z, 0, delta * 8.0);
                     if (Math.abs(logoMesh.rotation.y) < 0.001) {
-                        logoMesh.rotation.y = 0;
+                        logoMesh.rotation.set(0, 0, 0);
                         logoSpinAngle = 0;
                     }
                 } else {
@@ -4566,6 +4651,155 @@ export function createVFXScene(container) {
 
             // Serene ambient cosmic dust rotation
             streamDustSystem.rotation.z = elapsedTime * 0.01;
+        }
+        // ---------------------------------------------------------------------
+        // FX 17: ⏱️ Time.is Live Precision DJ Clock & Spectrum [NEW]
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 17) {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            const millis = now.getMilliseconds();
+            const tenths = Math.floor(millis / 100);
+
+            const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+            const dayName = days[now.getDay()];
+            const monthName = months[now.getMonth()];
+            const dateNum = now.getDate();
+            const yearNum = now.getFullYear();
+
+            // Timezone detection
+            let tzName = 'Local Time';
+            try {
+                tzName = Intl.DateTimeFormat().resolvedOptions().timeZone || 'Local Time';
+            } catch (e) {}
+
+            const cw = 2048;
+            const ch = 1024;
+            const cx = cw / 2;
+            const cy = ch / 2;
+
+            clockCtx.clearRect(0, 0, cw, ch);
+
+            // 1. Dark Vignette Ambient Radial Background
+            const bgGrad = clockCtx.createRadialGradient(cx, cy, 50, cx, cy, 700);
+            bgGrad.addColorStop(0, `rgba(15, 20, 45, ${0.7 + bassPop * 0.25})`);
+            bgGrad.addColorStop(0.5, 'rgba(6, 8, 22, 0.45)');
+            bgGrad.addColorStop(1, 'rgba(0, 0, 0, 0.0)');
+            clockCtx.fillStyle = bgGrad;
+            clockCtx.fillRect(0, 0, cw, ch);
+
+            // 2. Audio-Reactive Radial Equalizer Spectrum Orbiting Clock
+            const numRadialBars = 80;
+            const radialRadius = 380 + bassPop * 30;
+            const barMaxLen = 140;
+            for (let i = 0; i < numRadialBars; i++) {
+                const angle = (i / numRadialBars) * Math.PI * 2 - Math.PI / 2;
+                const binIdx = Math.floor(Math.pow(i / numRadialBars, 1.3) * 50) + 1;
+                const amp = dataArr[binIdx] ? dataArr[binIdx] / 255 : (Math.sin(elapsedTime * 3 + i) * 0.2 + 0.2);
+                const barLen = Math.max(10, amp * barMaxLen * (1.0 + bassPop * 0.5));
+
+                const x1 = cx + Math.cos(angle) * radialRadius;
+                const y1 = cy + Math.sin(angle) * (radialRadius * 0.72);
+                const x2 = cx + Math.cos(angle) * (radialRadius + barLen);
+                const y2 = cy + Math.sin(angle) * ((radialRadius + barLen) * 0.72);
+
+                const hue = (i / numRadialBars) * 120 + 170; // Cyan to Purple / Pink
+                clockCtx.strokeStyle = `hsla(${hue}, 100%, ${60 + amp * 30}%, ${0.35 + amp * 0.6})`;
+                clockCtx.lineWidth = 4;
+                clockCtx.beginPath();
+                clockCtx.moveTo(x1, y1);
+                clockCtx.lineTo(x2, y2);
+                clockCtx.stroke();
+            }
+
+            // 3. Smooth Seconds Continuous Progress Arc
+            const secProgress = (now.getSeconds() + millis / 1000) / 60;
+            const secAngle = secProgress * Math.PI * 2 - Math.PI / 2;
+            const arcRadius = 350;
+
+            // Background Track
+            clockCtx.beginPath();
+            clockCtx.ellipse(cx, cy, arcRadius, arcRadius * 0.72, 0, 0, Math.PI * 2);
+            clockCtx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            clockCtx.lineWidth = 6;
+            clockCtx.stroke();
+
+            // Progress Arc with Glowing Cyan Gradient
+            clockCtx.beginPath();
+            clockCtx.ellipse(cx, cy, arcRadius, arcRadius * 0.72, 0, -Math.PI / 2, secAngle);
+            clockCtx.strokeStyle = '#00f3ff';
+            clockCtx.shadowColor = '#00f3ff';
+            clockCtx.shadowBlur = 20 + bassPop * 25;
+            clockCtx.lineWidth = 8;
+            clockCtx.stroke();
+            clockCtx.shadowBlur = 0;
+
+            // Leading Seconds Tracker Dot
+            const headX = cx + Math.cos(secAngle) * arcRadius;
+            const headY = cy + Math.sin(secAngle) * (arcRadius * 0.72);
+            clockCtx.beginPath();
+            clockCtx.arc(headX, headY, 10 + bassPop * 6, 0, Math.PI * 2);
+            clockCtx.fillStyle = '#ffffff';
+            clockCtx.shadowColor = '#00ffff';
+            clockCtx.shadowBlur = 25;
+            clockCtx.fill();
+            clockCtx.shadowBlur = 0;
+
+            // 4. Header Badge: Time.is Exact Time Synchronized
+            clockCtx.textAlign = 'center';
+            clockCtx.font = '700 28px "JetBrains Mono", monospace';
+            clockCtx.fillStyle = '#00ffcc';
+            clockCtx.shadowColor = 'rgba(0, 255, 204, 0.8)';
+            clockCtx.shadowBlur = 15;
+            clockCtx.fillText(`● TIME.IS EXACT TIME  •  ${tzName.toUpperCase()}`, cx, cy - 230);
+            clockCtx.shadowBlur = 0;
+
+            // 5. Main Hero Time Readout (Time.is Signature Big Bold Typography)
+            const timeStr = `${hours}:${minutes}:${seconds}`;
+            clockCtx.font = '900 190px "Outfit", "JetBrains Mono", sans-serif';
+            clockCtx.fillStyle = '#ffffff';
+            clockCtx.shadowColor = bassPop > 0.4 ? '#00f3ff' : 'rgba(0, 243, 255, 0.5)';
+            clockCtx.shadowBlur = 30 + bassPop * 40;
+            clockCtx.fillText(timeStr, cx, cy + 40);
+            clockCtx.shadowBlur = 0;
+
+            // Sub-second precision badge
+            clockCtx.font = '700 48px "JetBrains Mono", monospace';
+            clockCtx.fillStyle = '#ff007f';
+            clockCtx.shadowColor = '#ff007f';
+            clockCtx.shadowBlur = 18;
+            clockCtx.fillText(`.${tenths}`, cx + 430, cy + 30);
+            clockCtx.shadowBlur = 0;
+
+            // 6. Full Date & Day Ribbon
+            clockCtx.font = '600 42px "Outfit", sans-serif';
+            clockCtx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+            clockCtx.fillText(`${dayName}, ${dateNum} ${monthName} ${yearNum}`, cx, cy + 130);
+
+            // 7. Footer: Set BPM / Denon Sync Telemetry
+            clockCtx.font = '600 24px "JetBrains Mono", monospace';
+            clockCtx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            clockCtx.fillText(`LIVE DJ STAGE SYNC  •  ${Number(currentBPM).toFixed(1)} BPM  •  PRECISION ATOMIC CLOCK`, cx, cy + 200);
+
+            clockTexture.needsUpdate = true;
+
+            // Animate 3D Gyro Rings
+            gyroRing1.rotation.x = elapsedTime * 0.4;
+            gyroRing1.rotation.y = elapsedTime * 0.3;
+            gyroRing1.scale.setScalar(1.0 + bassPop * 0.12);
+
+            gyroRing2.rotation.y = -elapsedTime * 0.35;
+            gyroRing2.rotation.z = elapsedTime * 0.25;
+            gyroRing2.scale.setScalar(1.0 + (audio.smoothedMid || 0) * 0.12);
+
+            gyroRing3.rotation.x = -elapsedTime * 0.2;
+            gyroRing3.rotation.z = -elapsedTime * 0.4;
+            gyroRing3.scale.setScalar(1.0 + (audio.smoothedTreble || 0) * 0.12);
+
+            clockStarPoints.rotation.y = elapsedTime * 0.03;
         }
 
         // 3. Subwoofer Spring-Damped Camera Recoil

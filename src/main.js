@@ -88,14 +88,22 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 17;
+    const TOTAL_FX = 18;
 
     // -------------------------------------------------------------------------
-    // Cross-Window State & Audio Synchronizer (2nd Screen / Projector / OBS)
+    // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
     // -------------------------------------------------------------------------
     const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('dj_vfx_sync') : null;
     let remoteAudioData = null;
     let lastRemoteAudioTime = 0;
+
+    const btnDetachConsole = document.getElementById('btn-detach-console');
+    if (btnDetachConsole) {
+        btnDetachConsole.addEventListener('click', () => {
+            const controllerUrl = `${window.location.origin}${window.location.pathname}?mode=controller`;
+            window.open(controllerUrl, 'DJ_VFX_MASTER_CONSOLE', 'width=1380,height=880,menubar=no,toolbar=no,location=no,status=no');
+        });
+    }
 
     const btnPopout = document.getElementById('btn-popout');
     if (btnPopout) {
@@ -105,15 +113,37 @@ async function init() {
         });
     }
 
-    // Check if opened as Clean Output Stage Display
+    const btnLaunchStage = document.getElementById('btn-launch-stage');
+    if (btnLaunchStage) {
+        btnLaunchStage.addEventListener('click', () => {
+            const popoutUrl = `${window.location.origin}${window.location.pathname}?clean=true`;
+            window.open(popoutUrl, 'DJ_VFX_2ND_SCREEN', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+        });
+    }
+
+    // Check URL Mode Parameters (Controller vs Clean Stage Display)
     const urlParams = new URLSearchParams(window.location.search);
-    const isCleanDisplay = urlParams.get('clean') === 'true' || window.location.hash.includes('clean');
+    const isControllerMode = urlParams.get('mode') === 'controller' || window.location.hash.includes('controller');
+    const isCleanDisplay = urlParams.get('clean') === 'true' || urlParams.get('mode') === 'stage' || window.location.hash.includes('clean');
+
+    if (isControllerMode) {
+        document.body.classList.add('controller-mode');
+        document.title = 'DJ VFX - Master Control Console';
+        if (hudStatus) {
+            hudStatus.textContent = 'MASTER CONSOLE';
+            hudStatus.style.borderColor = '#ff00ff';
+            hudStatus.style.color = '#ff00ff';
+        }
+        console.log('[DJ-VFX] 🎛️ Detached Master Console Active (Broadcasting to Stage Displays)');
+    }
+
     if (isCleanDisplay) {
+        document.body.classList.add('stage-mode');
         if (hud) hud.classList.add('hidden');
         if (fxBankPanel) fxBankPanel.classList.add('hidden');
         if (trackBanner) trackBanner.classList.add('hidden');
         document.body.style.cursor = 'none';
-        console.log('[DJ-VFX] 🖥️ Clean 2nd Screen Display Mode Active (Receiving Live Sync)');
+        console.log('[DJ-VFX] 🖥️ Clean Stage Display Mode Active (Receiving Live Sync)');
     }
 
     if (syncChannel) {
@@ -134,7 +164,59 @@ async function init() {
             } else if (msg.type === 'flash') {
                 vfx.triggerManualFlash();
             } else if (msg.type === 'set_logo_vis') {
-                updateLogoVisibility(msg.vis, false);
+                updateLogoVisibility(msg.vis === 'on' || msg.vis === true, false);
+            } else if (msg.type === 'set_logo_mode') {
+                modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === msg.mode));
+                vfx.setLogoMode(msg.mode);
+            } else if (msg.type === 'set_logo_blend') {
+                blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === String(msg.blend)));
+                vfx.setLogoBlendMode(msg.blend);
+            } else if (msg.type === 'set_logo_pos') {
+                posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === msg.pos));
+                vfx.setLogoPosition(msg.pos);
+            } else if (msg.type === 'set_logo_spin') {
+                spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === msg.spin));
+                vfx.setLogoSpinMode(msg.spin);
+            } else if (msg.type === 'set_logo_spin_speed') {
+                if (sliderLogoSpinSpeed) sliderLogoSpinSpeed.value = msg.speed;
+                if (logoSpinSpeedVal) logoSpinSpeedVal.textContent = `${Number(msg.speed).toFixed(1)}x`;
+                vfx.setLogoSpinSpeed(msg.speed);
+            } else if (msg.type === 'set_logo_contrast') {
+                if (sliderLogoContrast) sliderLogoContrast.value = msg.val;
+                if (logoContrastVal) logoContrastVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+                vfx.setLogoContrast(msg.val);
+            } else if (msg.type === 'set_logo_bright') {
+                if (sliderLogoBright) sliderLogoBright.value = msg.val;
+                if (logoBrightVal) logoBrightVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+                vfx.setLogoBrightness(msg.val);
+            } else if (msg.type === 'set_logo_scale') {
+                if (sliderLogoScale) sliderLogoScale.value = msg.val;
+                if (logoScaleVal) logoScaleVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+                vfx.setLogoScale(msg.val);
+            } else if (msg.type === 'set_logo_pulse') {
+                if (sliderLogoPulse) sliderLogoPulse.value = msg.val;
+                if (logoPulseVal) logoPulseVal.textContent = `${msg.val}%`;
+                vfx.setLogoBassPulse(msg.val / 100);
+            } else if (msg.type === 'set_logo_shield') {
+                if (checkLogoShield) checkLogoShield.checked = msg.active;
+                vfx.setLogoShieldVisible(msg.active);
+            } else if (msg.type === 'set_gain') {
+                if (sliderGain) sliderGain.value = msg.val;
+                if (gainVal) gainVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+                if (audioProcessor) audioProcessor.setGain(msg.val);
+            } else if (msg.type === 'set_sens') {
+                if (sliderSens) sliderSens.value = msg.val;
+                if (sensVal) sensVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+                if (audioProcessor) audioProcessor.setBassSensitivity(msg.val);
+            } else if (msg.type === 'set_bloom') {
+                if (sliderBloom) sliderBloom.value = msg.val;
+                if (bloomVal) bloomVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+                vfx.setBloomMultiplier(msg.val);
+            } else if (msg.type === 'set_auto_vj') {
+                isAutoVJ = !!msg.active;
+                if (btnAutoVJ) btnAutoVJ.classList.toggle('active', isAutoVJ);
+            } else if (msg.type === 'reset_all') {
+                resetAllParameters(false);
             } else if (msg.type === 'track') {
                 if (trackTitle && msg.title) trackTitle.textContent = msg.title;
                 if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
@@ -226,7 +308,7 @@ async function init() {
     });
 
     // 3. Logo Layer Controls
-    function updateLogoVisibility(active) {
+    function updateLogoVisibility(active, broadcast = true) {
         isLogoActive = !!active;
         vfx.setLogoVisible(isLogoActive);
         if (logoBadge) {
@@ -238,6 +320,9 @@ async function init() {
             const vis = p.getAttribute('data-vis');
             p.classList.toggle('active', (vis === 'on' && isLogoActive) || (vis === 'off' && !isLogoActive));
         });
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
+        }
     }
 
     function toggleLogo() {
@@ -259,6 +344,7 @@ async function init() {
             modePills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoMode(mode);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_mode', mode });
         });
     });
 
@@ -268,6 +354,7 @@ async function init() {
             blendPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoBlendMode(blend);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_blend', blend });
         });
     });
 
@@ -277,6 +364,7 @@ async function init() {
             posPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoPosition(pos);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_pos', pos });
         });
     });
 
@@ -285,6 +373,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoContrastVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoContrast(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_contrast', val });
         });
     }
 
@@ -293,6 +382,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoBrightVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoBrightness(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_bright', val });
         });
     }
 
@@ -301,6 +391,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoScaleVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoScale(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_scale', val });
         });
     }
 
@@ -309,6 +400,7 @@ async function init() {
             const val = parseInt(e.target.value, 10);
             logoPulseVal.textContent = `${val}%`;
             vfx.setLogoBassPulse(val / 100);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_pulse', val });
         });
     }
 
@@ -318,6 +410,7 @@ async function init() {
             spinPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoSpinMode(spin);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_spin', spin });
         });
     });
 
@@ -326,17 +419,19 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoSpinSpeed(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_spin_speed', speed: val });
         });
     }
 
     if (checkLogoShield) {
         checkLogoShield.addEventListener('change', (e) => {
             vfx.setLogoShieldVisible(e.target.checked);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_shield', active: e.target.checked });
         });
     }
 
     // Reset All Console Parameters to Factory Defaults
-    function resetAllParameters() {
+    function resetAllParameters(broadcast = true) {
         // 1. Audio & Calibration
         if (sliderGain) {
             sliderGain.value = 1.0;
@@ -355,7 +450,7 @@ async function init() {
         }
 
         // 2. Logo Layer Visibility & Mode
-        updateLogoVisibility(true);
+        updateLogoVisibility(true, false);
 
         modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === 'hologram'));
         vfx.setLogoMode('hologram');
@@ -366,7 +461,7 @@ async function init() {
         posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === 'center'));
         vfx.setLogoPosition('center');
 
-        // Horizontal Spin
+        // Spin Mode
         spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === 'off'));
         vfx.setLogoSpinMode('off');
         if (sliderLogoSpinSpeed) {
@@ -413,6 +508,10 @@ async function init() {
         vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
         if (logoFilename) logoFilename.textContent = 'jkmclaren_shock.mp4';
 
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'reset_all' });
+        }
+
         // Feedback on Reset button
         if (btnResetAll) {
             const origText = btnResetAll.innerHTML;
@@ -430,7 +529,7 @@ async function init() {
     }
 
     if (btnResetAll) {
-        btnResetAll.addEventListener('click', resetAllParameters);
+        btnResetAll.addEventListener('click', () => resetAllParameters(true));
     }
 
     // Custom File Loading
@@ -514,15 +613,18 @@ async function init() {
     });
 
     // Auto-VJ Mode
-    function toggleAutoVJ() {
+    function toggleAutoVJ(broadcast = true) {
         isAutoVJ = !isAutoVJ;
         if (btnAutoVJ) {
             btnAutoVJ.classList.toggle('active', isAutoVJ);
             btnAutoVJ.innerHTML = isAutoVJ ? `<span class="fx-key">A</span> AUTO VJ: ON` : `<span class="fx-key">A</span> AUTO VJ`;
         }
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_auto_vj', active: isAutoVJ });
+        }
     }
 
-    if (btnAutoVJ) btnAutoVJ.addEventListener('click', toggleAutoVJ);
+    if (btnAutoVJ) btnAutoVJ.addEventListener('click', () => toggleAutoVJ(true));
 
     // Strobe Button
     if (btnFlash) {
@@ -538,6 +640,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             gainVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setGain(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_gain', val });
         });
     }
 
@@ -546,6 +649,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             sensVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setBassSensitivity(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_sens', val });
         });
     }
 
@@ -554,6 +658,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             bloomVal.textContent = `${val.toFixed(2)}x`;
             vfx.setBloomMultiplier(val);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_bloom', val });
         });
     }
 
@@ -644,7 +749,7 @@ async function init() {
         }
     });
 
-    // 7. Keyboard Shortcuts (17 Presets)
+    // 7. Keyboard Shortcuts (18 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
         '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
@@ -653,7 +758,8 @@ async function init() {
         'w': 13, 'W': 13,
         'e': 14, 'E': 14,
         'r': 15, 'R': 15,
-        't': 16, 'T': 16
+        't': 16, 'T': 16,
+        'y': 17, 'Y': 17
     };
 
     window.addEventListener('keydown', (e) => {
