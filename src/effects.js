@@ -672,12 +672,18 @@ const PlasmaNebulaShader = {
     `
 };
 
-// Matrix Digital Code Rain Shader
+// =============================================================================
+// Authentic High-Resolution Matrix Digital Code Rain Shader
+// Features: Procedural Katakana/Cypher Glyph Atlas Sampling, Multi-Layer 3D Depth,
+// Dynamic Real-Time Glyph Mutation, Blazing Hot-White Stream Heads, and Audio Overdrive
+// =============================================================================
 const MatrixCodeRainShader = {
     uniforms: {
         uTime: { value: 0.0 },
         uBass: { value: 0.0 },
-        uGlitch: { value: 0.0 }
+        uMid: { value: 0.0 },
+        uGlitch: { value: 0.0 },
+        uGlyphMap: { value: null }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -690,61 +696,125 @@ const MatrixCodeRainShader = {
         varying vec2 vUv;
         uniform float uTime;
         uniform float uBass;
+        uniform float uMid;
         uniform float uGlitch;
+        uniform sampler2D uGlyphMap;
 
-        // Pseudo-random hash
-        float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+        // High-precision pseudo-random hash
+        float hash12(vec2 p) {
+            vec3 p3  = fract(vec3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
+        // Sample a single digital rain layer
+        // numCols: number of columns, speedMult: speed scale, layerAlpha: opacity, depthTier: layer index
+        vec4 renderRainLayer(vec2 uv, float numCols, float speedMult, float depthTier, float time, float bass, float glitch) {
+            float numRows = numCols * (9.0 / 16.0) * 1.35;
+
+            // Column index & fractional UV across column
+            float colIdx = floor(uv.x * numCols);
+            float colUvX = fract(uv.x * numCols);
+
+            // Per-column speed and start-time staggered offset
+            float colSeed = hash12(vec2(colIdx, depthTier * 17.13));
+            float speed = (0.35 + colSeed * 0.65) * speedMult;
+            float colDelay = hash12(vec2(colIdx * 3.17, depthTier * 9.41)) * 10.0;
+
+            // Stream length and drop frequency
+            float streamCycle = fract((1.0 - uv.y) * 0.45 + (time + colDelay) * speed * 0.25);
+            
+            // Row index along the column
+            float rowIdx = floor(uv.y * numRows);
+            float rowUvY = fract(uv.y * numRows);
+
+            // Authentic Katakana / Cypher Glyph Selection in 8x8 Texture Atlas (64 glyphs)
+            float baseGlyph = floor(hash12(vec2(colIdx, rowIdx + depthTier * 31.0)) * 64.0);
+            // Dynamic real-time character mutation (glyphs change in place as the code falls)
+            float mutateRate = 8.0 + glitch * 30.0 + bass * 12.0;
+            float mutateSeed = floor(time * mutateRate + hash12(vec2(colIdx, rowIdx)) * 20.0);
+            float isMutating = step(0.72 - bass * 0.25, hash12(vec2(colIdx, rowIdx + mutateSeed * 0.1)));
+            float activeGlyph = mod(baseGlyph + isMutating * floor(hash12(vec2(colIdx, mutateSeed)) * 64.0), 64.0);
+
+            // Compute UV inside the 8x8 glyph texture atlas
+            float atlasCol = mod(activeGlyph, 8.0);
+            float atlasRow = floor(activeGlyph / 8.0);
+
+            // Add margin padding so glyphs don't touch cell edges
+            vec2 glyphCellUv = vec2(
+                clamp((colUvX - 0.08) / 0.84, 0.0, 1.0),
+                clamp((rowUvY - 0.08) / 0.84, 0.0, 1.0)
+            );
+
+            vec2 atlasUv = (vec2(atlasCol, atlasRow) + glyphCellUv) / 8.0;
+            float glyphLum = texture2D(uGlyphMap, atlasUv).r;
+
+            // Character margin mask
+            float cellMask = smoothstep(0.0, 0.08, colUvX) * smoothstep(1.0, 0.92, colUvX) *
+                             smoothstep(0.0, 0.08, rowUvY) * smoothstep(1.0, 0.92, rowUvY);
+
+            // Stream intensity: Leading White-Hot Head + Exponential Phosphor Trail
+            float head = smoothstep(0.92, 0.99, streamCycle);
+            float trail = pow(streamCycle, 2.8) * smoothstep(0.0, 0.12, streamCycle);
+
+            // Colors
+            vec3 cHeadWhite = vec3(0.92, 1.0, 0.96);     // Blazing white-hot core
+            vec3 cHeadLime  = vec3(0.40, 1.0, 0.65);     // Electric lime corona
+            vec3 cVibrantGrn = vec3(0.05, 1.0, 0.35);    // High-energy Matrix green
+            vec3 cClassicGrn = vec3(0.00, 0.72, 0.20);   // Classic terminal green
+            vec3 cDarkPhosph = vec3(0.00, 0.22, 0.06);   // Decaying background phosphor
+
+            vec3 trailColor = mix(cDarkPhosph, cClassicGrn, smoothstep(0.0, 0.6, trail));
+            trailColor = mix(trailColor, cVibrantGrn, smoothstep(0.6, 0.95, trail));
+
+            vec3 headColor = mix(cHeadLime, cHeadWhite, head);
+            vec3 finalColor = mix(trailColor, headColor, head * 1.5);
+
+            // Audio boost on bass impacts
+            finalColor += cVibrantGrn * (bass * 0.45);
+
+            float totalIntensity = (trail * 0.9 + head * 2.2) * glyphLum * cellMask;
+            return vec4(finalColor, totalIntensity);
         }
 
         void main() {
             vec2 uv = vUv;
-            
-            // Glitch slice on kick hits
-            if (uBass > 0.6) {
-                float slice = floor(uv.y * 24.0);
-                if (fract(sin(slice * 45.2 + floor(uTime * 30.0)) * 4375.0) > 0.75) {
-                    uv.x += sin(uTime * 50.0) * 0.03 * uBass;
+
+            // 1. Digital Kick Glitch & Horizontal Slice Jitter
+            if (uBass > 0.55 || uGlitch > 0.4) {
+                float sliceY = floor(uv.y * 32.0);
+                float sliceHash = hash12(vec2(sliceY, floor(uTime * 24.0)));
+                if (sliceHash > 0.78) {
+                    uv.x += sin(uTime * 60.0 + sliceY) * 0.025 * (uBass + uGlitch);
                 }
             }
 
-            // Columns of digital rain
-            float numCols = 60.0;
-            float colIdx = floor(uv.x * numCols);
-            float colUvX = fract(uv.x * numCols);
+            // 2. Render 3 Authentic Parallax Rain Layers (Deep Background, Midground, Foreground)
+            // Layer 0: Fine dense background rain (120 columns)
+            vec4 layerBg = renderRainLayer(uv, 120.0, 0.55, 0.0, uTime, uBass, uGlitch);
+            
+            // Layer 1: Midground classic Matrix stream (85 columns)
+            vec4 layerMid = renderRainLayer(uv + vec2(0.005, 0.0), 85.0, 0.85, 1.0, uTime, uBass, uGlitch);
 
-            // Per-column stream speed
-            float speed = 0.45 + hash(vec2(colIdx, 1.23)) * 0.75;
-            float streamY = fract(uv.y + uTime * speed + hash(vec2(colIdx, 4.56)));
+            // Layer 2: Foreground crisp radiant stream (55 columns)
+            vec4 layerFg = renderRainLayer(uv + vec2(0.012, 0.0), 55.0, 1.25, 2.0, uTime, uBass, uGlitch);
 
-            // Glyph cells
-            float numRows = 38.0;
-            float rowIdx = floor(uv.y * numRows);
-            float glyphSeed = hash(vec2(colIdx, rowIdx + floor(uTime * 14.0 * speed)));
+            // Composite layers with additive phosphor blending
+            vec3 finalCol = layerBg.rgb * layerBg.a * 0.35 +
+                            layerMid.rgb * layerMid.a * 0.85 +
+                            layerFg.rgb * layerFg.a * 1.25;
 
-            // Digital stream brightness trail
-            float head = smoothstep(0.96, 1.0, streamY);
-            float trail = pow(streamY, 3.2) * smoothstep(0.0, 0.15, streamY);
+            float finalAlpha = clamp(layerBg.a * 0.4 + layerMid.a * 0.85 + layerFg.a * 1.2, 0.0, 1.0);
 
-            // Procedural glyph matrix pattern (binary & symbols)
-            vec2 cellUv = fract(vec2(uv.x * numCols, uv.y * numRows));
-            float charPattern = step(0.25, hash(floor(cellUv * 4.0) + glyphSeed * 10.0));
-            float charMask = charPattern * smoothstep(0.0, 0.1, cellUv.x) * smoothstep(1.0, 0.9, cellUv.x) *
-                                          smoothstep(0.0, 0.1, cellUv.y) * smoothstep(1.0, 0.9, cellUv.y);
+            // 3. CRT Scanlines & Screen Edge Vignette
+            float scanline = sin(uv.y * 420.0) * 0.12 + 0.88;
+            float vignette = smoothstep(0.75, 0.20, length(uv - 0.5) * 0.85);
 
-            vec3 emeraldGreen = vec3(0.0, 1.0, 0.35);
-            vec3 leadWhite = vec3(0.85, 1.0, 0.95);
-            vec3 deepMatrix = vec3(0.0, 0.15, 0.05);
+            finalCol *= scanline * vignette;
+            finalAlpha *= vignette;
 
-            vec3 col = mix(deepMatrix, emeraldGreen, trail * 1.2);
-            col = mix(col, leadWhite, head * 2.2);
-            col += emeraldGreen * (uBass * 0.4);
-
-            float alpha = (trail * 0.85 + head * 1.5) * charMask;
-            alpha = clamp(alpha, 0.0, 1.0);
-
-            if (alpha < 0.005) discard;
-            gl_FragColor = vec4(col * alpha, alpha);
+            if (finalAlpha < 0.004) discard;
+            gl_FragColor = vec4(finalCol * (1.0 + uBass * 0.3), finalAlpha);
         }
     `
 };
@@ -1971,10 +2041,77 @@ function createFloorTileTexture() {
     return tex;
 }
 
+// Offscreen High-Resolution Matrix Katakana & Cypher Glyph Atlas Generator (1024x1024)
+function createMatrixGlyphTexture() {
+    const canvas = document.createElement('canvas');
+    const size = 1024;
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, size, size);
+
+    const cols = 8;
+    const rows = 8;
+    const cellW = size / cols; // 128px per glyph!
+    const cellH = size / rows;
+
+    const glyphs = [
+        '0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
+        ':', '.', '"', '=', '*', '+', '-', '<', '>', '¦',
+        '|', '_', 'Z', 'X', 'Y', 'A', 'B', 'C', 'D', 'E',
+        '日', 'ﾊ', 'ﾐ', 'ﾋ', 'ｰ', 'ｳ', 'ｼ', 'ﾅ', 'ﾓ', 'ｸ',
+        'ﾘ', 'ｱ', 'ﾎ', 'ﾃ', 'ﾏ', 'ｹ', 'ﾒ', 'ｴ', 'ｶ', 'ｷ',
+        'ﾑ', 'ﾕ', 'ﾗ', 'ｾ', 'ﾈ', 'ｽ', 'ﾀ', 'ﾇ', 'ﾍ', 'ｦ',
+        'ﾂ', 'ﾆ', 'ﾝ', 'ｻ'
+    ];
+
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = 'bold 88px "MS Gothic", "Noto Sans JP", "Courier New", monospace';
+    ctx.fillStyle = '#ffffff';
+
+    for (let i = 0; i < 64; i++) {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const cx = col * cellW + cellW / 2;
+        const cy = row * cellH + cellH / 2;
+
+        const char = glyphs[i % glyphs.length];
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        // Mirror-flip select characters horizontally for the authentic Matrix film cypher aesthetic
+        if ((i % 3 === 0 || i % 7 === 0) && i > 9) {
+            ctx.scale(-1, 1);
+        }
+
+        // Soft white glow core
+        ctx.shadowColor = 'rgba(255, 255, 255, 0.9)';
+        ctx.shadowBlur = 8;
+        ctx.fillText(char, 0, 0);
+
+        // Solid crisp white character
+        ctx.shadowBlur = 0;
+        ctx.fillText(char, 0, 0);
+        ctx.restore();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.minFilter = THREE.LinearMipmapLinearFilter;
+    tex.magFilter = THREE.LinearFilter;
+    tex.generateMipmaps = true;
+    return tex;
+}
+
 export function createVFXScene(container) {
     const roundStarTex = createRoundStarTexture();
     const starburstTex = createStarburstTexture();
     const anamorphicFlareTex = createAnamorphicFlareTexture();
+    const matrixGlyphTex = createMatrixGlyphTexture();
     let pinspotShineEnvelope = 0.0;
 
     // 1. Scene, Camera, WebGL Renderer
@@ -2881,7 +3018,9 @@ export function createVFXScene(container) {
         uniforms: {
             uTime: { value: 0.0 },
             uBass: { value: 0.0 },
-            uGlitch: { value: 0.0 }
+            uMid: { value: 0.0 },
+            uGlitch: { value: 0.0 },
+            uGlyphMap: { value: matrixGlyphTex }
         },
         vertexShader: MatrixCodeRainShader.vertexShader,
         fragmentShader: MatrixCodeRainShader.fragmentShader,
@@ -3613,6 +3752,7 @@ export function createVFXScene(container) {
         else if (currentFXIndex === 12) {
             matrixMat.uniforms.uTime.value = elapsedTime;
             matrixMat.uniforms.uBass.value = bassPop;
+            matrixMat.uniforms.uMid.value = audio.smoothedMid || 0;
             matrixMat.uniforms.uGlitch.value = transient;
         }
         // ---------------------------------------------------------------------
