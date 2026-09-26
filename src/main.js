@@ -207,7 +207,7 @@ async function init() {
             const spin = pill.getAttribute('data-spin');
             spinPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
-            vfx.setLogoSpinEnabled(spin === 'on');
+            vfx.setLogoSpinMode(spin);
         });
     });
 
@@ -258,7 +258,7 @@ async function init() {
 
         // Horizontal Spin
         spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === 'off'));
-        vfx.setLogoSpinEnabled(false);
+        vfx.setLogoSpinMode('off');
         if (sliderLogoSpinSpeed) {
             sliderLogoSpinSpeed.value = 1.0;
             logoSpinSpeedVal.textContent = '1.0x';

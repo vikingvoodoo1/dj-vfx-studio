@@ -2514,7 +2514,7 @@ export function createVFXScene(container) {
     let logoContrast = 1.35;
     let logoBrightness = 1.05;
     let isShieldActive = true;
-    let logoSpinEnabled = false;
+    let logoSpinMode = 'off'; // 'off', 'center', 'orbit'
     let logoSpinSpeed = 1.0;
     let logoSpinAngle = 0.0;
     let currentLogoPosX = 0;
@@ -3829,8 +3829,18 @@ export function createVFXScene(container) {
         }
     }
 
+    function setLogoSpinMode(mode) {
+        if (mode === 'center' || mode === 'orbit') {
+            logoSpinMode = mode;
+        } else if (mode === 'on' || mode === true) {
+            logoSpinMode = 'center';
+        } else {
+            logoSpinMode = 'off';
+        }
+    }
+
     function setLogoSpinEnabled(enabled) {
-        logoSpinEnabled = !!enabled;
+        setLogoSpinMode(enabled ? 'center' : 'off');
     }
 
     function setLogoSpinSpeed(speed) {
@@ -3883,23 +3893,36 @@ export function createVFXScene(container) {
                 logoShieldMesh.rotation.set(0, 0, 0);
             }
 
-            // Pure horizontal rotation around screen vertical Y-axis
-            logoMesh.position.set(0, 0, 0);
-            logoMesh.rotation.order = 'YXZ';
-            logoMesh.rotation.x = 0;
-            logoMesh.rotation.z = 0;
-
-            if (logoSpinEnabled) {
+            // Mode-specific Horizontal Rotation Logic
+            if (logoSpinMode === 'center') {
+                // Mode 1: Pure Horizontal Center Spin (Symmetrical flat horizontal rotation on center point everywhere)
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
+                const cosSpin = Math.cos(logoSpinAngle);
+                logoMesh.scale.set((wBase / 16) * cosSpin, hBase / 9, 1);
+                logoMesh.position.set(0, 0, 0);
+                logoMesh.rotation.set(0, 0, 0);
+            } else if (logoSpinMode === 'orbit') {
+                // Mode 2: 3D Perspective Depth Offset Orbit Spin
+                logoSpinAngle += delta * logoSpinSpeed * 2.5;
+                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.position.set(0, 0, 0);
+                logoMesh.rotation.order = 'YXZ';
                 logoMesh.rotation.y = logoSpinAngle;
+                logoMesh.rotation.x = 0;
+                logoMesh.rotation.z = 0;
             } else {
-                // Smoothly ease rotation back to exact 0 when disabled
+                // Mode 3: Static (Smooth recovery to front-facing)
+                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.position.set(0, 0, 0);
                 if (Math.abs(logoMesh.rotation.y) > 0.001) {
                     logoMesh.rotation.y = THREE.MathUtils.lerp(logoMesh.rotation.y, 0, delta * 8.0);
                     if (Math.abs(logoMesh.rotation.y) < 0.001) {
                         logoMesh.rotation.y = 0;
                         logoSpinAngle = 0;
                     }
+                } else {
+                    logoMesh.rotation.set(0, 0, 0);
+                    logoSpinAngle = 0;
                 }
             }
         }
@@ -4310,6 +4333,7 @@ export function createVFXScene(container) {
         setLogoBrightness,
         setLogoBlendMode,
         setLogoShieldVisible,
+        setLogoSpinMode,
         setLogoSpinEnabled,
         setLogoSpinSpeed,
         getCurrentFX: () => currentFXIndex,
