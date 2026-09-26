@@ -1269,116 +1269,177 @@ const DiscoDancerBoxShader = {
             return length(p - c) - r;
         }
 
-        // Female Dancer Body SDF with Fluid Organic Curves and Dynamic Dance Poses
+        // Female Dancer Body SDF with Full Human Proportions, Curvaceous Contours & Fluid Dance Movement
         float sdFemaleDancer(vec2 p, float t, int poseType) {
             // Rhythmic hip sway & spinal S-curve
-            float sway = sin(t) * 0.11;
-            float spineArch = cos(t * 1.5) * 0.04;
+            float sway = sin(t) * 0.12;
+            float spineArch = cos(t * 1.5) * 0.035;
             
             // Central spine anchor curve
             float spineX = sway * cos((p.y - 0.1) * 2.8) + spineArch * (p.y - 0.1);
             vec2 sp = vec2(p.x - spineX, p.y);
 
-            // 1. Head & Hair
+            // 1. Head, Face Profile & Voluminous Hair
             float headY = 0.65 + cos(t * 2.0) * 0.015;
             float headX = spineX + sin(t) * 0.025;
-            float dHead = sdCircle(p, vec2(headX, headY), 0.072);
+            vec2 headCenter = vec2(headX, headY);
             
-            // Flowing swinging hair / ponytail
-            vec2 hairStart = vec2(headX - 0.045, headY + 0.01);
-            float hairSwing = sin(t * 1.2 - 0.5) * 0.08 - 0.06;
+            // Cranium & facial jaw taper
+            float dHead = sdCapsule(p, headCenter + vec2(0.0, 0.02), headCenter - vec2(0.0, 0.03), 0.082, 0.065);
+            
+            // Full voluminous hair crown & retro blowout
+            float dHairCrown = sdCircle(p, headCenter + vec2(-0.015, 0.035), 0.105);
+            float dHairFringe = sdCircle(p, headCenter + vec2(0.045, 0.045), 0.075);
+            
+            // Flowing thick ponytail with organic waves and bounce
+            vec2 hairStart = vec2(headX - 0.055, headY + 0.02);
+            float hairSwing = sin(t * 1.2 - 0.5) * 0.10 - 0.08;
             vec2 hairMid = vec2(headX + hairSwing, headY - 0.14);
-            vec2 hairTip = vec2(headX + hairSwing * 1.4 - 0.02, headY - 0.32);
-            float dHair1 = sdCapsule(p, hairStart, hairMid, 0.042, 0.028);
-            float dHair2 = sdCapsule(p, hairMid, hairTip, 0.028, 0.012);
-            float dHair = min(dHair1, dHair2);
+            vec2 hairTip = vec2(headX + hairSwing * 1.5 - 0.03, headY - 0.34);
+            float dHair1 = sdCapsule(p, hairStart, hairMid, 0.065, 0.045);
+            float dHair2 = sdCapsule(p, hairMid, hairTip, 0.045, 0.022);
+            float dHair = min(min(dHairCrown, dHairFringe), min(dHair1, dHair2));
 
-            // 2. Neck
-            float dNeck = sdCapsule(p, vec2(spineX, headY - 0.05), vec2(spineX, 0.52), 0.032, 0.036);
+            // 2. Neck & Trapezius
+            float dNeck = sdCapsule(p, headCenter - vec2(0.0, 0.03), vec2(spineX, 0.50), 0.048, 0.065);
+            float dTraps = sdCapsule(sp, vec2(0.0, 0.50), vec2(0.0, 0.44), 0.065, 0.145);
 
-            // 3. Torso (Hourglass Silhouette: Shoulders -> Bust -> Slender Waist -> Curvaceous Hips)
-            float dChest = sdCapsule(sp, vec2(0.0, 0.52), vec2(0.0, 0.34), 0.115, 0.105);
-            float dWaist = sdCapsule(sp, vec2(0.0, 0.34), vec2(0.0, 0.14), 0.105, 0.072);
-            float dHips = sdCapsule(sp, vec2(0.0, 0.14), vec2(0.0, -0.06), 0.075, 0.138);
+            // 3. Torso (Voluptuous Feminine Hourglass: Deltoids -> Bust -> Natural Waist -> Curvaceous Hips)
+            // Shoulders & Chest
+            float dChest = sdCapsule(sp, vec2(0.0, 0.48), vec2(0.0, 0.30), 0.155, 0.142);
+            
+            // Bust fullness (natural rounded contours)
+            float dBustL = sdCircle(sp, vec2(-0.075, 0.35), 0.088);
+            float dBustR = sdCircle(sp, vec2(0.075, 0.35), 0.088);
+            float dBust = min(dBustL, dBustR);
 
-            float dTorso = smin(dChest, dWaist, 0.03);
-            dTorso = smin(dTorso, dHips, 0.04);
+            // Healthy curvaceous waist (full & athletic, not stick-thin)
+            float dWaist = sdCapsule(sp, vec2(0.0, 0.30), vec2(0.0, 0.10), 0.142, 0.118);
+            
+            // Hips, Pelvis & Glutes (Full shapely hourglass flare)
+            float dPelvis = sdCapsule(sp, vec2(0.0, 0.10), vec2(0.0, -0.10), 0.118, 0.185);
+            float dHipL = sdCircle(sp, vec2(-0.125, -0.02), 0.115);
+            float dHipR = sdCircle(sp, vec2(0.125, -0.02), 0.115);
+            float dHips = min(dPelvis, min(dHipL, dHipR));
+
+            // Blend torso seamlessly
+            float dTorso = smin(dChest, dBust, 0.04);
+            dTorso = smin(dTorso, dWaist, 0.05);
+            dTorso = smin(dTorso, dHips, 0.05);
+            dTorso = smin(dTorso, dTraps, 0.04);
             dTorso = smin(dTorso, dNeck, 0.03);
 
-            // 4. Arms & Hands (4 Dynamic Dance Routine Poses)
-            vec2 shL = vec2(spineX - 0.115, 0.49);
-            vec2 shR = vec2(spineX + 0.115, 0.49);
+            // 4. Arms & Hands (4 Fluid Human Dance Routine Poses)
+            vec2 shL = vec2(spineX - 0.165, 0.45);
+            vec2 shR = vec2(spineX + 0.165, 0.45);
 
-            vec2 elbL, handL, elbR, handR;
+            vec2 elbL, wristL, handL, elbR, wristR, handR;
 
             if (poseType == 0) {
-                // Pose A: Sensual overhead hair touch & hip gesture
-                elbL = vec2(spineX - 0.21, 0.62 + sin(t) * 0.04);
-                handL = vec2(headX - 0.06, headY + 0.08 + cos(t) * 0.02);
-                elbR = vec2(spineX + 0.24, 0.28 + cos(t) * 0.05);
-                handR = vec2(spineX + 0.15, 0.04 + sin(t) * 0.03);
+                // Pose A: Sensual overhead hair touch & hand-on-hip pose
+                elbL = vec2(spineX - 0.25, 0.60 + sin(t) * 0.04);
+                wristL = vec2(headX - 0.10, headY + 0.08 + cos(t) * 0.02);
+                handL = vec2(headX + 0.02, headY + 0.12 + cos(t) * 0.02);
+                
+                elbR = vec2(spineX + 0.28, 0.22 + cos(t) * 0.04);
+                wristR = vec2(spineX + 0.18, 0.02 + sin(t) * 0.03);
+                handR = vec2(spineX + 0.14, -0.06 + sin(t) * 0.03);
             } else if (poseType == 1) {
-                // Pose B: Dual overhead raised club wave
-                elbL = vec2(spineX - 0.22, 0.64 + sin(t * 1.5) * 0.05);
-                handL = vec2(spineX - 0.16, 0.82 + cos(t * 1.5) * 0.04);
-                elbR = vec2(spineX + 0.22, 0.64 - sin(t * 1.5) * 0.05);
-                handR = vec2(spineX + 0.16, 0.82 - cos(t * 1.5) * 0.04);
+                // Pose B: Dual overhead reaching club wave
+                elbL = vec2(spineX - 0.25, 0.62 + sin(t * 1.5) * 0.06);
+                wristL = vec2(spineX - 0.18, 0.82 + cos(t * 1.5) * 0.05);
+                handL = vec2(spineX - 0.14, 0.92 + cos(t * 1.5) * 0.05);
+                
+                elbR = vec2(spineX + 0.25, 0.62 - sin(t * 1.5) * 0.06);
+                wristR = vec2(spineX + 0.18, 0.82 - cos(t * 1.5) * 0.05);
+                handR = vec2(spineX + 0.14, 0.92 - cos(t * 1.5) * 0.05);
             } else if (poseType == 2) {
-                // Pose C: Side sweep & chest wave
-                elbL = vec2(spineX - 0.26, 0.38 + cos(t) * 0.06);
-                handL = vec2(spineX - 0.32, 0.58 + sin(t) * 0.05);
-                elbR = vec2(spineX + 0.18, 0.44 + sin(t) * 0.04);
-                handR = vec2(spineX - 0.02, 0.38 + cos(t) * 0.03);
+                // Pose C: Side expressive arm sweep & chest touch wave
+                elbL = vec2(spineX - 0.32, 0.36 + cos(t) * 0.07);
+                wristL = vec2(spineX - 0.38, 0.56 + sin(t) * 0.06);
+                handL = vec2(spineX - 0.44, 0.64 + sin(t) * 0.06);
+                
+                elbR = vec2(spineX + 0.20, 0.38 + sin(t) * 0.04);
+                wristR = vec2(spineX + 0.02, 0.42 + cos(t) * 0.03);
+                handR = vec2(spineX - 0.04, 0.40 + cos(t) * 0.03);
             } else {
-                // Pose D: Dynamic hip pose & expressive arm pump
-                elbL = vec2(spineX - 0.22, 0.22 + sin(t) * 0.03);
-                handL = vec2(spineX - 0.12, 0.02);
-                elbR = vec2(spineX + 0.25, 0.68 + cos(t) * 0.06);
-                handR = vec2(spineX + 0.32, 0.84 + sin(t) * 0.05);
+                // Pose D: Dynamic club fist pump & low hip accent
+                elbR = vec2(spineX + 0.28, 0.66 + cos(t) * 0.07);
+                wristR = vec2(spineX + 0.34, 0.84 + sin(t) * 0.06);
+                handR = vec2(spineX + 0.36, 0.94 + sin(t) * 0.06);
+                
+                elbL = vec2(spineX - 0.26, 0.16 + sin(t) * 0.03);
+                wristL = vec2(spineX - 0.18, -0.06);
+                handL = vec2(spineX - 0.14, -0.16);
             }
 
-            float dArmL1 = sdCapsule(p, shL, elbL, 0.038, 0.030);
-            float dArmL2 = sdCapsule(p, elbL, handL, 0.030, 0.022);
-            float dArmR1 = sdCapsule(p, shR, elbR, 0.038, 0.030);
-            float dArmR2 = sdCapsule(p, elbR, handR, 0.030, 0.022);
+            // Upper arms & forearms with natural human muscular tapers
+            float dArmL1 = sdCapsule(p, shL, elbL, 0.055, 0.044);
+            float dArmL2 = sdCapsule(p, elbL, wristL, 0.044, 0.032);
+            float dHandL = sdCapsule(p, wristL, handL, 0.032, 0.018);
+            
+            float dArmR1 = sdCapsule(p, shR, elbR, 0.055, 0.044);
+            float dArmR2 = sdCapsule(p, elbR, wristR, 0.044, 0.032);
+            float dHandR = sdCapsule(p, wristR, handR, 0.032, 0.018);
 
-            float dArms = min(min(dArmL1, dArmL2), min(dArmR1, dArmR2));
-            float dUpper = smin(dTorso, dArms, 0.03);
+            float dArms = min(min(dArmL1, min(dArmL2, dHandL)), min(dArmR1, min(dArmR2, dHandR)));
+            float dUpper = smin(dTorso, dArms, 0.04);
             dUpper = min(dUpper, dHead);
             dUpper = min(dUpper, dHair);
 
-            // 5. Shapely Legs & High Heels (Curvaceous Thighs, Tapered Knees, Calves, Arched Feet)
-            vec2 hipL = vec2(spineX - 0.075, -0.04);
-            vec2 hipR = vec2(spineX + 0.075, -0.04);
+            // 5. Shapely Human Legs, Voluptuous Thighs, Calves & High Heel Stilettos
+            vec2 hipL = vec2(spineX - 0.095, -0.08);
+            vec2 hipR = vec2(spineX + 0.095, -0.08);
 
             float legStep = sin(t) * 0.06;
-            vec2 kneeL = vec2(spineX - 0.09 + legStep, -0.42);
-            vec2 ankleL = vec2(spineX - 0.08 + legStep * 1.2, -0.76);
-            vec2 toeL = vec2(spineX - 0.05 + legStep * 1.2, -0.84);
-            vec2 heelL = vec2(spineX - 0.11 + legStep * 1.2, -0.84);
+            vec2 kneeL = vec2(spineX - 0.11 + legStep, -0.42);
+            vec2 ankleL = vec2(spineX - 0.09 + legStep * 1.2, -0.74);
+            vec2 toeL = vec2(spineX - 0.04 + legStep * 1.2, -0.84);
+            vec2 heelL = vec2(spineX - 0.13 + legStep * 1.2, -0.84);
 
-            vec2 kneeR = vec2(spineX + 0.09 - legStep, -0.42);
-            vec2 ankleR = vec2(spineX + 0.08 - legStep * 1.2, -0.76);
-            vec2 toeR = vec2(spineX + 0.11 - legStep * 1.2, -0.84);
-            vec2 heelR = vec2(spineX + 0.05 - legStep * 1.2, -0.84);
+            vec2 kneeR = vec2(spineX + 0.11 - legStep, -0.42);
+            vec2 ankleR = vec2(spineX + 0.09 - legStep * 1.2, -0.74);
+            vec2 toeR = vec2(spineX + 0.13 - legStep * 1.2, -0.84);
+            vec2 heelR = vec2(spineX + 0.06 - legStep * 1.2, -0.84);
 
-            // Thighs (shapely taper)
-            float dThighL = sdCapsule(p, hipL, kneeL, 0.068, 0.042);
-            float dThighR = sdCapsule(p, hipR, kneeR, 0.068, 0.042);
+            // Voluptuous shapely thighs with upper glute flare
+            float dThighSegL = sdCapsule(p, hipL, kneeL, 0.115, 0.075);
+            float dThighFlareL = sdCircle(p, mix(hipL, kneeL, 0.25) + vec2(-0.025, 0.0), 0.095);
+            float dThighL = smin(dThighSegL, dThighFlareL, 0.03);
 
-            // Calves & Ankles
-            float dCalfL = sdCapsule(p, kneeL, ankleL, 0.042, 0.025);
-            float dCalfR = sdCapsule(p, kneeR, ankleR, 0.042, 0.025);
+            float dThighSegR = sdCapsule(p, hipR, kneeR, 0.115, 0.075);
+            float dThighFlareR = sdCircle(p, mix(hipR, kneeR, 0.25) + vec2(0.025, 0.0), 0.095);
+            float dThighR = smin(dThighSegR, dThighFlareR, 0.03);
 
-            // High-heel shoes & arch
-            float dFootL = min(sdCapsule(p, ankleL, toeL, 0.025, 0.018), sdCapsule(p, ankleL, heelL, 0.018, 0.010));
-            float dFootR = min(sdCapsule(p, ankleR, toeR, 0.025, 0.018), sdCapsule(p, ankleR, heelR, 0.018, 0.010));
+            // Rounded knee joints
+            float dKneeL = sdCircle(p, kneeL, 0.068);
+            float dKneeR = sdCircle(p, kneeR, 0.068);
 
-            float dLegL = min(dThighL, min(dCalfL, dFootL));
-            float dLegR = min(dThighR, min(dCalfR, dFootR));
+            // Calves with natural human gastrocnemius curvature tapering to ankle
+            float dCalfSegL = sdCapsule(p, kneeL, ankleL, 0.072, 0.038);
+            float dCalfBulgeL = sdCircle(p, mix(kneeL, ankleL, 0.32) + vec2(0.020, 0.0), 0.068);
+            float dCalfL = smin(dCalfSegL, dCalfBulgeL, 0.03);
+
+            float dCalfSegR = sdCapsule(p, kneeR, ankleR, 0.072, 0.038);
+            float dCalfBulgeR = sdCircle(p, mix(kneeR, ankleR, 0.32) + vec2(-0.020, 0.0), 0.068);
+            float dCalfR = smin(dCalfSegR, dCalfBulgeR, 0.03);
+
+            // Stiletto High Heels, Arched Instep & Platform
+            float dInstepL = sdCapsule(p, ankleL, toeL, 0.038, 0.026);
+            float dToeL = sdCapsule(p, toeL, toeL + vec2(0.04, -0.02), 0.026, 0.018);
+            float dStilettoL = sdCapsule(p, ankleL - vec2(0.02, 0.02), heelL, 0.018, 0.010);
+            float dFootL = min(dInstepL, min(dToeL, dStilettoL));
+
+            float dInstepR = sdCapsule(p, ankleR, toeR, 0.038, 0.026);
+            float dToeR = sdCapsule(p, toeR, toeR + vec2(0.04, -0.02), 0.026, 0.018);
+            float dStilettoR = sdCapsule(p, ankleR - vec2(0.02, 0.02), heelR, 0.018, 0.010);
+            float dFootR = min(dInstepR, min(dToeR, dStilettoR));
+
+            float dLegL = min(dThighL, min(dKneeL, min(dCalfL, dFootL)));
+            float dLegR = min(dThighR, min(dKneeR, min(dCalfR, dFootR)));
             float dLegs = min(dLegL, dLegR);
 
-            return smin(dUpper, dLegs, 0.04);
+            return smin(dUpper, dLegs, 0.05);
         }
 
         void main() {
