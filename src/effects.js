@@ -902,11 +902,14 @@ const DiscoFloorShader = {
     `
 };
 
-// Retro Arcade 80s Shader (Space Invaders & Pac-Man Sprites)
+// =============================================================================
+// Retro Arcade 80s Shader (Pac-Man, Ghost Chase, Screen Perimeter & Space Invader Cannon Shootout)
+// =============================================================================
 const RetroArcadeShader = {
     uniforms: {
         uTime: { value: 0.0 },
-        uBass: { value: 0.0 }
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -919,44 +922,367 @@ const RetroArcadeShader = {
         varying vec2 vUv;
         uniform float uTime;
         uniform float uBass;
+        uniform float uMid;
+
+        const float PI = 3.14159265359;
+
+        // Pac-Man SDF Renderer with Direction Rotation and Chomp Animation
+        float drawPacman(vec2 uv, vec2 center, float radius, float angle, float chomp) {
+            vec2 p = uv - center;
+            float d = length(p);
+            if (d > radius + 0.1) return 0.0;
+            
+            float cosA = cos(-angle);
+            float sinA = sin(-angle);
+            vec2 rp = vec2(p.x * cosA - p.y * sinA, p.x * sinA + p.y * cosA);
+            
+            float mouthAngle = abs(atan(rp.y, rp.x));
+            float mouth = smoothstep(chomp * 0.9, chomp * 1.1, mouthAngle);
+            float circle = smoothstep(radius, radius - 0.06, d);
+            return circle * mouth;
+        }
+
+        // Arcade Ghost (Blinky, Inky, Pinky, or Vulnerable Scared Blue)
+        vec4 drawGhost(vec2 uv, vec2 center, float radius, vec2 lookDir, bool isScared, float flash, vec3 ghostColor) {
+            vec2 p = (uv - center) / radius;
+            if (abs(p.x) > 1.2 || abs(p.y) > 1.3) return vec4(0.0);
+            
+            // Dome head & body
+            float dome = step(length(vec2(p.x, max(0.0, p.y - 0.15))), 0.85);
+            float skirtWave = -0.65 + 0.14 * cos(p.x * 9.42 + uTime * 12.0);
+            float bodyRect = step(abs(p.x), 0.85) * step(skirtWave, p.y) * step(p.y, 0.15);
+            float bodyMask = max(dome, bodyRect);
+            
+            if (bodyMask < 0.5) return vec4(0.0);
+            
+            vec3 baseCol = isScared ? mix(vec3(0.08, 0.22, 0.95), vec3(0.9, 0.9, 0.95), flash) : ghostColor;
+            
+            if (!isScared) {
+                // Sclera
+                vec2 eyeL = p - vec2(-0.30, 0.18);
+                vec2 eyeR = p - vec2(0.30, 0.18);
+                float sclera = step(length(eyeL), 0.26) + step(length(eyeR), 0.26);
+                
+                // Pupils looking in movement direction
+                vec2 pupilL = eyeL - lookDir * 0.10;
+                vec2 pupilR = eyeR - lookDir * 0.10;
+                float pupil = step(length(pupilL), 0.13) + step(length(pupilR), 0.13);
+                
+                if (pupil > 0.5) return vec4(vec3(0.05, 0.1, 0.6), 1.0);
+                if (sclera > 0.5) return vec4(vec3(1.0), 1.0);
+            } else {
+                // Scared yellow eyes & wavy mouth
+                vec2 eyeL = p - vec2(-0.28, 0.18);
+                vec2 eyeR = p - vec2(0.28, 0.18);
+                float sEye = step(length(eyeL), 0.10) + step(length(eyeR), 0.10);
+                if (sEye > 0.5) return vec4(vec3(1.0, 0.85, 0.2), 1.0);
+                
+                float mouthWave = -0.28 + 0.07 * sin(p.x * 12.56);
+                if (abs(p.y - mouthWave) < 0.05 && abs(p.x) < 0.5) return vec4(vec3(1.0, 0.85, 0.2), 1.0);
+            }
+            
+            return vec4(baseCol, 1.0);
+        }
+
+        // Space Invader Cannon Tank (Player Base)
+        float drawCannon(vec2 uv, vec2 center) {
+            vec2 p = uv - center;
+            if (abs(p.x) > 1.6 || abs(p.y) > 1.2) return 0.0;
+            
+            float base = step(abs(p.x), 1.3) * step(abs(p.y - (-0.35)), 0.25);
+            float mid = step(abs(p.x), 0.8) * step(abs(p.y - 0.05), 0.20);
+            float turret = step(abs(p.x), 0.22) * step(abs(p.y - 0.45), 0.30);
+            return max(base, max(mid, turret));
+        }
+
+        // Animated Space Invader Alien
+        float drawAlien(vec2 uv, vec2 center, float frame) {
+            vec2 p = (uv - center) * 1.8;
+            if (abs(p.x) > 1.4 || abs(p.y) > 1.1) return 0.0;
+            
+            float body = step(abs(p.x), 0.9) * step(abs(p.y), 0.55);
+            float ant = step(abs(abs(p.x) - 0.65), 0.14) * step(abs(p.y - 0.8), 0.22);
+            float legX = frame < 0.5 ? 1.05 : 0.75;
+            float legY = frame < 0.5 ? -0.8 : -0.65;
+            float legs = step(abs(abs(p.x) - legX), 0.16) * step(abs(p.y - legY), 0.25);
+            float eyes = step(abs(p.x - 0.4), 0.18) * step(abs(p.y - 0.12), 0.16) +
+                         step(abs(p.x + 0.4), 0.18) * step(abs(p.y - 0.12), 0.16);
+                         
+            return clamp(max(body + ant + legs, 0.0) - eyes, 0.0, 1.0);
+        }
+
+        // Laser Beam
+        float drawLaser(vec2 uv, vec2 laserPos, float lengthH) {
+            if (abs(uv.x - laserPos.x) > 0.22) return 0.0;
+            if (uv.y < laserPos.y - lengthH || uv.y > laserPos.y) return 0.0;
+            float beamCore = smoothstep(0.14, 0.02, abs(uv.x - laserPos.x));
+            float trail = smoothstep(laserPos.y - lengthH, laserPos.y, uv.y);
+            return beamCore * trail;
+        }
+
+        // Explosion particle burst
+        float drawExplosion(vec2 uv, vec2 center, float age) {
+            if (age < 0.0 || age > 1.0) return 0.0;
+            vec2 p = uv - center;
+            float r = length(p);
+            float ring = smoothstep(0.18, 0.0, abs(r - age * 2.2)) * (1.0 - age);
+            float rays = step(0.65, sin(atan(p.y, p.x) * 8.0)) * smoothstep(age * 2.5, 0.0, r) * (1.0 - age);
+            return max(ring, rays);
+        }
+
+        // Parametric perimeter position calculator (Bottom -> Right -> Top -> Left)
+        void getPerimeterTransform(float s, out vec2 pos, out float angle, out vec2 lookDir) {
+            float norm = fract(s);
+            if (norm < 0.342) {
+                // Bottom lane moving right
+                float t = norm / 0.342;
+                pos = vec2(-13.0 + t * 26.0, -6.2);
+                angle = 0.0;
+                lookDir = vec2(1.0, 0.0);
+            } else if (norm < 0.500) {
+                // Right lane moving up
+                float t = (norm - 0.342) / 0.158;
+                pos = vec2(13.0, -6.2 + t * 12.4);
+                angle = PI * 0.5;
+                lookDir = vec2(0.0, 1.0);
+            } else if (norm < 0.842) {
+                // Top lane moving left
+                float t = (norm - 0.500) / 0.342;
+                pos = vec2(13.0 - t * 26.0, 6.2);
+                angle = PI;
+                lookDir = vec2(-1.0, 0.0);
+            } else {
+                // Left lane moving down
+                float t = (norm - 0.842) / 0.158;
+                pos = vec2(-13.0, 6.2 - t * 12.4);
+                angle = -PI * 0.5;
+                lookDir = vec2(0.0, -1.0);
+            }
+        }
 
         void main() {
             vec2 uv = (vUv - 0.5) * vec2(32.0, 18.0);
             
-            // Scanlines
+            // Scanlines & CRT curvature phosphor vignette
             float scanline = sin(vUv.y * 360.0) * 0.15 + 0.85;
-
-            // Space Invaders armada marching left-to-right
-            float marchX = sin(uTime * 2.0) * 3.5;
-            float marchY = 4.5 - mod(uTime * 0.4, 2.0);
-            vec2 invUv = uv - vec2(marchX, marchY);
-
-            // Repeat 5 columns, 3 rows of aliens
-            vec2 alienGrid = fract(invUv * 0.3) - 0.5;
-            float alienDist = length(alienGrid);
-            float invader = smoothstep(0.24, 0.05, alienDist);
-
-            // Pac-Man chomping dot trail on bottom lane
-            float pacX = mod(uTime * 6.0, 36.0) - 18.0;
-            vec2 pacUv = uv - vec2(pacX, -5.0);
-            float pacDist = length(pacUv);
-            float pacAngle = atan(pacUv.y, pacUv.x);
-            float chomp = abs(sin(uTime * 12.0)) * 0.75;
-            float pacman = step(pacDist, 1.2) * step(chomp, abs(pacAngle));
-
-            // Energizer dots
-            float dots = step(abs(uv.y - (-5.0)), 0.15) * step(0.7, fract(uv.x * 0.6)) * step(pacX, uv.x);
+            float vignette = smoothstep(0.72, 0.25, length(vUv - 0.5) * 0.85);
 
             vec3 col = vec3(0.0);
-            col += vec3(0.0, 1.0, 0.85) * invader * (1.2 + uBass * 0.8);
-            col += vec3(1.0, 0.92, 0.1) * pacman * 1.5;
-            col += vec3(1.0, 0.8, 0.5) * dots * 1.2;
+            float totalAlpha = 0.0;
 
+            // 30-Second Dynamic Narrative Cycle:
+            // 0.0s - 10.0s: Mode 1 (Classic Pac-Man run -> Eats Power Pellet -> Pac-Man chases frightened Ghost!)
+            // 10.0s - 20.0s: Mode 2 (Pac-Man and Ghost run around the entire screen perimeter)
+            // 20.0s - 30.0s: Mode 3 (Space Invader Cannon at the bottom shooting upwards at the invaders & fray)
+            float cycle = mod(uTime, 30.0);
+            float chomp = abs(sin(uTime * 14.0)) * 0.78;
+
+            // -----------------------------------------------------------------
+            // MODE 1: PAC-MAN CHASE & REVERSAL (0s to 10s)
+            // -----------------------------------------------------------------
+            if (cycle < 10.0) {
+                // Background Invaders marching at the top
+                float marchX = sin(uTime * 1.5) * 3.5;
+                vec2 invUv = uv - vec2(marchX, 5.0);
+                vec2 alienGrid = fract(invUv * 0.28) - 0.5;
+                float invader = smoothstep(0.24, 0.05, length(alienGrid)) * step(abs(invUv.x), 8.5) * step(abs(invUv.y), 2.2);
+                col += vec3(0.0, 1.0, 0.85) * invader * (1.1 + uBass * 0.6);
+                totalAlpha = max(totalAlpha, invader);
+
+                vec2 pacPos;
+                float pacAngle;
+                vec2 ghostPos;
+                vec2 ghostLook;
+                bool ghostScared = false;
+                float ghostFlash = 0.0;
+
+                // Power pellet location
+                vec2 pelletPos = vec2(6.5, -4.5);
+                bool pelletActive = (cycle < 4.5);
+
+                if (cycle < 4.5) {
+                    // Stage 1a: Ghost chases Pac-Man to the right
+                    float t = cycle / 4.5;
+                    pacPos = vec2(-15.0 + t * 21.5, -4.5);
+                    pacAngle = 0.0;
+                    ghostPos = vec2(pacPos.x - 3.4, -4.5);
+                    ghostLook = vec2(1.0, 0.0);
+                    ghostScared = false;
+                } else {
+                    // Stage 1b: Power Pellet eaten! Ghost runs away to the left; Pac-Man turns & chases!
+                    float t = (cycle - 4.5) / 5.5;
+                    ghostPos = vec2(6.5 - t * 24.0, -4.5);
+                    ghostLook = vec2(-1.0, 0.0);
+                    pacPos = vec2(6.5 - t * 27.0, -4.5); // Pac-Man moves faster and catches ghost
+                    pacAngle = PI;
+                    ghostScared = true;
+                    ghostFlash = step(0.65, fract(uTime * 4.0)) * step(3.5, cycle - 4.5);
+                }
+
+                // Pac-Man
+                float pac = drawPacman(uv, pacPos, 1.25, pacAngle, chomp);
+                col += vec3(1.0, 0.92, 0.05) * pac * 1.5;
+                totalAlpha = max(totalAlpha, pac);
+
+                // Ghost (Blinky Red or Scared Blue)
+                vec4 ghost = drawGhost(uv, ghostPos, 1.25, ghostLook, ghostScared, ghostFlash, vec3(1.0, 0.15, 0.25));
+                col = mix(col, ghost.rgb * 1.3, ghost.a);
+                totalAlpha = max(totalAlpha, ghost.a);
+
+                // Energizer dots along the lane
+                if (abs(uv.y - (-4.5)) < 0.18 && abs(uv.x) < 14.5) {
+                    float dotCell = fract(uv.x * 0.6);
+                    float dotMask = step(0.72, dotCell);
+                    // Dots eaten as Pac-Man moves
+                    if (cycle < 4.5) {
+                        dotMask *= step(pacPos.x, uv.x);
+                    } else {
+                        dotMask *= step(uv.x, pacPos.x);
+                    }
+                    col += vec3(1.0, 0.85, 0.6) * dotMask * 1.2;
+                    totalAlpha = max(totalAlpha, dotMask);
+                }
+
+                // Flashing Energizer Power Pellet
+                if (pelletActive) {
+                    float pDist = length(uv - pelletPos);
+                    float pellet = smoothstep(0.45, 0.25, pDist) * (sin(uTime * 10.0) * 0.35 + 0.65);
+                    col += vec3(1.0, 0.85, 0.4) * pellet * 1.8;
+                    totalAlpha = max(totalAlpha, pellet);
+                }
+            }
+
+            // -----------------------------------------------------------------
+            // MODE 2: SCREEN PERIMETER CIRCUIT (10s to 20s)
+            // -----------------------------------------------------------------
+            else if (cycle < 20.0) {
+                float modeTime = cycle - 10.0;
+                float progressPac = modeTime * 0.105; // ~1 full perimeter lap
+                float progressGhost = progressPac - 0.048; // Ghost following right behind!
+
+                vec2 pacPos;
+                float pacAngle;
+                vec2 pacLook;
+                getPerimeterTransform(progressPac, pacPos, pacAngle, pacLook);
+
+                vec2 ghostPos;
+                float ghostAngle;
+                vec2 ghostLook;
+                getPerimeterTransform(progressGhost, ghostPos, ghostAngle, ghostLook);
+
+                // Pac-Man
+                float pac = drawPacman(uv, pacPos, 1.2, pacAngle, chomp);
+                col += vec3(1.0, 0.92, 0.05) * pac * 1.5;
+                totalAlpha = max(totalAlpha, pac);
+
+                // Pinky / Inky Ghost chasing Pac-Man along the perimeter
+                vec3 pinkyCol = vec3(1.0, 0.5, 0.8);
+                vec4 ghost = drawGhost(uv, ghostPos, 1.2, ghostLook, false, 0.0, pinkyCol);
+                col = mix(col, ghost.rgb * 1.3, ghost.a);
+                totalAlpha = max(totalAlpha, ghost.a);
+
+                // Corner Power Pellets at 4 screen corners
+                vec2 c1 = vec2(-13.0, -6.2);
+                vec2 c2 = vec2(13.0, -6.2);
+                vec2 c3 = vec2(13.0, 6.2);
+                vec2 c4 = vec2(-13.0, 6.2);
+                float pPulse = sin(uTime * 8.0) * 0.4 + 0.6;
+                float pellets = (smoothstep(0.42, 0.20, length(uv - c1)) +
+                                smoothstep(0.42, 0.20, length(uv - c2)) +
+                                smoothstep(0.42, 0.20, length(uv - c3)) +
+                                smoothstep(0.42, 0.20, length(uv - c4))) * pPulse;
+                col += vec3(1.0, 0.85, 0.3) * pellets * 1.6;
+                totalAlpha = max(totalAlpha, pellets);
+
+                // Border Guide Rails & Track Dots
+                float isBottom = step(abs(uv.y - (-6.2)), 0.12) * step(abs(uv.x), 13.0);
+                float isTop = step(abs(uv.y - 6.2), 0.12) * step(abs(uv.x), 13.0);
+                float isRight = step(abs(uv.x - 13.0), 0.12) * step(abs(uv.y), 6.2);
+                float isLeft = step(abs(uv.x - (-13.0)), 0.12) * step(abs(uv.y), 6.2);
+                float borderTrack = isBottom + isTop + isRight + isLeft;
+                float dotStripe = step(0.65, fract((uv.x + uv.y) * 0.5)) * borderTrack;
+                col += vec3(0.15, 0.35, 1.0) * dotStripe * 0.8;
+                totalAlpha = max(totalAlpha, dotStripe * 0.8);
+
+                // Center Arcade Watermark / Ready Banner
+                float centerAlien = drawAlien(uv, vec2(0.0, 0.0), step(0.5, fract(uTime * 1.5)));
+                col += vec3(0.0, 1.0, 0.8) * centerAlien * (0.8 + uBass * 0.6);
+                totalAlpha = max(totalAlpha, centerAlien);
+            }
+
+            // -----------------------------------------------------------------
+            // MODE 3: SPACE INVADER CANNON SHOOTOUT (20s to 30s)
+            // -----------------------------------------------------------------
+            else {
+                float modeTime = cycle - 20.0;
+
+                // 1. Space Invader Cannon at the bottom
+                float cannonX = sin(uTime * 2.8) * 8.5;
+                vec2 cannonPos = vec2(cannonX, -7.0);
+                float cannon = drawCannon(uv, cannonPos);
+                col += vec3(0.1, 1.0, 0.3) * cannon * (1.3 + uBass * 0.5);
+                totalAlpha = max(totalAlpha, cannon);
+
+                // 2. Invader Armada (3 rows of crabs)
+                float marchOffset = sin(uTime * 2.0) * 4.0;
+                float alienFrame = step(0.5, fract(uTime * 2.0));
+                for (int row = 0; row < 3; row++) {
+                    float rowY = 3.5 + float(row) * 1.5;
+                    for (int colIdx = -3; colIdx <= 3; colIdx++) {
+                        float colX = float(colIdx) * 3.4 + marchOffset;
+                        vec2 aPos = vec2(colX, rowY);
+                        float alien = drawAlien(uv, aPos, alienFrame);
+                        vec3 aCol = row == 0 ? vec3(0.0, 1.0, 0.9) : (row == 1 ? vec3(1.0, 0.2, 0.8) : vec3(1.0, 0.9, 0.1));
+                        col += aCol * alien * (1.1 + uBass * 0.6);
+                        totalAlpha = max(totalAlpha, alien);
+                    }
+                }
+
+                // 3. Laser Beams shot from Cannon upwards
+                for (int i = 0; i < 4; i++) {
+                    float laserProgress = fract(uTime * 2.5 + float(i) * 0.25);
+                    float laserY = -6.2 + laserProgress * 14.5;
+                    float laserX = sin((uTime - laserProgress * 0.4) * 2.8) * 8.5;
+                    float laser = drawLaser(uv, vec2(laserX, laserY), 2.2);
+                    col += vec3(0.2, 1.0, 0.4) * laser * 2.0;
+                    totalAlpha = max(totalAlpha, laser);
+
+                    // Explosion impact at the top
+                    if (laserProgress > 0.88) {
+                        float expAge = (laserProgress - 0.88) / 0.12;
+                        float explosion = drawExplosion(uv, vec2(laserX, 7.5), expAge);
+                        col += vec3(1.0, 0.85, 0.2) * explosion * 2.2;
+                        totalAlpha = max(totalAlpha, explosion);
+                    }
+                }
+
+                // 4. Pac-Man and Ghost dashing horizontally through the middle lane
+                float midRunX = mod(modeTime * 8.0, 36.0) - 18.0;
+                vec2 pacPos = vec2(midRunX, -1.2);
+                vec2 ghostPos = vec2(midRunX - 3.2, -1.2);
+
+                float pac = drawPacman(uv, pacPos, 1.25, 0.0, chomp);
+                col += vec3(1.0, 0.92, 0.05) * pac * 1.5;
+                totalAlpha = max(totalAlpha, pac);
+
+                vec4 ghost = drawGhost(uv, ghostPos, 1.25, vec2(1.0, 0.0), false, 0.0, vec3(0.0, 0.95, 1.0)); // Inky Cyan
+                col = mix(col, ghost.rgb * 1.3, ghost.a);
+                totalAlpha = max(totalAlpha, ghost.a);
+
+                // Middle lane dot trail
+                if (abs(uv.y - (-1.2)) < 0.15 && abs(uv.x) < 15.0) {
+                    float dotMask = step(0.7, fract(uv.x * 0.55)) * step(pacPos.x, uv.x);
+                    col += vec3(1.0, 0.8, 0.4) * dotMask * 1.2;
+                    totalAlpha = max(totalAlpha, dotMask);
+                }
+            }
+
+            // CRT Scanlines & Screen Edge Soft Clip
             col *= scanline;
-            float alpha = clamp(invader + pacman + dots, 0.0, 1.0);
+            float alpha = clamp(totalAlpha, 0.0, 1.0) * vignette;
 
             if (alpha < 0.005) discard;
-            gl_FragColor = vec4(col * alpha, alpha);
+            gl_FragColor = vec4(col * (1.0 + uBass * 0.45), alpha);
         }
     `
 };
@@ -2575,7 +2901,8 @@ export function createVFXScene(container) {
     const arcadeMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
-            uBass: { value: 0.0 }
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 }
         },
         vertexShader: RetroArcadeShader.vertexShader,
         fragmentShader: RetroArcadeShader.fragmentShader,
@@ -3294,6 +3621,7 @@ export function createVFXScene(container) {
         else if (currentFXIndex === 13) {
             arcadeMat.uniforms.uTime.value = elapsedTime;
             arcadeMat.uniforms.uBass.value = bassPop;
+            arcadeMat.uniforms.uMid.value = audio.smoothedMid || 0;
         }
         // ---------------------------------------------------------------------
         // FX 14: 🚀 Warp Speed Starfield
