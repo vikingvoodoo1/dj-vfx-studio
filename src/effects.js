@@ -1223,6 +1223,280 @@ const DiscoFloorShader = {
 };
 
 // =============================================================================
+// Disco Silhouette Dancers in Glowing Color Box Light Walls Shader (FX 9)
+// Features 5-Compartment 3D Lightbox Stage, Curvaceous Shaded Female Dancers,
+// Fluid S-Curve Dance Choreography, Fresnel Neon Rim Lighting & Audio Reactivity
+// =============================================================================
+const DiscoDancerBoxShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 },
+        uTreble: { value: 0.0 },
+        uBPM: { value: 126.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uMid;
+        uniform float uTreble;
+        uniform float uBPM;
+
+        // Smooth minimum for blending organic body joints
+        float smin(float a, float b, float k) {
+            float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
+            return mix(b, a, h) - k * h * (1.0 - h);
+        }
+
+        // Segment SDF
+        float sdCapsule(vec2 p, vec2 a, vec2 b, float r1, float r2) {
+            vec2 pa = p - a, ba = b - a;
+            float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
+            float r = mix(r1, r2, h);
+            return length(pa - ba * h) - r;
+        }
+
+        // Circle SDF
+        float sdCircle(vec2 p, vec2 c, float r) {
+            return length(p - c) - r;
+        }
+
+        // Female Dancer Body SDF with Fluid Organic Curves and Dynamic Dance Poses
+        float sdFemaleDancer(vec2 p, float t, int poseType) {
+            // Rhythmic hip sway & spinal S-curve
+            float sway = sin(t) * 0.11;
+            float spineArch = cos(t * 1.5) * 0.04;
+            
+            // Central spine anchor curve
+            float spineX = sway * cos((p.y - 0.1) * 2.8) + spineArch * (p.y - 0.1);
+            vec2 sp = vec2(p.x - spineX, p.y);
+
+            // 1. Head & Hair
+            float headY = 0.65 + cos(t * 2.0) * 0.015;
+            float headX = spineX + sin(t) * 0.025;
+            float dHead = sdCircle(p, vec2(headX, headY), 0.072);
+            
+            // Flowing swinging hair / ponytail
+            vec2 hairStart = vec2(headX - 0.045, headY + 0.01);
+            float hairSwing = sin(t * 1.2 - 0.5) * 0.08 - 0.06;
+            vec2 hairMid = vec2(headX + hairSwing, headY - 0.14);
+            vec2 hairTip = vec2(headX + hairSwing * 1.4 - 0.02, headY - 0.32);
+            float dHair1 = sdCapsule(p, hairStart, hairMid, 0.042, 0.028);
+            float dHair2 = sdCapsule(p, hairMid, hairTip, 0.028, 0.012);
+            float dHair = min(dHair1, dHair2);
+
+            // 2. Neck
+            float dNeck = sdCapsule(p, vec2(spineX, headY - 0.05), vec2(spineX, 0.52), 0.032, 0.036);
+
+            // 3. Torso (Hourglass Silhouette: Shoulders -> Bust -> Slender Waist -> Curvaceous Hips)
+            float dChest = sdCapsule(sp, vec2(0.0, 0.52), vec2(0.0, 0.34), 0.115, 0.105);
+            float dWaist = sdCapsule(sp, vec2(0.0, 0.34), vec2(0.0, 0.14), 0.105, 0.072);
+            float dHips = sdCapsule(sp, vec2(0.0, 0.14), vec2(0.0, -0.06), 0.075, 0.138);
+
+            float dTorso = smin(dChest, dWaist, 0.03);
+            dTorso = smin(dTorso, dHips, 0.04);
+            dTorso = smin(dTorso, dNeck, 0.03);
+
+            // 4. Arms & Hands (4 Dynamic Dance Routine Poses)
+            vec2 shL = vec2(spineX - 0.115, 0.49);
+            vec2 shR = vec2(spineX + 0.115, 0.49);
+
+            vec2 elbL, handL, elbR, handR;
+
+            if (poseType == 0) {
+                // Pose A: Sensual overhead hair touch & hip gesture
+                elbL = vec2(spineX - 0.21, 0.62 + sin(t) * 0.04);
+                handL = vec2(headX - 0.06, headY + 0.08 + cos(t) * 0.02);
+                elbR = vec2(spineX + 0.24, 0.28 + cos(t) * 0.05);
+                handR = vec2(spineX + 0.15, 0.04 + sin(t) * 0.03);
+            } else if (poseType == 1) {
+                // Pose B: Dual overhead raised club wave
+                elbL = vec2(spineX - 0.22, 0.64 + sin(t * 1.5) * 0.05);
+                handL = vec2(spineX - 0.16, 0.82 + cos(t * 1.5) * 0.04);
+                elbR = vec2(spineX + 0.22, 0.64 - sin(t * 1.5) * 0.05);
+                handR = vec2(spineX + 0.16, 0.82 - cos(t * 1.5) * 0.04);
+            } else if (poseType == 2) {
+                // Pose C: Side sweep & chest wave
+                elbL = vec2(spineX - 0.26, 0.38 + cos(t) * 0.06);
+                handL = vec2(spineX - 0.32, 0.58 + sin(t) * 0.05);
+                elbR = vec2(spineX + 0.18, 0.44 + sin(t) * 0.04);
+                handR = vec2(spineX - 0.02, 0.38 + cos(t) * 0.03);
+            } else {
+                // Pose D: Dynamic hip pose & expressive arm pump
+                elbL = vec2(spineX - 0.22, 0.22 + sin(t) * 0.03);
+                handL = vec2(spineX - 0.12, 0.02);
+                elbR = vec2(spineX + 0.25, 0.68 + cos(t) * 0.06);
+                handR = vec2(spineX + 0.32, 0.84 + sin(t) * 0.05);
+            }
+
+            float dArmL1 = sdCapsule(p, shL, elbL, 0.038, 0.030);
+            float dArmL2 = sdCapsule(p, elbL, handL, 0.030, 0.022);
+            float dArmR1 = sdCapsule(p, shR, elbR, 0.038, 0.030);
+            float dArmR2 = sdCapsule(p, elbR, handR, 0.030, 0.022);
+
+            float dArms = min(min(dArmL1, dArmL2), min(dArmR1, dArmR2));
+            float dUpper = smin(dTorso, dArms, 0.03);
+            dUpper = min(dUpper, dHead);
+            dUpper = min(dUpper, dHair);
+
+            // 5. Shapely Legs & High Heels (Curvaceous Thighs, Tapered Knees, Calves, Arched Feet)
+            vec2 hipL = vec2(spineX - 0.075, -0.04);
+            vec2 hipR = vec2(spineX + 0.075, -0.04);
+
+            float legStep = sin(t) * 0.06;
+            vec2 kneeL = vec2(spineX - 0.09 + legStep, -0.42);
+            vec2 ankleL = vec2(spineX - 0.08 + legStep * 1.2, -0.76);
+            vec2 toeL = vec2(spineX - 0.05 + legStep * 1.2, -0.84);
+            vec2 heelL = vec2(spineX - 0.11 + legStep * 1.2, -0.84);
+
+            vec2 kneeR = vec2(spineX + 0.09 - legStep, -0.42);
+            vec2 ankleR = vec2(spineX + 0.08 - legStep * 1.2, -0.76);
+            vec2 toeR = vec2(spineX + 0.11 - legStep * 1.2, -0.84);
+            vec2 heelR = vec2(spineX + 0.05 - legStep * 1.2, -0.84);
+
+            // Thighs (shapely taper)
+            float dThighL = sdCapsule(p, hipL, kneeL, 0.068, 0.042);
+            float dThighR = sdCapsule(p, hipR, kneeR, 0.068, 0.042);
+
+            // Calves & Ankles
+            float dCalfL = sdCapsule(p, kneeL, ankleL, 0.042, 0.025);
+            float dCalfR = sdCapsule(p, kneeR, ankleR, 0.042, 0.025);
+
+            // High-heel shoes & arch
+            float dFootL = min(sdCapsule(p, ankleL, toeL, 0.025, 0.018), sdCapsule(p, ankleL, heelL, 0.018, 0.010));
+            float dFootR = min(sdCapsule(p, ankleR, toeR, 0.025, 0.018), sdCapsule(p, ankleR, heelR, 0.018, 0.010));
+
+            float dLegL = min(dThighL, min(dCalfL, dFootL));
+            float dLegR = min(dThighR, min(dCalfR, dFootR));
+            float dLegs = min(dLegL, dLegR);
+
+            return smin(dUpper, dLegs, 0.04);
+        }
+
+        void main() {
+            vec2 uv = vUv;
+            
+            // 5-Column Lightbox Wall Layout
+            float numBoxes = 5.0;
+            float boxCol = floor(uv.x * numBoxes);
+            float boxU = fract(uv.x * numBoxes);
+            float boxV = uv.y;
+
+            // Box compartment center-relative coordinates [-1, 1]
+            vec2 boxP = vec2((boxU - 0.5) * 2.0, (boxV - 0.5) * 2.0);
+
+            // Lightbox Bevel Border Frame
+            vec2 frameDist = abs(boxP);
+            float isFrame = step(0.92, max(frameDist.x, frameDist.y));
+            float neonTrim = smoothstep(0.04, 0.0, abs(max(frameDist.x, frameDist.y) - 0.90));
+
+            // Dynamic 5-Color Neon Lightbox Color Palette
+            vec3 cBox;
+            if (boxCol < 0.5) {
+                // Box 0: Hot Neon Magenta
+                cBox = vec3(1.0, 0.05, 0.55);
+            } else if (boxCol < 1.5) {
+                // Box 1: Electric Cyan
+                cBox = vec3(0.0, 0.95, 1.0);
+            } else if (boxCol < 2.5) {
+                // Box 2: Solar Amber Gold (Center Stage)
+                cBox = vec3(1.0, 0.80, 0.10);
+            } else if (boxCol < 3.5) {
+                // Box 3: Vivid Emerald Lime
+                cBox = vec3(0.05, 1.0, 0.45);
+            } else {
+                // Box 4: Ultraviolet Purple
+                cBox = vec3(0.70, 0.10, 1.0);
+            }
+
+            // Audio-driven Color Pulse & Strobe
+            float beatPulse = uBass * (0.8 + 0.4 * sin(uTime * 4.0 + boxCol));
+            vec3 boxBacklight = cBox * (0.75 + beatPulse * 0.85);
+
+            // 3D Inner Lightbox Gradient Shading (Recessed glow effect)
+            float innerGlow = (1.0 - length(boxP * vec2(0.7, 0.85)) * 0.75);
+            innerGlow = clamp(innerGlow, 0.05, 1.0);
+            vec3 bgCol = mix(vec3(0.015, 0.005, 0.04), boxBacklight, pow(innerGlow, 1.6));
+
+            // Horizontal neon stage tube lines on back wall
+            float tubeGrid = sin(boxV * 35.0) * 0.5 + 0.5;
+            tubeGrid = pow(tubeGrid, 8.0) * 0.35;
+            bgCol += cBox * tubeGrid;
+
+            // Frame metallic dark bezel with glowing neon tubing
+            vec3 frameCol = vec3(0.04, 0.03, 0.06) + cBox * (neonTrim * 2.2 + uBass * 0.4);
+            vec3 sceneCol = mix(bgCol, frameCol, isFrame);
+
+            // -----------------------------------------------------------------
+            // Render Shaded Curvaceous Dancer in this Compartment
+            // -----------------------------------------------------------------
+            // Scale and center coordinate for the dancer
+            vec2 dancerUv = vec2(boxP.x * 0.85, (boxV - 0.52) * 1.85);
+            
+            // Sync dancer choreography with BPM and column offset
+            float danceBps = (uBPM / 60.0);
+            float danceTime = uTime * danceBps * 3.14159 + boxCol * 1.25;
+            int poseType = int(mod(boxCol, 4.0));
+
+            float dBody = sdFemaleDancer(dancerUv, danceTime, poseType);
+
+            // Anti-aliased body mask
+            float bodyMask = 1.0 - smoothstep(-0.005, 0.005, dBody);
+
+            // Body Surface Normal & 3D Shading
+            float eps = 0.004;
+            float dx = sdFemaleDancer(dancerUv + vec2(eps, 0.0), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(eps, 0.0), danceTime, poseType);
+            float dy = sdFemaleDancer(dancerUv + vec2(0.0, eps), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(0.0, eps), danceTime, poseType);
+            vec2 grad = normalize(vec2(dx, dy) + vec2(0.0001));
+            float nz = sqrt(max(0.0, 1.0 - dot(grad, grad) * 0.5));
+
+            // Deep obsidian / sleek vinyl silhouette body core
+            vec3 cSilhouette = vec3(0.015, 0.010, 0.025);
+
+            // Glossy highlight reflection on shoulder/bust/hips
+            vec2 lightDir = normalize(vec2(0.4, 0.7));
+            float spec = pow(max(0.0, dot(grad, lightDir)), 8.0) * (0.35 + uBass * 0.3);
+            vec3 bodyShading = cSilhouette + vec3(0.4, 0.45, 0.55) * spec;
+
+            // Luminous Fresnel Edge Glow matching the neon lightbox color
+            float fresnel = pow(clamp(1.0 - nz, 0.0, 1.0), 2.2);
+            vec3 rimGlow = cBox * fresnel * (2.4 + uBass * 1.2);
+
+            vec3 dancerCol = bodyShading + rimGlow;
+
+            // Soft outer neon corona glow around dancer edges
+            float outerHalo = smoothstep(0.08, 0.0, dBody) * 0.45;
+            sceneCol += cBox * outerHalo * (1.0 + uBass * 0.6);
+
+            // Combine Dancer over Lightbox Scene
+            vec3 finalCol = mix(sceneCol, dancerCol, bodyMask);
+
+            // Mirrored glossy dance floor reflection at bottom
+            if (boxV < 0.16) {
+                float floorFade = smoothstep(0.16, 0.0, boxV);
+                vec3 floorReflect = cBox * (0.45 + uBass * 0.5) * floorFade;
+                finalCol += floorReflect;
+            }
+
+            // CRT Scanline & Lens Vignette
+            float scanline = sin(vUv.y * 420.0) * 0.08 + 0.92;
+            float vignette = smoothstep(0.85, 0.35, length(vUv - 0.5) * 0.9);
+            finalCol *= scanline * vignette;
+
+            gl_FragColor = vec4(finalCol, 1.0);
+        }
+    `
+};
+
+// =============================================================================
 // Retro Arcade 80s Shader (Pac-Man, Ghost Chase, Screen Perimeter & Space Invader Cannon Shootout)
 // =============================================================================
 const RetroArcadeShader = {
@@ -3223,66 +3497,25 @@ export function createVFXScene(container) {
     gRings.add(centerOcta);
 
     // -------------------------------------------------------------------------
-    // FX 9: 💃 SILHOUETTE CLUB DANCERS [NEW]
+    // FX 9: 💃 SILHOUETTE CLUB DANCERS IN GLOWING COLOR BOX WALLS [NEW]
     // -------------------------------------------------------------------------
     const gDancers = createFXGroup();
-    const dancerItems = [];
-    const numDancers = 5;
-
-    for (let d = 0; d < numDancers; d++) {
-        const dGroup = new THREE.Group();
-        const dx = (d - 2) * 5.8;
-        dGroup.position.set(dx, -2.5, -4.0);
-
-        // Head
-        const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.55, 16, 16), new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        headMesh.position.y = 4.2;
-        dGroup.add(headMesh);
-
-        // Torso / Body Silhouette
-        const bodyGeo = new THREE.CylinderGeometry(0.42, 0.58, 2.4, 12);
-        const bodyMesh = new THREE.Mesh(bodyGeo, new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        bodyMesh.position.y = 2.4;
-        dGroup.add(bodyMesh);
-
-        // Left & Right Arms
-        const armGeo = new THREE.CylinderGeometry(0.12, 0.12, 1.8, 8);
-        const armL = new THREE.Mesh(armGeo, new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        armL.position.set(-0.85, 2.6, 0);
-        armL.rotation.z = Math.PI / 4;
-        dGroup.add(armL);
-
-        const armR = new THREE.Mesh(armGeo, new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        armR.position.set(0.85, 2.6, 0);
-        armR.rotation.z = -Math.PI / 4;
-        dGroup.add(armR);
-
-        // Legs
-        const legGeo = new THREE.CylinderGeometry(0.16, 0.14, 2.4, 8);
-        const legL = new THREE.Mesh(legGeo, new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        legL.position.set(-0.4, 0.2, 0);
-        dGroup.add(legL);
-
-        const legR = new THREE.Mesh(legGeo, new THREE.MeshBasicMaterial({ color: 0x020206 }));
-        legR.position.set(0.4, 0.2, 0);
-        dGroup.add(legR);
-
-        // Neon Silhouette Rim Halo Glow
-        const rimMesh = new THREE.Mesh(
-            new THREE.PlaneGeometry(3.5, 6.0),
-            new THREE.MeshBasicMaterial({
-                color: d % 2 === 0 ? 0x00ffff : 0xff007f,
-                transparent: true,
-                opacity: 0.45,
-                blending: THREE.AdditiveBlending
-            })
-        );
-        rimMesh.position.set(0, 2.2, -0.2);
-        dGroup.add(rimMesh);
-
-        gDancers.add(dGroup);
-        dancerItems.push({ group: dGroup, armL, armR, head: headMesh, rim: rimMesh, dIdx: d });
-    }
+    const dancerBoxGeo = new THREE.PlaneGeometry(38, 22);
+    const dancerBoxMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 },
+            uTreble: { value: 0.0 },
+            uBPM: { value: 126.0 }
+        },
+        vertexShader: DiscoDancerBoxShader.vertexShader,
+        fragmentShader: DiscoDancerBoxShader.fragmentShader,
+        depthWrite: false
+    });
+    const dancerBoxMesh = new THREE.Mesh(dancerBoxGeo, dancerBoxMat);
+    dancerBoxMesh.position.set(0, 0, -4.5);
+    gDancers.add(dancerBoxMesh);
 
     // =========================================================================
     // CATEGORY 3: 🕸️ CYBER & RETRO (FX 10-13)
@@ -4130,17 +4363,14 @@ export function createVFXScene(container) {
             centerOcta.rotation.y += delta * 1.0;
         }
         // ---------------------------------------------------------------------
-        // FX 9: 💃 Silhouette Club Dancers [NEW]
+        // FX 9: 💃 Silhouette Club Dancers in Glowing Color Box Walls [NEW]
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 9) {
-            dancerItems.forEach((d) => {
-                const dTime = elapsedTime * (bps * 3.14159) + d.dIdx * 0.8;
-                d.group.position.y = -2.5 + Math.abs(Math.sin(dTime)) * (0.6 + bassPop * 0.8);
-                d.head.rotation.z = Math.sin(dTime * 0.5) * 0.25;
-                d.armL.rotation.z = Math.PI / 4 + Math.sin(dTime) * 0.6;
-                d.armR.rotation.z = -Math.PI / 4 - Math.cos(dTime) * 0.6;
-                d.rim.scale.setScalar(1.0 + bassPop * 0.35 + transient * 0.4);
-            });
+            dancerBoxMat.uniforms.uTime.value = elapsedTime;
+            dancerBoxMat.uniforms.uBass.value = bassPop;
+            dancerBoxMat.uniforms.uMid.value = audio.smoothedMid || 0;
+            dancerBoxMat.uniforms.uTreble.value = audio.smoothedTreble || 0;
+            dancerBoxMat.uniforms.uBPM.value = currentBPM;
         }
         // ---------------------------------------------------------------------
         // FX 10: 🌅 Synthwave Cyber Grid
