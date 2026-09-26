@@ -555,6 +555,256 @@ const SmoothSynthwaveShader = {
     `
 };
 
+// =============================================================================
+// Synthwave Glowing River Mountains Shader (FX 11)
+// 3D Canyon Terrain with River Valley & Wireframe Mountain Peaks
+// =============================================================================
+const SynthwaveRiverMountainShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying float vElevation;
+        varying float vDistToRiver;
+        varying float vIsRiver;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uMid;
+
+        void main() {
+            vUv = uv;
+            vec3 pos = position;
+
+            // Continuous forward motion along Y axis
+            float worldY = pos.y + uTime * 18.0;
+            float worldX = pos.x;
+
+            // Curving S-bend river canyon path
+            float riverCenter = sin(worldY * 0.042) * 5.5 + cos(worldY * 0.085) * 2.5;
+            float distRiver = abs(worldX - riverCenter);
+            vDistToRiver = distRiver;
+
+            // River bank threshold
+            float riverWidth = 3.6;
+            float mountainMask = smoothstep(riverWidth, riverWidth + 8.5, distRiver);
+            vIsRiver = 1.0 - smoothstep(riverWidth - 0.5, riverWidth + 0.5, distRiver);
+
+            // Mountain peak elevations
+            float m1 = sin(worldX * 0.17 + 0.6) * cos(worldY * 0.11) * 7.5;
+            float m2 = sin(worldX * 0.33 + worldY * 0.21) * 3.5;
+            float m3 = cos(worldX * 0.68) * 1.5;
+            float mountainZ = mountainMask * max(0.0, m1 + m2 + m3 + 2.2) * (1.0 + uBass * 0.45);
+
+            // River surface wave ripples
+            float riverRipple = sin(worldY * 0.45 - uTime * 6.0) * 0.22 * (1.0 + uMid * 1.4);
+            float riverZ = -0.35 + riverRipple;
+
+            pos.z += mix(riverZ, mountainZ, mountainMask);
+            vElevation = pos.z;
+
+            vec4 worldPosition = modelMatrix * vec4(pos, 1.0);
+            vWorldPos = worldPosition.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying float vElevation;
+        varying float vDistToRiver;
+        varying float vIsRiver;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uMid;
+
+        void main() {
+            // Mountain canyon wireframe grid
+            vec2 gridScale = vec2(44.0, 68.0);
+            vec2 gridUv = vUv * gridScale;
+            gridUv.y -= uTime * 0.45;
+
+            vec2 gridFract = abs(fract(gridUv - 0.5) - 0.5);
+            vec2 gridDeriv = fwidth(gridUv);
+            vec2 gridLines = 1.0 - smoothstep(vec2(0.0), gridDeriv * 1.8, gridFract - 0.04);
+            float lineIntensity = max(gridLines.x, gridLines.y);
+
+            // Mountain elevation normalization
+            float elevNorm = clamp((vElevation + 0.5) / 8.5, 0.0, 1.0);
+
+            // Mountain colors
+            vec3 cMountainBase = vec3(0.03, 0.01, 0.12);     // Deep midnight twilight
+            vec3 cMountainSlope = vec3(0.35, 0.02, 0.45);    // Twilight purple
+            vec3 cMountainWire = vec3(1.0, 0.05, 0.65);      // Hot Neon Magenta
+            vec3 cMountainCrest = vec3(0.0, 0.95, 1.0);      // Electric Cyan peaks
+
+            vec3 mountainSurface = mix(cMountainBase, cMountainSlope, elevNorm * 0.7);
+            vec3 mountainWireCol = mix(cMountainWire, cMountainCrest, smoothstep(0.4, 1.0, elevNorm));
+            vec3 finalMountain = mountainSurface + mountainWireCol * lineIntensity * (1.3 + uBass * 0.7);
+
+            // -----------------------------------------------------------------
+            // Glowing Neon River Rendering
+            // -----------------------------------------------------------------
+            float riverNorm = clamp(1.0 - (vDistToRiver / 3.6), 0.0, 1.0);
+
+            // Animated river rapids / current flow streaks
+            float currentWave = sin(vWorldPos.y * 0.75 - uTime * 14.0 + sin(vWorldPos.x * 2.0) * 1.4);
+            float currentStreak = smoothstep(0.2, 0.9, currentWave);
+
+            // River Color Palette
+            vec3 cRiverDeep = vec3(0.0, 0.75, 1.0);       // Electric Cyan
+            vec3 cRiverMid = vec3(0.0, 1.0, 0.85);        // Turquoise
+            vec3 cRiverSunReflect = vec3(1.0, 0.05, 0.7); // Sun reflection magenta
+            vec3 cRiverCore = vec3(1.0, 0.92, 0.35);      // Golden solar crest
+            vec3 cRiverWhite = vec3(1.0, 1.0, 1.0);       // White rapids
+
+            vec3 riverBase = mix(cRiverDeep, cRiverSunReflect, smoothstep(0.0, 0.8, riverNorm));
+            vec3 riverGlint = mix(cRiverMid, cRiverCore, currentStreak);
+            vec3 finalRiver = mix(riverBase, riverGlint, currentStreak * 0.65);
+
+            // Center golden sun glint channel
+            float sunChannel = pow(riverNorm, 3.5);
+            finalRiver = mix(finalRiver, cRiverCore, sunChannel * 0.85);
+            if (uBass > 0.4) {
+                finalRiver = mix(finalRiver, cRiverWhite, (uBass - 0.4) * 0.8);
+            }
+
+            // Glowing foam border where water touches canyon banks
+            float foamEdge = smoothstep(0.0, 0.18, riverNorm) * smoothstep(0.45, 0.12, riverNorm);
+            finalRiver += vec3(0.0, 1.0, 0.9) * foamEdge * 2.2;
+
+            // Combine River and Mountains
+            float riverAlpha = smoothstep(0.0, 0.25, riverNorm);
+            vec3 terrainCol = mix(finalMountain, finalRiver * (1.4 + uBass * 0.6), riverAlpha);
+
+            // Horizon atmospheric twilight fog
+            float horizonFade = smoothstep(0.0, 0.08, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
+            float sideFade = smoothstep(0.0, 0.06, vUv.x) * smoothstep(1.0, 0.94, vUv.x);
+            float alpha = clamp(0.35 + lineIntensity * 0.75 + riverAlpha * 0.8, 0.0, 1.0) * horizonFade * sideFade;
+
+            if (alpha < 0.005) discard;
+            gl_FragColor = vec4(terrainCol * alpha, alpha);
+        }
+    `
+};
+
+// =============================================================================
+// Retro 80s Outrun Sun Shader (FX 11)
+// Iconic Segmented Sun with Horizontal Blinds, Fiery Gradient & Corona Halo
+// =============================================================================
+const RetroSunShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform float uBass;
+
+        void main() {
+            vec2 centeredUv = (vUv - vec2(0.5)) * 2.0;
+            float dist = length(centeredUv);
+
+            // Sun disk base
+            float sunMask = smoothstep(1.0, 0.97, dist);
+
+            // Horizontal Blinds Cutouts in lower half of sun
+            float sunY = centeredUv.y;
+            if (sunY < 0.25) {
+                float blindFreq = 16.0;
+                float blindPhase = fract((sunY + uTime * 0.03) * blindFreq);
+                // Blinds get progressively thicker towards the bottom
+                float blindThickness = smoothstep(0.25, -0.95, sunY);
+                float blindCut = step(blindThickness * 0.52, blindPhase);
+                sunMask *= blindCut;
+            }
+
+            // Fiery 80s Outrun Sun Vertical Gradient
+            // Top: Brilliant Solar Yellow -> Middle: Neon Orange -> Bottom: Hot Fluorescent Magenta
+            float gradY = clamp((sunY + 1.0) * 0.5, 0.0, 1.0);
+            vec3 cSunTop = vec3(1.0, 0.95, 0.20);      // Solar Gold
+            vec3 cSunMid = vec3(1.0, 0.45, 0.02);      // Neon Orange
+            vec3 cSunBottom = vec3(1.0, 0.02, 0.55);   // Hot Magenta
+
+            vec3 sunColor;
+            if (gradY > 0.5) {
+                sunColor = mix(cSunMid, cSunTop, (gradY - 0.5) * 2.0);
+            } else {
+                sunColor = mix(cSunBottom, cSunMid, gradY * 2.0);
+            }
+
+            // Corona Glow & Radial Sun Rays
+            float corona = pow(clamp(1.0 - dist * 0.45, 0.0, 1.0), 3.0) * (0.65 + uBass * 0.55);
+            float sunRay = pow(max(0.0, cos(atan(centeredUv.y, centeredUv.x) * 12.0 + uTime * 0.15)), 6.0) * (1.0 - smoothstep(0.0, 1.3, dist)) * 0.25;
+
+            vec3 finalSun = sunColor * (sunMask * 1.5 + corona + sunRay);
+            float alpha = clamp(sunMask + corona * 0.75 + sunRay * 0.5, 0.0, 1.0);
+
+            if (alpha < 0.005) discard;
+            gl_FragColor = vec4(finalSun * alpha, alpha);
+        }
+    `
+};
+
+// =============================================================================
+// Synthwave Twilight Sky & Vector Stars Shader (FX 11)
+// =============================================================================
+const SynthwaveSkyShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        varying vec2 vUv;
+        uniform float uTime;
+        uniform float uBass;
+
+        void main() {
+            // Twilight Sky Gradient (Deep Cosmic Violet -> Sunset Magenta Horizon)
+            vec3 cSkyTop = vec3(0.02, 0.00, 0.08);
+            vec3 cSkyMid = vec3(0.14, 0.01, 0.25);
+            vec3 cSkyHorizon = vec3(0.65, 0.02, 0.45);
+
+            vec3 skyCol = mix(cSkyHorizon, cSkyMid, smoothstep(0.0, 0.45, vUv.y));
+            skyCol = mix(skyCol, cSkyTop, smoothstep(0.45, 1.0, vUv.y));
+
+            // Distant twinkling 80s vector stars
+            vec2 starGrid = fract(vUv * vec2(60.0, 30.0)) - 0.5;
+            float starHash = fract(sin(dot(floor(vUv * vec2(60.0, 30.0)), vec2(12.9898, 78.233))) * 43758.5453);
+            float isStar = step(0.92, starHash);
+            float starTwinkle = sin(uTime * 4.0 + starHash * 30.0) * 0.5 + 0.5;
+            float starDist = length(starGrid);
+            float star = smoothstep(0.12, 0.02, starDist) * isStar * starTwinkle * step(0.3, vUv.y);
+
+            skyCol += vec3(0.9, 0.95, 1.0) * star * 1.5;
+
+            // Horizon neon laser band
+            float horizonBand = smoothstep(0.06, 0.0, abs(vUv.y - 0.02)) * (0.8 + uBass * 0.5);
+            skyCol += vec3(1.0, 0.1, 0.6) * horizonBand;
+
+            gl_FragColor = vec4(skyCol, 0.95);
+        }
+    `
+};
+
 // Full-Screen Spiral Galaxy Cosmic Vortex Shader
 const PlasmaNebulaShader = {
     uniforms: {
@@ -2965,50 +3215,61 @@ export function createVFXScene(container) {
     gGrid.add(gridMesh);
 
     // -------------------------------------------------------------------------
-    // FX 11: 🏍️ TRON MOVIE STYLE LIGHTCYCLE ARENA [NEW]
+    // FX 11: 🌄 SYNTHWAVE GLOWING RIVER, MOUNTAINS & 80s SUN [NEW]
     // -------------------------------------------------------------------------
-    const gTronArena = createFXGroup();
+    const gSynthwaveRiver = createFXGroup();
 
-    // Perspective Tron Cyber Grid Floor
-    const tronFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(80, 80, 40, 40),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff, wireframe: true, transparent: true, opacity: 0.75 })
-    );
-    tronFloor.rotation.x = -Math.PI / 2;
-    tronFloor.position.y = -5.0;
-    gTronArena.add(tronFloor);
+    // 1. Distant Twilight Gradient Sky & Twinkling Vector Stars
+    const skyGeo = new THREE.PlaneGeometry(160, 90);
+    const skyMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: SynthwaveSkyShader.vertexShader,
+        fragmentShader: SynthwaveSkyShader.fragmentShader,
+        depthWrite: false
+    });
+    const skyMesh = new THREE.Mesh(skyGeo, skyMat);
+    skyMesh.position.set(0, 8, -48);
+    gSynthwaveRiver.add(skyMesh);
 
-    // Dual Lightcycle Solid Glowing Light Ribbon Trails
-    const tronTrail1 = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 1.8, 48),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending })
-    );
-    tronTrail1.position.set(-6.0, -4.1, -12);
-    gTronArena.add(tronTrail1);
+    // 2. Retro 80s Segmented Outrun Sun with Blinds & Corona Halo
+    const sunGeo = new THREE.PlaneGeometry(36, 36);
+    const sunMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: RetroSunShader.vertexShader,
+        fragmentShader: RetroSunShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const sunMesh = new THREE.Mesh(sunGeo, sunMat);
+    sunMesh.position.set(0, 4.2, -42);
+    gSynthwaveRiver.add(sunMesh);
 
-    const tronTrail2 = new THREE.Mesh(
-        new THREE.BoxGeometry(0.2, 1.8, 48),
-        new THREE.MeshBasicMaterial({ color: 0xff6600, transparent: true, opacity: 0.92, blending: THREE.AdditiveBlending })
-    );
-    tronTrail2.position.set(6.0, -4.1, -12);
-    gTronArena.add(tronTrail2);
-
-    // Floating Tron Recognizer Arch on Horizon
-    const recognizerGroup = new THREE.Group();
-    recognizerGroup.position.set(0, 4.5, -34.0);
-
-    const archTop = new THREE.Mesh(new THREE.BoxGeometry(22, 2.5, 3.5), new THREE.MeshBasicMaterial({ color: 0xff0055, wireframe: true }));
-    recognizerGroup.add(archTop);
-
-    const archLegL = new THREE.Mesh(new THREE.BoxGeometry(2.5, 8, 3.5), new THREE.MeshBasicMaterial({ color: 0xff0055, wireframe: true }));
-    archLegL.position.set(-9.5, -4.5, 0);
-    recognizerGroup.add(archLegL);
-
-    const archLegR = new THREE.Mesh(new THREE.BoxGeometry(2.5, 8, 3.5), new THREE.MeshBasicMaterial({ color: 0xff0055, wireframe: true }));
-    archLegR.position.set(9.5, -4.5, 0);
-    recognizerGroup.add(archLegR);
-
-    gTronArena.add(recognizerGroup);
+    // 3. 3D Canyon Terrain with River Valley & Wireframe Mountain Peaks
+    const riverGeo = new THREE.PlaneGeometry(88, 110, 140, 160);
+    const riverMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 }
+        },
+        vertexShader: SynthwaveRiverMountainShader.vertexShader,
+        fragmentShader: SynthwaveRiverMountainShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const riverMesh = new THREE.Mesh(riverGeo, riverMat);
+    riverMesh.rotation.x = -Math.PI / 2.2;
+    riverMesh.position.set(0, -4.8, -16.0);
+    gSynthwaveRiver.add(riverMesh);
 
     // -------------------------------------------------------------------------
     // FX 12: 💻 MATRIX CODE RAIN [NEW]
@@ -3737,14 +3998,18 @@ export function createVFXScene(container) {
             gridMesh.position.x = Math.sin(elapsedTime * 0.12) * 1.2;
         }
         // ---------------------------------------------------------------------
-        // FX 11: 🏍️ Tron Lightcycle Arena [NEW]
+        // FX 11: 🌄 Synthwave Glowing River, Mountains & 80s Sun [NEW]
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 11) {
-            tronFloor.position.z = -((elapsedTime * 18.0) % 4.0);
-            tronTrail1.position.z = -((elapsedTime * 24.0) % 20.0) - 10.0;
-            tronTrail2.position.z = -(((elapsedTime + 0.5) * 24.0) % 20.0) - 10.0;
-            recognizerGroup.position.x = Math.sin(elapsedTime * 0.3) * 6.0;
-            recognizerGroup.scale.setScalar(1.0 + bassPop * 0.15);
+            riverMat.uniforms.uTime.value = elapsedTime;
+            riverMat.uniforms.uBass.value = bassPop;
+            riverMat.uniforms.uMid.value = audio.smoothedMid || 0;
+            sunMat.uniforms.uTime.value = elapsedTime;
+            sunMat.uniforms.uBass.value = bassPop;
+            skyMat.uniforms.uTime.value = elapsedTime;
+            skyMat.uniforms.uBass.value = bassPop;
+            sunMesh.position.x = Math.sin(elapsedTime * 0.15) * 1.5;
+            riverMesh.position.x = Math.sin(elapsedTime * 0.15) * 0.8;
         }
         // ---------------------------------------------------------------------
         // FX 12: 💻 Matrix Code Rain [NEW]
