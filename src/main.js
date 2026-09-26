@@ -90,6 +90,60 @@ async function init() {
     let autoVJBeatCounter = 0;
     const TOTAL_FX = 17;
 
+    // -------------------------------------------------------------------------
+    // Cross-Window State & Audio Synchronizer (2nd Screen / Projector / OBS)
+    // -------------------------------------------------------------------------
+    const syncChannel = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel('dj_vfx_sync') : null;
+    let remoteAudioData = null;
+    let lastRemoteAudioTime = 0;
+
+    const btnPopout = document.getElementById('btn-popout');
+    if (btnPopout) {
+        btnPopout.addEventListener('click', () => {
+            const popoutUrl = `${window.location.origin}${window.location.pathname}?clean=true`;
+            window.open(popoutUrl, 'DJ_VFX_2ND_SCREEN', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+        });
+    }
+
+    // Check if opened as Clean Output Stage Display
+    const urlParams = new URLSearchParams(window.location.search);
+    const isCleanDisplay = urlParams.get('clean') === 'true' || window.location.hash.includes('clean');
+    if (isCleanDisplay) {
+        if (hud) hud.classList.add('hidden');
+        if (fxBankPanel) fxBankPanel.classList.add('hidden');
+        if (trackBanner) trackBanner.classList.add('hidden');
+        document.body.style.cursor = 'none';
+        console.log('[DJ-VFX] 🖥️ Clean 2nd Screen Display Mode Active (Receiving Live Sync)');
+    }
+
+    if (syncChannel) {
+        syncChannel.onmessage = (event) => {
+            const msg = event.data;
+            if (!msg) return;
+
+            if (msg.type === 'audio_frame') {
+                remoteAudioData = msg.audio;
+                lastRemoteAudioTime = performance.now();
+            } else if (msg.type === 'set_fx') {
+                selectFX(msg.fx, false);
+            } else if (msg.type === 'set_bpm') {
+                if (bpmVal) bpmVal.textContent = Number(msg.bpm).toFixed(1);
+                vfx.setBPM(msg.bpm);
+            } else if (msg.type === 'beat_pulse') {
+                vfx.triggerBeatPulse();
+            } else if (msg.type === 'flash') {
+                vfx.triggerManualFlash();
+            } else if (msg.type === 'set_logo_vis') {
+                updateLogoVisibility(msg.vis, false);
+            } else if (msg.type === 'track') {
+                if (trackTitle && msg.title) trackTitle.textContent = msg.title;
+                if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
+                if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
+                if (msg.bpm) vfx.setBPM(msg.bpm);
+            }
+        };
+    }
+
     // Helper to populate audio devices in select dropdown
     function updateDeviceDropdown(devices, currentId) {
         if (!audioDeviceSelect) return;
@@ -421,13 +475,17 @@ async function init() {
     });
 
     // 4. Categorized FX Bank Switching & Filtering
-    function selectFX(index) {
+    function selectFX(index, broadcast = true) {
         const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
         vfx.switchFX(targetIndex);
         fxButtons.forEach((btn) => {
             const btnIdx = parseInt(btn.getAttribute('data-fx'), 10);
             btn.classList.toggle('active', btnIdx === targetIndex);
         });
+
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_fx', fx: targetIndex });
+        }
     }
 
     fxButtons.forEach((btn) => {
@@ -468,7 +526,10 @@ async function init() {
 
     // Strobe Button
     if (btnFlash) {
-        btnFlash.addEventListener('click', () => vfx.triggerManualFlash());
+        btnFlash.addEventListener('click', () => {
+            vfx.triggerManualFlash();
+            if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+        });
     }
 
     // 5. Calibration Sliders
@@ -502,6 +563,7 @@ async function init() {
             if (bpm && bpm > 40 && bpm < 300) {
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
+                if (syncChannel) syncChannel.postMessage({ type: 'set_bpm', bpm });
             }
             if (deck === 1 && deckBadge1) {
                 deckBadge1.style.borderColor = '#00ffcc';
@@ -513,6 +575,8 @@ async function init() {
         },
         onBeat: (deck, beatCount) => {
             vfx.triggerBeatPulse();
+            if (syncChannel) syncChannel.postMessage({ type: 'beat_pulse', deck, beatCount });
+
             bpmVal.style.transform = 'scale(1.2)';
             setTimeout(() => {
                 bpmVal.style.transform = 'scale(1.0)';
@@ -553,6 +617,16 @@ async function init() {
                 targetBadge.style.borderColor = '#00ffcc';
                 targetBadge.style.color = '#00ffcc';
                 targetBadge.textContent = `DECK ${deckNum}: ${trackData.artist ? trackData.artist.slice(0, 10) : 'PLAYING'}`;
+            }
+
+            if (syncChannel) {
+                syncChannel.postMessage({
+                    type: 'track',
+                    title: trackData.title,
+                    artist: trackData.artist,
+                    deck: trackData.deck,
+                    bpm: trackData.bpm
+                });
             }
 
             // Trigger fresh scene on track change if Auto-VJ active
@@ -602,10 +676,18 @@ async function init() {
         else if (e.key === 'l' || e.key === 'L') {
             toggleLogo();
         }
+        // [C] to toggle Clean Display Mode for Stage / 2nd Screen
+        else if (e.key === 'c' || e.key === 'C') {
+            hud.classList.toggle('hidden');
+            fxBankPanel.classList.toggle('hidden');
+            trackBanner.classList.toggle('hidden');
+            document.body.style.cursor = hud.classList.contains('hidden') ? 'none' : 'default';
+        }
         // [Space] for manual beat strobe / flash
         else if (e.code === 'Space') {
             e.preventDefault();
             vfx.triggerManualFlash();
+            if (syncChannel) syncChannel.postMessage({ type: 'flash' });
         }
         // [F] for Fullscreen on external HDMI output
         else if (e.key === 'f' || e.key === 'F') {
@@ -623,10 +705,49 @@ async function init() {
         }
     });
 
-    // 8. Start Real-Time VFX Render Loop
+    // 8. Start Real-Time VFX Render Loop (with Multi-Window Audio Relay)
     vfx.animate(() => {
-        if (audioProcessor) {
-            const data = audioProcessor.getAudioData();
+        const now = performance.now();
+        let data = null;
+
+        if (audioProcessor && audioProcessor.isConnected()) {
+            data = audioProcessor.getAudioData();
+            
+            // Relay live audio frame over BroadcastChannel to 2nd Screen / Projector / OBS
+            if (syncChannel && data) {
+                syncChannel.postMessage({
+                    type: 'audio_frame',
+                    audio: {
+                        bass: data.bass,
+                        smoothedBass: data.smoothedBass,
+                        bassImpact: data.bassImpact,
+                        transientImpulse: data.transientImpulse,
+                        mid: data.mid,
+                        smoothedMid: data.smoothedMid,
+                        treble: data.treble,
+                        smoothedTreble: data.smoothedTreble,
+                        overall: data.overall,
+                        isOnset: data.isOnset
+                    }
+                });
+            }
+        } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
+            // Screen Link Active: Consuming live audio from primary console window
+            data = remoteAudioData;
+            if (audioStatus && !audioStatus.dataset.screenLink) {
+                audioStatus.dataset.screenLink = '1';
+                audioStatus.innerHTML = `<span style="color:#00ffcc">● Screen Link (Sync Active)</span>`;
+                if (hudStatus) {
+                    hudStatus.textContent = '2ND SCREEN SYNC';
+                    hudStatus.style.borderColor = '#00ffcc';
+                    hudStatus.style.color = '#00ffcc';
+                }
+            }
+        } else if (audioProcessor) {
+            data = audioProcessor.getAudioData();
+        }
+
+        if (data) {
             if (eqBass) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
             if (eqMid) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
             if (eqTreble) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;

@@ -24,6 +24,31 @@ export async function setupAudio(onDeviceListChange) {
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512;
             analyser.smoothingTimeConstant = 0.86;
+
+            // Persistent background keep-alive node to prevent OS/Browser background suspension
+            try {
+                const keepAliveOsc = audioCtx.createOscillator();
+                const keepAliveGain = audioCtx.createGain();
+                keepAliveGain.gain.value = 0.000001; // virtually silent
+                keepAliveOsc.connect(keepAliveGain);
+                keepAliveGain.connect(audioCtx.destination);
+                keepAliveOsc.start();
+            } catch (e) {
+                // Ignore if background oscillator restricted
+            }
+
+            // Unconditional auto-resume listeners on focus, blur, visibility change & click
+            const autoResume = () => {
+                if (audioCtx && audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {});
+                }
+            };
+
+            window.addEventListener('focus', autoResume);
+            window.addEventListener('blur', autoResume);
+            window.addEventListener('pageshow', autoResume);
+            document.addEventListener('visibilitychange', autoResume);
+            window.addEventListener('mouseenter', autoResume);
         }
     }
 
@@ -73,6 +98,19 @@ export async function setupAudio(onDeviceListChange) {
 
             const audioTrack = stream.getAudioTracks()[0];
             currentDeviceLabel = audioTrack?.label || (deviceId === 'default' ? 'Default Audio Input' : 'Deck Audio Line-In');
+
+            if (audioTrack) {
+                audioTrack.onended = () => {
+                    console.warn('[Audio Engine] Track ended, auto-reconnecting...');
+                    setTimeout(() => connectDevice(currentDeviceId), 500);
+                };
+                audioTrack.onmute = () => {
+                    console.warn('[Audio Engine] Track muted by OS, attempting resume...');
+                    setTimeout(() => {
+                        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                    }, 300);
+                };
+            }
 
             currentSource = audioCtx.createMediaStreamSource(stream);
             currentSource.connect(analyser);
