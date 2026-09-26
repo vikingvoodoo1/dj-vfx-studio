@@ -1269,177 +1269,181 @@ const DiscoDancerBoxShader = {
             return length(p - c) - r;
         }
 
-        // Female Dancer Body SDF with Full Human Proportions, Curvaceous Contours & Fluid Dance Movement
+        // Female Shadow Dancer Body SDF with Fluid Sensual Movement, Flowing Hair & Realistic Human Curves
         float sdFemaleDancer(vec2 p, float t, int poseType) {
-            // Rhythmic hip sway & spinal S-curve
-            float sway = sin(t) * 0.12;
-            float spineArch = cos(t * 1.5) * 0.035;
+            // Rhythmic hip sway, spinal S-curve & sensual body-wave ripple
+            float hipSway = sin(t) * 0.13 + sin(t * 0.5) * 0.04;
+            float chestSway = -sin(t + 0.4) * 0.07;
+            float bodyWave = sin(p.y * 3.6 - t * 2.2) * 0.038;
             
             // Central spine anchor curve
-            float spineX = sway * cos((p.y - 0.1) * 2.8) + spineArch * (p.y - 0.1);
+            float spineX = mix(hipSway, chestSway, smoothstep(-0.15, 0.52, p.y)) + bodyWave;
             vec2 sp = vec2(p.x - spineX, p.y);
 
-            // 1. Head, Face Profile & Voluminous Hair
-            float headY = 0.65 + cos(t * 2.0) * 0.015;
-            float headX = spineX + sin(t) * 0.025;
+            // 1. Head, Feminine Face Profile & Flowing Long Hair (Backlit Silhouette)
+            float headY = 0.65 + cos(t * 1.8) * 0.018;
+            float headX = spineX + sin(t * 0.9) * 0.025;
             vec2 headCenter = vec2(headX, headY);
             
-            // Cranium & facial jaw taper
-            float dHead = sdCapsule(p, headCenter + vec2(0.0, 0.02), headCenter - vec2(0.0, 0.03), 0.082, 0.065);
+            // Cranium & facial chin/jawline
+            float dHead = sdCapsule(p, headCenter + vec2(0.0, 0.025), headCenter - vec2(0.0, 0.025), 0.080, 0.058);
             
-            // Full voluminous hair crown & retro blowout
-            float dHairCrown = sdCircle(p, headCenter + vec2(-0.015, 0.035), 0.105);
-            float dHairFringe = sdCircle(p, headCenter + vec2(0.045, 0.045), 0.075);
+            // Voluminous hair crown & natural fringe
+            float dHairCrown = sdCircle(p, headCenter + vec2(-0.012, 0.035), 0.100);
+            float dHairFringe = sdCircle(p, headCenter + vec2(0.042, 0.040), 0.070);
             
-            // Flowing thick ponytail with organic waves and bounce
-            vec2 hairStart = vec2(headX - 0.055, headY + 0.02);
-            float hairSwing = sin(t * 1.2 - 0.5) * 0.10 - 0.08;
-            vec2 hairMid = vec2(headX + hairSwing, headY - 0.14);
-            vec2 hairTip = vec2(headX + hairSwing * 1.5 - 0.03, headY - 0.34);
-            float dHair1 = sdCapsule(p, hairStart, hairMid, 0.065, 0.045);
-            float dHair2 = sdCapsule(p, hairMid, hairTip, 0.045, 0.022);
-            float dHair = min(min(dHairCrown, dHairFringe), min(dHair1, dHair2));
+            // Long cascading silky hair swaying dynamically with body inertia
+            vec2 hairStart = vec2(headX - 0.055, headY + 0.025);
+            float hairSwing = sin(t * 1.3 - 0.6) * 0.12 - 0.07;
+            vec2 hairMid1 = vec2(headX + hairSwing * 0.8, headY - 0.15);
+            vec2 hairMid2 = vec2(headX + hairSwing * 1.4 - 0.02, headY - 0.36);
+            vec2 hairTip = vec2(headX + hairSwing * 1.8 - 0.04, headY - 0.56);
+            
+            float dHair1 = sdCapsule(p, hairStart, hairMid1, 0.068, 0.050);
+            float dHair2 = sdCapsule(p, hairMid1, hairMid2, 0.050, 0.032);
+            float dHair3 = sdCapsule(p, hairMid2, hairTip, 0.032, 0.010);
+            float dHair = min(min(dHairCrown, dHairFringe), min(dHair1, min(dHair2, dHair3)));
 
-            // 2. Neck & Trapezius
-            float dNeck = sdCapsule(p, headCenter - vec2(0.0, 0.03), vec2(spineX, 0.50), 0.048, 0.065);
-            float dTraps = sdCapsule(sp, vec2(0.0, 0.50), vec2(0.0, 0.44), 0.065, 0.145);
+            // 2. Slender Graceful Neck & Trapezius Slope
+            float dNeck = sdCapsule(p, headCenter - vec2(0.0, 0.025), vec2(spineX, 0.50), 0.045, 0.062);
+            float dTraps = sdCapsule(sp, vec2(0.0, 0.50), vec2(0.0, 0.44), 0.062, 0.150);
 
-            // 3. Torso (Voluptuous Feminine Hourglass: Deltoids -> Bust -> Natural Waist -> Curvaceous Hips)
-            // Shoulders & Chest
-            float dChest = sdCapsule(sp, vec2(0.0, 0.48), vec2(0.0, 0.30), 0.155, 0.142);
+            // 3. Voluptuous Torso (Natural Feminine Silhouette: Clavicle -> Bust -> Hourglass Waist -> Flared Hips)
+            // Ribcage & Chest
+            float dChest = sdCapsule(sp, vec2(0.0, 0.48), vec2(0.0, 0.29), 0.150, 0.138);
             
-            // Bust fullness (natural rounded contours)
-            float dBustL = sdCircle(sp, vec2(-0.075, 0.35), 0.088);
-            float dBustR = sdCircle(sp, vec2(0.075, 0.35), 0.088);
+            // Natural rounded bust contour
+            float dBustL = sdCircle(sp, vec2(-0.072, 0.34), 0.086);
+            float dBustR = sdCircle(sp, vec2(0.072, 0.34), 0.086);
             float dBust = min(dBustL, dBustR);
 
-            // Healthy curvaceous waist (full & athletic, not stick-thin)
-            float dWaist = sdCapsule(sp, vec2(0.0, 0.30), vec2(0.0, 0.10), 0.142, 0.118);
+            // Toned, curvaceous waistline
+            float dWaist = sdCapsule(sp, vec2(0.0, 0.29), vec2(0.0, 0.08), 0.138, 0.114);
             
-            // Hips, Pelvis & Glutes (Full shapely hourglass flare)
-            float dPelvis = sdCapsule(sp, vec2(0.0, 0.10), vec2(0.0, -0.10), 0.118, 0.185);
-            float dHipL = sdCircle(sp, vec2(-0.125, -0.02), 0.115);
-            float dHipR = sdCircle(sp, vec2(0.125, -0.02), 0.115);
+            // Pelvis, glute curvature & curvaceous hips
+            float dPelvis = sdCapsule(sp, vec2(0.0, 0.08), vec2(0.0, -0.11), 0.114, 0.180);
+            float dHipL = sdCircle(sp, vec2(-0.122, -0.03), 0.112);
+            float dHipR = sdCircle(sp, vec2(0.122, -0.03), 0.112);
             float dHips = min(dPelvis, min(dHipL, dHipR));
 
-            // Blend torso seamlessly
-            float dTorso = smin(dChest, dBust, 0.04);
+            // Organic smooth union for torso
+            float dTorso = smin(dChest, dBust, 0.045);
             dTorso = smin(dTorso, dWaist, 0.05);
             dTorso = smin(dTorso, dHips, 0.05);
             dTorso = smin(dTorso, dTraps, 0.04);
-            dTorso = smin(dTorso, dNeck, 0.03);
+            dTorso = smin(dTorso, dNeck, 0.035);
 
-            // 4. Arms & Hands (4 Fluid Human Dance Routine Poses)
-            vec2 shL = vec2(spineX - 0.165, 0.45);
-            vec2 shR = vec2(spineX + 0.165, 0.45);
+            // 4. Expressive Arms, Wrists & Delicate Hands (4 Sensual Shadow Dancer Routines)
+            vec2 shL = vec2(spineX - 0.158, 0.45);
+            vec2 shR = vec2(spineX + 0.158, 0.45);
 
             vec2 elbL, wristL, handL, elbR, wristR, handR;
 
             if (poseType == 0) {
-                // Pose A: Sensual overhead hair touch & hand-on-hip pose
-                elbL = vec2(spineX - 0.25, 0.60 + sin(t) * 0.04);
-                wristL = vec2(headX - 0.10, headY + 0.08 + cos(t) * 0.02);
-                handL = vec2(headX + 0.02, headY + 0.12 + cos(t) * 0.02);
+                // Routine A: Sensual hair glide & hand resting on hip curve
+                elbL = vec2(spineX - 0.25, 0.58 + sin(t) * 0.05);
+                wristL = vec2(headCenter.x - 0.10, headCenter.y + 0.06 + cos(t) * 0.03);
+                handL = vec2(headCenter.x + 0.02, headCenter.y + 0.11 + cos(t) * 0.03);
                 
-                elbR = vec2(spineX + 0.28, 0.22 + cos(t) * 0.04);
-                wristR = vec2(spineX + 0.18, 0.02 + sin(t) * 0.03);
-                handR = vec2(spineX + 0.14, -0.06 + sin(t) * 0.03);
+                elbR = vec2(spineX + 0.27, 0.23 + cos(t) * 0.04);
+                wristR = vec2(spineX + 0.17, 0.02 + sin(t) * 0.03);
+                handR = vec2(spineX + 0.13, -0.07 + sin(t) * 0.03);
             } else if (poseType == 1) {
-                // Pose B: Dual overhead reaching club wave
-                elbL = vec2(spineX - 0.25, 0.62 + sin(t * 1.5) * 0.06);
-                wristL = vec2(spineX - 0.18, 0.82 + cos(t * 1.5) * 0.05);
-                handL = vec2(spineX - 0.14, 0.92 + cos(t * 1.5) * 0.05);
+                // Routine B: Dual overhead sensual stretch with arched wrist flourishes
+                elbL = vec2(spineX - 0.24, 0.63 + sin(t * 1.3) * 0.06);
+                wristL = vec2(spineX - 0.16, 0.83 + cos(t * 1.3) * 0.05);
+                handL = vec2(spineX - 0.12, 0.93 + cos(t * 1.3) * 0.05);
                 
-                elbR = vec2(spineX + 0.25, 0.62 - sin(t * 1.5) * 0.06);
-                wristR = vec2(spineX + 0.18, 0.82 - cos(t * 1.5) * 0.05);
-                handR = vec2(spineX + 0.14, 0.92 - cos(t * 1.5) * 0.05);
+                elbR = vec2(spineX + 0.24, 0.63 - sin(t * 1.3) * 0.06);
+                wristR = vec2(spineX + 0.16, 0.83 - cos(t * 1.3) * 0.05);
+                handR = vec2(spineX + 0.12, 0.93 - cos(t * 1.3) * 0.05);
             } else if (poseType == 2) {
-                // Pose C: Side expressive arm sweep & chest touch wave
-                elbL = vec2(spineX - 0.32, 0.36 + cos(t) * 0.07);
-                wristL = vec2(spineX - 0.38, 0.56 + sin(t) * 0.06);
-                handL = vec2(spineX - 0.44, 0.64 + sin(t) * 0.06);
+                // Routine C: Fluid horizontal side-sweep & décolletage caress
+                elbL = vec2(spineX - 0.33, 0.37 + cos(t) * 0.06);
+                wristL = vec2(spineX - 0.40, 0.56 + sin(t) * 0.06);
+                handL = vec2(spineX - 0.46, 0.64 + sin(t) * 0.06);
                 
                 elbR = vec2(spineX + 0.20, 0.38 + sin(t) * 0.04);
                 wristR = vec2(spineX + 0.02, 0.42 + cos(t) * 0.03);
                 handR = vec2(spineX - 0.04, 0.40 + cos(t) * 0.03);
             } else {
-                // Pose D: Dynamic club fist pump & low hip accent
-                elbR = vec2(spineX + 0.28, 0.66 + cos(t) * 0.07);
-                wristR = vec2(spineX + 0.34, 0.84 + sin(t) * 0.06);
-                handR = vec2(spineX + 0.36, 0.94 + sin(t) * 0.06);
+                // Routine D: Dynamic rhythm pump & low hip accent
+                elbR = vec2(spineX + 0.27, 0.67 + cos(t) * 0.07);
+                wristR = vec2(spineX + 0.33, 0.85 + sin(t) * 0.06);
+                handR = vec2(spineX + 0.35, 0.95 + sin(t) * 0.06);
                 
-                elbL = vec2(spineX - 0.26, 0.16 + sin(t) * 0.03);
-                wristL = vec2(spineX - 0.18, -0.06);
-                handL = vec2(spineX - 0.14, -0.16);
+                elbL = vec2(spineX - 0.25, 0.17 + sin(t) * 0.03);
+                wristL = vec2(spineX - 0.17, -0.06);
+                handL = vec2(spineX - 0.13, -0.16);
             }
 
-            // Upper arms & forearms with natural human muscular tapers
-            float dArmL1 = sdCapsule(p, shL, elbL, 0.055, 0.044);
-            float dArmL2 = sdCapsule(p, elbL, wristL, 0.044, 0.032);
-            float dHandL = sdCapsule(p, wristL, handL, 0.032, 0.018);
+            // Naturally tapered arm segments (deltoid -> bicep -> forearm -> delicate hand)
+            float dArmL1 = sdCapsule(p, shL, elbL, 0.052, 0.042);
+            float dArmL2 = sdCapsule(p, elbL, wristL, 0.042, 0.028);
+            float dHandL = sdCapsule(p, wristL, handL, 0.028, 0.015);
             
-            float dArmR1 = sdCapsule(p, shR, elbR, 0.055, 0.044);
-            float dArmR2 = sdCapsule(p, elbR, wristR, 0.044, 0.032);
-            float dHandR = sdCapsule(p, wristR, handR, 0.032, 0.018);
+            float dArmR1 = sdCapsule(p, shR, elbR, 0.052, 0.042);
+            float dArmR2 = sdCapsule(p, elbR, wristR, 0.042, 0.028);
+            float dHandR = sdCapsule(p, wristR, handR, 0.028, 0.015);
 
             float dArms = min(min(dArmL1, min(dArmL2, dHandL)), min(dArmR1, min(dArmR2, dHandR)));
             float dUpper = smin(dTorso, dArms, 0.04);
             dUpper = min(dUpper, dHead);
             dUpper = min(dUpper, dHair);
 
-            // 5. Shapely Human Legs, Voluptuous Thighs, Calves & High Heel Stilettos
-            vec2 hipL = vec2(spineX - 0.095, -0.08);
-            vec2 hipR = vec2(spineX + 0.095, -0.08);
+            // 5. Shapely Legs, Voluptuous Thighs, Sculpted Calves & High-Heeled Stilettos
+            vec2 hipL = vec2(spineX - 0.092, -0.09);
+            vec2 hipR = vec2(spineX + 0.092, -0.09);
 
             float legStep = sin(t) * 0.06;
-            vec2 kneeL = vec2(spineX - 0.11 + legStep, -0.42);
-            vec2 ankleL = vec2(spineX - 0.09 + legStep * 1.2, -0.74);
-            vec2 toeL = vec2(spineX - 0.04 + legStep * 1.2, -0.84);
-            vec2 heelL = vec2(spineX - 0.13 + legStep * 1.2, -0.84);
+            vec2 kneeL = vec2(spineX - 0.10 + legStep, -0.43);
+            vec2 ankleL = vec2(spineX - 0.09 + legStep * 1.1, -0.74);
+            vec2 toeL = vec2(spineX - 0.04 + legStep * 1.1, -0.84);
+            vec2 heelL = vec2(spineX - 0.13 + legStep * 1.1, -0.84);
 
-            vec2 kneeR = vec2(spineX + 0.11 - legStep, -0.42);
-            vec2 ankleR = vec2(spineX + 0.09 - legStep * 1.2, -0.74);
-            vec2 toeR = vec2(spineX + 0.13 - legStep * 1.2, -0.84);
-            vec2 heelR = vec2(spineX + 0.06 - legStep * 1.2, -0.84);
+            vec2 kneeR = vec2(spineX + 0.10 - legStep, -0.43);
+            vec2 ankleR = vec2(spineX + 0.09 - legStep * 1.1, -0.74);
+            vec2 toeR = vec2(spineX + 0.13 - legStep * 1.1, -0.84);
+            vec2 heelR = vec2(spineX + 0.05 - legStep * 1.1, -0.84);
 
-            // Voluptuous shapely thighs with upper glute flare
-            float dThighSegL = sdCapsule(p, hipL, kneeL, 0.115, 0.075);
-            float dThighFlareL = sdCircle(p, mix(hipL, kneeL, 0.25) + vec2(-0.025, 0.0), 0.095);
+            // Voluptuous shapely thighs with natural glute flare
+            float dThighSegL = sdCapsule(p, hipL, kneeL, 0.110, 0.072);
+            float dThighFlareL = sdCircle(p, mix(hipL, kneeL, 0.25) + vec2(-0.022, 0.0), 0.092);
             float dThighL = smin(dThighSegL, dThighFlareL, 0.03);
 
-            float dThighSegR = sdCapsule(p, hipR, kneeR, 0.115, 0.075);
-            float dThighFlareR = sdCircle(p, mix(hipR, kneeR, 0.25) + vec2(0.025, 0.0), 0.095);
+            float dThighSegR = sdCapsule(p, hipR, kneeR, 0.110, 0.072);
+            float dThighFlareR = sdCircle(p, mix(hipR, kneeR, 0.25) + vec2(0.022, 0.0), 0.092);
             float dThighR = smin(dThighSegR, dThighFlareR, 0.03);
 
-            // Rounded knee joints
-            float dKneeL = sdCircle(p, kneeL, 0.068);
-            float dKneeR = sdCircle(p, kneeR, 0.068);
+            // Defined knee joints
+            float dKneeL = sdCircle(p, kneeL, 0.065);
+            float dKneeR = sdCircle(p, kneeR, 0.065);
 
-            // Calves with natural human gastrocnemius curvature tapering to ankle
-            float dCalfSegL = sdCapsule(p, kneeL, ankleL, 0.072, 0.038);
-            float dCalfBulgeL = sdCircle(p, mix(kneeL, ankleL, 0.32) + vec2(0.020, 0.0), 0.068);
+            // Calves with realistic gastrocnemius muscle curve tapering to slender ankle
+            float dCalfSegL = sdCapsule(p, kneeL, ankleL, 0.070, 0.036);
+            float dCalfBulgeL = sdCircle(p, mix(kneeL, ankleL, 0.32) + vec2(0.018, 0.0), 0.066);
             float dCalfL = smin(dCalfSegL, dCalfBulgeL, 0.03);
 
-            float dCalfSegR = sdCapsule(p, kneeR, ankleR, 0.072, 0.038);
-            float dCalfBulgeR = sdCircle(p, mix(kneeR, ankleR, 0.32) + vec2(-0.020, 0.0), 0.068);
+            float dCalfSegR = sdCapsule(p, kneeR, ankleR, 0.070, 0.036);
+            float dCalfBulgeR = sdCircle(p, mix(kneeR, ankleR, 0.32) + vec2(-0.018, 0.0), 0.066);
             float dCalfR = smin(dCalfSegR, dCalfBulgeR, 0.03);
 
-            // Stiletto High Heels, Arched Instep & Platform
-            float dInstepL = sdCapsule(p, ankleL, toeL, 0.038, 0.026);
-            float dToeL = sdCapsule(p, toeL, toeL + vec2(0.04, -0.02), 0.026, 0.018);
-            float dStilettoL = sdCapsule(p, ankleL - vec2(0.02, 0.02), heelL, 0.018, 0.010);
+            // Stiletto High Heels: Arched Instep, Platform Toe & Needle Heel
+            float dInstepL = sdCapsule(p, ankleL, toeL, 0.036, 0.024);
+            float dToeL = sdCapsule(p, toeL, toeL + vec2(0.038, -0.02), 0.024, 0.016);
+            float dStilettoL = sdCapsule(p, ankleL - vec2(0.02, 0.02), heelL, 0.016, 0.009);
             float dFootL = min(dInstepL, min(dToeL, dStilettoL));
 
-            float dInstepR = sdCapsule(p, ankleR, toeR, 0.038, 0.026);
-            float dToeR = sdCapsule(p, toeR, toeR + vec2(0.04, -0.02), 0.026, 0.018);
-            float dStilettoR = sdCapsule(p, ankleR - vec2(0.02, 0.02), heelR, 0.018, 0.010);
+            float dInstepR = sdCapsule(p, ankleR, toeR, 0.036, 0.024);
+            float dToeR = sdCapsule(p, toeR, toeR + vec2(0.038, -0.02), 0.024, 0.016);
+            float dStilettoR = sdCapsule(p, ankleR - vec2(0.02, 0.02), heelR, 0.016, 0.009);
             float dFootR = min(dInstepR, min(dToeR, dStilettoR));
 
             float dLegL = min(dThighL, min(dKneeL, min(dCalfL, dFootL)));
             float dLegR = min(dThighR, min(dKneeR, min(dCalfR, dFootR)));
             float dLegs = min(dLegL, dLegR);
 
-            return smin(dUpper, dLegs, 0.05);
+            return smin(dUpper, dLegs, 0.048);
         }
 
         void main() {
@@ -1465,8 +1469,8 @@ const DiscoDancerBoxShader = {
                 // Box 0: Hot Neon Magenta
                 cBox = vec3(1.0, 0.05, 0.55);
             } else if (boxCol < 1.5) {
-                // Box 1: Electric Cyan
-                cBox = vec3(0.0, 0.95, 1.0);
+                // Box 1: Electric Cyan (Matching Envato glowing blue reference)
+                cBox = vec3(0.0, 0.85, 1.0);
             } else if (boxCol < 2.5) {
                 // Box 2: Solar Amber Gold (Center Stage)
                 cBox = vec3(1.0, 0.80, 0.10);
@@ -1480,12 +1484,16 @@ const DiscoDancerBoxShader = {
 
             // Audio-driven Color Pulse & Strobe
             float beatPulse = uBass * (0.8 + 0.4 * sin(uTime * 4.0 + boxCol));
-            vec3 boxBacklight = cBox * (0.75 + beatPulse * 0.85);
+            vec3 boxBacklight = cBox * (0.80 + beatPulse * 0.90);
 
-            // 3D Inner Lightbox Gradient Shading (Recessed glow effect)
-            float innerGlow = (1.0 - length(boxP * vec2(0.7, 0.85)) * 0.75);
-            innerGlow = clamp(innerGlow, 0.05, 1.0);
-            vec3 bgCol = mix(vec3(0.015, 0.005, 0.04), boxBacklight, pow(innerGlow, 1.6));
+            // 3D Inner Lightbox Gradient Shading (Recessed luminous glow effect)
+            float innerGlow = (1.0 - length(boxP * vec2(0.7, 0.85)) * 0.72);
+            innerGlow = clamp(innerGlow, 0.06, 1.0);
+            vec3 bgCol = mix(vec3(0.012, 0.005, 0.035), boxBacklight, pow(innerGlow, 1.5));
+
+            // Atmospheric backlight flare & subtle smoke haze in the booth
+            float smokeHaze = sin(boxP.x * 4.0 + uTime * 1.5) * cos(boxP.y * 3.0 - uTime * 1.2) * 0.08 + 0.08;
+            bgCol += cBox * smokeHaze * (0.8 + uBass * 0.5);
 
             // Horizontal neon stage tube lines on back wall
             float tubeGrid = sin(boxV * 35.0) * 0.5 + 0.5;
@@ -1497,7 +1505,7 @@ const DiscoDancerBoxShader = {
             vec3 sceneCol = mix(bgCol, frameCol, isFrame);
 
             // -----------------------------------------------------------------
-            // Render Shaded Curvaceous Dancer in this Compartment
+            // Render High-Fidelity Glowing Shadow Dancer in this Compartment
             // -----------------------------------------------------------------
             // Scale and center coordinate for the dancer
             vec2 dancerUv = vec2(boxP.x * 0.85, (boxV - 0.52) * 1.85);
@@ -1509,33 +1517,33 @@ const DiscoDancerBoxShader = {
 
             float dBody = sdFemaleDancer(dancerUv, danceTime, poseType);
 
-            // Anti-aliased body mask
-            float bodyMask = 1.0 - smoothstep(-0.005, 0.005, dBody);
+            // High-contrast anti-aliased body mask
+            float bodyMask = 1.0 - smoothstep(-0.004, 0.004, dBody);
 
             // Body Surface Normal & 3D Shading
-            float eps = 0.004;
+            float eps = 0.0035;
             float dx = sdFemaleDancer(dancerUv + vec2(eps, 0.0), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(eps, 0.0), danceTime, poseType);
             float dy = sdFemaleDancer(dancerUv + vec2(0.0, eps), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(0.0, eps), danceTime, poseType);
             vec2 grad = normalize(vec2(dx, dy) + vec2(0.0001));
             float nz = sqrt(max(0.0, 1.0 - dot(grad, grad) * 0.5));
 
-            // Deep obsidian / sleek vinyl silhouette body core
-            vec3 cSilhouette = vec3(0.015, 0.010, 0.025);
+            // Deep obsidian / silky shadow dancer silhouette body core
+            vec3 cSilhouette = vec3(0.010, 0.008, 0.018);
 
             // Glossy highlight reflection on shoulder/bust/hips
-            vec2 lightDir = normalize(vec2(0.4, 0.7));
-            float spec = pow(max(0.0, dot(grad, lightDir)), 8.0) * (0.35 + uBass * 0.3);
-            vec3 bodyShading = cSilhouette + vec3(0.4, 0.45, 0.55) * spec;
+            vec2 lightDir = normalize(vec2(0.35, 0.75));
+            float spec = pow(max(0.0, dot(grad, lightDir)), 7.0) * (0.40 + uBass * 0.35);
+            vec3 bodyShading = cSilhouette + vec3(0.45, 0.50, 0.60) * spec;
 
-            // Luminous Fresnel Edge Glow matching the neon lightbox color
-            float fresnel = pow(clamp(1.0 - nz, 0.0, 1.0), 2.2);
-            vec3 rimGlow = cBox * fresnel * (2.4 + uBass * 1.2);
+            // Intense Glowing Backlit Fresnel Rim Light (Shadow Dancer Aesthetic)
+            float fresnel = pow(clamp(1.0 - nz, 0.0, 1.0), 1.9);
+            vec3 rimGlow = cBox * fresnel * (2.8 + uBass * 1.5);
 
             vec3 dancerCol = bodyShading + rimGlow;
 
-            // Soft outer neon corona glow around dancer edges
-            float outerHalo = smoothstep(0.08, 0.0, dBody) * 0.45;
-            sceneCol += cBox * outerHalo * (1.0 + uBass * 0.6);
+            // Volumetric Backlight Corona / Bloom Spill around silhouette contours
+            float outerHalo = smoothstep(0.09, 0.0, dBody) * 0.55;
+            sceneCol += cBox * outerHalo * (1.1 + uBass * 0.7);
 
             // Combine Dancer over Lightbox Scene
             vec3 finalCol = mix(sceneCol, dancerCol, bodyMask);
@@ -1543,7 +1551,7 @@ const DiscoDancerBoxShader = {
             // Mirrored glossy dance floor reflection at bottom
             if (boxV < 0.16) {
                 float floorFade = smoothstep(0.16, 0.0, boxV);
-                vec3 floorReflect = cBox * (0.45 + uBass * 0.5) * floorFade;
+                vec3 floorReflect = cBox * (0.50 + uBass * 0.5) * floorFade;
                 finalCol += floorReflect;
             }
 
