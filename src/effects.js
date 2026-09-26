@@ -2517,6 +2517,10 @@ export function createVFXScene(container) {
     let logoSpinEnabled = false;
     let logoSpinSpeed = 1.0;
     let logoSpinAngle = 0.0;
+    let currentLogoPosX = 0;
+    let currentLogoPosY = 0;
+    let currentLogoBaseZ = 6.8;
+    let currentLogoScaleFactor = 1.0;
 
     // Dark Contrast Shield behind logo text
     const shieldCanvas = document.createElement('canvas');
@@ -2641,11 +2645,20 @@ export function createVFXScene(container) {
             posY = 0;
         }
 
+        currentLogoPosX = posX;
+        currentLogoPosY = posY;
+        currentLogoBaseZ = baseZ;
+        currentLogoScaleFactor = scaleFactor;
+
         logoMesh.position.set(posX, posY, baseZ);
         logoMesh.scale.set(w / 16, h / 9, 1);
+        logoMesh.rotation.order = 'YXZ';
+        logoMesh.rotation.x = 0;
+        logoMesh.rotation.z = 0;
 
         if (logoShieldMesh && logoMode !== 'backdrop') {
-            logoShieldMesh.position.set(posX, posY, baseZ - 0.15);
+            logoShieldMesh.position.set(posX, posY, baseZ - 0.25);
+            logoShieldMesh.rotation.set(0, 0, 0);
             logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
         }
     }
@@ -3850,31 +3863,42 @@ export function createVFXScene(container) {
         // 1. Animate Logo Layer
         if (logoVisible && logoMesh) {
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
-            const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 6.5 : 13.5)) * logoBaseScale * (1.0 + logoPulse * 0.25);
+            const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 6.5 : 13.5)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
             const hBase = (wBase / logoAspectRatio);
             logoMesh.scale.set(wBase / 16, hBase / 9, 1);
 
-            if (logoMode === 'hologram' && logoPosition === 'center') {
-                logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.2;
-                if (logoShieldMesh && isShieldActive) logoShieldMesh.position.y = logoMesh.position.y;
+            // Anchor strictly to current layout coordinates
+            logoMesh.position.x = currentLogoPosX;
+            logoMesh.position.z = currentLogoBaseZ;
+
+            // Only apply gentle floating bobbing when static (not spinning)
+            if (!logoSpinEnabled && logoMode === 'hologram' && logoPosition === 'center') {
+                logoMesh.position.y = currentLogoPosY + Math.sin(elapsedTime * 1.5) * 0.15;
+            } else {
+                logoMesh.position.y = currentLogoPosY;
             }
 
-            // Horizontal 3D Spin around center Y-axis
+            if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
+                logoShieldMesh.position.set(currentLogoPosX, logoMesh.position.y, currentLogoBaseZ - 0.25);
+                logoShieldMesh.rotation.set(0, 0, 0); // Strictly flat and stationary behind logo
+            }
+
+            // Zero out any pitch or roll to guarantee 100% true vertical spindle rotation
+            logoMesh.rotation.x = 0;
+            logoMesh.rotation.z = 0;
+
+            // Pure horizontal 3D rotation around center Y-axis with 0 wobble
             if (logoSpinEnabled) {
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 logoMesh.rotation.y = logoSpinAngle;
-                if (logoShieldMesh && isShieldActive) {
-                    logoShieldMesh.rotation.y = logoSpinAngle;
-                }
             } else {
-                // Smoothly return rotation back to 0 when disabled
+                // Smoothly ease rotation back to exact 0 when disabled
                 if (Math.abs(logoMesh.rotation.y) > 0.001) {
                     logoMesh.rotation.y = THREE.MathUtils.lerp(logoMesh.rotation.y, 0, delta * 8.0);
                     if (Math.abs(logoMesh.rotation.y) < 0.001) {
                         logoMesh.rotation.y = 0;
                         logoSpinAngle = 0;
                     }
-                    if (logoShieldMesh) logoShieldMesh.rotation.y = logoMesh.rotation.y;
                 }
             }
         }
