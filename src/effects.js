@@ -3867,19 +3867,13 @@ export function createVFXScene(container) {
             const hBase = (wBase / logoAspectRatio);
             logoMesh.scale.set(wBase / 16, hBase / 9, 1);
 
-            // Anchor strictly to current layout coordinates
+            // Anchor strictly to current layout coordinates (perfectly static, no vertical bobbing)
             logoMesh.position.x = currentLogoPosX;
+            logoMesh.position.y = currentLogoPosY;
             logoMesh.position.z = currentLogoBaseZ;
 
-            // Only apply gentle floating bobbing when static (not spinning)
-            if (!logoSpinEnabled && logoMode === 'hologram' && logoPosition === 'center') {
-                logoMesh.position.y = currentLogoPosY + Math.sin(elapsedTime * 1.5) * 0.15;
-            } else {
-                logoMesh.position.y = currentLogoPosY;
-            }
-
             if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
-                logoShieldMesh.position.set(currentLogoPosX, logoMesh.position.y, currentLogoBaseZ - 0.25);
+                logoShieldMesh.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ - 0.25);
                 logoShieldMesh.rotation.set(0, 0, 0); // Strictly flat and stationary behind logo
             }
 
