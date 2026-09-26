@@ -42,12 +42,16 @@ async function init() {
     const bloomVal = document.getElementById('bloom-val');
 
     // Logo Layer Controls
+    const btnResetAll = document.getElementById('btn-reset-all');
     const logoBadge = document.getElementById('logo-badge');
     const logoFilename = document.getElementById('logo-filename');
     const visPills = document.querySelectorAll('#logo-vis-pills .mode-pill[data-vis]');
     const modePills = document.querySelectorAll('.mode-pill[data-mode]');
     const blendPills = document.querySelectorAll('.mode-pill[data-blend]');
     const posPills = document.querySelectorAll('#logo-pos-pills .mode-pill[data-pos]');
+    const spinPills = document.querySelectorAll('#logo-spin-pills .mode-pill[data-spin]');
+    const sliderLogoSpinSpeed = document.getElementById('slider-logo-spin-speed');
+    const logoSpinSpeedVal = document.getElementById('logo-spin-speed-val');
     const sliderLogoContrast = document.getElementById('slider-logo-contrast');
     const sliderLogoBright = document.getElementById('slider-logo-bright');
     const sliderLogoScale = document.getElementById('slider-logo-scale');
@@ -198,10 +202,125 @@ async function init() {
         });
     }
 
+    spinPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const spin = pill.getAttribute('data-spin');
+            spinPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setLogoSpinEnabled(spin === 'on');
+        });
+    });
+
+    if (sliderLogoSpinSpeed) {
+        sliderLogoSpinSpeed.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            logoSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
+            vfx.setLogoSpinSpeed(val);
+        });
+    }
+
     if (checkLogoShield) {
         checkLogoShield.addEventListener('change', (e) => {
             vfx.setLogoShieldVisible(e.target.checked);
         });
+    }
+
+    // Reset All Console Parameters to Factory Defaults
+    function resetAllParameters() {
+        // 1. Audio & Calibration
+        if (sliderGain) {
+            sliderGain.value = 1.0;
+            gainVal.textContent = '1.0x';
+            if (audioProcessor) audioProcessor.setGain(1.0);
+        }
+        if (sliderSens) {
+            sliderSens.value = 1.0;
+            sensVal.textContent = '1.0x';
+            if (audioProcessor) audioProcessor.setBassSensitivity(1.0);
+        }
+        if (sliderBloom) {
+            sliderBloom.value = 0.35;
+            bloomVal.textContent = '0.35x';
+            vfx.setBloomMultiplier(0.35);
+        }
+
+        // 2. Logo Layer Visibility & Mode
+        updateLogoVisibility(true);
+
+        modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === 'hologram'));
+        vfx.setLogoMode('hologram');
+
+        blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === '0'));
+        vfx.setLogoBlendMode(0);
+
+        posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === 'center'));
+        vfx.setLogoPosition('center');
+
+        // Horizontal Spin
+        spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === 'off'));
+        vfx.setLogoSpinEnabled(false);
+        if (sliderLogoSpinSpeed) {
+            sliderLogoSpinSpeed.value = 1.0;
+            logoSpinSpeedVal.textContent = '1.0x';
+            vfx.setLogoSpinSpeed(1.0);
+        }
+
+        // Contrast
+        if (sliderLogoContrast) {
+            sliderLogoContrast.value = 1.35;
+            logoContrastVal.textContent = '1.35x';
+            vfx.setLogoContrast(1.35);
+        }
+
+        // Brightness
+        if (sliderLogoBright) {
+            sliderLogoBright.value = 1.05;
+            logoBrightVal.textContent = '1.05x';
+            vfx.setLogoBrightness(1.05);
+        }
+
+        // Scale
+        if (sliderLogoScale) {
+            sliderLogoScale.value = 1.0;
+            logoScaleVal.textContent = '1.0x';
+            vfx.setLogoScale(1.0);
+        }
+
+        // Pulse
+        if (sliderLogoPulse) {
+            sliderLogoPulse.value = 35;
+            logoPulseVal.textContent = '35%';
+            vfx.setLogoBassPulse(0.35);
+        }
+
+        // Shield
+        if (checkLogoShield) {
+            checkLogoShield.checked = true;
+            vfx.setLogoShieldVisible(true);
+        }
+
+        // Reset Media to default JK McLaren Shock
+        vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
+        if (logoFilename) logoFilename.textContent = 'jkmclaren_shock.mp4';
+
+        // Feedback on Reset button
+        if (btnResetAll) {
+            const origText = btnResetAll.innerHTML;
+            btnResetAll.innerHTML = '✓ RESTORED';
+            btnResetAll.style.background = 'rgba(0,255,204,0.3)';
+            btnResetAll.style.borderColor = '#00ffcc';
+            btnResetAll.style.color = '#00ffcc';
+            setTimeout(() => {
+                btnResetAll.innerHTML = origText;
+                btnResetAll.style.background = '';
+                btnResetAll.style.borderColor = '';
+                btnResetAll.style.color = '';
+            }, 1200);
+        }
+    }
+
+    if (btnResetAll) {
+        btnResetAll.addEventListener('click', resetAllParameters);
     }
 
     // Custom File Loading

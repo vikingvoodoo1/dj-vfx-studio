@@ -2514,6 +2514,9 @@ export function createVFXScene(container) {
     let logoContrast = 1.35;
     let logoBrightness = 1.05;
     let isShieldActive = true;
+    let logoSpinEnabled = false;
+    let logoSpinSpeed = 1.0;
+    let logoSpinAngle = 0.0;
 
     // Dark Contrast Shield behind logo text
     const shieldCanvas = document.createElement('canvas');
@@ -3807,6 +3810,14 @@ export function createVFXScene(container) {
         }
     }
 
+    function setLogoSpinEnabled(enabled) {
+        logoSpinEnabled = !!enabled;
+    }
+
+    function setLogoSpinSpeed(speed) {
+        logoSpinSpeed = typeof speed === 'number' ? speed : 1.0;
+    }
+
     // =========================================================================
     // MAIN RENDER LOOP (16 SCENES)
     // =========================================================================
@@ -3846,6 +3857,25 @@ export function createVFXScene(container) {
             if (logoMode === 'hologram' && logoPosition === 'center') {
                 logoMesh.position.y = Math.sin(elapsedTime * 1.5) * 0.2;
                 if (logoShieldMesh && isShieldActive) logoShieldMesh.position.y = logoMesh.position.y;
+            }
+
+            // Horizontal 3D Spin around center Y-axis
+            if (logoSpinEnabled) {
+                logoSpinAngle += delta * logoSpinSpeed * 2.5;
+                logoMesh.rotation.y = logoSpinAngle;
+                if (logoShieldMesh && isShieldActive) {
+                    logoShieldMesh.rotation.y = logoSpinAngle;
+                }
+            } else {
+                // Smoothly return rotation back to 0 when disabled
+                if (Math.abs(logoMesh.rotation.y) > 0.001) {
+                    logoMesh.rotation.y = THREE.MathUtils.lerp(logoMesh.rotation.y, 0, delta * 8.0);
+                    if (Math.abs(logoMesh.rotation.y) < 0.001) {
+                        logoMesh.rotation.y = 0;
+                        logoSpinAngle = 0;
+                    }
+                    if (logoShieldMesh) logoShieldMesh.rotation.y = logoMesh.rotation.y;
+                }
             }
         }
 
@@ -4255,6 +4285,8 @@ export function createVFXScene(container) {
         setLogoBrightness,
         setLogoBlendMode,
         setLogoShieldVisible,
+        setLogoSpinEnabled,
+        setLogoSpinSpeed,
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length
     };

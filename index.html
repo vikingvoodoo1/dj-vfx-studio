@@ -517,7 +517,10 @@
     <div id="hud">
         <div class="hud-header">
             <div class="hud-title">⚡ DJ VFX ENGINE</div>
-            <div class="hud-badge" id="hud-status">STANDBY</div>
+            <div style="display:flex; align-items:center; gap:6px;">
+                <button class="btn-mini" id="btn-reset-all" title="Reset all console parameters to default values" style="padding:2px 7px; font-size:9px; background:rgba(255,0,127,0.15); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;">↺ RESET ALL</button>
+                <div class="hud-badge" id="hud-status">STANDBY</div>
+            </div>
         </div>
 
         <div class="hud-section">
@@ -544,8 +547,11 @@
         </div>
 
         <div class="hud-section">
-            <div class="hud-row">
-                <span class="hud-label">STAGELINQ</span>
+            <div class="hud-row" style="align-items: center;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img src="/images/logo/engine-dj-logo.png" alt="Engine DJ / Denon Prime" style="height:13px; width:auto; opacity:0.9; filter:drop-shadow(0 0 5px rgba(0,255,204,0.35)); vertical-align:middle;">
+                    <span class="hud-label">STAGELINQ</span>
+                </div>
                 <span class="hud-val" id="stagelinq-status">Connecting...</span>
             </div>
         </div>
@@ -620,6 +626,22 @@
                 <div class="mode-pill" data-pos="top-right" style="flex:1 1 28%;">Top-R</div>
                 <div class="mode-pill" data-pos="bottom-left" style="flex:1 1 28%;">Bot-L</div>
                 <div class="mode-pill" data-pos="bottom-right" style="flex:1 1 28%;">Bot-R</div>
+            </div>
+
+            <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
+                <span class="hud-label">3D HORIZONTAL SPIN</span>
+            </div>
+            <div class="mode-pills" id="logo-spin-pills" style="margin-top:2px; margin-bottom:4px;">
+                <div class="mode-pill active" data-spin="off" title="Static facing camera">STATIC</div>
+                <div class="mode-pill" data-spin="on" title="Spin logo horizontally on center Y-axis">SPIN 3D</div>
+            </div>
+
+            <div class="slider-row" id="row-logo-spin-speed">
+                <div class="slider-header">
+                    <span>SPIN SPEED</span>
+                    <span class="val" id="logo-spin-speed-val">1.0x</span>
+                </div>
+                <input type="range" id="slider-logo-spin-speed" min="0.1" max="5.0" step="0.1" value="1.0">
             </div>
 
             <div class="slider-row">
