@@ -344,33 +344,50 @@ async function init() {
         }
     }
 
-    function triggerTrackBannerPopup(trackData, broadcast = true) {
-        if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
-        if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+    let lastDisplayedTrackTitle = '';
+    let lastDisplayedTrackArtist = '';
+    let lastDisplayedTrackDeck = null;
 
-        if (trackData) {
-            if (trackTitle && trackData.title) trackTitle.textContent = trackData.title;
-            if (trackArtist && trackData.artist) trackArtist.textContent = trackData.artist;
-            if (trackDeckBadge && trackData.deck) trackDeckBadge.textContent = `DECK ${trackData.deck}`;
-            if (trackBpmBadge && trackData.bpm) trackBpmBadge.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
+    function triggerTrackBannerPopup(trackData, isManualOrForced = false) {
+        if (!trackData || !trackData.title) return;
+
+        const isNewTrack = (trackData.title !== lastDisplayedTrackTitle || trackData.artist !== lastDisplayedTrackArtist);
+        
+        // If it's the exact same track and not a manual POP NOW, do not interrupt the fadeout timer
+        if (!isNewTrack && !isManualOrForced) {
+            return;
         }
+
+        lastDisplayedTrackTitle = trackData.title;
+        lastDisplayedTrackArtist = trackData.artist || '';
+        lastDisplayedTrackDeck = trackData.deck || 1;
+
+        if (trackTitle && trackData.title) trackTitle.textContent = trackData.title;
+        if (trackArtist) trackArtist.textContent = trackData.artist ? `${trackData.artist} • Deck ${lastDisplayedTrackDeck}` : `Deck ${lastDisplayedTrackDeck}`;
+        if (trackDeckBadge) trackDeckBadge.textContent = `DECK ${lastDisplayedTrackDeck}`;
+        if (trackBpmBadge && trackData.bpm) trackBpmBadge.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
 
         if (!isTrackBannerEnabled) {
             setTrackBannerVisibility(false);
             return;
         }
 
-        // Apply trigger delay (e.g. 10s into track)
-        if (trackDelaySec > 0) {
+        if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
+        if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+
+        // Auto-fadeout duration calculation
+        const duration = trackDurationSec > 0 ? trackDurationSec : 30;
+
+        // Apply trigger delay (e.g. 0s instant or 5s)
+        if (trackDelaySec > 0 && !isManualOrForced) {
             setTrackBannerVisibility(false);
             trackBannerDelayTimer = setTimeout(() => {
                 setTrackBannerVisibility(true);
 
-                // Auto-fadeout duration
                 if (trackDurationSec > 0) {
                     trackBannerFadeTimer = setTimeout(() => {
                         setTrackBannerVisibility(false);
-                    }, trackDurationSec * 1000);
+                    }, duration * 1000);
                 }
             }, trackDelaySec * 1000);
         } else {
@@ -379,17 +396,8 @@ async function init() {
             if (trackDurationSec > 0) {
                 trackBannerFadeTimer = setTimeout(() => {
                     setTrackBannerVisibility(false);
-                }, trackDurationSec * 1000);
+                }, duration * 1000);
             }
-        }
-
-        if (broadcast) {
-            broadcastSync({
-                type: 'trigger_track_banner',
-                trackData,
-                delay: trackDelaySec,
-                duration: trackDurationSec
-            });
         }
     }
 
@@ -416,20 +424,18 @@ async function init() {
 
     if (btnPopTrackBanner) {
         btnPopTrackBanner.addEventListener('click', () => {
-            if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
-            if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
-
-            setTrackBannerVisibility(true);
+            const currentTrack = {
+                title: trackTitle ? trackTitle.textContent : 'Live Track',
+                artist: trackArtist ? trackArtist.textContent : '',
+                deck: lastDisplayedTrackDeck || 1,
+                bpm: bpmVal ? bpmVal.textContent : 126
+            };
+            triggerTrackBannerPopup(currentTrack, true);
             showToast('🎛️ Popped Track Banner on Stream');
-
-            if (trackDurationSec > 0) {
-                trackBannerFadeTimer = setTimeout(() => {
-                    setTrackBannerVisibility(false);
-                }, trackDurationSec * 1000);
-            }
 
             broadcastSync({
                 type: 'pop_track_banner_now',
+                trackData: currentTrack,
                 duration: trackDurationSec
             });
         });
@@ -1257,8 +1263,8 @@ async function init() {
                 bpm: trackData.bpm
             });
 
-            // Trigger Track Banner overlay popup with configured delay & fadeout
-            triggerTrackBannerPopup(trackData, true);
+            // Trigger Track Banner overlay popup on new track with auto-fadeout
+            triggerTrackBannerPopup(trackData, false);
 
             // Trigger fresh scene on track change if Auto-VJ active
             if (isAutoVJ) {
