@@ -32,7 +32,7 @@ hueService.init().catch(err => console.error('[Philips Hue] Init error:', err));
 function broadcast(messageObj) {
     const payload = JSON.stringify(messageObj);
     wss.clients.forEach((client) => {
-        if (client.readyState === 1) { // OPEN
+        if (client.readyState === 1 && client.bufferedAmount < 65536) { // OPEN & not overwhelmed
             client.send(payload);
         }
     });
@@ -41,7 +41,7 @@ function broadcast(messageObj) {
 function relayToOthers(senderWs, messageObj) {
     const payload = JSON.stringify(messageObj);
     wss.clients.forEach((client) => {
-        if (client !== senderWs && client.readyState === 1) { // OPEN
+        if (client !== senderWs && client.readyState === 1 && client.bufferedAmount < 65536) { // OPEN & not overwhelmed
             client.send(payload);
         }
     });
@@ -247,24 +247,40 @@ async function startStageLinq() {
             });
         });
 
+        const lastDeckBeats = new Map();
+        const lastDeckBpms = new Map();
+        const lastDeckBpmTime = new Map();
+
         // State Changed (BPM / Pitch / Volume / Fader)
         stagelinqInstance.on('stateChanged', (status) => {
             if (status && status.currentBpm) {
-                lastBpm = status.currentBpm;
-                broadcast({
-                    type: 'bpm',
-                    deck: status.deck || 1,
-                    bpm: status.currentBpm
-                });
+                const deckNum = status.deck || 1;
+                const prevBpm = lastDeckBpms.get(deckNum) || 0;
+                if (Math.abs(status.currentBpm - prevBpm) >= 0.05) {
+                    lastDeckBpms.set(deckNum, status.currentBpm);
+                    lastBpm = status.currentBpm;
+                    broadcast({
+                        type: 'bpm',
+                        deck: deckNum,
+                        bpm: status.currentBpm
+                    });
+                }
             }
         });
 
-        // Real-Time Beat Grid / Beat Sync Packets
+        // Real-Time Beat Grid / Beat Sync Packets (Throttled to beat transitions)
         stagelinqInstance.on('beatMessage', (info, beatData) => {
-            if (beatData && beatData.decks) {
-                beatData.decks.forEach((deckData, idx) => {
-                    const deckNum = idx + 1;
-                    if (deckData.bpm && deckData.bpm > 40 && deckData.bpm < 300) {
+            if (!beatData || !beatData.decks) return;
+            const now = Date.now();
+
+            beatData.decks.forEach((deckData, idx) => {
+                const deckNum = idx + 1;
+                if (deckData.bpm && deckData.bpm > 40 && deckData.bpm < 300) {
+                    const prevBpm = lastDeckBpms.get(deckNum) || 0;
+                    const prevTime = lastDeckBpmTime.get(deckNum) || 0;
+                    if (Math.abs(deckData.bpm - prevBpm) >= 0.05 || (now - prevTime > 500)) {
+                        lastDeckBpms.set(deckNum, deckData.bpm);
+                        lastDeckBpmTime.set(deckNum, now);
                         lastBpm = deckData.bpm;
                         broadcast({
                             type: 'bpm',
@@ -272,17 +288,22 @@ async function startStageLinq() {
                             bpm: deckData.bpm
                         });
                     }
-                    if (deckData.beat !== undefined) {
+                }
+                if (deckData.beat !== undefined) {
+                    const beatCount = Math.floor(deckData.beat % 4) + 1;
+                    const prevBeat = lastDeckBeats.get(deckNum);
+                    if (beatCount !== prevBeat) {
+                        lastDeckBeats.set(deckNum, beatCount);
                         broadcast({
                             type: 'beat',
                             deck: deckNum,
-                            count: Math.floor(deckData.beat % 4) + 1,
+                            count: beatCount,
                             rawBeat: deckData.beat,
                             totalBeats: deckData.totalBeats
                         });
                     }
-                });
-            }
+                }
+            });
         });
 
         stagelinqInstance.on('error', (err) => {
