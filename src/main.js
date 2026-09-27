@@ -286,6 +286,19 @@ async function init() {
         });
     }
 
+    let stagelinqClient = null;
+
+    // Cross-Process Sync Broadcaster (Sends across BOTH Local BroadcastChannel AND Network WebSocket to OBS / 2nd Screen)
+    function broadcastSync(msg) {
+        if (!msg) return;
+        if (syncChannel) {
+            try { syncChannel.postMessage(msg); } catch (e) {}
+        }
+        if (stagelinqClient && stagelinqClient.sendSync) {
+            try { stagelinqClient.sendSync(msg); } catch (e) {}
+        }
+    }
+
     // Check URL Mode Parameters (Controller vs Clean Stage Display vs OBS Browser Source)
     const urlParams = new URLSearchParams(window.location.search);
     const isControllerMode = urlParams.get('mode') === 'controller' || window.location.hash.includes('controller');
@@ -370,8 +383,8 @@ async function init() {
             }
         }
 
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({
+        if (broadcast) {
+            broadcastSync({
                 type: 'trigger_track_banner',
                 trackData,
                 delay: trackDelaySec,
@@ -392,8 +405,8 @@ async function init() {
             setTrackBannerVisibility(false);
         }
         showToast(isTrackBannerEnabled ? '🎛️ Track Stream Overlay: ENABLED' : '⚪ Track Stream Overlay: OFF');
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_track_banner_enabled', enabled: isTrackBannerEnabled });
+        if (broadcast) {
+            broadcastSync({ type: 'set_track_banner_enabled', enabled: isTrackBannerEnabled });
         }
     }
 
@@ -415,12 +428,10 @@ async function init() {
                 }, trackDurationSec * 1000);
             }
 
-            if (syncChannel) {
-                syncChannel.postMessage({
-                    type: 'pop_track_banner_now',
-                    duration: trackDurationSec
-                });
-            }
+            broadcastSync({
+                type: 'pop_track_banner_now',
+                duration: trackDurationSec
+            });
         });
     }
 
@@ -428,7 +439,7 @@ async function init() {
         selectTrackDelay.addEventListener('change', (e) => {
             trackDelaySec = parseInt(e.target.value, 10) || 0;
             showToast(`⏳ Track Delay: ${trackDelaySec}s into track`);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_track_delay', delay: trackDelaySec });
+            broadcastSync({ type: 'set_track_delay', delay: trackDelaySec });
         });
     }
 
@@ -436,7 +447,7 @@ async function init() {
         selectTrackDuration.addEventListener('change', (e) => {
             trackDurationSec = parseInt(e.target.value, 10) || 0;
             showToast(trackDurationSec > 0 ? `⏱️ Display Duration: ${trackDurationSec}s` : '🔒 Track Banner: Stay ON (Always Visible)');
-            if (syncChannel) syncChannel.postMessage({ type: 'set_track_duration', duration: trackDurationSec });
+            broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
         });
     }
 
@@ -482,8 +493,8 @@ async function init() {
         const tabObs = document.querySelector('.activity-tab[data-tab="obs"]');
         if (tabObs) tabObs.classList.toggle('has-dot', isOBSOutputLive);
 
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_obs_output', live: isOBSOutputLive });
+        if (broadcast) {
+            broadcastSync({ type: 'set_obs_output', live: isOBSOutputLive });
             showToast(isOBSOutputLive ? '📡 OBS Feed: LIVE (Broadcasting)' : '⬛ OBS Feed: MUTED (Blackout)');
         }
     }
@@ -517,8 +528,8 @@ async function init() {
 
         updateObsUrlBox();
 
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_obs_overlay', overlay: isOBSOverlayActive });
+        if (broadcast) {
+            broadcastSync({ type: 'set_obs_overlay', overlay: isOBSOverlayActive });
             showToast(isOBSOverlayActive ? '🎭 OBS Mode: Transparent Camera Overlay' : '🌟 OBS Mode: Solid Stage Visuals');
         }
     }
@@ -604,110 +615,113 @@ async function init() {
         btnObsPaneOverlay.addEventListener('click', () => setOBSOverlayMode(!isOBSOverlayActive, true));
     }
 
-    if (syncChannel) {
-        syncChannel.onmessage = (event) => {
-            const msg = event.data;
-            if (!msg) return;
+    // Centralized Sync Message Handler (Consumes from BOTH BroadcastChannel AND WebSocket Bridge)
+    function handleSyncMessage(msg) {
+        if (!msg) return;
 
-            if (msg.type === 'audio_frame') {
-                remoteAudioData = msg.audio;
-                lastRemoteAudioTime = performance.now();
-            } else if (msg.type === 'set_obs_output') {
-                setOBSOutputLive(msg.live, false);
-            } else if (msg.type === 'set_obs_overlay') {
-                setOBSOverlayMode(msg.overlay, false);
-            } else if (msg.type === 'set_fx') {
-                selectFX(msg.fx, false);
-            } else if (msg.type === 'set_bpm') {
-                if (bpmVal) bpmVal.textContent = Number(msg.bpm).toFixed(1);
-                vfx.setBPM(msg.bpm);
-            } else if (msg.type === 'beat_pulse') {
-                vfx.triggerBeatPulse();
-            } else if (msg.type === 'flash') {
-                vfx.triggerManualFlash();
-            } else if (msg.type === 'set_logo_vis') {
-                updateLogoVisibility(msg.vis === 'on' || msg.vis === true, false);
-            } else if (msg.type === 'set_logo_mode') {
-                modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === msg.mode));
-                vfx.setLogoMode(msg.mode);
-            } else if (msg.type === 'set_logo_blend') {
-                blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === String(msg.blend)));
-                vfx.setLogoBlendMode(msg.blend);
-            } else if (msg.type === 'set_logo_pos') {
-                posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === msg.pos));
-                vfx.setLogoPosition(msg.pos);
-            } else if (msg.type === 'set_logo_spin') {
-                spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === msg.spin));
-                vfx.setLogoSpinMode(msg.spin);
-            } else if (msg.type === 'set_logo_spin_speed') {
-                if (sliderLogoSpinSpeed) sliderLogoSpinSpeed.value = msg.speed;
-                if (logoSpinSpeedVal) logoSpinSpeedVal.textContent = `${Number(msg.speed).toFixed(1)}x`;
-                vfx.setLogoSpinSpeed(msg.speed);
-            } else if (msg.type === 'set_logo_contrast') {
-                if (sliderLogoContrast) sliderLogoContrast.value = msg.val;
-                if (logoContrastVal) logoContrastVal.textContent = `${Number(msg.val).toFixed(2)}x`;
-                vfx.setLogoContrast(msg.val);
-            } else if (msg.type === 'set_logo_bright') {
-                if (sliderLogoBright) sliderLogoBright.value = msg.val;
-                if (logoBrightVal) logoBrightVal.textContent = `${Number(msg.val).toFixed(2)}x`;
-                vfx.setLogoBrightness(msg.val);
-            } else if (msg.type === 'set_logo_scale') {
-                if (sliderLogoScale) sliderLogoScale.value = msg.val;
-                if (logoScaleVal) logoScaleVal.textContent = `${Number(msg.val).toFixed(1)}x`;
-                vfx.setLogoScale(msg.val);
-            } else if (msg.type === 'set_logo_pulse') {
-                if (sliderLogoPulse) sliderLogoPulse.value = msg.val;
-                if (logoPulseVal) logoPulseVal.textContent = `${msg.val}%`;
-                vfx.setLogoBassPulse(msg.val / 100);
-            } else if (msg.type === 'set_logo_shield') {
-                if (checkLogoShield) checkLogoShield.checked = msg.active;
-                vfx.setLogoShieldVisible(msg.active);
-            } else if (msg.type === 'set_gain') {
-                if (sliderGain) sliderGain.value = msg.val;
-                if (gainVal) gainVal.textContent = `${Number(msg.val).toFixed(1)}x`;
-                if (audioProcessor) audioProcessor.setGain(msg.val);
-            } else if (msg.type === 'set_sens') {
-                if (sliderSens) sliderSens.value = msg.val;
-                if (sensVal) sensVal.textContent = `${Number(msg.val).toFixed(1)}x`;
-                if (audioProcessor) audioProcessor.setBassSensitivity(msg.val);
-            } else if (msg.type === 'set_bloom') {
-                if (sliderBloom) sliderBloom.value = msg.val;
-                if (bloomVal) bloomVal.textContent = `${Number(msg.val).toFixed(2)}x`;
-                vfx.setBloomMultiplier(msg.val);
-            } else if (msg.type === 'set_auto_vj') {
-                isAutoVJ = !!msg.active;
-                if (btnAutoVJ) btnAutoVJ.classList.toggle('active', isAutoVJ);
-            } else if (msg.type === 'reset_all') {
-                resetAllParameters(false);
-            } else if (msg.type === 'track') {
-                if (trackTitle && msg.title) trackTitle.textContent = msg.title;
-                if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
-                if (trackDeckBadge && msg.deck) trackDeckBadge.textContent = `DECK ${msg.deck}`;
-                if (trackBpmBadge && msg.bpm) trackBpmBadge.textContent = `${Number(msg.bpm).toFixed(1)} BPM`;
-                if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
-                if (msg.bpm) vfx.setBPM(msg.bpm);
-            } else if (msg.type === 'trigger_track_banner') {
-                trackDelaySec = msg.delay ?? trackDelaySec;
-                trackDurationSec = msg.duration ?? trackDurationSec;
-                triggerTrackBannerPopup(msg.trackData, false);
-            } else if (msg.type === 'pop_track_banner_now') {
-                setTrackBannerVisibility(true);
-                if (msg.duration > 0) {
-                    if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
-                    trackBannerFadeTimer = setTimeout(() => {
-                        setTrackBannerVisibility(false);
-                    }, msg.duration * 1000);
-                }
-            } else if (msg.type === 'set_track_banner_enabled') {
-                setTrackBannerEnabled(msg.enabled, false);
-            } else if (msg.type === 'set_track_delay') {
-                trackDelaySec = msg.delay;
-                if (selectTrackDelay) selectTrackDelay.value = String(msg.delay);
-            } else if (msg.type === 'set_track_duration') {
-                trackDurationSec = msg.duration;
-                if (selectTrackDuration) selectTrackDuration.value = String(msg.duration);
+        if (msg.type === 'audio_frame') {
+            remoteAudioData = msg.audio;
+            lastRemoteAudioTime = performance.now();
+        } else if (msg.type === 'set_obs_output') {
+            setOBSOutputLive(msg.live, false);
+        } else if (msg.type === 'set_obs_overlay') {
+            setOBSOverlayMode(msg.overlay, false);
+        } else if (msg.type === 'set_fx') {
+            selectFX(msg.fx, false);
+        } else if (msg.type === 'set_bpm') {
+            if (bpmVal) bpmVal.textContent = Number(msg.bpm).toFixed(1);
+            vfx.setBPM(msg.bpm);
+        } else if (msg.type === 'beat_pulse') {
+            vfx.triggerBeatPulse();
+        } else if (msg.type === 'flash') {
+            vfx.triggerManualFlash();
+        } else if (msg.type === 'set_logo_vis') {
+            updateLogoVisibility(msg.vis === 'on' || msg.vis === true, false);
+        } else if (msg.type === 'set_logo_mode') {
+            modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === msg.mode));
+            vfx.setLogoMode(msg.mode);
+        } else if (msg.type === 'set_logo_blend') {
+            blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === String(msg.blend)));
+            vfx.setLogoBlendMode(msg.blend);
+        } else if (msg.type === 'set_logo_pos') {
+            posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === msg.pos));
+            vfx.setLogoPosition(msg.pos);
+        } else if (msg.type === 'set_logo_spin') {
+            spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === msg.spin));
+            vfx.setLogoSpinMode(msg.spin);
+        } else if (msg.type === 'set_logo_spin_speed') {
+            if (sliderLogoSpinSpeed) sliderLogoSpinSpeed.value = msg.speed;
+            if (logoSpinSpeedVal) logoSpinSpeedVal.textContent = `${Number(msg.speed).toFixed(1)}x`;
+            vfx.setLogoSpinSpeed(msg.speed);
+        } else if (msg.type === 'set_logo_contrast') {
+            if (sliderLogoContrast) sliderLogoContrast.value = msg.val;
+            if (logoContrastVal) logoContrastVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setLogoContrast(msg.val);
+        } else if (msg.type === 'set_logo_bright') {
+            if (sliderLogoBright) sliderLogoBright.value = msg.val;
+            if (logoBrightVal) logoBrightVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setLogoBrightness(msg.val);
+        } else if (msg.type === 'set_logo_scale') {
+            if (sliderLogoScale) sliderLogoScale.value = msg.val;
+            if (logoScaleVal) logoScaleVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+            vfx.setLogoScale(msg.val);
+        } else if (msg.type === 'set_logo_pulse') {
+            if (sliderLogoPulse) sliderLogoPulse.value = msg.val;
+            if (logoPulseVal) logoPulseVal.textContent = `${msg.val}%`;
+            vfx.setLogoBassPulse(msg.val / 100);
+        } else if (msg.type === 'set_logo_shield') {
+            if (checkLogoShield) checkLogoShield.checked = msg.active;
+            vfx.setLogoShieldVisible(msg.active);
+        } else if (msg.type === 'set_gain') {
+            if (sliderGain) sliderGain.value = msg.val;
+            if (gainVal) gainVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+            if (audioProcessor) audioProcessor.setGain(msg.val);
+        } else if (msg.type === 'set_sens') {
+            if (sliderSens) sliderSens.value = msg.val;
+            if (sensVal) sensVal.textContent = `${Number(msg.val).toFixed(1)}x`;
+            if (audioProcessor) audioProcessor.setBassSensitivity(msg.val);
+        } else if (msg.type === 'set_bloom') {
+            if (sliderBloom) sliderBloom.value = msg.val;
+            if (bloomVal) bloomVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setBloomMultiplier(msg.val);
+        } else if (msg.type === 'set_auto_vj') {
+            isAutoVJ = !!msg.active;
+            if (btnAutoVJ) btnAutoVJ.classList.toggle('active', isAutoVJ);
+        } else if (msg.type === 'reset_all') {
+            resetAllParameters(false);
+        } else if (msg.type === 'track') {
+            if (trackTitle && msg.title) trackTitle.textContent = msg.title;
+            if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
+            if (trackDeckBadge && msg.deck) trackDeckBadge.textContent = `DECK ${msg.deck}`;
+            if (trackBpmBadge && msg.bpm) trackBpmBadge.textContent = `${Number(msg.bpm).toFixed(1)} BPM`;
+            if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
+            if (msg.bpm) vfx.setBPM(msg.bpm);
+            if (vfx.setDeckData) vfx.setDeckData(msg);
+        } else if (msg.type === 'trigger_track_banner') {
+            trackDelaySec = msg.delay ?? trackDelaySec;
+            trackDurationSec = msg.duration ?? trackDurationSec;
+            triggerTrackBannerPopup(msg.trackData, false);
+        } else if (msg.type === 'pop_track_banner_now') {
+            setTrackBannerVisibility(true);
+            if (msg.duration > 0) {
+                if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+                trackBannerFadeTimer = setTimeout(() => {
+                    setTrackBannerVisibility(false);
+                }, msg.duration * 1000);
             }
-        };
+        } else if (msg.type === 'set_track_banner_enabled') {
+            setTrackBannerEnabled(msg.enabled, false);
+        } else if (msg.type === 'set_track_delay') {
+            trackDelaySec = msg.delay;
+            if (selectTrackDelay) selectTrackDelay.value = String(msg.delay);
+        } else if (msg.type === 'set_track_duration') {
+            trackDurationSec = msg.duration;
+            if (selectTrackDuration) selectTrackDuration.value = String(msg.duration);
+        }
+    }
+
+    if (syncChannel) {
+        syncChannel.onmessage = (event) => handleSyncMessage(event.data);
     }
 
     // Helper to populate audio devices in select dropdown
@@ -808,8 +822,8 @@ async function init() {
             const vis = p.getAttribute('data-vis');
             p.classList.toggle('active', (vis === 'on' && isLogoActive) || (vis === 'off' && !isLogoActive));
         });
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
+        if (broadcast) {
+            broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
         }
     }
 
@@ -832,7 +846,7 @@ async function init() {
             modePills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoMode(mode);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_mode', mode });
+            broadcastSync({ type: 'set_logo_mode', mode });
         });
     });
 
@@ -842,7 +856,7 @@ async function init() {
             blendPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoBlendMode(blend);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_blend', blend });
+            broadcastSync({ type: 'set_logo_blend', blend });
         });
     });
 
@@ -852,7 +866,7 @@ async function init() {
             posPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoPosition(pos);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_pos', pos });
+            broadcastSync({ type: 'set_logo_pos', pos });
         });
     });
 
@@ -861,7 +875,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoContrastVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoContrast(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_contrast', val });
+            broadcastSync({ type: 'set_logo_contrast', val });
         });
     }
 
@@ -870,7 +884,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoBrightVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoBrightness(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_bright', val });
+            broadcastSync({ type: 'set_logo_bright', val });
         });
     }
 
@@ -879,7 +893,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoScaleVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoScale(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_scale', val });
+            broadcastSync({ type: 'set_logo_scale', val });
         });
     }
 
@@ -888,7 +902,7 @@ async function init() {
             const val = parseInt(e.target.value, 10);
             logoPulseVal.textContent = `${val}%`;
             vfx.setLogoBassPulse(val / 100);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_pulse', val });
+            broadcastSync({ type: 'set_logo_pulse', val });
         });
     }
 
@@ -898,7 +912,7 @@ async function init() {
             spinPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoSpinMode(spin);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_spin', spin });
+            broadcastSync({ type: 'set_logo_spin', spin });
         });
     });
 
@@ -907,14 +921,14 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoSpinSpeed(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_spin_speed', speed: val });
+            broadcastSync({ type: 'set_logo_spin_speed', speed: val });
         });
     }
 
     if (checkLogoShield) {
         checkLogoShield.addEventListener('change', (e) => {
             vfx.setLogoShieldVisible(e.target.checked);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_logo_shield', active: e.target.checked });
+            broadcastSync({ type: 'set_logo_shield', active: e.target.checked });
         });
     }
 
@@ -996,8 +1010,8 @@ async function init() {
         vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
         if (logoFilename) logoFilename.textContent = 'jkmclaren_shock.mp4';
 
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'reset_all' });
+        if (broadcast) {
+            broadcastSync({ type: 'reset_all' });
         }
 
         // Feedback on Reset button
@@ -1070,8 +1084,8 @@ async function init() {
             btn.classList.toggle('active', btnIdx === targetIndex);
         });
 
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_fx', fx: targetIndex });
+        if (broadcast) {
+            broadcastSync({ type: 'set_fx', fx: targetIndex });
         }
     }
 
@@ -1111,8 +1125,8 @@ async function init() {
             btnAutoVJPanel.classList.toggle('active', isAutoVJ);
             btnAutoVJPanel.textContent = isAutoVJ ? '⚡ AUTO VJ: ON' : '⚡ AUTO VJ TOGGLE';
         }
-        if (broadcast && syncChannel) {
-            syncChannel.postMessage({ type: 'set_auto_vj', active: isAutoVJ });
+        if (broadcast) {
+            broadcastSync({ type: 'set_auto_vj', active: isAutoVJ });
         }
     }
 
@@ -1122,7 +1136,7 @@ async function init() {
     // Strobe Button
     function triggerFlashAction() {
         vfx.triggerManualFlash();
-        if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+        broadcastSync({ type: 'flash' });
         if (stagelinqClient && isHueActive) {
             stagelinqClient.sendHueBeat({
                 bass: 1.0,
@@ -1141,7 +1155,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             gainVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setGain(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_gain', val });
+            broadcastSync({ type: 'set_gain', val });
         });
     }
 
@@ -1150,7 +1164,7 @@ async function init() {
             const val = parseFloat(e.target.value);
             sensVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setBassSensitivity(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_sens', val });
+            broadcastSync({ type: 'set_sens', val });
         });
     }
 
@@ -1159,18 +1173,19 @@ async function init() {
             const val = parseFloat(e.target.value);
             bloomVal.textContent = `${val.toFixed(2)}x`;
             vfx.setBloomMultiplier(val);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_bloom', val });
+            broadcastSync({ type: 'set_bloom', val });
         });
     }
 
     // 6. Connect to StageLinq & Philips Hue Companion Bridge via WebSocket
-    const stagelinqClient = setupStageLinqClient({
+    stagelinqClient = setupStageLinqClient({
+        onSync: (msg) => handleSyncMessage(msg),
         onBPM: (bpm, deck) => {
             if (bpm && bpm > 40 && bpm < 300) {
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
                 if (vfx.setDeckData) vfx.setDeckData({ deck: deck || 1, bpm: Number(bpm) });
-                if (syncChannel) syncChannel.postMessage({ type: 'set_bpm', bpm });
+                broadcastSync({ type: 'set_bpm', bpm });
             }
             if (deck === 1 && deckBadge1) {
                 deckBadge1.style.borderColor = '#00ffcc';
@@ -1182,7 +1197,7 @@ async function init() {
         },
         onBeat: (deck, beatCount) => {
             vfx.triggerBeatPulse();
-            if (syncChannel) syncChannel.postMessage({ type: 'beat_pulse', deck, beatCount });
+            broadcastSync({ type: 'beat_pulse', deck, beatCount });
 
             bpmVal.style.transform = 'scale(1.2)';
             setTimeout(() => {
@@ -1228,15 +1243,13 @@ async function init() {
                 targetBadge.textContent = `DECK ${deckNum}: ${trackData.artist ? trackData.artist.slice(0, 10) : 'PLAYING'}`;
             }
 
-            if (syncChannel) {
-                syncChannel.postMessage({
-                    type: 'track',
-                    title: trackData.title,
-                    artist: trackData.artist,
-                    deck: trackData.deck,
-                    bpm: trackData.bpm
-                });
-            }
+            broadcastSync({
+                type: 'track',
+                title: trackData.title,
+                artist: trackData.artist,
+                deck: trackData.deck,
+                bpm: trackData.bpm
+            });
 
             // Trigger Track Banner overlay popup with configured delay & fadeout
             triggerTrackBannerPopup(trackData, true);
@@ -1350,7 +1363,7 @@ async function init() {
             if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
             stagelinqClient.setHueConfig({ enabled: isHueActive });
             showToast(isHueActive ? '💡 Philips Hue Sync: ENABLED' : '⚪ Philips Hue Sync: OFF');
-            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_enabled', enabled: isHueActive });
+            broadcastSync({ type: 'set_hue_enabled', enabled: isHueActive });
         });
     }
 
@@ -1395,7 +1408,7 @@ async function init() {
             hueTargetGroup = e.target.value;
             stagelinqClient.setHueConfig({ targetGroup: hueTargetGroup });
             showToast(`💡 Target Room: ${e.target.options[e.target.selectedIndex]?.text || hueTargetGroup}`);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_room', room: hueTargetGroup });
+            broadcastSync({ type: 'set_hue_room', room: hueTargetGroup });
         });
     }
 
@@ -1406,7 +1419,7 @@ async function init() {
             hueModePills.forEach(p => p.classList.toggle('active', p === pill));
             stagelinqClient.setHueConfig({ mode });
             showToast(`💡 Hue Mode: ${pill.textContent}`);
-            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_mode', mode });
+            broadcastSync({ type: 'set_hue_mode', mode });
         });
     });
 
@@ -1416,7 +1429,7 @@ async function init() {
             hueCurrentIntensity = val;
             if (hueIntensityVal) hueIntensityVal.textContent = `${e.target.value}%`;
             stagelinqClient.setHueConfig({ intensity: val });
-            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_intensity', val });
+            broadcastSync({ type: 'set_hue_intensity', val });
         });
     }
 
@@ -1426,7 +1439,7 @@ async function init() {
             hueCurrentMinBri = val;
             if (hueMinBriVal) hueMinBriVal.textContent = `${e.target.value}%`;
             stagelinqClient.setHueConfig({ minBrightness: val });
-            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_min_bri', val });
+            broadcastSync({ type: 'set_hue_min_bri', val });
         });
     }
 
@@ -1499,7 +1512,7 @@ async function init() {
         else if (e.code === 'Space') {
             e.preventDefault();
             vfx.triggerManualFlash();
-            if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+            broadcastSync({ type: 'flash' });
             if (stagelinqClient && isHueActive) {
                 stagelinqClient.sendHueBeat({
                     bass: 1.0,
@@ -1541,9 +1554,9 @@ async function init() {
         if (audioProcessor && audioProcessor.isConnected()) {
             data = audioProcessor.getAudioData();
             
-            // Relay live audio frame over BroadcastChannel to 2nd Screen / Projector / OBS
-            if (syncChannel && data) {
-                syncChannel.postMessage({
+            // Relay live audio frame over BroadcastChannel & WebSocket to 2nd Screen / OBS / Projector
+            if (data) {
+                broadcastSync({
                     type: 'audio_frame',
                     audio: {
                         bass: data.bass,
@@ -1560,13 +1573,13 @@ async function init() {
                 });
             }
         } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
-            // Screen Link Active: Consuming live audio from primary console window
+            // Screen Link Active: Consuming live audio from primary console window over WebSocket/BroadcastChannel
             data = remoteAudioData;
             if (audioStatus && !audioStatus.dataset.screenLink) {
                 audioStatus.dataset.screenLink = '1';
-                audioStatus.innerHTML = `<span style="color:#00ffcc">● Screen Link (Sync Active)</span>`;
+                audioStatus.innerHTML = `<span style="color:#00ffcc">● OBS / Remote Sync (Live Link Active)</span>`;
                 if (hudStatus) {
-                    hudStatus.textContent = '2ND SCREEN SYNC';
+                    hudStatus.textContent = isOBSMode ? 'OBS STREAM LINK' : '2ND SCREEN SYNC';
                     hudStatus.style.borderColor = '#00ffcc';
                     hudStatus.style.color = '#00ffcc';
                 }

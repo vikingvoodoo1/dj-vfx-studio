@@ -20,6 +20,9 @@ const wss = new WebSocketServer({ server });
 
 let lastTrackData = null;
 let lastBpm = 126.0;
+let lastActiveFX = 0;
+let lastLogoConfig = {};
+let lastOBSConfig = {};
 let connectedDevices = new Map();
 
 // Initialize Philips Hue Lighting Service
@@ -35,8 +38,17 @@ function broadcast(messageObj) {
     });
 }
 
+function relayToOthers(senderWs, messageObj) {
+    const payload = JSON.stringify(messageObj);
+    wss.clients.forEach((client) => {
+        if (client !== senderWs && client.readyState === 1) { // OPEN
+            client.send(payload);
+        }
+    });
+}
+
 wss.on('connection', (ws) => {
-    console.log('[WebSocket] Front-end client connected');
+    console.log('[WebSocket] Front-end client connected (OBS / Browser)');
     
     // Send immediate initial status for StageLinq & Hue
     ws.send(JSON.stringify({
@@ -67,8 +79,14 @@ wss.on('connection', (ws) => {
             bpm: lastBpm
         }));
     }
+    if (lastActiveFX !== undefined) {
+        ws.send(JSON.stringify({
+            type: 'set_fx',
+            fx: lastActiveFX
+        }));
+    }
 
-    // Handle Client Messages (Hue Configuration, Pairing, Beat Sync)
+    // Handle Client Messages (Hue Configuration, Pairing, Beat Sync, Multi-Window/OBS Sync Relay)
     ws.on('message', async (raw) => {
         try {
             const msg = JSON.parse(raw);
@@ -107,6 +125,22 @@ wss.on('connection', (ws) => {
                 if (msg.data) {
                     hueService.processAudioBeat(msg.data);
                 }
+            }
+            // Multi-Window & OBS Studio Real-Time Sync Relay (Audio frames, Scenes, BPM, Flash, Logo, Track Banners)
+            else if (msg.type === 'audio_frame') {
+                relayToOthers(ws, msg);
+            } else if (msg.type === 'set_fx') {
+                lastActiveFX = msg.fx;
+                relayToOthers(ws, msg);
+            } else if (msg.type === 'set_bpm') {
+                lastBpm = msg.bpm;
+                relayToOthers(ws, msg);
+            } else if (msg.type === 'beat_pulse' || msg.type === 'flash' || msg.type === 'reset_all') {
+                relayToOthers(ws, msg);
+            } else if (msg.type?.startsWith('set_logo') || msg.type?.startsWith('set_obs') || msg.type?.startsWith('set_track') || msg.type === 'pop_track_banner') {
+                relayToOthers(ws, msg);
+            } else if (msg.type === 'sync_relay' && msg.payload) {
+                relayToOthers(ws, msg.payload);
             }
         } catch (e) {
             console.error('[WebSocket] Error processing client message:', e);

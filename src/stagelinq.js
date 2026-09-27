@@ -2,7 +2,7 @@
  * StageLinq & Philips Hue Client for DJ-VFX
  * Connects to local Node.js Companion Bridge via WebSocket on localhost:8080
  */
-export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, onHueStatus, onHuePairingStatus }) {
+export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, onHueStatus, onHuePairingStatus, onSync }) {
     const WS_URL = 'ws://localhost:8080';
     let socket = null;
     let isConnected = false;
@@ -31,6 +31,8 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, o
             socket.onmessage = (event) => {
                 try {
                     const data = JSON.parse(event.data);
+                    if (onSync) onSync(data);
+
                     switch (data.type) {
                         case 'bpm':
                             if (onBPM) onBPM(data.bpm, data.deck);
@@ -82,6 +84,7 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, o
             clearTimeout(reconnectTimeout);
             if (socket) socket.close();
         },
+        sendSync: (msg) => sendJson(msg),
         discoverHue: () => sendJson({ type: 'hue_discover' }),
         pairHue: (ip) => sendJson({ type: 'hue_pair', ip }),
         getHueRooms: () => sendJson({ type: 'hue_get_rooms' }),
@@ -89,4 +92,5 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, o
         sendHueBeat: (data) => sendJson({ type: 'hue_beat', data })
     };
 }
+
 
