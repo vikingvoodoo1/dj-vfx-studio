@@ -143,6 +143,75 @@ async function init() {
     const btnModalObsToggle = document.getElementById('btn-modal-obs-toggle');
     const btnObsToggleOverlay = document.getElementById('btn-obs-toggle-overlay');
 
+    // IDE Activity Bar & Feature Group Panes Elements
+    const activityTabs = document.querySelectorAll('.activity-tab[data-tab]');
+    const tabPanes = document.querySelectorAll('.ide-tab-pane');
+    const btnActAll = document.getElementById('btn-act-all');
+    const activityLogoBtn = document.getElementById('activity-logo-btn');
+    const dotAudio = document.getElementById('dot-audio');
+    const dotHue = document.getElementById('dot-hue');
+    const dotObs = document.getElementById('dot-obs');
+    const audioDeviceBadge = document.getElementById('audio-device-badge');
+
+    // Duplicate Controls inside Feature Panes
+    const btnAutoVJPanel = document.getElementById('btn-auto-vj-panel');
+    const btnFlashPanel = document.getElementById('btn-flash-panel');
+    const btnObsPaneToggle = document.getElementById('btn-obs-pane-toggle');
+    const btnObsPaneOverlay = document.getElementById('btn-obs-pane-overlay');
+    const obsPaneUrlInput = document.getElementById('obs-pane-url-input');
+    const btnPaneCopyObsUrl = document.getElementById('btn-pane-copy-obs-url');
+    const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
+    const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
+
+    const tabOrder = ['audio', 'glow', 'logo', 'hue', 'obs'];
+    let currentTabIndex = 0;
+
+    function switchTab(tabId) {
+        if (hud) hud.classList.remove('show-all-panes');
+        if (btnActAll) btnActAll.classList.remove('active');
+
+        activityTabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
+        });
+
+        tabPanes.forEach(pane => {
+            pane.classList.toggle('active', pane.id === `pane-${tabId}`);
+        });
+    }
+
+    // Activity Bar Tab Click Listeners
+    activityTabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const tabId = tab.getAttribute('data-tab');
+            if (tabId) {
+                currentTabIndex = tabOrder.indexOf(tabId);
+                if (currentTabIndex === -1) currentTabIndex = 0;
+                switchTab(tabId);
+            }
+        });
+    });
+
+    // App Logo Button cycles through tabs
+    if (activityLogoBtn) {
+        activityLogoBtn.addEventListener('click', () => {
+            currentTabIndex = (currentTabIndex + 1) % tabOrder.length;
+            switchTab(tabOrder[currentTabIndex]);
+        });
+    }
+
+    // Show All Panels / Compact Toggle
+    if (btnActAll) {
+        btnActAll.addEventListener('click', () => {
+            const isAll = hud.classList.toggle('show-all-panes');
+            btnActAll.classList.toggle('active', isAll);
+            if (isAll) {
+                activityTabs.forEach(tab => tab.classList.remove('active'));
+            } else {
+                switchTab(tabOrder[currentTabIndex] || 'audio');
+            }
+        });
+    }
+
     let isOBSOutputLive = true;
 
     // Toast Helper
@@ -240,12 +309,21 @@ async function init() {
             btnObsToggleHud.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
             btnObsToggleHud.style.background = isOBSOutputLive ? liveBg : mutedBg;
         }
+        if (btnObsPaneToggle) {
+            btnObsPaneToggle.textContent = isOBSOutputLive ? '🟢 OBS OUT: LIVE' : '⬛ OBS OUT: MUTED';
+            btnObsPaneToggle.style.color = isOBSOutputLive ? liveColor : mutedColor;
+            btnObsPaneToggle.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
+            btnObsPaneToggle.style.background = isOBSOutputLive ? liveBg : mutedBg;
+        }
         if (btnModalObsToggle) {
             btnModalObsToggle.textContent = isOBSOutputLive ? '🟢 OBS OUT: LIVE' : '⬛ OBS OUT: MUTED (BLACKOUT)';
             btnModalObsToggle.style.color = isOBSOutputLive ? liveColor : mutedColor;
             btnModalObsToggle.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
             btnModalObsToggle.style.background = isOBSOutputLive ? liveBg : mutedBg;
         }
+
+        const tabObs = document.querySelector('.activity-tab[data-tab="obs"]');
+        if (tabObs) tabObs.classList.toggle('has-dot', isOBSOutputLive);
 
         if (broadcast && syncChannel) {
             syncChannel.postMessage({ type: 'set_obs_output', live: isOBSOutputLive });
@@ -254,9 +332,10 @@ async function init() {
     }
 
     function updateObsUrlBox() {
-        if (!obsUrlInput) return;
         const baseUrl = `${window.location.origin}${window.location.pathname}?mode=obs`;
-        obsUrlInput.value = isOBSOverlayActive ? `${baseUrl}&overlay=true` : baseUrl;
+        const fullUrl = isOBSOverlayActive ? `${baseUrl}&overlay=true` : baseUrl;
+        if (obsUrlInput) obsUrlInput.value = fullUrl;
+        if (obsPaneUrlInput) obsPaneUrlInput.value = fullUrl;
         if (pillObsSolid && pillObsOverlay) {
             pillObsSolid.classList.toggle('active', !isOBSOverlayActive);
             pillObsOverlay.classList.toggle('active', isOBSOverlayActive);
@@ -273,6 +352,11 @@ async function init() {
             btnObsToggleOverlay.style.color = isOBSOverlayActive ? '#00ffff' : '#ff66ff';
             btnObsToggleOverlay.style.borderColor = isOBSOverlayActive ? '#00ffff' : '#ff00ff';
         }
+        if (btnObsPaneOverlay) {
+            btnObsPaneOverlay.textContent = isOBSOverlayActive ? '🎭 OBS: TRANSPARENT' : '🎭 OBS: SOLID';
+            btnObsPaneOverlay.style.color = isOBSOverlayActive ? '#00ffff' : '#ff66ff';
+            btnObsPaneOverlay.style.borderColor = isOBSOverlayActive ? '#00ffff' : '#ff00ff';
+        }
 
         updateObsUrlBox();
 
@@ -285,6 +369,7 @@ async function init() {
     // Modal Listeners
     if (btnOpenObsModal) btnOpenObsModal.addEventListener('click', () => { updateObsUrlBox(); if (obsModalBackdrop) obsModalBackdrop.classList.add('active'); });
     if (btnObsFeedHud) btnObsFeedHud.addEventListener('click', () => { updateObsUrlBox(); if (obsModalBackdrop) obsModalBackdrop.classList.add('active'); });
+    if (btnPaneOpenModal) btnPaneOpenModal.addEventListener('click', () => { updateObsUrlBox(); if (obsModalBackdrop) obsModalBackdrop.classList.add('active'); });
     if (btnCloseObsModal) btnCloseObsModal.addEventListener('click', () => { if (obsModalBackdrop) obsModalBackdrop.classList.remove('active'); });
     if (btnModalDone) btnModalDone.addEventListener('click', () => { if (obsModalBackdrop) obsModalBackdrop.classList.remove('active'); });
     if (obsModalBackdrop) {
@@ -314,6 +399,21 @@ async function init() {
         });
     }
 
+    if (btnPaneCopyObsUrl) {
+        btnPaneCopyObsUrl.addEventListener('click', () => {
+            const urlToCopy = obsPaneUrlInput ? obsPaneUrlInput.value : (obsUrlInput ? obsUrlInput.value : `${window.location.origin}${window.location.pathname}?mode=obs`);
+            navigator.clipboard.writeText(urlToCopy).then(() => {
+                showToast('📋 Copied OBS Browser Source URL!');
+            }).catch(() => {
+                if (obsPaneUrlInput) {
+                    obsPaneUrlInput.select();
+                    document.execCommand('copy');
+                }
+                showToast('📋 Copied OBS Browser Source URL!');
+            });
+        });
+    }
+
     if (btnTestObsWindow) {
         btnTestObsWindow.addEventListener('click', () => {
             const url = obsUrlInput ? obsUrlInput.value : `${window.location.origin}${window.location.pathname}?mode=obs`;
@@ -321,8 +421,18 @@ async function init() {
         });
     }
 
+    if (btnPaneTestWindow) {
+        btnPaneTestWindow.addEventListener('click', () => {
+            const url = obsPaneUrlInput ? obsPaneUrlInput.value : `${window.location.origin}${window.location.pathname}?mode=obs`;
+            window.open(url, 'DJ_VFX_OBS_PREVIEW', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+        });
+    }
+
     if (btnObsToggleOutput) {
         btnObsToggleOutput.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
+    }
+    if (btnObsPaneToggle) {
+        btnObsPaneToggle.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
     }
     if (btnObsToggleHud) {
         btnObsToggleHud.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
@@ -332,6 +442,9 @@ async function init() {
     }
     if (btnObsToggleOverlay) {
         btnObsToggleOverlay.addEventListener('click', () => setOBSOverlayMode(!isOBSOverlayActive, true));
+    }
+    if (btnObsPaneOverlay) {
+        btnObsPaneOverlay.addEventListener('click', () => setOBSOverlayMode(!isOBSOverlayActive, true));
     }
 
     if (syncChannel) {
@@ -465,11 +578,15 @@ async function init() {
             const devInfo = audioProcessor.getCurrentDevice();
             const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
             audioStatus.innerHTML = `<span style="color:#00ffcc" title="${devInfo.label}">● ${cleanLabel}</span>`;
+            if (audioDeviceBadge) audioDeviceBadge.textContent = 'LINE-IN';
+            const tabAudio = document.querySelector('.activity-tab[data-tab="audio"]');
+            if (tabAudio) tabAudio.classList.add('has-dot');
             hudStatus.textContent = 'LIVE REACTIVE';
             hudStatus.style.borderColor = '#00ffcc';
             hudStatus.style.color = '#00ffcc';
         } else {
             audioStatus.innerHTML = `<span style="color:#ffaa00">● Simulated Audio</span>`;
+            if (audioDeviceBadge) audioDeviceBadge.textContent = 'SIM';
             hudStatus.textContent = 'SIM ACTIVE';
         }
     }
@@ -811,27 +928,33 @@ async function init() {
             btnAutoVJ.classList.toggle('active', isAutoVJ);
             btnAutoVJ.innerHTML = isAutoVJ ? `<span class="fx-key">A</span> AUTO VJ: ON` : `<span class="fx-key">A</span> AUTO VJ`;
         }
+        if (btnAutoVJPanel) {
+            btnAutoVJPanel.classList.toggle('active', isAutoVJ);
+            btnAutoVJPanel.textContent = isAutoVJ ? '⚡ AUTO VJ: ON' : '⚡ AUTO VJ TOGGLE';
+        }
         if (broadcast && syncChannel) {
             syncChannel.postMessage({ type: 'set_auto_vj', active: isAutoVJ });
         }
     }
 
     if (btnAutoVJ) btnAutoVJ.addEventListener('click', () => toggleAutoVJ(true));
+    if (btnAutoVJPanel) btnAutoVJPanel.addEventListener('click', () => toggleAutoVJ(true));
 
     // Strobe Button
-    if (btnFlash) {
-        btnFlash.addEventListener('click', () => {
-            vfx.triggerManualFlash();
-            if (syncChannel) syncChannel.postMessage({ type: 'flash' });
-            if (stagelinqClient && isHueActive) {
-                stagelinqClient.sendHueBeat({
-                    bass: 1.0,
-                    isStrobe: true,
-                    bpm: 126
-                });
-            }
-        });
+    function triggerFlashAction() {
+        vfx.triggerManualFlash();
+        if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+        if (stagelinqClient && isHueActive) {
+            stagelinqClient.sendHueBeat({
+                bass: 1.0,
+                isStrobe: true,
+                bpm: 126
+            });
+        }
     }
+
+    if (btnFlash) btnFlash.addEventListener('click', triggerFlashAction);
+    if (btnFlashPanel) btnFlashPanel.addEventListener('click', triggerFlashAction);
 
     // 5. Calibration Sliders
     if (sliderGain) {
@@ -990,6 +1113,9 @@ async function init() {
                 }
             }
 
+            const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
+            if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
+
             // Populate Rooms Dropdown
             if (hueRoomSelect && Array.isArray(status.rooms) && status.rooms.length > 0) {
                 hueRoomSelect.innerHTML = '';
@@ -1035,6 +1161,8 @@ async function init() {
     if (btnHueToggle) {
         btnHueToggle.addEventListener('click', () => {
             isHueActive = !isHueActive;
+            const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
+            if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
             stagelinqClient.setHueConfig({ enabled: isHueActive });
             showToast(isHueActive ? '💡 Philips Hue Sync: ENABLED' : '⚪ Philips Hue Sync: OFF');
             if (syncChannel) syncChannel.postMessage({ type: 'set_hue_enabled', enabled: isHueActive });
@@ -1142,8 +1270,22 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
+        // [Alt + 1..5] / [Alt + A] for IDE Console Activity Bar Navigation
+        if (e.altKey) {
+            if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
+            if (e.key === '2') { e.preventDefault(); switchTab('glow'); return; }
+            if (e.key === '3') { e.preventDefault(); switchTab('logo'); return; }
+            if (e.key === '4') { e.preventDefault(); switchTab('hue'); return; }
+            if (e.key === '5') { e.preventDefault(); switchTab('obs'); return; }
+            if (e.key === 'a' || e.key === 'A') {
+                e.preventDefault();
+                if (btnActAll) btnActAll.click();
+                return;
+            }
+        }
+
         // [1] - [9], [0], [-], [=] for instant FX switching
-        if (hotkeyMap[e.key] !== undefined) {
+        if (!e.altKey && !e.ctrlKey && !e.metaKey && hotkeyMap[e.key] !== undefined) {
             selectFX(hotkeyMap[e.key]);
         }
         // Left & Right Arrow keys to cycle previous / next preset
