@@ -3,10 +3,11 @@ import { createVFXScene } from './effects.js';
 import { setupStageLinqClient } from './stagelinq.js';
 
 // DJ-VFX Engine Build Metadata
-const BUILD_VERSION = 'v2.7.0';
-const BUILD_NUMBER = '20260925.1125.00';
+const BUILD_VERSION = 'v2.8.0';
+const BUILD_NUMBER = '20260927.1100.00';
+const BUILD_TIME = '2026-09-27 11:00 BST';
 console.log(
-    `%c⚡ DJ-VFX ENGINE %c ${BUILD_VERSION} (Build #${BUILD_NUMBER}) %c- ONLINE`,
+    `%c⚡ DJ-VFX ENGINE %c ${BUILD_VERSION} (Build #${BUILD_NUMBER}) %c- ONLINE [${BUILD_TIME}]`,
     'background:#ff007f; color:#fff; font-weight:bold; padding:4px 8px; border-radius:3px 0 0 3px;',
     'background:#00ffff; color:#020208; font-weight:bold; padding:4px 8px;',
     'background:#12121e; color:#00ffcc; font-weight:bold; padding:4px 8px; border-radius:0 3px 3px 0;'
@@ -14,7 +15,8 @@ console.log(
 window.__DJ_VFX_BUILD__ = {
     version: BUILD_VERSION,
     buildNumber: BUILD_NUMBER,
-    timestamp: '2026-09-25T11:25:00Z'
+    buildTime: BUILD_TIME,
+    timestamp: '2026-09-27T11:00:00+01:00'
 };
 
 async function init() {
@@ -29,9 +31,43 @@ async function init() {
     const trackTitle = document.getElementById('track-title');
     const trackArtist = document.getElementById('track-artist');
 
+    const hudBuildInfo = document.getElementById('hud-build-info');
+    const footerBuildVersion = document.getElementById('footer-build-version');
+    if (hudBuildInfo) hudBuildInfo.textContent = `${BUILD_VERSION} • ${BUILD_TIME}`;
+    if (footerBuildVersion) footerBuildVersion.textContent = BUILD_VERSION;
+
     const eqBass = document.getElementById('eq-bass');
     const eqMid = document.getElementById('eq-mid');
     const eqTreble = document.getElementById('eq-treble');
+
+    // Line-In Precision VU Meter & Loudness Elements
+    const vuRmsFill = document.getElementById('vu-rms-fill');
+    const vuPeakFill = document.getElementById('vu-peak-fill');
+    const vuPeakHoldNeedle = document.getElementById('vu-peak-hold-needle');
+    const vuValPeak = document.getElementById('vu-val-peak');
+    const vuValLufs = document.getElementById('vu-val-lufs');
+    const vuValHeadroom = document.getElementById('vu-val-headroom');
+    const vuClipBadge = document.getElementById('vu-clip-badge');
+
+    if (vuClipBadge) {
+        vuClipBadge.addEventListener('click', () => {
+            vuClipBadge.style.display = 'none';
+        });
+    }
+
+    // Now Playing Track Banner Stream Overlay Elements & State
+    const btnToggleTrackBanner = document.getElementById('btn-toggle-track-banner');
+    const btnPopTrackBanner = document.getElementById('btn-pop-track-banner');
+    const selectTrackDelay = document.getElementById('select-track-delay');
+    const selectTrackDuration = document.getElementById('select-track-duration');
+    const trackDeckBadge = document.getElementById('track-deck-badge');
+    const trackBpmBadge = document.getElementById('track-bpm-badge');
+
+    let isTrackBannerEnabled = true;
+    let trackDelaySec = 10;
+    let trackDurationSec = 30;
+    let trackBannerDelayTimer = null;
+    let trackBannerFadeTimer = null;
 
     const audioDeviceSelect = document.getElementById('audio-device-select');
     const btnListenAudio = document.getElementById('btn-listen-audio');
@@ -278,9 +314,130 @@ async function init() {
         if (isOBSMode) document.body.classList.add('obs-mode');
         if (hud) hud.classList.add('hidden');
         if (fxBankPanel) fxBankPanel.classList.add('hidden');
-        if (trackBanner) trackBanner.classList.add('hidden');
+        if (trackBanner) trackBanner.classList.add('banner-hidden');
         document.body.style.cursor = 'none';
         console.log('[DJ-VFX] 🖥️ Clean Visualizer / OBS Stream Mode Active (Receiving Live Sync)');
+    }
+
+    // -------------------------------------------------------------------------
+    // Now Playing Track Banner Stream Overlay Manager
+    // -------------------------------------------------------------------------
+    function setTrackBannerVisibility(show) {
+        if (!trackBanner) return;
+        if (show && isTrackBannerEnabled) {
+            trackBanner.classList.remove('banner-hidden', 'hidden');
+        } else {
+            trackBanner.classList.add('banner-hidden');
+        }
+    }
+
+    function triggerTrackBannerPopup(trackData, broadcast = true) {
+        if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
+        if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+
+        if (trackData) {
+            if (trackTitle && trackData.title) trackTitle.textContent = trackData.title;
+            if (trackArtist && trackData.artist) trackArtist.textContent = trackData.artist;
+            if (trackDeckBadge && trackData.deck) trackDeckBadge.textContent = `DECK ${trackData.deck}`;
+            if (trackBpmBadge && trackData.bpm) trackBpmBadge.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
+        }
+
+        if (!isTrackBannerEnabled) {
+            setTrackBannerVisibility(false);
+            return;
+        }
+
+        // Apply trigger delay (e.g. 10s into track)
+        if (trackDelaySec > 0) {
+            setTrackBannerVisibility(false);
+            trackBannerDelayTimer = setTimeout(() => {
+                setTrackBannerVisibility(true);
+
+                // Auto-fadeout duration
+                if (trackDurationSec > 0) {
+                    trackBannerFadeTimer = setTimeout(() => {
+                        setTrackBannerVisibility(false);
+                    }, trackDurationSec * 1000);
+                }
+            }, trackDelaySec * 1000);
+        } else {
+            // Immediate
+            setTrackBannerVisibility(true);
+            if (trackDurationSec > 0) {
+                trackBannerFadeTimer = setTimeout(() => {
+                    setTrackBannerVisibility(false);
+                }, trackDurationSec * 1000);
+            }
+        }
+
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({
+                type: 'trigger_track_banner',
+                trackData,
+                delay: trackDelaySec,
+                duration: trackDurationSec
+            });
+        }
+    }
+
+    function setTrackBannerEnabled(enabled, broadcast = true) {
+        isTrackBannerEnabled = !!enabled;
+        if (btnToggleTrackBanner) {
+            btnToggleTrackBanner.textContent = isTrackBannerEnabled ? '🟢 TRACK OVERLAY: ON' : '⚪ TRACK OVERLAY: OFF';
+            btnToggleTrackBanner.style.color = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.7)';
+            btnToggleTrackBanner.style.borderColor = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.2)';
+            btnToggleTrackBanner.style.background = isTrackBannerEnabled ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
+        }
+        if (!isTrackBannerEnabled) {
+            setTrackBannerVisibility(false);
+        }
+        showToast(isTrackBannerEnabled ? '🎛️ Track Stream Overlay: ENABLED' : '⚪ Track Stream Overlay: OFF');
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_track_banner_enabled', enabled: isTrackBannerEnabled });
+        }
+    }
+
+    if (btnToggleTrackBanner) {
+        btnToggleTrackBanner.addEventListener('click', () => setTrackBannerEnabled(!isTrackBannerEnabled, true));
+    }
+
+    if (btnPopTrackBanner) {
+        btnPopTrackBanner.addEventListener('click', () => {
+            if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
+            if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+
+            setTrackBannerVisibility(true);
+            showToast('🎛️ Popped Track Banner on Stream');
+
+            if (trackDurationSec > 0) {
+                trackBannerFadeTimer = setTimeout(() => {
+                    setTrackBannerVisibility(false);
+                }, trackDurationSec * 1000);
+            }
+
+            if (syncChannel) {
+                syncChannel.postMessage({
+                    type: 'pop_track_banner_now',
+                    duration: trackDurationSec
+                });
+            }
+        });
+    }
+
+    if (selectTrackDelay) {
+        selectTrackDelay.addEventListener('change', (e) => {
+            trackDelaySec = parseInt(e.target.value, 10) || 0;
+            showToast(`⏳ Track Delay: ${trackDelaySec}s into track`);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_track_delay', delay: trackDelaySec });
+        });
+    }
+
+    if (selectTrackDuration) {
+        selectTrackDuration.addEventListener('change', (e) => {
+            trackDurationSec = parseInt(e.target.value, 10) || 0;
+            showToast(trackDurationSec > 0 ? `⏱️ Display Duration: ${trackDurationSec}s` : '🔒 Track Banner: Stay ON (Always Visible)');
+            if (syncChannel) syncChannel.postMessage({ type: 'set_track_duration', duration: trackDurationSec });
+        });
     }
 
     function setOBSOutputLive(live, broadcast = true) {
@@ -525,8 +682,30 @@ async function init() {
             } else if (msg.type === 'track') {
                 if (trackTitle && msg.title) trackTitle.textContent = msg.title;
                 if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
+                if (trackDeckBadge && msg.deck) trackDeckBadge.textContent = `DECK ${msg.deck}`;
+                if (trackBpmBadge && msg.bpm) trackBpmBadge.textContent = `${Number(msg.bpm).toFixed(1)} BPM`;
                 if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
                 if (msg.bpm) vfx.setBPM(msg.bpm);
+            } else if (msg.type === 'trigger_track_banner') {
+                trackDelaySec = msg.delay ?? trackDelaySec;
+                trackDurationSec = msg.duration ?? trackDurationSec;
+                triggerTrackBannerPopup(msg.trackData, false);
+            } else if (msg.type === 'pop_track_banner_now') {
+                setTrackBannerVisibility(true);
+                if (msg.duration > 0) {
+                    if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+                    trackBannerFadeTimer = setTimeout(() => {
+                        setTrackBannerVisibility(false);
+                    }, msg.duration * 1000);
+                }
+            } else if (msg.type === 'set_track_banner_enabled') {
+                setTrackBannerEnabled(msg.enabled, false);
+            } else if (msg.type === 'set_track_delay') {
+                trackDelaySec = msg.delay;
+                if (selectTrackDelay) selectTrackDelay.value = String(msg.delay);
+            } else if (msg.type === 'set_track_duration') {
+                trackDurationSec = msg.duration;
+                if (selectTrackDuration) selectTrackDuration.value = String(msg.duration);
             }
         };
     }
@@ -1056,6 +1235,9 @@ async function init() {
                 });
             }
 
+            // Trigger Track Banner overlay popup with configured delay & fadeout
+            triggerTrackBannerPopup(trackData, true);
+
             // Trigger fresh scene on track change if Auto-VJ active
             if (isAutoVJ) {
                 const nextFX = (vfx.getCurrentFX() + 1) % TOTAL_FX;
@@ -1394,6 +1576,42 @@ async function init() {
             if (eqBass) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
             if (eqMid) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
             if (eqTreble) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;
+
+            // High-Precision Line-In VU & Loudness Meter Updates
+            if (vuPeakFill && data.vuPercent !== undefined) {
+                vuPeakFill.style.width = `${data.vuPercent}%`;
+            }
+            if (vuRmsFill && data.vuRmsPercent !== undefined) {
+                vuRmsFill.style.width = `${data.vuRmsPercent}%`;
+            }
+            if (vuPeakHoldNeedle && data.vuPeakHoldPercent !== undefined) {
+                vuPeakHoldNeedle.style.left = `calc(${Math.min(99, data.vuPeakHoldPercent)}% - 1px)`;
+            }
+
+            if (vuValPeak && data.peakDb !== undefined) {
+                vuValPeak.textContent = `${data.peakDb.toFixed(1)} dBFS`;
+                if (data.peakDb > -0.5) {
+                    vuValPeak.style.color = '#ff0055';
+                } else if (data.peakDb > -3.0) {
+                    vuValPeak.style.color = '#ffaa00';
+                } else {
+                    vuValPeak.style.color = '#00ffcc';
+                }
+            }
+
+            if (vuValLufs && data.lufs !== undefined) {
+                vuValLufs.textContent = `${data.lufs.toFixed(1)} LUFS`;
+            }
+
+            if (vuValHeadroom && data.headroomDb !== undefined) {
+                vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
+                vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+            }
+
+            // Clip Alert Warning Indicator
+            if (data.isClipping && vuClipBadge) {
+                vuClipBadge.style.display = 'inline-block';
+            }
 
             // Stream live beat telemetry to Philips Hue Bridge
             if (stagelinqClient && isHueActive) {

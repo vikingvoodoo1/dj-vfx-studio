@@ -147,7 +147,8 @@ export async function setupAudio(onDeviceListChange) {
     }
 
     const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 256);
-    
+    const timeDomainBuffer = new Float32Array(analyser ? analyser.fftSize : 512);
+
     // Dynamic Transient Detection State
     const historyLength = 24;
     const bassEnergyHistory = new Float32Array(historyLength);
@@ -157,6 +158,11 @@ export async function setupAudio(onDeviceListChange) {
     let smoothedMid = 0.0;
     let smoothedTreble = 0.0;
     let lastHitTime = 0;
+
+    // Line-In VU & Loudness Metering State
+    let peakHoldDb = -60.0;
+    let peakHoldTime = 0;
+    let smoothedRms = 0.0;
 
     // Synthetic generator state for standby mode
     let synthBassLevel = 0.0;
@@ -236,6 +242,51 @@ export async function setupAudio(onDeviceListChange) {
 
                 const combinedBassImpact = Math.min(1.0, smoothedBass * 0.7 + transientImpulse * 0.35);
 
+                // 5. High-Precision Time-Domain Line-In VU & Loudness Analysis (Peak dBFS & LUFS)
+                let instantPeak = 0.0;
+                let sumSquares = 0.0;
+                try {
+                    analyser.getFloatTimeDomainData(timeDomainBuffer);
+                    const bufLen = timeDomainBuffer.length;
+                    for (let i = 0; i < bufLen; i++) {
+                        const sample = Math.abs(timeDomainBuffer[i]);
+                        if (sample > instantPeak) instantPeak = sample;
+                        sumSquares += sample * sample;
+                    }
+                } catch (e) {
+                    instantPeak = Math.max(rawBass, rawMid, rawTreble);
+                    sumSquares = instantPeak * instantPeak * 512;
+                }
+
+                const rms = Math.sqrt(sumSquares / (timeDomainBuffer.length || 512));
+                smoothedRms = smoothedRms * 0.85 + rms * 0.15;
+
+                // Scale with user gain multiplier
+                const scaledPeak = Math.min(2.0, instantPeak * gainMultiplier);
+                const scaledRms = Math.min(2.0, smoothedRms * gainMultiplier);
+
+                // Calculate dBFS (0 dBFS digital ceiling)
+                const peakDb = scaledPeak > 0.0001 ? Math.max(-60, 20 * Math.log10(scaledPeak)) : -60;
+                // ITU-R BS.1770 / EBU R128 K-weighting approximation (-0.691 offset from RMS)
+                const lufs = scaledRms > 0.0001 ? Math.max(-60, 10 * Math.log10(scaledRms * scaledRms) - 0.691) : -60;
+
+                // Peak Hold needle logic
+                if (peakDb > peakHoldDb) {
+                    peakHoldDb = peakDb;
+                    peakHoldTime = now;
+                } else if (now - peakHoldTime > 1200) {
+                    // Smooth decay after 1.2s
+                    peakHoldDb = Math.max(peakDb, peakHoldDb - 0.4);
+                }
+
+                const isClipping = scaledPeak >= 0.99 || peakDb >= -0.05;
+                const headroomDb = Math.max(0, -peakDb);
+
+                // Logarithmic VU meter percentage for -48dB to 0dB range
+                const vuPercent = Math.max(0, Math.min(100, ((peakDb + 48) / 48) * 100));
+                const vuRmsPercent = Math.max(0, Math.min(100, ((lufs + 48) / 48) * 100));
+                const vuPeakHoldPercent = Math.max(0, Math.min(100, ((peakHoldDb + 48) / 48) * 100));
+
                 return {
                     dataArray,
                     bass: rawBass,
@@ -247,7 +298,17 @@ export async function setupAudio(onDeviceListChange) {
                     treble: rawTreble,
                     smoothedTreble,
                     overall: (smoothedBass * 0.5 + smoothedMid * 0.3 + smoothedTreble * 0.2),
-                    isOnset
+                    isOnset,
+
+                    // VU Meter Telemetry
+                    peakDb: Number(peakDb.toFixed(1)),
+                    peakHoldDb: Number(peakHoldDb.toFixed(1)),
+                    lufs: Number(lufs.toFixed(1)),
+                    headroomDb: Number(headroomDb.toFixed(1)),
+                    vuPercent: Number(vuPercent.toFixed(1)),
+                    vuRmsPercent: Number(vuRmsPercent.toFixed(1)),
+                    vuPeakHoldPercent: Number(vuPeakHoldPercent.toFixed(1)),
+                    isClipping
                 };
             }
 
@@ -266,6 +327,10 @@ export async function setupAudio(onDeviceListChange) {
             const synthMid = Math.max(0, Math.sin(t * 1.5) * 0.4 + 0.1);
             const synthTreble = Math.max(0, Math.cos(t * 2.2) * 0.25 + 0.1);
 
+            const simPeakDb = -11.4 + Math.sin(t * 3.0) * 2.5;
+            const simLufs = -14.8 + Math.sin(t * 2.0) * 1.2;
+            const simVuPercent = Math.max(0, Math.min(100, ((simPeakDb + 48) / 48) * 100));
+
             return {
                 dataArray: new Uint8Array(256),
                 bass: synthBassLevel,
@@ -277,7 +342,17 @@ export async function setupAudio(onDeviceListChange) {
                 treble: synthTreble,
                 smoothedTreble: synthTreble,
                 overall: synthBassLevel * 0.5 + synthMid * 0.3 + synthTreble * 0.2,
-                isOnset: synthImpulseLevel > 0.8
+                isOnset: synthImpulseLevel > 0.8,
+
+                // Simulated VU Telemetry
+                peakDb: Number(simPeakDb.toFixed(1)),
+                peakHoldDb: -8.5,
+                lufs: Number(simLufs.toFixed(1)),
+                headroomDb: Number(Math.max(0, -simPeakDb).toFixed(1)),
+                vuPercent: Number(simVuPercent.toFixed(1)),
+                vuRmsPercent: Number((simVuPercent * 0.85).toFixed(1)),
+                vuPeakHoldPercent: Number((((-8.5 + 48) / 48) * 100).toFixed(1)),
+                isClipping: false
             };
         }
     };
