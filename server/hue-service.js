@@ -57,9 +57,11 @@ export class PhilipsHueService {
 
         this.rooms = [];
         this.isDispatching = false;
+        this.pendingPayload = null;
         this.lastDispatchTime = 0;
+        this.lastSentXY = null;
         this.colorCycleAngle = 0;
-        this.dispatchThrottleMs = 90; // ~11 updates per second REST rate limit safe
+        this.dispatchThrottleMs = 45; // ~22 updates per second maximum with inflight pacing
     }
 
     async init() {
@@ -213,14 +215,14 @@ export class PhilipsHueService {
         };
     }
 
-    // Real-Time Audio-to-Light Dispatcher
+    // High-Performance Audio-to-Light Dispatcher (Ultra-Low Latency & Punchy Snap)
     async processAudioBeat(audioData) {
         if (!this.config.enabled || !this.config.bridgeIp || !this.config.username) return;
 
         const now = performance.now();
-        const isPriority = !!audioData.isStrobe || !!audioData.isDrop;
+        const isPriority = !!audioData.isStrobe || !!audioData.isDrop || (audioData.bass && audioData.bass > 0.45);
 
-        // Throttle non-priority frames to protect Hue Bridge CPU
+        // Adaptive rate limiting: Priority kicks bypass throttle
         if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
             return;
         }
@@ -238,16 +240,16 @@ export class PhilipsHueService {
         } = audioData;
 
         let targetBri = 0;
-        let targetXY = [0.3127, 0.3290];
-        let transitionTime = 1; // 100ms default smooth glide
+        let targetXY = null;
+        let transitionTime = 0; // Default instant 0ms punch
 
         const intensity = this.config.intensity ?? 0.85;
-        const minBri = Math.round((this.config.minBrightness ?? 0.15) * 254);
+        const minBri = Math.round((this.config.minBrightness ?? 0.20) * 254);
 
         if (isStrobe) {
             targetBri = 254;
             targetXY = [0.3127, 0.3290]; // Pure white flash
-            transitionTime = 0; // Instant 0ms snap
+            transitionTime = 0;
         } else if (this.config.mode === 'strobe_only') {
             if (isDrop) {
                 targetBri = Math.round(minBri + (254 - minBri) * bass * intensity);
@@ -255,49 +257,70 @@ export class PhilipsHueService {
                 transitionTime = 0;
             } else {
                 targetBri = minBri;
-                targetXY = hexToCIE(sceneColor);
-                transitionTime = 2;
+                transitionTime = 1;
             }
         } else if (this.config.mode === 'bass_flash') {
-            const punch = Math.min(1.0, bass * 1.3);
+            const punch = Math.min(1.0, Math.pow(bass, 1.2) * 1.5);
             targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
-            if (bass > 0.65) {
+            if (bass > 0.55) {
                 targetXY = [0.675, 0.322]; // Vivid saturated red on kick drop
+                transitionTime = 0;
             } else {
                 targetXY = [0.15, 0.06]; // Deep moody nightclub blue
+                transitionTime = 1;
             }
-            transitionTime = bass > 0.7 ? 0 : 1;
         } else if (this.config.mode === 'rainbow_cycle') {
-            this.colorCycleAngle = (this.colorCycleAngle + 0.08 * (bpm / 120)) % (Math.PI * 2);
+            this.colorCycleAngle = (this.colorCycleAngle + 0.12 * (bpm / 120)) % (Math.PI * 2);
             const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
             const g = Math.round(Math.sin(this.colorCycleAngle + 2) * 127 + 128);
             const b = Math.round(Math.sin(this.colorCycleAngle + 4) * 127 + 128);
             targetXY = rgbToCIE(r, g, b);
-            targetBri = Math.round(minBri + (254 - minBri) * (bass * intensity));
-            transitionTime = 1;
+            const punch = Math.min(1.0, Math.pow(bass, 1.1) * 1.4);
+            targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
+            transitionTime = bass > 0.4 ? 0 : 1;
         } else {
             // Default: 'scene_sync' (matches 3D Visualizer Color Palette with bass punch)
             targetXY = hexToCIE(sceneColor);
-            targetBri = Math.round(minBri + (254 - minBri) * (bass * intensity));
+            const punch = Math.min(1.0, Math.pow(bass, 1.1) * 1.45);
+            targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
             if (isDrop) {
                 targetBri = 254;
                 transitionTime = 0;
+            } else {
+                transitionTime = bass > 0.35 ? 0 : 1;
             }
         }
 
         targetBri = Math.max(1, Math.min(254, targetBri));
 
-        // Dispatch HTTP Command to Hue Bridge
-        this.sendGroupAction(this.config.targetGroup, {
+        const actionBody = {
             on: targetBri > 2,
             bri: targetBri,
-            xy: targetXY,
             transitiontime: transitionTime
-        }).catch(() => {});
+        };
+
+        // Only transmit XY color if it has changed to save ZigBee bandwidth
+        if (targetXY) {
+            const xyKey = `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}`;
+            if (xyKey !== this.lastSentXY) {
+                actionBody.xy = targetXY;
+                this.lastSentXY = xyKey;
+            }
+        }
+
+        this.sendGroupAction(this.config.targetGroup, actionBody);
     }
 
     async sendGroupAction(groupId, body) {
         if (!this.config.bridgeIp || !this.config.username) return;
+
+        // If a request is currently inflight, hold the latest target payload
+        if (this.isDispatching) {
+            this.pendingPayload = { groupId, body };
+            return;
+        }
+
+        this.isDispatching = true;
         const target = (groupId === 'all' || !groupId) ? '0' : groupId;
         const url = `http://${this.config.bridgeIp}/api/${this.config.username}/groups/${target}/action`;
 
@@ -306,10 +329,20 @@ export class PhilipsHueService {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(1200)
+                signal: AbortSignal.timeout(800)
             });
         } catch (e) {
             // Drop late frames
+        } finally {
+            this.isDispatching = false;
+            if (this.pendingPayload) {
+                const next = this.pendingPayload;
+                this.pendingPayload = null;
+                // Dispatch next frame immediately with 30ms spacing to maintain high-speed rhythm
+                setTimeout(() => {
+                    this.sendGroupAction(next.groupId, next.body).catch(() => {});
+                }, 30);
+            }
         }
     }
 }

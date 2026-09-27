@@ -8,10 +8,40 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+    <script>
+        // Instant Zero-FOUC Clean Mode Detector for OBS Studio & Stage Displays
+        (function() {
+            try {
+                var p = new URLSearchParams(window.location.search);
+                var isClean = p.get('mode') === 'obs' || p.get('clean') === 'true' || p.get('mode') === 'stage' || window.location.hash.includes('obs') || window.location.hash.includes('clean');
+                if (isClean) {
+                    document.documentElement.classList.add('stage-mode', 'obs-mode');
+                }
+                if (p.get('overlay') === 'true' || window.location.hash.includes('overlay')) {
+                    document.documentElement.classList.add('obs-transparent-mode');
+                }
+            } catch (e) {}
+        })();
+    </script>
     <style>
         * {
             box-sizing: border-box;
             user-select: none;
+        }
+
+        /* Instant Zero-FOUC Clean Stream / OBS Mode Styles */
+        html.stage-mode #hud,
+        html.stage-mode #fx-bank-panel,
+        html.obs-mode #hud,
+        html.obs-mode #fx-bank-panel,
+        body.stage-mode #hud,
+        body.stage-mode #fx-bank-panel,
+        body.obs-mode #hud,
+        body.obs-mode #fx-bank-panel {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
         }
 
         body,
