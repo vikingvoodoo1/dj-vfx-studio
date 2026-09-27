@@ -312,7 +312,7 @@ export async function setupAudio(onDeviceListChange) {
                 };
             }
 
-            // Standby synthetic mode
+            // Standby synthetic mode: Generate animated frequency bins & beat pulses
             const beatIntervalMs = (60.0 / 126.0) * 1000;
             if (now - lastSynthBeat > beatIntervalMs) {
                 synthBassLevel = 0.85;
@@ -324,15 +324,26 @@ export async function setupAudio(onDeviceListChange) {
             }
 
             const t = now * 0.001;
-            const synthMid = Math.max(0, Math.sin(t * 1.5) * 0.4 + 0.1);
-            const synthTreble = Math.max(0, Math.cos(t * 2.2) * 0.25 + 0.1);
+            const synthMid = Math.max(0, Math.sin(t * 1.5) * 0.4 + 0.15);
+            const synthTreble = Math.max(0, Math.cos(t * 2.2) * 0.25 + 0.12);
 
             const simPeakDb = -11.4 + Math.sin(t * 3.0) * 2.5;
             const simLufs = -14.8 + Math.sin(t * 2.0) * 1.2;
             const simVuPercent = Math.max(0, Math.min(100, ((simPeakDb + 48) / 48) * 100));
 
+            // Generate active dynamic frequency bins for 3D LED Wall & Circular Mandala
+            const synthDataArray = new Uint8Array(256);
+            for (let i = 0; i < 64; i++) {
+                const freqNorm = i / 64;
+                const bassPart = Math.max(0, (1.0 - freqNorm * 1.4)) * synthBassLevel * 240;
+                const midPart = Math.sin(freqNorm * Math.PI) * synthMid * 200;
+                const treblePart = freqNorm * synthTreble * 170;
+                const ripple = Math.sin(t * 7 + i * 0.35) * 22;
+                synthDataArray[i] = Math.max(0, Math.min(255, Math.floor(bassPart + midPart + treblePart + ripple)));
+            }
+
             return {
-                dataArray: new Uint8Array(256),
+                dataArray: synthDataArray,
                 bass: synthBassLevel,
                 smoothedBass: synthBassLevel,
                 bassImpact: Math.min(1.0, synthBassLevel * 0.75 + synthImpulseLevel * 0.25),

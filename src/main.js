@@ -1559,38 +1559,6 @@ async function init() {
 
         if (audioProcessor && audioProcessor.isConnected()) {
             data = audioProcessor.getAudioData();
-            
-            // Relay live audio frame over BroadcastChannel & WebSocket to 2nd Screen / OBS / Projector (~50 FPS)
-            if (data && (now - lastAudioBroadcastTime >= 18)) {
-                lastAudioBroadcastTime = now;
-                const bins = (data.dataArray && data.dataArray.length > 0)
-                    ? Array.from(data.dataArray.slice(0, 64))
-                    : [];
-                broadcastSync({
-                    type: 'audio_frame',
-                    audio: {
-                        bass: data.bass,
-                        smoothedBass: data.smoothedBass,
-                        bassImpact: data.bassImpact,
-                        transientImpulse: data.transientImpulse,
-                        mid: data.mid,
-                        smoothedMid: data.smoothedMid,
-                        treble: data.treble,
-                        smoothedTreble: data.smoothedTreble,
-                        overall: data.overall,
-                        isOnset: data.isOnset,
-                        bins,
-                        peakDb: data.peakDb,
-                        peakHoldDb: data.peakHoldDb,
-                        lufs: data.lufs,
-                        headroomDb: data.headroomDb,
-                        vuPercent: data.vuPercent,
-                        vuRmsPercent: data.vuRmsPercent,
-                        vuPeakHoldPercent: data.vuPeakHoldPercent,
-                        isClipping: data.isClipping
-                    }
-                });
-            }
         } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
             // Screen Link Active: Consuming live audio from primary console window over WebSocket/BroadcastChannel
             data = remoteAudioData;
@@ -1605,6 +1573,38 @@ async function init() {
             }
         } else if (audioProcessor) {
             data = audioProcessor.getAudioData();
+        }
+
+        // Relay live audio frame over BroadcastChannel & WebSocket to OBS / 2nd Screen (~50 FPS)
+        if (!isCleanDisplay && data && (now - lastAudioBroadcastTime >= 18)) {
+            lastAudioBroadcastTime = now;
+            const bins = (data.dataArray && data.dataArray.length > 0)
+                ? Array.from(data.dataArray.slice(0, 64))
+                : [];
+            broadcastSync({
+                type: 'audio_frame',
+                audio: {
+                    bass: data.bass,
+                    smoothedBass: data.smoothedBass,
+                    bassImpact: data.bassImpact,
+                    transientImpulse: data.transientImpulse,
+                    mid: data.mid,
+                    smoothedMid: data.smoothedMid,
+                    treble: data.treble,
+                    smoothedTreble: data.smoothedTreble,
+                    overall: data.overall,
+                    isOnset: data.isOnset,
+                    bins,
+                    peakDb: data.peakDb,
+                    peakHoldDb: data.peakHoldDb,
+                    lufs: data.lufs,
+                    headroomDb: data.headroomDb,
+                    vuPercent: data.vuPercent,
+                    vuRmsPercent: data.vuRmsPercent,
+                    vuPeakHoldPercent: data.vuPeakHoldPercent,
+                    isClipping: data.isClipping
+                }
+            });
         }
 
         if (!data) {
