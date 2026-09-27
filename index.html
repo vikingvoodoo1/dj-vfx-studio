@@ -515,19 +515,29 @@
         }
 
         #drop-zone {
-            position: absolute;
+            display: none;
+            position: fixed;
             top: 0;
             left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 100;
-            background: rgba(0, 255, 204, 0.2);
+            width: 100vw;
+            height: 100vh;
+            z-index: 100000;
+            background: rgba(6, 7, 19, 0.85);
             border: 4px dashed #00ffcc;
-            font-size: 24px;
+            font-size: 22px;
             font-weight: 800;
             color: #00ffcc;
             pointer-events: none;
-            backdrop-filter: blur(8px);
+            backdrop-filter: blur(12px);
+            align-items: center;
+            justify-content: center;
+            letter-spacing: 1px;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #drop-zone.drag-active {
+            display: flex;
         }
 
         /* Detachable Controller Mode (Full-Featured DJ Laptop Dashboard) */
