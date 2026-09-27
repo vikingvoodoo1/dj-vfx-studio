@@ -1169,6 +1169,7 @@ async function init() {
             if (bpm && bpm > 40 && bpm < 300) {
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
+                if (vfx.setDeckData) vfx.setDeckData({ deck: deck || 1, bpm: Number(bpm) });
                 if (syncChannel) syncChannel.postMessage({ type: 'set_bpm', bpm });
             }
             if (deck === 1 && deckBadge1) {
@@ -1216,6 +1217,8 @@ async function init() {
                 bpmVal.textContent = Number(trackData.bpm).toFixed(1);
                 vfx.setBPM(trackData.bpm);
             }
+
+            if (vfx.setDeckData) vfx.setDeckData(trackData);
 
             const deckNum = trackData.deck || 1;
             const targetBadge = (deckNum == 2 && deckBadge2) ? deckBadge2 : deckBadge1;

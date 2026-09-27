@@ -1069,14 +1069,23 @@ const MatrixCodeRainShader = {
     `
 };
 
-// DJ Deck Scrolling Waveforms Shader
+// DJ Deck Scrolling Waveforms Shader (3-Band Multi-Frequency Spectral History & Dual Deck Phase Alignment)
 const DJDeckWaveformShader = {
     uniforms: {
+        uAudioHistory: { value: null },
+        uHeadPos: { value: 0.0 },
         uTime: { value: 0.0 },
         uBass: { value: 0.0 },
         uMid: { value: 0.0 },
         uTreble: { value: 0.0 },
-        uBPM: { value: 126.0 }
+        uTransient: { value: 0.0 },
+        uBPM: { value: 126.0 },
+        uDeck2BPM: { value: 126.0 },
+        uBeatPhase: { value: 0.0 },
+        uTrackProgress: { value: 0.35 },
+        uDeck2Progress: { value: 0.18 },
+        uPlayState: { value: 1.0 },
+        uZoom: { value: 0.32 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -1087,74 +1096,236 @@ const DJDeckWaveformShader = {
     `,
     fragmentShader: `
         varying vec2 vUv;
+        uniform sampler2D uAudioHistory;
+        uniform float uHeadPos;
         uniform float uTime;
         uniform float uBass;
         uniform float uMid;
         uniform float uTreble;
+        uniform float uTransient;
         uniform float uBPM;
-
-        float hash1(float n) { return fract(sin(n) * 43758.5453123); }
+        uniform float uDeck2BPM;
+        uniform float uBeatPhase;
+        uniform float uTrackProgress;
+        uniform float uDeck2Progress;
+        uniform float uPlayState;
+        uniform float uZoom;
 
         void main() {
             vec2 uv = vUv;
-            float bps = uBPM / 60.0;
-            float scrollX = uv.x + uTime * bps * 0.18;
-
-            // Center playhead cursor line (x = 0.5)
+            vec3 col = vec3(0.015, 0.02, 0.035);
+            float alpha = 0.0;
             float playheadDist = abs(uv.x - 0.5);
-            float playhead = 1.0 - smoothstep(0.0, 0.004, playheadDist);
 
-            // Beat grid vertical markers
-            float beatLine = 1.0 - smoothstep(0.0, 0.003, abs(fract(scrollX * 16.0) - 0.5));
-            float barLine = 1.0 - smoothstep(0.0, 0.006, abs(fract(scrollX * 4.0) - 0.5));
+            // -----------------------------------------------------------------
+            // 1. REGION SPLIT: Deck 1 (Top), Center Phase Bar, Deck 2 (Bottom)
+            // -----------------------------------------------------------------
+            bool isDeck1 = uv.y > 0.515;
+            bool isDeck2 = uv.y < 0.485;
+            bool isCenterPhase = !isDeck1 && !isDeck2;
 
-            // Split into Deck 1 (Top, y in [0.52, 0.95]) and Deck 2 (Bottom, y in [0.05, 0.48])
-            bool isDeck1 = uv.y > 0.5;
-            float deckUvY = isDeck1 ? (uv.y - 0.74) * 4.5 : (uv.y - 0.26) * 4.5;
-            float absY = abs(deckUvY);
+            // -----------------------------------------------------------------
+            // 2. CENTER BEAT-MATCHING PHASE METER (uv.y in [0.485, 0.515])
+            // -----------------------------------------------------------------
+            if (isCenterPhase) {
+                col = vec3(0.04, 0.06, 0.09);
+                alpha = 0.95;
 
-            // Multi-frequency RGB audio waveform amplitudes
-            float sampleIdx = floor(scrollX * 90.0);
-            float rndVal = hash1(sampleIdx + (isDeck1 ? 12.0 : 88.0));
-            
-            float bassAmp = (0.35 + rndVal * 0.65) * (1.0 + (isDeck1 ? uBass : uMid) * 0.8);
-            float midAmp = (0.2 + hash1(sampleIdx * 2.1) * 0.5) * (1.0 + uMid * 0.7);
-            float trebleAmp = (0.1 + hash1(sampleIdx * 4.3) * 0.3) * (1.0 + uTreble * 0.8);
+                // 4-Beat Bar Indicator Blocks (Engine DJ / Prime 4 Beat Keeper)
+                float phaseBoxW = 0.08;
+                float phaseSpacing = 0.10;
+                for (int b = 0; b < 4; b++) {
+                    float boxCenter = 0.5 + float(b - 2) * phaseSpacing + (phaseSpacing * 0.5);
+                    float distFromBlock = abs(uv.x - boxCenter);
+                    if (distFromBlock < (phaseBoxW * 0.45) && abs(uv.y - 0.5) < 0.010) {
+                        float beatIdx = float(b);
+                        float currentBeat = mod(uBeatPhase * 4.0, 4.0);
+                        bool isActive = abs(currentBeat - beatIdx) < 0.8 || (b == 0 && uTransient > 0.5);
+                        if (isActive) {
+                            col += vec3(0.0, 0.95, 0.85) * (1.2 + uTransient * 0.8);
+                        } else {
+                            col += vec3(0.12, 0.18, 0.25);
+                        }
+                    }
+                }
 
-            // Waveform layered heights
-            float bassLayer = 1.0 - smoothstep(bassAmp - 0.05, bassAmp, absY);
-            float midLayer = 1.0 - smoothstep(midAmp - 0.05, midAmp, absY);
-            float trebleLayer = 1.0 - smoothstep(trebleAmp - 0.05, trebleAmp, absY);
+                // Center zero alignment needle
+                float pNeedle = 1.0 - smoothstep(0.0, 0.003, playheadDist);
+                col += vec3(1.0, 0.2, 0.3) * pNeedle * 2.0;
 
-            // Deck 1: Cyan / Electric Blue / Sky Aqua
-            vec3 d1_bass = vec3(0.0, 0.4, 1.0);
-            vec3 d1_mid  = vec3(0.0, 0.95, 0.95);
-            vec3 d1_high = vec3(0.85, 1.0, 1.0);
+                gl_FragColor = vec4(col, alpha);
+                return;
+            }
 
-            // Deck 2: Hot Orange / Crimson / Golden Amber
-            vec3 d2_bass = vec3(1.0, 0.15, 0.1);
-            vec3 d2_mid  = vec3(1.0, 0.65, 0.0);
-            vec3 d2_high = vec3(1.0, 0.95, 0.6);
+            // -----------------------------------------------------------------
+            // 3. MAIN DECK RENDERING (Deck 1 or Deck 2)
+            // -----------------------------------------------------------------
+            float waveCenterY = isDeck1 ? 0.770 : 0.280;
+            float waveHalfH   = 0.185;
 
-            vec3 colBass = isDeck1 ? d1_bass : d2_bass;
-            vec3 colMid  = isDeck1 ? d1_mid  : d2_mid;
-            vec3 colHigh = isDeck1 ? d1_high : d2_high;
+            float miniCenterY = isDeck1 ? 0.548 : 0.058;
+            float miniHalfH   = 0.018;
 
-            vec3 waveCol = colBass * bassLayer * 0.7 + colMid * midLayer * 0.9 + colHigh * trebleLayer * 1.2;
-            
-            // Beat grid overlay & center zero baseline
-            waveCol += vec3(0.12, 0.22, 0.35) * beatLine * 0.4;
-            waveCol += vec3(0.8, 0.2, 0.4) * barLine * 0.8;
-            
-            // Center Playhead needle (Bright White/Red)
-            waveCol += vec3(1.0, 0.15, 0.25) * playhead * 2.5;
+            // Full Track Mini-Overview Stripe
+            if (abs(uv.y - miniCenterY) < miniHalfH) {
+                float normMiniY = (uv.y - miniCenterY) / miniHalfH;
+                float trackProg = isDeck1 ? uTrackProgress : uDeck2Progress;
 
-            float alpha = clamp(bassLayer + midLayer + trebleLayer + barLine * 0.5 + playhead, 0.0, 1.0);
-            float edgeFade = smoothstep(0.0, 0.03, uv.x) * smoothstep(1.0, 0.97, uv.x);
-            alpha *= edgeFade;
+                // Structural energy profile contour
+                float posFactor = uv.x * 3.14159 * 6.0;
+                float songEnergy = 0.35 + sin(posFactor) * 0.25 + cos(posFactor * 2.3) * 0.15 + sin(posFactor * 5.1) * 0.1;
+                songEnergy = clamp(songEnergy, 0.1, 0.9);
 
-            if (alpha < 0.005) discard;
-            gl_FragColor = vec4(waveCol * alpha, alpha);
+                float miniDistY = abs(normMiniY);
+                float inMiniWave = 1.0 - smoothstep(songEnergy - 0.1, songEnergy, miniDistY);
+
+                vec3 miniWaveColor = isDeck1 
+                    ? mix(vec3(0.0, 0.4, 0.9), vec3(0.0, 0.9, 0.8), miniDistY)
+                    : mix(vec3(0.9, 0.2, 0.1), vec3(1.0, 0.7, 0.1), miniDistY);
+
+                if (uv.x < trackProg) {
+                    col = miniWaveColor * inMiniWave * 0.45 + vec3(0.02, 0.04, 0.06);
+                } else {
+                    col = miniWaveColor * inMiniWave * 0.95 + vec3(0.03, 0.06, 0.08);
+                }
+
+                // Mini Playhead position marker
+                float miniPlayheadDist = abs(uv.x - trackProg);
+                float miniPlayhead = 1.0 - smoothstep(0.0, 0.003, miniPlayheadDist);
+                col += vec3(1.0, 1.0, 1.0) * miniPlayhead * 2.5;
+
+                // Hot Cue dots on overview strip
+                if (abs(uv.x - 0.10) < 0.004) col += vec3(0.0, 1.0, 0.4) * 1.8;
+                if (abs(uv.x - 0.32) < 0.004) col += vec3(1.0, 0.0, 0.8) * 1.8;
+                if (abs(uv.x - 0.58) < 0.004) col += vec3(0.0, 0.8, 1.0) * 1.8;
+                if (abs(uv.x - 0.78) < 0.004) col += vec3(1.0, 0.8, 0.0) * 1.8;
+
+                // Border
+                float miniBorder = 1.0 - smoothstep(0.0, 0.003, abs(abs(uv.y - miniCenterY) - miniHalfH));
+                col += (isDeck1 ? vec3(0.0, 0.6, 0.9) : vec3(0.9, 0.4, 0.1)) * miniBorder * 0.5;
+
+                alpha = 0.95;
+                gl_FragColor = vec4(col, alpha);
+                return;
+            }
+
+            // Main Waveform Window
+            if (abs(uv.y - waveCenterY) <= waveHalfH) {
+                float normDeckY = (uv.y - waveCenterY) / waveHalfH;
+                float absDeckY = abs(normDeckY);
+
+                // Sample Live Rolling Audio History Buffer
+                float bpmVal = isDeck1 ? uBPM : uDeck2BPM;
+                float zoomFactor = uZoom;
+
+                float texU = fract(uHeadPos + (uv.x - 0.5) * zoomFactor);
+                float texV = isDeck1 ? 0.25 : 0.75;
+
+                vec4 audioSlice = texture2D(uAudioHistory, vec2(texU, texV));
+                float rawBass = audioSlice.r;
+                float rawMid  = audioSlice.g;
+                float rawHigh = audioSlice.b;
+                float rawHit  = audioSlice.a;
+
+                // Center playhead immediate reactivity boost
+                float playheadProximity = exp(-playheadDist * 25.0);
+                if (isDeck1) {
+                    rawBass = mix(rawBass, max(rawBass, uBass), playheadProximity * 0.8);
+                    rawMid  = mix(rawMid,  max(rawMid,  uMid),  playheadProximity * 0.8);
+                    rawHigh = mix(rawHigh, max(rawHigh, uTreble), playheadProximity * 0.8);
+                    rawHit  = mix(rawHit,  max(rawHit,  uTransient), playheadProximity * 0.9);
+                }
+
+                // Micro audio sample comb texture (44.1kHz audio tooth styling)
+                float microSample = fract(sin(texU * 1024.0 + floor(uv.x * 320.0) * 2.1) * 43758.5453);
+                float fineComb = 0.88 + microSample * 0.24;
+
+                // 3-Band Height Envelopes:
+                // 1. Sub-Bass (Low Core)
+                float bassHeight = (rawBass * 0.52 + rawHit * 0.35 + 0.05) * (1.0 + (isDeck1 ? uBass : 0.0) * 0.2);
+                bassHeight = clamp(bassHeight, 0.04, 0.95);
+                float bassLayer = 1.0 - smoothstep(bassHeight - 0.03, bassHeight + 0.01, absDeckY);
+
+                // 2. Mid-Range (Vocals / Synths)
+                float midHeight = (rawMid * 0.72 + rawBass * 0.25 + 0.08) * fineComb * (1.0 + (isDeck1 ? uMid : 0.0) * 0.15);
+                midHeight = clamp(midHeight, 0.06, 0.98);
+                float midLayer = 1.0 - smoothstep(midHeight - 0.03, midHeight + 0.01, absDeckY);
+
+                // 3. Highs & Transients (Hi-hats, claps, transients)
+                float highHeight = (rawHigh * 0.92 + rawHit * 0.55 + rawMid * 0.20 + 0.05) * fineComb * (1.0 + (isDeck1 ? uTreble : 0.0) * 0.2);
+                highHeight = clamp(highHeight, 0.05, 1.0);
+                float highLayer = 1.0 - smoothstep(highHeight - 0.02, highHeight + 0.01, absDeckY);
+
+                // Authentic 3-Band Color Palettes
+                // Deck 1: Electric Blue / Neon Cyan / Ice White
+                vec3 d1_bass = vec3(0.04, 0.25, 0.98);
+                vec3 d1_mid  = vec3(0.0, 0.92, 0.72);
+                vec3 d1_high = vec3(0.92, 0.98, 1.0);
+
+                // Deck 2: Crimson Red / Amber Orange / Champagne Gold
+                vec3 d2_bass = vec3(0.98, 0.12, 0.20);
+                vec3 d2_mid  = vec3(1.0, 0.58, 0.05);
+                vec3 d2_high = vec3(1.0, 0.95, 0.65);
+
+                vec3 colBass = isDeck1 ? d1_bass : d2_bass;
+                vec3 colMid  = isDeck1 ? d1_mid  : d2_mid;
+                vec3 colHigh = isDeck1 ? d1_high : d2_high;
+
+                vec3 waveCol = colBass * bassLayer * 1.15 + colMid * midLayer * 1.35 + colHigh * highLayer * 1.85;
+
+                // Filament zero-line
+                float zeroLine = 1.0 - smoothstep(0.0, 0.03, absDeckY);
+                waveCol += (isDeck1 ? vec3(0.1, 0.7, 1.0) : vec3(1.0, 0.5, 0.1)) * zeroLine * 0.35;
+
+                // Beat Grid & Bar Markers
+                float bps = bpmVal / 60.0;
+                float beatsVisible = (1.0 / zoomFactor) * 8.0;
+                float beatPos = (uv.x - 0.5) * beatsVisible + (uTime * bps * (isDeck1 ? 1.0 : 0.98)) + (isDeck1 ? 0.0 : 0.5);
+
+                float beatFrac = abs(fract(beatPos) - 0.5);
+                float barFrac  = abs(fract(beatPos / 4.0) - 0.5);
+
+                float beatLine = 1.0 - smoothstep(0.0, 0.014, beatFrac);
+                float barLine  = 1.0 - smoothstep(0.0, 0.010, barFrac);
+
+                waveCol += vec3(0.15, 0.30, 0.45) * beatLine * 0.4;
+                waveCol += (isDeck1 ? vec3(0.95, 0.15, 0.35) : vec3(1.0, 0.85, 0.25)) * barLine * 0.9;
+
+                // Center Laser Playhead Needle (x = 0.5)
+                float playheadCore = 1.0 - smoothstep(0.0, 0.0022, playheadDist);
+                float playheadHalo = exp(-playheadDist * 160.0) * (0.8 + uTransient * 1.2);
+                vec3 playheadLaserCol = vec3(1.0, 0.15, 0.30);
+                waveCol += vec3(1.0, 1.0, 1.0) * playheadCore * 3.0 + playheadLaserCol * playheadHalo * 1.5;
+
+                // Playhead top & bottom arrow pointers
+                if (normDeckY > 0.88 && abs(uv.x - 0.5) < 0.015) {
+                    waveCol += vec3(1.0, 0.2, 0.4) * 2.2;
+                }
+                if (normDeckY < -0.88 && abs(uv.x - 0.5) < 0.015) {
+                    waveCol += vec3(1.0, 0.2, 0.4) * 2.2;
+                }
+
+                // Window border
+                float windowBorder = 1.0 - smoothstep(0.0, 0.02, abs(absDeckY - 1.0));
+                waveCol += (isDeck1 ? vec3(0.0, 0.4, 0.8) : vec3(0.8, 0.3, 0.1)) * windowBorder * 0.45;
+
+                // Smooth horizontal edge fade
+                float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
+                float finalAlpha = clamp(bassLayer + midLayer + highLayer + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3, 0.0, 1.0);
+                finalAlpha *= edgeFade;
+
+                col = waveCol * edgeFade;
+                alpha = finalAlpha;
+
+                gl_FragColor = vec4(col, alpha);
+                return;
+            }
+
+            float deckEdgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
+            col = vec3(0.01, 0.015, 0.025) * deckEdgeFade;
+            alpha = 0.6 * deckEdgeFade;
+
+            gl_FragColor = vec4(col, alpha);
         }
     `
 };
@@ -2777,6 +2948,250 @@ function createMatrixGlyphTexture() {
     return tex;
 }
 
+// DJ Deck Time Formatter (MM:SS.ms)
+function formatDeckTime(totalSeconds) {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    const ms = Math.floor((totalSeconds - s) * 10);
+    return `${m.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}.${ms}`;
+}
+
+// 2D High-Resolution DJ Deck HUD Overlay Renderer (Deck 1 / Master, Deck 2 / Sync & Center Phase Meter)
+function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2) {
+    ctx.clearRect(0, 0, width, height);
+
+    const padX = 70;
+    const rightX = width - padX;
+
+    function drawGlassPanel(x, y, w, h, radius, bgCol, borderCol) {
+        ctx.beginPath();
+        ctx.roundRect(x, y, w, h, radius);
+        ctx.fillStyle = bgCol;
+        ctx.fill();
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = borderCol;
+        ctx.stroke();
+    }
+
+    // =========================================================================
+    // 1. DECK 1 HEADER (TOP: Neon Cyan / Electric Cobalt)
+    // =========================================================================
+    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(2) : Number(bpm).toFixed(2);
+    const d1Title = (d1 && d1.title) ? d1.title.toUpperCase() : 'OPUS (LIVE MIX)';
+    const d1Artist = (d1 && d1.artist) ? d1.artist.toUpperCase() : 'ERIC PRYDZ';
+    const d1Key = (d1 && d1.key) ? d1.key : '8A';
+
+    // Top Left: Deck 1 Metadata Card
+    drawGlassPanel(padX, 36, 560, 84, 10, 'rgba(3, 14, 26, 0.85)', 'rgba(0, 240, 255, 0.45)');
+
+    // Deck Badge Pill
+    ctx.beginPath();
+    ctx.roundRect(padX + 16, 48, 140, 26, 6);
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.2)';
+    ctx.fill();
+    ctx.strokeStyle = '#00f0ff';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('▶ DECK 1  MASTER', padX + 86, 61);
+
+    // Track Title & Artist
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(d1Title.slice(0, 26), padX + 170, 62);
+
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#77eeff';
+    ctx.fillText(d1Artist.slice(0, 28), padX + 170, 84);
+
+    // Badges line
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillText(`${d1Bpm} BPM`, padX + 18, 104);
+    ctx.fillStyle = '#99eeff';
+    ctx.fillText(`KEY ${d1Key}`, padX + 115, 104);
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText('LOOP 4', padX + 185, 104);
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText('SYNC LOCK', padX + 250, 104);
+
+    // Top Right: Deck 1 Digital Time & Hot Cues
+    drawGlassPanel(rightX - 520, 36, 520, 84, 10, 'rgba(3, 14, 26, 0.85)', 'rgba(0, 240, 255, 0.45)');
+    const totalSec1 = 360;
+    const el1 = prog1 * totalSec1;
+    const rem1 = totalSec1 - el1;
+
+    ctx.textAlign = 'right';
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#a0d8ef';
+    ctx.fillText('ELAPSED', rightX - 280, 60);
+    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(formatDeckTime(el1), rightX - 160, 60);
+
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText('REMAIN', rightX - 280, 85);
+    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText(`-${formatDeckTime(rem1)}`, rightX - 160, 85);
+
+    // Deck 1 Hot Cue Tabs
+    const d1Cues = ['1:INTRO', '2:DROP 1', '3:BREAK', '4:DROP 2'];
+    const d1CueCols = ['#00ff66', '#ff00aa', '#00f0ff', '#ffcc00'];
+    d1Cues.forEach((cue, i) => {
+        const cx = rightX - 140 + (i % 2) * 65;
+        const cy = 48 + Math.floor(i / 2) * 30;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, 60, 24, 4);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = d1CueCols[i];
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = d1CueCols[i];
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cue, cx + 30, cy + 12);
+    });
+
+    // =========================================================================
+    // 2. CENTER PHASE METER HUD (MIDDLE: y = 492 to 532)
+    // =========================================================================
+    const centerPanelW = 640;
+    const centerPanelX = (width - centerPanelW) / 2;
+    drawGlassPanel(centerPanelX, 492, centerPanelW, 40, 6, 'rgba(8, 16, 26, 0.92)', 'rgba(0, 240, 255, 0.35)');
+
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#00ffcc';
+    ctx.fillText('◀ BEAT SYNC', centerPanelX + 24, 513);
+
+    // 4 Beat Bars
+    const beatW = 46;
+    const beatGap = 12;
+    const beatsStartX = width / 2 - (4 * beatW + 3 * beatGap) / 2;
+    const curBeat = Math.floor(beatPhase * 4);
+
+    for (let b = 0; b < 4; b++) {
+        const bx = beatsStartX + b * (beatW + beatGap);
+        const isHit = b === curBeat || (b === 0 && transient > 0.6);
+        ctx.beginPath();
+        ctx.roundRect(bx, 500, beatW, 24, 4);
+        ctx.fillStyle = isHit ? 'rgba(0, 255, 204, 0.85)' : 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = isHit ? '#ffffff' : 'rgba(0, 255, 204, 0.3)';
+        ctx.stroke();
+
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = isHit ? '#001a14' : '#77bbcc';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${b + 1}`, bx + beatW / 2, 512);
+    }
+
+    ctx.textAlign = 'right';
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText('PHASE LOCK ▶', centerPanelX + centerPanelW - 24, 513);
+
+    // =========================================================================
+    // 3. DECK 2 HEADER (BOTTOM: Warm Amber / Gold / Crimson)
+    // =========================================================================
+    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(2) : Number(bpm).toFixed(2);
+    const d2Title = (d2 && d2.title) ? d2.title.toUpperCase() : 'GLUE (CLUB EDIT)';
+    const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : 'BICEP';
+    const d2Key = (d2 && d2.key) ? d2.key : '8A';
+
+    // Bottom Left: Deck 2 Metadata Card
+    drawGlassPanel(padX, 542, 560, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
+
+    // Deck 2 Badge Pill
+    ctx.beginPath();
+    ctx.roundRect(padX + 16, 554, 140, 26, 6);
+    ctx.fillStyle = 'rgba(255, 170, 0, 0.2)';
+    ctx.fill();
+    ctx.strokeStyle = '#ffaa00';
+    ctx.lineWidth = 1.2;
+    ctx.stroke();
+
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffaa00';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('▶ DECK 2  SYNC', padX + 86, 567);
+
+    // Track Title & Artist
+    ctx.textAlign = 'left';
+    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(d2Title.slice(0, 26), padX + 170, 568);
+
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffcc77';
+    ctx.fillText(d2Artist.slice(0, 28), padX + 170, 590);
+
+    // Badges line
+    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffbb00';
+    ctx.fillText(`${d2Bpm} BPM`, padX + 18, 610);
+    ctx.fillStyle = '#ffe099';
+    ctx.fillText(`KEY ${d2Key}`, padX + 115, 610);
+    ctx.fillStyle = '#ff8800';
+    ctx.fillText('PITCH +0.0%', padX + 185, 610);
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText('SYNC ACTIVE', padX + 275, 610);
+
+    // Bottom Right: Deck 2 Digital Time & Hot Cues
+    drawGlassPanel(rightX - 520, 542, 520, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
+    const totalSec2 = 320;
+    const el2 = prog2 * totalSec2;
+    const rem2 = totalSec2 - el2;
+
+    ctx.textAlign = 'right';
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffddaa';
+    ctx.fillText('ELAPSED', rightX - 280, 566);
+    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(formatDeckTime(el2), rightX - 160, 566);
+
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText('REMAIN', rightX - 280, 591);
+    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#ffaa00';
+    ctx.fillText(`-${formatDeckTime(rem2)}`, rightX - 160, 591);
+
+    // Deck 2 Hot Cue Tabs
+    const d2Cues = ['1:VOCAL', '2:BUILD', '3:DROP', '4:OUTRO'];
+    const d2CueCols = ['#ff6600', '#ffd700', '#ff0055', '#00f0ff'];
+    d2Cues.forEach((cue, i) => {
+        const cx = rightX - 140 + (i % 2) * 65;
+        const cy = 554 + Math.floor(i / 2) * 30;
+        ctx.beginPath();
+        ctx.roundRect(cx, cy, 60, 24, 4);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = d2CueCols[i];
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = d2CueCols[i];
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(cue, cx + 30, cy + 12);
+    });
+}
+
 export function createVFXScene(container) {
     const roundStarTex = createRoundStarTexture();
     const starburstTex = createStarburstTexture();
@@ -3240,16 +3655,57 @@ export function createVFXScene(container) {
     }
 
     // -------------------------------------------------------------------------
-    // FX 3: 🎚️ DJ DECK SCROLLING AUDIO WAVEFORMS [NEW]
+    // FX 3: 🎚️ DJ DECK SCROLLING AUDIO WAVEFORMS (Authentic 3-Band RGB & Phase Sync)
     // -------------------------------------------------------------------------
     const gDJWaveforms = createFXGroup();
+
+    // 1. Live 3-Band Rolling Spectral History Buffer (512 slices wide x 2 deck rows)
+    const djAudioHistoryData = new Uint8Array(512 * 2 * 4);
+    // Initialize with organic default wave groove so it looks rich before first audio frame
+    for (let i = 0; i < 512; i++) {
+        const phi = (i / 512) * Math.PI * 16.0;
+        const b1 = Math.floor((Math.sin(phi) * 0.4 + 0.5) * 180);
+        const m1 = Math.floor((Math.sin(phi * 2.1) * 0.3 + 0.5) * 160);
+        const h1 = Math.floor((Math.sin(phi * 4.3) * 0.25 + 0.4) * 140);
+        const t1 = (i % 32 === 0) ? 220 : 0;
+
+        const idx1 = i * 4;
+        djAudioHistoryData[idx1]     = b1;
+        djAudioHistoryData[idx1 + 1] = m1;
+        djAudioHistoryData[idx1 + 2] = h1;
+        djAudioHistoryData[idx1 + 3] = t1;
+
+        const idx2 = (512 + i) * 4;
+        djAudioHistoryData[idx2]     = Math.floor(b1 * 0.85);
+        djAudioHistoryData[idx2 + 1] = Math.floor(m1 * 0.90);
+        djAudioHistoryData[idx2 + 2] = Math.floor(h1 * 0.80);
+        djAudioHistoryData[idx2 + 3] = ((i + 16) % 32 === 0) ? 200 : 0;
+    }
+
+    const djAudioHistoryTex = new THREE.DataTexture(djAudioHistoryData, 512, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
+    djAudioHistoryTex.minFilter = THREE.LinearFilter;
+    djAudioHistoryTex.magFilter = THREE.LinearFilter;
+    djAudioHistoryTex.wrapS = THREE.RepeatWrapping;
+    djAudioHistoryTex.wrapT = THREE.ClampToEdgeWrapping;
+    djAudioHistoryTex.needsUpdate = true;
+
+    // 2. Waveform GPU Shader Material
     const djWaveMat = new THREE.ShaderMaterial({
         uniforms: {
+            uAudioHistory: { value: djAudioHistoryTex },
+            uHeadPos: { value: 0.0 },
             uTime: { value: 0.0 },
             uBass: { value: 0.0 },
             uMid: { value: 0.0 },
             uTreble: { value: 0.0 },
-            uBPM: { value: 126.0 }
+            uTransient: { value: 0.0 },
+            uBPM: { value: 126.0 },
+            uDeck2BPM: { value: 126.0 },
+            uBeatPhase: { value: 0.0 },
+            uTrackProgress: { value: 0.35 },
+            uDeck2Progress: { value: 0.18 },
+            uPlayState: { value: 1.0 },
+            uZoom: { value: 0.32 }
         },
         vertexShader: DJDeckWaveformShader.vertexShader,
         fragmentShader: DJDeckWaveformShader.fragmentShader,
@@ -3258,9 +3714,36 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide,
         depthWrite: false
     });
-    const djWaveMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 18), djWaveMat);
+    const djWaveMesh = new THREE.Mesh(new THREE.PlaneGeometry(36.5, 20.5), djWaveMat);
     djWaveMesh.position.set(0, 0, -2.0);
     gDJWaveforms.add(djWaveMesh);
+
+    // 3. 2D High-Resolution Deck HUD Canvas Overlay (2048x1024)
+    const djHudCanvas = document.createElement('canvas');
+    djHudCanvas.width = 2048;
+    djHudCanvas.height = 1024;
+    const djHudCtx = djHudCanvas.getContext('2d');
+    const djHudTex = new THREE.CanvasTexture(djHudCanvas);
+    djHudTex.minFilter = THREE.LinearFilter;
+    djHudTex.magFilter = THREE.LinearFilter;
+
+    const djHudMat = new THREE.MeshBasicMaterial({
+        map: djHudTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const djHudMesh = new THREE.Mesh(new THREE.PlaneGeometry(36.5, 20.5), djHudMat);
+    djHudMesh.position.set(0, 0, -1.9);
+    gDJWaveforms.add(djHudMesh);
+
+    // Deck state tracking
+    let djHistoryHead = 0;
+    let djHudFrameCount = 0;
+    let deck1Progress = 0.38;
+    let deck2Progress = 0.16;
+    let deck1Data = { artist: 'ERIC PRYDZ', title: 'OPUS (LIVE MIX)', bpm: 126.0, key: '8A' };
+    let deck2Data = { artist: 'BICEP', title: 'GLUE (CLUB EDIT)', bpm: 126.0, key: '8A' };
 
     // =========================================================================
     // CATEGORY 2: ⚡ LASERS & DISCO (FX 4-9)
@@ -4375,14 +4858,63 @@ export function createVFXScene(container) {
             gWaveMatrix.rotation.z = Math.sin(elapsedTime * 0.4) * 0.04;
         }
         // ---------------------------------------------------------------------
-        // FX 3: 🎚️ DJ Deck Scrolling Waveforms [NEW]
+        // FX 3: 🎚️ DJ Deck Scrolling Waveforms (Live 3-Band Audio Spectral History & HUD)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 3) {
+            // 1. Capture live 3-band audio spectrum amplitudes
+            const rawBass = Math.min(1.0, (audio.bass || 0) * 0.75 + (audio.bassImpact || 0) * 0.45);
+            const rawMid = Math.min(1.0, (audio.mid || 0) * 1.15);
+            const rawTreble = Math.min(1.0, (audio.treble || 0) * 1.25);
+            const rawHit = Math.min(1.0, (audio.transientImpulse || 0) * 1.1);
+
+            // 2. Write Deck 1 (Row 0) live spectral history slice
+            const d1Offset = djHistoryHead * 4;
+            djAudioHistoryData[d1Offset]     = Math.min(255, Math.floor(rawBass * 255));
+            djAudioHistoryData[d1Offset + 1] = Math.min(255, Math.floor(rawMid * 255));
+            djAudioHistoryData[d1Offset + 2] = Math.min(255, Math.floor(rawTreble * 255));
+            djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
+
+            // 3. Write Deck 2 (Row 1) spectral slice (with complementary groove / incoming track simulation)
+            const d2Offset = (512 + djHistoryHead) * 4;
+            const d2Groove = (Math.sin(elapsedTime * (deck2Data.bpm || currentBPM) / 60.0 * Math.PI) * 0.5 + 0.5);
+            const d2Bass = Math.min(1.0, rawBass * 0.85 + d2Groove * 0.15);
+            const d2Mid = Math.min(1.0, rawMid * 0.80 + (1.0 - d2Groove) * 0.20);
+            const d2Treble = Math.min(1.0, rawTreble * 0.90 + d2Groove * 0.10);
+            const d2Hit = (d2Groove > 0.88) ? 0.9 : (rawHit * 0.6);
+
+            djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(d2Bass * 255));
+            djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(d2Mid * 255));
+            djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(d2Treble * 255));
+            djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(d2Hit * 255));
+
+            djAudioHistoryTex.needsUpdate = true;
+            djHistoryHead = (djHistoryHead + 1) % 512;
+
+            // Advance track progress smoothly
+            deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
+            deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
+
+            const beatPhaseVal = (elapsedTime * (currentBPM / 60.0)) % 1.0;
+
+            // Update Shader Uniforms
             djWaveMat.uniforms.uTime.value = elapsedTime;
+            djWaveMat.uniforms.uHeadPos.value = djHistoryHead / 512.0;
             djWaveMat.uniforms.uBass.value = bassPop;
             djWaveMat.uniforms.uMid.value = audio.smoothedMid || 0;
             djWaveMat.uniforms.uTreble.value = audio.smoothedTreble || 0;
+            djWaveMat.uniforms.uTransient.value = audio.transientImpulse || 0;
             djWaveMat.uniforms.uBPM.value = currentBPM;
+            djWaveMat.uniforms.uDeck2BPM.value = deck2Data.bpm || currentBPM;
+            djWaveMat.uniforms.uBeatPhase.value = beatPhaseVal;
+            djWaveMat.uniforms.uTrackProgress.value = deck1Progress;
+            djWaveMat.uniforms.uDeck2Progress.value = deck2Progress;
+
+            // Update HUD Canvas texture every ~4 frames for smooth time elapsed/remaining readouts
+            djHudFrameCount++;
+            if (djHudFrameCount % 4 === 0) {
+                renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress);
+                djHudTex.needsUpdate = true;
+            }
         }
         // ---------------------------------------------------------------------
         // FX 4: 🪩 Authentic Nightclub Mirror Ball Rig [Top Pinspots & Floor Reflections]
@@ -4870,6 +5402,23 @@ export function createVFXScene(container) {
         setLogoSpinMode,
         setLogoSpinEnabled,
         setLogoSpinSpeed,
+        setDeckData: (data) => {
+            if (!data) return;
+            const targetDeck = (data.deck === 2) ? 2 : 1;
+            if (targetDeck === 1) {
+                if (data.artist) deck1Data.artist = data.artist;
+                if (data.title) deck1Data.title = data.title;
+                if (data.bpm) deck1Data.bpm = data.bpm;
+                if (data.key) deck1Data.key = data.key;
+                if (data.progress !== undefined) deck1Progress = data.progress;
+            } else {
+                if (data.artist) deck2Data.artist = data.artist;
+                if (data.title) deck2Data.title = data.title;
+                if (data.bpm) deck2Data.bpm = data.bpm;
+                if (data.key) deck2Data.key = data.key;
+                if (data.progress !== undefined) deck2Progress = data.progress;
+            }
+        },
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length,
         getCurrentSceneColor: () => {
