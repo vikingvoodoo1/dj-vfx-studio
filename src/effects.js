@@ -2793,7 +2793,8 @@ export function createVFXScene(container) {
 
     const renderer = new THREE.WebGLRenderer({
         antialias: false,
-        powerPreference: 'high-performance'
+        powerPreference: 'high-performance',
+        alpha: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

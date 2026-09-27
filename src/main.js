@@ -97,6 +97,38 @@ async function init() {
     let remoteAudioData = null;
     let lastRemoteAudioTime = 0;
 
+    // OBS Streaming & Modal DOM Elements
+    const obsBlackoutCurtain = document.getElementById('obs-blackout-curtain');
+    const toastNotify = document.getElementById('toast-notify');
+    const obsModalBackdrop = document.getElementById('obs-modal-backdrop');
+    const btnOpenObsModal = document.getElementById('btn-open-obs-modal');
+    const btnObsFeedHud = document.getElementById('btn-obs-feed-hud');
+    const btnCloseObsModal = document.getElementById('btn-close-obs-modal');
+    const btnModalDone = document.getElementById('btn-modal-done');
+    const btnCopyObsUrl = document.getElementById('btn-copy-obs-url');
+    const obsUrlInput = document.getElementById('obs-url-input');
+    const pillObsSolid = document.getElementById('pill-obs-solid');
+    const pillObsOverlay = document.getElementById('pill-obs-overlay');
+    const btnTestObsWindow = document.getElementById('btn-test-obs-window');
+    const btnObsToggleOutput = document.getElementById('btn-obs-toggle-output');
+    const btnObsToggleHud = document.getElementById('btn-obs-toggle-hud');
+    const btnModalObsToggle = document.getElementById('btn-modal-obs-toggle');
+    const btnObsToggleOverlay = document.getElementById('btn-obs-toggle-overlay');
+
+    let isOBSOutputLive = true;
+
+    // Toast Helper
+    let toastTimer = null;
+    function showToast(msg) {
+        if (!toastNotify) return;
+        toastNotify.textContent = msg;
+        toastNotify.classList.add('show');
+        if (toastTimer) clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => {
+            toastNotify.classList.remove('show');
+        }, 2400);
+    }
+
     const btnDetachConsole = document.getElementById('btn-detach-console');
     if (btnDetachConsole) {
         btnDetachConsole.addEventListener('click', () => {
@@ -121,10 +153,17 @@ async function init() {
         });
     }
 
-    // Check URL Mode Parameters (Controller vs Clean Stage Display)
+    // Check URL Mode Parameters (Controller vs Clean Stage Display vs OBS Browser Source)
     const urlParams = new URLSearchParams(window.location.search);
     const isControllerMode = urlParams.get('mode') === 'controller' || window.location.hash.includes('controller');
-    const isCleanDisplay = urlParams.get('clean') === 'true' || urlParams.get('mode') === 'stage' || window.location.hash.includes('clean');
+    const isOBSMode = urlParams.get('mode') === 'obs' || window.location.hash.includes('obs');
+    const isCleanDisplay = urlParams.get('clean') === 'true' || urlParams.get('mode') === 'stage' || isOBSMode || window.location.hash.includes('clean');
+    let isOBSOverlayActive = urlParams.get('overlay') === 'true' || window.location.hash.includes('overlay');
+
+    if (isOBSOverlayActive) {
+        document.documentElement.classList.add('obs-transparent-mode');
+        document.body.classList.add('obs-transparent-mode');
+    }
 
     if (isControllerMode) {
         document.body.classList.add('controller-mode');
@@ -134,16 +173,137 @@ async function init() {
             hudStatus.style.borderColor = '#ff00ff';
             hudStatus.style.color = '#ff00ff';
         }
-        console.log('[DJ-VFX] 🎛️ Detached Master Console Active (Broadcasting to Stage Displays)');
+        console.log('[DJ-VFX] 🎛️ Detached Master Console Active (Broadcasting to Stage Displays & OBS)');
     }
 
     if (isCleanDisplay) {
         document.body.classList.add('stage-mode');
+        if (isOBSMode) document.body.classList.add('obs-mode');
         if (hud) hud.classList.add('hidden');
         if (fxBankPanel) fxBankPanel.classList.add('hidden');
         if (trackBanner) trackBanner.classList.add('hidden');
         document.body.style.cursor = 'none';
-        console.log('[DJ-VFX] 🖥️ Clean Stage Display Mode Active (Receiving Live Sync)');
+        console.log('[DJ-VFX] 🖥️ Clean Visualizer / OBS Stream Mode Active (Receiving Live Sync)');
+    }
+
+    function setOBSOutputLive(live, broadcast = true) {
+        isOBSOutputLive = !!live;
+        if (obsBlackoutCurtain) {
+            obsBlackoutCurtain.classList.toggle('blackout-active', !isOBSOutputLive);
+        }
+
+        const liveColor = '#00ffcc';
+        const liveBg = 'rgba(0, 255, 204, 0.18)';
+        const liveBorder = '#00ffcc';
+
+        const mutedColor = '#ff3366';
+        const mutedBg = 'rgba(255, 51, 102, 0.22)';
+        const mutedBorder = '#ff3366';
+
+        if (btnObsToggleOutput) {
+            btnObsToggleOutput.textContent = isOBSOutputLive ? '🟢 OBS OUT: LIVE' : '⬛ OBS OUT: MUTED';
+            btnObsToggleOutput.style.color = isOBSOutputLive ? liveColor : mutedColor;
+            btnObsToggleOutput.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
+            btnObsToggleOutput.style.background = isOBSOutputLive ? liveBg : mutedBg;
+        }
+        if (btnObsToggleHud) {
+            btnObsToggleHud.textContent = isOBSOutputLive ? '🟢 OBS' : '⬛ OBS';
+            btnObsToggleHud.style.color = isOBSOutputLive ? liveColor : mutedColor;
+            btnObsToggleHud.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
+            btnObsToggleHud.style.background = isOBSOutputLive ? liveBg : mutedBg;
+        }
+        if (btnModalObsToggle) {
+            btnModalObsToggle.textContent = isOBSOutputLive ? '🟢 OBS OUT: LIVE' : '⬛ OBS OUT: MUTED (BLACKOUT)';
+            btnModalObsToggle.style.color = isOBSOutputLive ? liveColor : mutedColor;
+            btnModalObsToggle.style.borderColor = isOBSOutputLive ? liveBorder : mutedBorder;
+            btnModalObsToggle.style.background = isOBSOutputLive ? liveBg : mutedBg;
+        }
+
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_obs_output', live: isOBSOutputLive });
+            showToast(isOBSOutputLive ? '📡 OBS Feed: LIVE (Broadcasting)' : '⬛ OBS Feed: MUTED (Blackout)');
+        }
+    }
+
+    function updateObsUrlBox() {
+        if (!obsUrlInput) return;
+        const baseUrl = `${window.location.origin}${window.location.pathname}?mode=obs`;
+        obsUrlInput.value = isOBSOverlayActive ? `${baseUrl}&overlay=true` : baseUrl;
+        if (pillObsSolid && pillObsOverlay) {
+            pillObsSolid.classList.toggle('active', !isOBSOverlayActive);
+            pillObsOverlay.classList.toggle('active', isOBSOverlayActive);
+        }
+    }
+
+    function setOBSOverlayMode(overlay, broadcast = true) {
+        isOBSOverlayActive = !!overlay;
+        document.documentElement.classList.toggle('obs-transparent-mode', isOBSOverlayActive);
+        document.body.classList.toggle('obs-transparent-mode', isOBSOverlayActive);
+
+        if (btnObsToggleOverlay) {
+            btnObsToggleOverlay.textContent = isOBSOverlayActive ? '🎭 OBS: TRANSPARENT' : '🎭 OBS: SOLID';
+            btnObsToggleOverlay.style.color = isOBSOverlayActive ? '#00ffff' : '#ff66ff';
+            btnObsToggleOverlay.style.borderColor = isOBSOverlayActive ? '#00ffff' : '#ff00ff';
+        }
+
+        updateObsUrlBox();
+
+        if (broadcast && syncChannel) {
+            syncChannel.postMessage({ type: 'set_obs_overlay', overlay: isOBSOverlayActive });
+            showToast(isOBSOverlayActive ? '🎭 OBS Mode: Transparent Camera Overlay' : '🌟 OBS Mode: Solid Stage Visuals');
+        }
+    }
+
+    // Modal Listeners
+    if (btnOpenObsModal) btnOpenObsModal.addEventListener('click', () => { updateObsUrlBox(); if (obsModalBackdrop) obsModalBackdrop.classList.add('active'); });
+    if (btnObsFeedHud) btnObsFeedHud.addEventListener('click', () => { updateObsUrlBox(); if (obsModalBackdrop) obsModalBackdrop.classList.add('active'); });
+    if (btnCloseObsModal) btnCloseObsModal.addEventListener('click', () => { if (obsModalBackdrop) obsModalBackdrop.classList.remove('active'); });
+    if (btnModalDone) btnModalDone.addEventListener('click', () => { if (obsModalBackdrop) obsModalBackdrop.classList.remove('active'); });
+    if (obsModalBackdrop) {
+        obsModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === obsModalBackdrop) obsModalBackdrop.classList.remove('active');
+        });
+    }
+
+    if (pillObsSolid) {
+        pillObsSolid.addEventListener('click', () => setOBSOverlayMode(false, true));
+    }
+    if (pillObsOverlay) {
+        pillObsOverlay.addEventListener('click', () => setOBSOverlayMode(true, true));
+    }
+
+    if (btnCopyObsUrl) {
+        btnCopyObsUrl.addEventListener('click', () => {
+            if (obsUrlInput) {
+                navigator.clipboard.writeText(obsUrlInput.value).then(() => {
+                    showToast('📋 Copied OBS Browser Source URL!');
+                }).catch(() => {
+                    obsUrlInput.select();
+                    document.execCommand('copy');
+                    showToast('📋 Copied OBS Browser Source URL!');
+                });
+            }
+        });
+    }
+
+    if (btnTestObsWindow) {
+        btnTestObsWindow.addEventListener('click', () => {
+            const url = obsUrlInput ? obsUrlInput.value : `${window.location.origin}${window.location.pathname}?mode=obs`;
+            window.open(url, 'DJ_VFX_OBS_PREVIEW', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+        });
+    }
+
+    if (btnObsToggleOutput) {
+        btnObsToggleOutput.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
+    }
+    if (btnObsToggleHud) {
+        btnObsToggleHud.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
+    }
+    if (btnModalObsToggle) {
+        btnModalObsToggle.addEventListener('click', () => setOBSOutputLive(!isOBSOutputLive, true));
+    }
+    if (btnObsToggleOverlay) {
+        btnObsToggleOverlay.addEventListener('click', () => setOBSOverlayMode(!isOBSOverlayActive, true));
     }
 
     if (syncChannel) {
@@ -154,6 +314,10 @@ async function init() {
             if (msg.type === 'audio_frame') {
                 remoteAudioData = msg.audio;
                 lastRemoteAudioTime = performance.now();
+            } else if (msg.type === 'set_obs_output') {
+                setOBSOutputLive(msg.live, false);
+            } else if (msg.type === 'set_obs_overlay') {
+                setOBSOverlayMode(msg.overlay, false);
             } else if (msg.type === 'set_fx') {
                 selectFX(msg.fx, false);
             } else if (msg.type === 'set_bpm') {
@@ -808,6 +972,15 @@ async function init() {
             hud.classList.toggle('hidden');
             fxBankPanel.classList.toggle('hidden');
             trackBanner.classList.toggle('hidden');
+        }
+        // [O] to open OBS Streaming Manager or Shift+[O] to toggle OBS Output Mute
+        else if (e.key === 'o' || e.key === 'O') {
+            if (e.shiftKey) {
+                setOBSOutputLive(!isOBSOutputLive, true);
+            } else if (obsModalBackdrop) {
+                updateObsUrlBox();
+                obsModalBackdrop.classList.toggle('active');
+            }
         }
     });
 
