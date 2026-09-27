@@ -701,6 +701,8 @@ async function init() {
             if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
             if (msg.bpm) vfx.setBPM(msg.bpm);
             if (vfx.setDeckData) vfx.setDeckData(msg);
+            // Trigger Track Banner popup on remote OBS / 2nd screen
+            triggerTrackBannerPopup(msg, false);
         } else if (msg.type === 'trigger_track_banner') {
             trackDelaySec = msg.delay ?? trackDelaySec;
             trackDurationSec = msg.duration ?? trackDurationSec;
