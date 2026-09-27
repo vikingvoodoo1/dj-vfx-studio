@@ -64,7 +64,7 @@ async function init() {
     const trackBpmBadge = document.getElementById('track-bpm-badge');
 
     let isTrackBannerEnabled = true;
-    let trackDelaySec = 10;
+    let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
     let trackDurationSec = 30;
     let trackBannerDelayTimer = null;
     let trackBannerFadeTimer = null;
