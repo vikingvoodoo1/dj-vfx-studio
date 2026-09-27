@@ -4700,19 +4700,29 @@ export function createVFXScene(container) {
         const delta = clock.getDelta();
         const elapsedTime = clock.getElapsedTime();
 
-        const audio = (typeof getAudioDataFn === 'function') ? getAudioDataFn() : {
-            bass: 0,
-            smoothedBass: 0,
-            bassImpact: 0,
-            transientImpulse: 0,
-            mid: 0,
-            smoothedMid: 0,
-            treble: 0,
-            smoothedTreble: 0,
-            overall: 0,
-            isOnset: false,
-            dataArray: new Uint8Array(128)
-        };
+        let audio = null;
+        if (typeof getAudioDataFn === 'function') {
+            try {
+                audio = getAudioDataFn();
+            } catch (e) {
+                console.error('[VFX] getAudioDataFn error:', e);
+            }
+        }
+        if (!audio) {
+            audio = {
+                bass: 0,
+                smoothedBass: 0,
+                bassImpact: 0,
+                transientImpulse: 0,
+                mid: 0,
+                smoothedMid: 0,
+                treble: 0,
+                smoothedTreble: 0,
+                overall: 0,
+                isOnset: false,
+                dataArray: new Uint8Array(128)
+            };
+        }
 
         const dataArr = audio.dataArray || [];
         const bassPop = audio.bassImpact || audio.bass || 0;

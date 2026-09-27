@@ -1546,6 +1546,8 @@ async function init() {
         }
     });
 
+    let lastAudioBroadcastTime = 0;
+
     // 8. Start Real-Time VFX Render Loop (with Multi-Window Audio Relay & Philips Hue Streaming)
     vfx.animate(() => {
         const now = performance.now();
@@ -1554,8 +1556,9 @@ async function init() {
         if (audioProcessor && audioProcessor.isConnected()) {
             data = audioProcessor.getAudioData();
             
-            // Relay live audio frame over BroadcastChannel & WebSocket to 2nd Screen / OBS / Projector
-            if (data) {
+            // Relay live audio frame over BroadcastChannel & WebSocket to 2nd Screen / OBS / Projector (~50 FPS)
+            if (data && (now - lastAudioBroadcastTime >= 18)) {
+                lastAudioBroadcastTime = now;
                 broadcastSync({
                     type: 'audio_frame',
                     audio: {
@@ -1568,7 +1571,15 @@ async function init() {
                         treble: data.treble,
                         smoothedTreble: data.smoothedTreble,
                         overall: data.overall,
-                        isOnset: data.isOnset
+                        isOnset: data.isOnset,
+                        peakDb: data.peakDb,
+                        peakHoldDb: data.peakHoldDb,
+                        lufs: data.lufs,
+                        headroomDb: data.headroomDb,
+                        vuPercent: data.vuPercent,
+                        vuRmsPercent: data.vuRmsPercent,
+                        vuPeakHoldPercent: data.vuPeakHoldPercent,
+                        isClipping: data.isClipping
                     }
                 });
             }
@@ -1588,63 +1599,76 @@ async function init() {
             data = audioProcessor.getAudioData();
         }
 
-        if (data) {
-            if (eqBass) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
-            if (eqMid) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
-            if (eqTreble) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;
-
-            // High-Precision Line-In VU & Loudness Meter Updates
-            if (vuPeakFill && data.vuPercent !== undefined) {
-                vuPeakFill.style.width = `${data.vuPercent}%`;
-            }
-            if (vuRmsFill && data.vuRmsPercent !== undefined) {
-                vuRmsFill.style.width = `${data.vuRmsPercent}%`;
-            }
-            if (vuPeakHoldNeedle && data.vuPeakHoldPercent !== undefined) {
-                vuPeakHoldNeedle.style.left = `calc(${Math.min(99, data.vuPeakHoldPercent)}% - 1px)`;
-            }
-
-            if (vuValPeak && data.peakDb !== undefined) {
-                vuValPeak.textContent = `${data.peakDb.toFixed(1)} dBFS`;
-                if (data.peakDb > -0.5) {
-                    vuValPeak.style.color = '#ff0055';
-                } else if (data.peakDb > -3.0) {
-                    vuValPeak.style.color = '#ffaa00';
-                } else {
-                    vuValPeak.style.color = '#00ffcc';
-                }
-            }
-
-            if (vuValLufs && data.lufs !== undefined) {
-                vuValLufs.textContent = `${data.lufs.toFixed(1)} LUFS`;
-            }
-
-            if (vuValHeadroom && data.headroomDb !== undefined) {
-                vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
-                vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
-            }
-
-            // Clip Alert Warning Indicator
-            if (data.isClipping && vuClipBadge) {
-                vuClipBadge.style.display = 'inline-block';
-            }
-
-            // Stream live beat telemetry to Philips Hue Bridge
-            if (stagelinqClient && isHueActive) {
-                stagelinqClient.sendHueBeat({
-                    bass: data.bassImpact || data.bass || 0,
-                    mid: data.mid || 0,
-                    treble: data.treble || 0,
-                    sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
-                    isDrop: !!(data.transientImpulse && data.transientImpulse > 0.8),
-                    isStrobe: false,
-                    bpm: 126
-                });
-            }
-
-            return data;
+        if (!data) {
+            data = {
+                bass: 0,
+                smoothedBass: 0,
+                bassImpact: 0,
+                transientImpulse: 0,
+                mid: 0,
+                smoothedMid: 0,
+                treble: 0,
+                smoothedTreble: 0,
+                overall: 0,
+                isOnset: false,
+                dataArray: new Uint8Array(128)
+            };
         }
-        return null;
+
+        if (eqBass && data.bass !== undefined) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
+        if (eqMid && data.mid !== undefined) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
+        if (eqTreble && data.treble !== undefined) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;
+
+        // High-Precision Line-In VU & Loudness Meter Updates
+        if (vuPeakFill && data.vuPercent !== undefined) {
+            vuPeakFill.style.width = `${data.vuPercent}%`;
+        }
+        if (vuRmsFill && data.vuRmsPercent !== undefined) {
+            vuRmsFill.style.width = `${data.vuRmsPercent}%`;
+        }
+        if (vuPeakHoldNeedle && data.vuPeakHoldPercent !== undefined) {
+            vuPeakHoldNeedle.style.left = `calc(${Math.min(99, data.vuPeakHoldPercent)}% - 1px)`;
+        }
+
+        if (vuValPeak && data.peakDb !== undefined) {
+            vuValPeak.textContent = `${data.peakDb.toFixed(1)} dBFS`;
+            if (data.peakDb > -0.5) {
+                vuValPeak.style.color = '#ff0055';
+            } else if (data.peakDb > -3.0) {
+                vuValPeak.style.color = '#ffaa00';
+            } else {
+                vuValPeak.style.color = '#00ffcc';
+            }
+        }
+
+        if (vuValLufs && data.lufs !== undefined) {
+            vuValLufs.textContent = `${data.lufs.toFixed(1)} LUFS`;
+        }
+
+        if (vuValHeadroom && data.headroomDb !== undefined) {
+            vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
+            vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+        }
+
+        // Clip Alert Warning Indicator
+        if (data.isClipping && vuClipBadge) {
+            vuClipBadge.style.display = 'inline-block';
+        }
+
+        // Stream live beat telemetry to Philips Hue Bridge
+        if (stagelinqClient && isHueActive && (data.bass || data.bassImpact)) {
+            stagelinqClient.sendHueBeat({
+                bass: data.bassImpact || data.bass || 0,
+                mid: data.mid || 0,
+                treble: data.treble || 0,
+                sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
+                isDrop: !!(data.transientImpulse && data.transientImpulse > 0.8),
+                isStrobe: false,
+                bpm: 126
+            });
+        }
+
+        return data;
     });
 }
 
