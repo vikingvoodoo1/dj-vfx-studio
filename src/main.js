@@ -620,7 +620,11 @@ async function init() {
         if (!msg) return;
 
         if (msg.type === 'audio_frame') {
-            remoteAudioData = msg.audio;
+            const rawAudio = msg.audio || {};
+            remoteAudioData = {
+                ...rawAudio,
+                dataArray: rawAudio.bins ? new Uint8Array(rawAudio.bins) : new Uint8Array(128)
+            };
             lastRemoteAudioTime = performance.now();
         } else if (msg.type === 'set_obs_output') {
             setOBSOutputLive(msg.live, false);
@@ -1559,6 +1563,9 @@ async function init() {
             // Relay live audio frame over BroadcastChannel & WebSocket to 2nd Screen / OBS / Projector (~50 FPS)
             if (data && (now - lastAudioBroadcastTime >= 18)) {
                 lastAudioBroadcastTime = now;
+                const bins = (data.dataArray && data.dataArray.length > 0)
+                    ? Array.from(data.dataArray.slice(0, 64))
+                    : [];
                 broadcastSync({
                     type: 'audio_frame',
                     audio: {
@@ -1572,6 +1579,7 @@ async function init() {
                         smoothedTreble: data.smoothedTreble,
                         overall: data.overall,
                         isOnset: data.isOnset,
+                        bins,
                         peakDb: data.peakDb,
                         peakHoldDb: data.peakHoldDb,
                         lufs: data.lufs,

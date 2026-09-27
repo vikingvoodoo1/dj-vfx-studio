@@ -135,12 +135,20 @@ wss.on('connection', (ws) => {
             } else if (msg.type === 'set_bpm') {
                 lastBpm = msg.bpm;
                 relayToOthers(ws, msg);
-            } else if (msg.type === 'beat_pulse' || msg.type === 'flash' || msg.type === 'reset_all') {
-                relayToOthers(ws, msg);
-            } else if (msg.type?.startsWith('set_logo') || msg.type?.startsWith('set_obs') || msg.type?.startsWith('set_track') || msg.type === 'pop_track_banner') {
+            } else if (msg.type === 'track') {
+                lastTrackData = msg;
                 relayToOthers(ws, msg);
             } else if (msg.type === 'sync_relay' && msg.payload) {
                 relayToOthers(ws, msg.payload);
+            } else if (
+                msg.type === 'beat_pulse' || 
+                msg.type === 'flash' || 
+                msg.type === 'reset_all' ||
+                msg.type?.startsWith('set_') || 
+                msg.type?.startsWith('pop_') ||
+                msg.type?.startsWith('trigger_')
+            ) {
+                relayToOthers(ws, msg);
             }
         } catch (e) {
             console.error('[WebSocket] Error processing client message:', e);
