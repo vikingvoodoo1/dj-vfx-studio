@@ -1,0 +1,11 @@
+{
+  "bridgeIp": "192.168.1.33",
+  "username": null,
+  "clientkey": null,
+  "enabled": false,
+  "targetGroup": "all",
+  "mode": "scene_sync",
+  "intensity": 0.85,
+  "minBrightness": 0.15,
+  "sceneColor": "#00ffff"
+}

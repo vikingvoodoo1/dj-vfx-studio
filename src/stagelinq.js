@@ -1,12 +1,18 @@
 /**
- * StageLinq Client for DJ-VFX
- * Connects to local Node.js StageLinq Companion Bridge via WebSocket
+ * StageLinq & Philips Hue Client for DJ-VFX
+ * Connects to local Node.js Companion Bridge via WebSocket on localhost:8080
  */
-export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange }) {
+export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange, onHueStatus, onHuePairingStatus }) {
     const WS_URL = 'ws://localhost:8080';
     let socket = null;
     let isConnected = false;
     let reconnectTimeout = null;
+
+    function sendJson(obj) {
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            socket.send(JSON.stringify(obj));
+        }
+    }
 
     function connect() {
         if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
@@ -18,7 +24,7 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange })
 
             socket.onopen = () => {
                 isConnected = true;
-                console.log('[StageLinq Client] Connected to StageLinq bridge on localhost:8080');
+                console.log('[StageLinq / Hue Client] Connected to Bridge on localhost:8080');
                 if (onStatusChange) onStatusChange({ connected: true, message: 'Bridge Connected' });
             };
 
@@ -38,11 +44,17 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange })
                         case 'status':
                             if (onStatusChange) onStatusChange(data);
                             break;
+                        case 'hue_status':
+                            if (onHueStatus) onHueStatus(data);
+                            break;
+                        case 'hue_pairing_status':
+                            if (onHuePairingStatus) onHuePairingStatus(data);
+                            break;
                         default:
                             break;
                     }
                 } catch (e) {
-                    console.error('[StageLinq Client] Error parsing message:', e);
+                    console.error('[StageLinq / Hue Client] Error parsing message:', e);
                 }
             };
 
@@ -53,7 +65,6 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange })
             socket.onclose = () => {
                 isConnected = false;
                 if (onStatusChange) onStatusChange({ connected: false, message: 'Bridge Offline (Audio Fallback)' });
-                // Reconnect attempt every 3 seconds
                 clearTimeout(reconnectTimeout);
                 reconnectTimeout = setTimeout(connect, 3000);
             };
@@ -70,6 +81,12 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onStatusChange })
         disconnect: () => {
             clearTimeout(reconnectTimeout);
             if (socket) socket.close();
-        }
+        },
+        discoverHue: () => sendJson({ type: 'hue_discover' }),
+        pairHue: (ip) => sendJson({ type: 'hue_pair', ip }),
+        getHueRooms: () => sendJson({ type: 'hue_get_rooms' }),
+        setHueConfig: (config) => sendJson({ type: 'hue_set_config', config }),
+        sendHueBeat: (data) => sendJson({ type: 'hue_beat', data })
     };
 }
+

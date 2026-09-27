@@ -1,18 +1,19 @@
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import { PhilipsHueService } from './hue-service.js';
 
 // Configuration
 const PORT = process.env.STAGELINQ_PORT || 8080;
 const isForceSim = process.argv.includes('--sim');
 
 console.log('='.repeat(60));
-console.log('  🎛️  DENON STAGELINQ COMPANION BRIDGE FOR DJ-VFX');
+console.log('  🎛️  DENON STAGELINQ & PHILIPS HUE COMPANION BRIDGE');
 console.log('='.repeat(60));
 
 // Setup HTTP + WebSocket Server
 const server = http.createServer((req, res) => {
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'stagelinq-bridge' }));
+    res.end(JSON.stringify({ status: 'ok', service: 'dj-vfx-bridge' }));
 });
 
 const wss = new WebSocketServer({ server });
@@ -20,6 +21,10 @@ const wss = new WebSocketServer({ server });
 let lastTrackData = null;
 let lastBpm = 126.0;
 let connectedDevices = new Map();
+
+// Initialize Philips Hue Lighting Service
+const hueService = new PhilipsHueService();
+hueService.init().catch(err => console.error('[Philips Hue] Init error:', err));
 
 function broadcast(messageObj) {
     const payload = JSON.stringify(messageObj);
@@ -33,7 +38,7 @@ function broadcast(messageObj) {
 wss.on('connection', (ws) => {
     console.log('[WebSocket] Front-end client connected');
     
-    // Send immediate initial status
+    // Send immediate initial status for StageLinq & Hue
     ws.send(JSON.stringify({
         type: 'status',
         connected: true,
@@ -42,6 +47,12 @@ wss.on('connection', (ws) => {
         message: connectedDevices.size > 0 
             ? `Connected to ${Array.from(connectedDevices.values()).join(', ')}` 
             : 'Bridge Online (Listening for Prime Decks on UDP 50010)'
+    }));
+
+    // Send immediate Philips Hue Status & Room List
+    ws.send(JSON.stringify({
+        type: 'hue_status',
+        ...hueService.getStatus()
     }));
 
     if (lastTrackData) {
@@ -56,6 +67,51 @@ wss.on('connection', (ws) => {
             bpm: lastBpm
         }));
     }
+
+    // Handle Client Messages (Hue Configuration, Pairing, Beat Sync)
+    ws.on('message', async (raw) => {
+        try {
+            const msg = JSON.parse(raw);
+            if (msg.type === 'hue_discover') {
+                const res = await hueService.discoverBridge();
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus(),
+                    discoveryMessage: res.success ? `Discovered Bridge @ ${res.ip}` : 'No bridge discovered'
+                });
+            } else if (msg.type === 'hue_pair') {
+                const pairRes = await hueService.pairBridge(msg.ip);
+                ws.send(JSON.stringify({
+                    type: 'hue_pairing_status',
+                    ...pairRes
+                }));
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
+            } else if (msg.type === 'hue_get_rooms') {
+                await hueService.fetchRooms();
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
+            } else if (msg.type === 'hue_set_config') {
+                if (msg.config) {
+                    hueService.updateConfig(msg.config);
+                    broadcast({
+                        type: 'hue_status',
+                        ...hueService.getStatus()
+                    });
+                }
+            } else if (msg.type === 'hue_beat') {
+                if (msg.data) {
+                    hueService.processAudioBeat(msg.data);
+                }
+            }
+        } catch (e) {
+            console.error('[WebSocket] Error processing client message:', e);
+        }
+    });
 });
 
 let stagelinqInstance = null;

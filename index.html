@@ -850,6 +850,63 @@
             </div>
         </div>
 
+        <!-- 💡 Philips Hue Room Lighting Sync Section -->
+        <div class="control-group" id="hue-control-group">
+            <div class="group-title">
+                <div style="display:flex; align-items:center; gap:6px;">
+                    <span>💡 PHILIPS HUE LIGHTING</span>
+                </div>
+                <span class="hud-badge" id="hue-status-badge" style="font-size:9px; background:rgba(255,170,0,0.15); color:#ffaa00; border:1px solid rgba(255,170,0,0.3);">DISCOVERING...</span>
+            </div>
+
+            <!-- Master Toggle & Setup Button -->
+            <div style="display:flex; gap:6px; margin-bottom:8px;">
+                <button class="btn-mini" id="btn-hue-toggle" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ HUE: OFF</button>
+                <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE SETUP</button>
+            </div>
+
+            <!-- Room / Zone Selector -->
+            <div class="hud-row" style="margin-bottom:2px;">
+                <span class="hud-label">TARGET ROOM / ZONE</span>
+                <span class="hud-val" id="hue-room-count" style="font-size:9px; color:rgba(255,255,255,0.5);">--</span>
+            </div>
+            <select id="hue-room-select" class="hud-select" title="Select Philips Hue Room or Entertainment Area">
+                <option value="all">⚡ All Configured Lights (Broadcast)</option>
+            </select>
+
+            <!-- Reaction Mode Selector -->
+            <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">LIGHTING REACTION MODE:</div>
+            <div class="mode-pills" id="hue-mode-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                <button class="mode-pill active" data-hue-mode="scene_sync" title="Match room light colors to active visualizer theme">🪩 Scene Sync</button>
+                <button class="mode-pill" data-hue-mode="bass_flash" title="Deep club mood with saturated drop flash">⚡ Bass Drop</button>
+                <button class="mode-pill" data-hue-mode="rainbow_cycle" title="Chromatic rainbow sweep timed to BPM">🌈 Rainbow</button>
+                <button class="mode-pill" data-hue-mode="strobe_only" title="Strobes on breakdown drops & spacebar">🚨 Strobe</button>
+            </div>
+
+            <!-- Amount of Effect / Intensity Slider -->
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>EFFECT INTENSITY / PUNCH</span>
+                    <span class="val" id="hue-intensity-val">85%</span>
+                </div>
+                <input type="range" id="slider-hue-intensity" min="0" max="100" step="5" value="85">
+            </div>
+
+            <!-- Ambient Minimum Resting Brightness Slider -->
+            <div class="slider-row">
+                <div class="slider-header">
+                    <span>AMBIENT RESTING FLOOR</span>
+                    <span class="val" id="hue-min-bri-val">15%</span>
+                </div>
+                <input type="range" id="slider-hue-min-bri" min="0" max="80" step="5" value="15">
+            </div>
+
+            <!-- Test Strobe Trigger -->
+            <div style="display:flex; gap:6px; margin-top:6px;">
+                <button class="btn-mini" id="btn-hue-test-strobe" style="flex:1; font-size:9px; font-weight:700; padding:4px 6px; background:rgba(255,0,127,0.15); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;">⚡ TEST ROOM STROBE</button>
+            </div>
+        </div>
+
         <!-- High-Clarity Logo & Branding Layer Controls -->
         <div class="control-group">
             <div class="group-title">
@@ -1091,6 +1148,41 @@
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
                 <button class="btn-mini" id="btn-test-obs-window" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:6px 14px; font-size:11px; cursor:pointer;">🚀 Open Test Window</button>
                 <button class="btn-mini" id="btn-modal-done" style="background:rgba(0,255,204,0.2); border:1px solid #00ffcc; color:#00ffcc; padding:6px 16px; font-size:11px; font-weight:800; cursor:pointer;">Done</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Philips Hue Bridge Setup & Pairing Modal -->
+    <div id="hue-modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10000; background:rgba(0,0,0,0.8); backdrop-filter:blur(10px); align-items:center; justify-content:center;">
+        <div class="obs-modal" style="width:480px;">
+            <div class="obs-modal-header">
+                <div class="obs-modal-title">
+                    <span>💡 PHILIPS HUE BRIDGE SETUP</span>
+                </div>
+                <button class="obs-close-btn" id="btn-close-hue-modal">&times;</button>
+            </div>
+
+            <div style="font-size:12px; color:rgba(255,255,255,0.7); margin-bottom:14px; line-height:1.4;">
+                Connect DJ-VFX directly to your local Philips Hue Bridge to control room lights, ceiling fixtures, and LED strips in real time.
+            </div>
+
+            <div class="hud-label" style="margin-bottom:6px; color:#00ffcc;">1. BRIDGE IP ADDRESS:</div>
+            <div style="display:flex; gap:8px; margin-bottom:14px;">
+                <input type="text" id="input-hue-ip" class="obs-url-input" style="background:rgba(0,0,0,0.6); border:1px solid rgba(0,255,204,0.3); border-radius:8px; padding:6px 12px; flex:1; color:#00ffcc;" placeholder="192.168.1.xxx">
+                <button class="obs-copy-btn" id="btn-discover-hue" style="background:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:#fff;">🔍 Auto-Find</button>
+            </div>
+
+            <div class="hud-label" style="margin-bottom:6px; color:#00ffcc;">2. PAIRING INSTRUCTIONS:</div>
+            <div class="obs-guide-step" id="hue-pair-instruction-box">
+                👉 <strong>Step 1:</strong> Press the physical round link button on top of your Philips Hue Bridge.<br>
+                👉 <strong>Step 2:</strong> Click <strong>PAIR BRIDGE NOW</strong> below within 30 seconds.
+            </div>
+
+            <div id="hue-pair-status-msg" style="font-size:11px; margin-top:8px; margin-bottom:12px; color:#ffaa00; font-family:'JetBrains Mono',monospace;"></div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
+                <button class="obs-copy-btn" id="btn-do-pair-hue" style="padding:8px 18px; font-size:12px;">🔗 PAIR BRIDGE NOW</button>
+                <button class="btn-mini" id="btn-close-hue-done" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:6px 16px; font-size:11px; cursor:pointer;">Close</button>
             </div>
         </div>
     </div>

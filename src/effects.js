@@ -4871,6 +4871,16 @@ export function createVFXScene(container) {
         setLogoSpinEnabled,
         setLogoSpinSpeed,
         getCurrentFX: () => currentFXIndex,
-        getFXCount: () => fxRoots.length
+        getFXCount: () => fxRoots.length,
+        getCurrentSceneColor: () => {
+            const colors = [
+                '#00ffff', '#ff007f', '#00ffcc', '#ffaa00',
+                '#ffd700', '#ff00aa', '#00e5ff', '#ff0033',
+                '#ffffff', '#ff0088', '#ff007f', '#ff4500',
+                '#00ff66', '#ffff00', '#00ffff', '#9900ff',
+                '#00e1ff', '#00ffcc'
+            ];
+            return colors[currentFXIndex] || '#00ffff';
+        }
     };
 }

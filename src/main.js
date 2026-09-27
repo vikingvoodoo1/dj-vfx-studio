@@ -38,6 +38,34 @@ async function init() {
     const deckBadge1 = document.getElementById('deck-badge-1');
     const deckBadge2 = document.getElementById('deck-badge-2');
 
+    // Philips Hue Lighting Elements
+    const hueStatusBadge = document.getElementById('hue-status-badge');
+    const btnHueToggle = document.getElementById('btn-hue-toggle');
+    const btnHueSetup = document.getElementById('btn-hue-setup');
+    const hueRoomSelect = document.getElementById('hue-room-select');
+    const hueRoomCount = document.getElementById('hue-room-count');
+    const hueModePills = document.querySelectorAll('#hue-mode-pills .mode-pill[data-hue-mode]');
+    const sliderHueIntensity = document.getElementById('slider-hue-intensity');
+    const hueIntensityVal = document.getElementById('hue-intensity-val');
+    const sliderHueMinBri = document.getElementById('slider-hue-min-bri');
+    const hueMinBriVal = document.getElementById('hue-min-bri-val');
+    const btnHueTestStrobe = document.getElementById('btn-hue-test-strobe');
+
+    // Philips Hue Modal Elements
+    const hueModalBackdrop = document.getElementById('hue-modal-backdrop');
+    const btnCloseHueModal = document.getElementById('btn-close-hue-modal');
+    const btnCloseHueDone = document.getElementById('btn-close-hue-done');
+    const inputHueIp = document.getElementById('input-hue-ip');
+    const btnDiscoverHue = document.getElementById('btn-discover-hue');
+    const btnDoPairHue = document.getElementById('btn-do-pair-hue');
+    const huePairStatusMsg = document.getElementById('hue-pair-status-msg');
+
+    let isHueActive = false;
+    let hueCurrentMode = 'scene_sync';
+    let hueCurrentIntensity = 0.85;
+    let hueCurrentMinBri = 0.15;
+    let hueTargetGroup = 'all';
+
     // Calibration Sliders
     const sliderGain = document.getElementById('slider-gain');
     const sliderSens = document.getElementById('slider-sens');
@@ -795,6 +823,13 @@ async function init() {
         btnFlash.addEventListener('click', () => {
             vfx.triggerManualFlash();
             if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+            if (stagelinqClient && isHueActive) {
+                stagelinqClient.sendHueBeat({
+                    bass: 1.0,
+                    isStrobe: true,
+                    bpm: 126
+                });
+            }
         });
     }
 
@@ -826,8 +861,8 @@ async function init() {
         });
     }
 
-    // 6. Connect to StageLinq Companion Bridge via WebSocket
-    setupStageLinqClient({
+    // 6. Connect to StageLinq & Philips Hue Companion Bridge via WebSocket
+    const stagelinqClient = setupStageLinqClient({
         onBPM: (bpm, deck) => {
             if (bpm && bpm > 40 && bpm < 300) {
                 bpmVal.textContent = Number(bpm).toFixed(1);
@@ -910,8 +945,188 @@ async function init() {
             } else {
                 stagelinqStatus.innerHTML = `<span style="color:rgba(255,255,255,0.4)">○ Bridge Offline</span>`;
             }
+        },
+        onHueStatus: (status) => {
+            isHueActive = !!status.enabled;
+            hueCurrentMode = status.mode || 'scene_sync';
+            hueCurrentIntensity = status.intensity ?? 0.85;
+            hueCurrentMinBri = status.minBrightness ?? 0.15;
+            hueTargetGroup = status.targetGroup || 'all';
+
+            // Update badge
+            if (hueStatusBadge) {
+                if (status.paired) {
+                    hueStatusBadge.textContent = `🟢 PAIRED (${status.bridgeIp || 'LAN'})`;
+                    hueStatusBadge.style.color = '#00ffcc';
+                    hueStatusBadge.style.borderColor = 'rgba(0,255,204,0.4)';
+                    hueStatusBadge.style.background = 'rgba(0,255,204,0.15)';
+                } else if (status.bridgeIp) {
+                    hueStatusBadge.textContent = `🟠 UNPAIRED (${status.bridgeIp})`;
+                    hueStatusBadge.style.color = '#ffaa00';
+                    hueStatusBadge.style.borderColor = 'rgba(255,170,0,0.4)';
+                    hueStatusBadge.style.background = 'rgba(255,170,0,0.15)';
+                } else {
+                    hueStatusBadge.textContent = '○ SCANNING...';
+                    hueStatusBadge.style.color = 'rgba(255,255,255,0.5)';
+                }
+            }
+
+            if (inputHueIp && status.bridgeIp && !inputHueIp.value) {
+                inputHueIp.value = status.bridgeIp;
+            }
+
+            // Update Toggle Button
+            if (btnHueToggle) {
+                if (isHueActive) {
+                    btnHueToggle.textContent = '💡 HUE: ACTIVE';
+                    btnHueToggle.style.color = '#00ffcc';
+                    btnHueToggle.style.borderColor = '#00ffcc';
+                    btnHueToggle.style.background = 'rgba(0,255,204,0.2)';
+                } else {
+                    btnHueToggle.textContent = '⚪ HUE: OFF';
+                    btnHueToggle.style.color = 'rgba(255,255,255,0.7)';
+                    btnHueToggle.style.borderColor = 'rgba(255,255,255,0.15)';
+                    btnHueToggle.style.background = 'rgba(255,255,255,0.06)';
+                }
+            }
+
+            // Populate Rooms Dropdown
+            if (hueRoomSelect && Array.isArray(status.rooms) && status.rooms.length > 0) {
+                hueRoomSelect.innerHTML = '';
+                status.rooms.forEach((room) => {
+                    const opt = document.createElement('option');
+                    opt.value = room.id;
+                    opt.textContent = `${room.name} (${room.lightCount} lights)`;
+                    if (room.id === hueTargetGroup) opt.selected = true;
+                    hueRoomSelect.appendChild(opt);
+                });
+                if (hueRoomCount) {
+                    const activeRoom = status.rooms.find(r => r.id === hueTargetGroup);
+                    hueRoomCount.textContent = activeRoom ? `${activeRoom.name}` : `${status.rooms.length} zones`;
+                }
+            }
+
+            // Update Sliders & Mode Pills
+            if (sliderHueIntensity) sliderHueIntensity.value = Math.round(hueCurrentIntensity * 100);
+            if (hueIntensityVal) hueIntensityVal.textContent = `${Math.round(hueCurrentIntensity * 100)}%`;
+            if (sliderHueMinBri) sliderHueMinBri.value = Math.round(hueCurrentMinBri * 100);
+            if (hueMinBriVal) hueMinBriVal.textContent = `${Math.round(hueCurrentMinBri * 100)}%`;
+
+            hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === hueCurrentMode));
+        },
+        onHuePairingStatus: (pairStatus) => {
+            if (huePairStatusMsg) {
+                if (pairStatus.status === 'press_button') {
+                    huePairStatusMsg.innerHTML = `<span style="color:#ffaa00">${pairStatus.message}</span>`;
+                } else if (pairStatus.status === 'paired') {
+                    huePairStatusMsg.innerHTML = `<span style="color:#00ffcc">🎉 ${pairStatus.message || 'Paired Successfully!'}</span>`;
+                    showToast('🎉 Philips Hue Bridge Paired Successfully!');
+                    setTimeout(() => {
+                        if (hueModalBackdrop) hueModalBackdrop.style.display = 'none';
+                    }, 1400);
+                } else {
+                    huePairStatusMsg.innerHTML = `<span style="color:#ff3366">⚠️ ${pairStatus.message || 'Pairing error'}</span>`;
+                }
+            }
         }
     });
+
+    // Philips Hue UI Event Listeners
+    if (btnHueToggle) {
+        btnHueToggle.addEventListener('click', () => {
+            isHueActive = !isHueActive;
+            stagelinqClient.setHueConfig({ enabled: isHueActive });
+            showToast(isHueActive ? '💡 Philips Hue Sync: ENABLED' : '⚪ Philips Hue Sync: OFF');
+            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_enabled', enabled: isHueActive });
+        });
+    }
+
+    if (btnHueSetup) {
+        btnHueSetup.addEventListener('click', () => {
+            if (hueModalBackdrop) hueModalBackdrop.style.display = 'flex';
+        });
+    }
+    if (btnCloseHueModal) {
+        btnCloseHueModal.addEventListener('click', () => {
+            if (hueModalBackdrop) hueModalBackdrop.style.display = 'none';
+        });
+    }
+    if (btnCloseHueDone) {
+        btnCloseHueDone.addEventListener('click', () => {
+            if (hueModalBackdrop) hueModalBackdrop.style.display = 'none';
+        });
+    }
+    if (hueModalBackdrop) {
+        hueModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === hueModalBackdrop) hueModalBackdrop.style.display = 'none';
+        });
+    }
+
+    if (btnDiscoverHue) {
+        btnDiscoverHue.addEventListener('click', () => {
+            stagelinqClient.discoverHue();
+            showToast('🔍 Scanning LAN for Philips Hue Bridge...');
+        });
+    }
+
+    if (btnDoPairHue) {
+        btnDoPairHue.addEventListener('click', () => {
+            const ip = inputHueIp ? inputHueIp.value.trim() : null;
+            stagelinqClient.pairHue(ip);
+            if (huePairStatusMsg) huePairStatusMsg.innerHTML = '<span>Connecting to Bridge...</span>';
+        });
+    }
+
+    if (hueRoomSelect) {
+        hueRoomSelect.addEventListener('change', (e) => {
+            hueTargetGroup = e.target.value;
+            stagelinqClient.setHueConfig({ targetGroup: hueTargetGroup });
+            showToast(`💡 Target Room: ${e.target.options[e.target.selectedIndex]?.text || hueTargetGroup}`);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_room', room: hueTargetGroup });
+        });
+    }
+
+    hueModePills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const mode = pill.getAttribute('data-hue-mode');
+            hueCurrentMode = mode;
+            hueModePills.forEach(p => p.classList.toggle('active', p === pill));
+            stagelinqClient.setHueConfig({ mode });
+            showToast(`💡 Hue Mode: ${pill.textContent}`);
+            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_mode', mode });
+        });
+    });
+
+    if (sliderHueIntensity) {
+        sliderHueIntensity.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10) / 100;
+            hueCurrentIntensity = val;
+            if (hueIntensityVal) hueIntensityVal.textContent = `${e.target.value}%`;
+            stagelinqClient.setHueConfig({ intensity: val });
+            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_intensity', val });
+        });
+    }
+
+    if (sliderHueMinBri) {
+        sliderHueMinBri.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10) / 100;
+            hueCurrentMinBri = val;
+            if (hueMinBriVal) hueMinBriVal.textContent = `${e.target.value}%`;
+            stagelinqClient.setHueConfig({ minBrightness: val });
+            if (syncChannel) syncChannel.postMessage({ type: 'set_hue_min_bri', val });
+        });
+    }
+
+    if (btnHueTestStrobe) {
+        btnHueTestStrobe.addEventListener('click', () => {
+            stagelinqClient.sendHueBeat({
+                bass: 1.0,
+                isStrobe: true,
+                bpm: 126
+            });
+            showToast('⚡ Triggered Room Strobe Flash!');
+        });
+    }
 
     // 7. Keyboard Shortcuts (18 Presets)
     const hotkeyMap = {
@@ -958,6 +1173,13 @@ async function init() {
             e.preventDefault();
             vfx.triggerManualFlash();
             if (syncChannel) syncChannel.postMessage({ type: 'flash' });
+            if (stagelinqClient && isHueActive) {
+                stagelinqClient.sendHueBeat({
+                    bass: 1.0,
+                    isStrobe: true,
+                    bpm: 126
+                });
+            }
         }
         // [F] for Fullscreen on external HDMI output
         else if (e.key === 'f' || e.key === 'F') {
@@ -984,7 +1206,7 @@ async function init() {
         }
     });
 
-    // 8. Start Real-Time VFX Render Loop (with Multi-Window Audio Relay)
+    // 8. Start Real-Time VFX Render Loop (with Multi-Window Audio Relay & Philips Hue Streaming)
     vfx.animate(() => {
         const now = performance.now();
         let data = null;
@@ -1030,6 +1252,20 @@ async function init() {
             if (eqBass) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
             if (eqMid) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
             if (eqTreble) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;
+
+            // Stream live beat telemetry to Philips Hue Bridge
+            if (stagelinqClient && isHueActive) {
+                stagelinqClient.sendHueBeat({
+                    bass: data.bassImpact || data.bass || 0,
+                    mid: data.mid || 0,
+                    treble: data.treble || 0,
+                    sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
+                    isDrop: !!(data.transientImpulse && data.transientImpulse > 0.8),
+                    isStrobe: false,
+                    bpm: 126
+                });
+            }
+
             return data;
         }
         return null;
