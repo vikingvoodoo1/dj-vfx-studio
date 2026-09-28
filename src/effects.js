@@ -3612,28 +3612,40 @@ export function createVFXScene(container) {
             posY = 0;
         } else if (stationLogoPosition === 'top-left') {
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? -2.3 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
         } else if (stationLogoPosition === 'top-right') {
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
         } else if (stationLogoPosition === 'bottom-left') {
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? -2.3 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (stationLogoMode === 'overlay' ? -1.3 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
+            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = (stationLogoMode === 'overlay' ? -1.25 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
         } else if (stationLogoPosition === 'bottom-right') {
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? -1.3 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (stationLogoPosition === 'top-center' || stationLogoPosition === 'top') {
+            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? -1.25 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
+        } else if (stationLogoPosition === 'top' || stationLogoPosition === 'top-center' || stationLogoPosition === 'center-top') {
             scaleFactor = 0.75;
             posX = 0;
             posY = (stationLogoMode === 'overlay' ? 1.35 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+        } else if (stationLogoPosition === 'bottom' || stationLogoPosition === 'bottom-center' || stationLogoPosition === 'center-bottom') {
+            scaleFactor = 0.75;
+            posX = 0;
+            posY = (stationLogoMode === 'overlay' ? -1.35 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
+        } else if (stationLogoPosition === 'left' || stationLogoPosition === 'center-left') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = 0;
+        } else if (stationLogoPosition === 'right' || stationLogoPosition === 'center-right') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = 0;
         } else {
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
         }
 
         const w = baseW * scaleFactor;

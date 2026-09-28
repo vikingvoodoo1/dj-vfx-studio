@@ -228,9 +228,11 @@ async function init() {
     const btnUploadStationLogo = document.getElementById('btn-upload-station-logo');
     const fileStationLogo = document.getElementById('file-station-logo');
     const stationLogosContainer = document.getElementById('station-logos-container');
-    const stationPosPills = document.querySelectorAll('#station-pos-pills .mode-pill[data-st-pos]');
     const stationModePills = document.querySelectorAll('#station-mode-pills .mode-pill[data-st-mode]');
+    const stationBlendPills = document.querySelectorAll('#station-blend-pills .mode-pill[data-st-blend]');
+    const stationPosPills = document.querySelectorAll('#station-pos-pills .mode-pill[data-st-pos]');
     const stationSpinPills = document.querySelectorAll('#station-spin-pills .mode-pill[data-st-spin]');
+    const btnResetStationDefault = document.getElementById('btn-reset-station-default');
     const sliderStationSpinSpeed = document.getElementById('slider-station-spin-speed');
     const stationSpinSpeedVal = document.getElementById('station-spin-speed-val');
     const sliderStationScale = document.getElementById('slider-station-scale');
@@ -909,6 +911,9 @@ async function init() {
         } else if (msg.type === 'set_station_logo_mode') {
             stationModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-mode') === msg.mode));
             vfx.setStationLogoMode(msg.mode);
+        } else if (msg.type === 'set_station_logo_blend') {
+            stationBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-blend') === String(msg.blend)));
+            vfx.setStationLogoBlendMode(msg.blend);
         } else if (msg.type === 'set_station_logo_spin') {
             stationSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-spin') === msg.spin));
             vfx.setStationLogoSpinMode(msg.spin);
@@ -961,10 +966,12 @@ async function init() {
                 // Station Logo Sync Snapshot
                 broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
                 broadcastSync({ type: 'set_station_logo_url', url: currentStationLogoUrl, title: currentStationLogoTitle, isVideo: isCurrentStationVideo });
-                const activeStPos = document.querySelector('#station-pos-pills .mode-pill.active')?.getAttribute('data-st-pos') || 'top-right';
-                broadcastSync({ type: 'set_station_logo_pos', pos: activeStPos });
                 const activeStMode = document.querySelector('#station-mode-pills .mode-pill.active')?.getAttribute('data-st-mode') || 'overlay';
                 broadcastSync({ type: 'set_station_logo_mode', mode: activeStMode });
+                const activeStBlend = document.querySelector('#station-blend-pills .mode-pill.active')?.getAttribute('data-st-blend') || '0';
+                broadcastSync({ type: 'set_station_logo_blend', blend: activeStBlend });
+                const activeStPos = document.querySelector('#station-pos-pills .mode-pill.active')?.getAttribute('data-st-pos') || 'top-right';
+                broadcastSync({ type: 'set_station_logo_pos', pos: activeStPos });
                 const activeStSpin = document.querySelector('#station-spin-pills .mode-pill.active')?.getAttribute('data-st-spin') || 'off';
                 broadcastSync({ type: 'set_station_logo_spin', spin: activeStSpin });
                 if (sliderStationSpinSpeed) broadcastSync({ type: 'set_station_logo_spin_speed', speed: parseFloat(sliderStationSpinSpeed.value) || 1.0 });
@@ -1518,18 +1525,15 @@ async function init() {
         if (stationLogoActiveName) stationLogoActiveName.textContent = firstStationCard.getAttribute('data-station-title') || '4TM Radio';
     }
 
-    // Position pills
-    stationPosPills.forEach(pill => {
-        pill.addEventListener('click', () => {
-            const pos = pill.getAttribute('data-st-pos');
-            stationPosPills.forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            vfx.setStationLogoPosition(pos);
-            broadcastSync({ type: 'set_station_logo_pos', pos });
+    // Station Logo Reset to Default
+    if (btnResetStationDefault) {
+        btnResetStationDefault.addEventListener('click', () => {
+            selectStationLogo('/images/station_logos/4TM Primary Logo.png', '4TM Radio', false, true);
+            showToast('↺ Restored Default 4TM Radio Station Logo');
         });
-    });
+    }
 
-    // Mode pills
+    // 1. Mode pills (Display Layer)
     stationModePills.forEach(pill => {
         pill.addEventListener('click', () => {
             const mode = pill.getAttribute('data-st-mode');
@@ -1540,7 +1544,29 @@ async function init() {
         });
     });
 
-    // Spin pills
+    // 2. Blend pills (Blend & Cutout)
+    stationBlendPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const blend = parseInt(pill.getAttribute('data-st-blend'), 10);
+            stationBlendPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setStationLogoBlendMode(blend);
+            broadcastSync({ type: 'set_station_logo_blend', blend });
+        });
+    });
+
+    // 3. Position pills (9-Way Directional D-Pad)
+    stationPosPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const pos = pill.getAttribute('data-st-pos');
+            stationPosPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setStationLogoPosition(pos);
+            broadcastSync({ type: 'set_station_logo_pos', pos });
+        });
+    });
+
+    // 4. Spin pills (3D Rotation & Spin)
     stationSpinPills.forEach(pill => {
         pill.addEventListener('click', () => {
             const spin = pill.getAttribute('data-st-spin');
@@ -1867,16 +1893,42 @@ async function init() {
         // 3. Station Logo Reset
         updateStationLogoVisibility(false, false);
         selectStationLogo('/images/station_logos/4TM Primary Logo.png', '4TM Radio', false, false);
-        stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === 'top-right'));
-        vfx.setStationLogoPosition('top-right');
         stationModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-mode') === 'overlay'));
         vfx.setStationLogoMode('overlay');
+        stationBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-blend') === '0'));
+        vfx.setStationLogoBlendMode(0);
+        stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === 'top-right'));
+        vfx.setStationLogoPosition('top-right');
         stationSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-spin') === 'off'));
         vfx.setStationLogoSpinMode('off');
+        if (sliderStationSpinSpeed) {
+            sliderStationSpinSpeed.value = 1.0;
+            if (stationSpinSpeedVal) stationSpinSpeedVal.textContent = '1.0x';
+            vfx.setStationLogoSpinSpeed(1.0);
+        }
         if (sliderStationScale) {
             sliderStationScale.value = 0.85;
             if (stationScaleVal) stationScaleVal.textContent = '0.85x';
             vfx.setStationLogoScale(0.85);
+        }
+        if (sliderStationPulse) {
+            sliderStationPulse.value = 25;
+            if (stationPulseVal) stationPulseVal.textContent = '25%';
+            vfx.setStationLogoBassPulse(0.25);
+        }
+        if (sliderStationContrast) {
+            sliderStationContrast.value = 1.25;
+            if (stationContrastVal) stationContrastVal.textContent = '1.25x';
+            vfx.setStationLogoContrast(1.25);
+        }
+        if (sliderStationBright) {
+            sliderStationBright.value = 1.05;
+            if (stationBrightVal) stationBrightVal.textContent = '1.05x';
+            vfx.setStationLogoBrightness(1.05);
+        }
+        if (checkStationShield) {
+            checkStationShield.checked = true;
+            vfx.setStationLogoShieldVisible(true);
         }
 
         if (broadcast) {
