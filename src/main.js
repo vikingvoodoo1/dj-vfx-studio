@@ -139,6 +139,14 @@ async function init() {
     const fileLogo = document.getElementById('file-logo');
     const dropZone = document.getElementById('drop-zone');
 
+    // Logos Sub-Tab & Top Toggle DOM References
+    const subtabBtnDj = document.getElementById('subtab-btn-dj');
+    const subtabBtnStation = document.getElementById('subtab-btn-station');
+    const subtabContentDj = document.getElementById('subtab-content-dj');
+    const subtabContentStation = document.getElementById('subtab-content-station');
+    const btnToggleDjLogoTop = document.getElementById('btn-toggle-dj-logo-top');
+    const btnToggleStationLogoTop = document.getElementById('btn-toggle-station-logo-top');
+
     // Station Logo Layer DOM References & State
     const stationLogoBadge = document.getElementById('station-logo-badge');
     const btnToggleStationLogo = document.getElementById('btn-toggle-station-logo');
@@ -234,7 +242,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'station', 'hue', 'obs'];
+    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'hue', 'obs'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -1006,19 +1014,27 @@ async function init() {
         }
     });
 
-    // 3. Logo Layer Controls
+    // 3. DJ Logo & Station Logo Branding Layer Controls
     function updateLogoVisibility(active, broadcast = true) {
         isLogoActive = !!active;
         vfx.setLogoVisible(isLogoActive);
         if (logoBadge) {
-            logoBadge.textContent = isLogoActive ? 'ACTIVE [L]' : 'OFF [L]';
+            logoBadge.textContent = isLogoActive ? 'DJ: ON' : 'DJ: OFF';
             logoBadge.style.color = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
             logoBadge.style.borderColor = isLogoActive ? 'rgba(0,255,204,0.3)' : 'rgba(255,255,255,0.1)';
+        }
+        if (btnToggleDjLogoTop) {
+            btnToggleDjLogoTop.textContent = isLogoActive ? '🟢 DJ LOGO: ON' : '⚪ DJ LOGO: OFF';
+            btnToggleDjLogoTop.style.color = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
+            btnToggleDjLogoTop.style.borderColor = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
+            btnToggleDjLogoTop.style.background = isLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
         }
         visPills.forEach(p => {
             const vis = p.getAttribute('data-vis');
             p.classList.toggle('active', (vis === 'on' && isLogoActive) || (vis === 'off' && !isLogoActive));
         });
+        const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
+        if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
         if (broadcast) {
             broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
         }
@@ -1029,6 +1045,24 @@ async function init() {
     }
 
     if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
+    if (btnToggleDjLogoTop) btnToggleDjLogoTop.addEventListener('click', toggleLogo);
+
+    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo)
+    function switchLogosSubtab(subtabId) {
+        if (subtabBtnDj) subtabBtnDj.classList.toggle('active', subtabId === 'dj');
+        if (subtabBtnStation) subtabBtnStation.classList.toggle('active', subtabId === 'station');
+        if (subtabContentDj) {
+            subtabContentDj.classList.toggle('active', subtabId === 'dj');
+            subtabContentDj.style.display = subtabId === 'dj' ? 'block' : 'none';
+        }
+        if (subtabContentStation) {
+            subtabContentStation.classList.toggle('active', subtabId === 'station');
+            subtabContentStation.style.display = subtabId === 'station' ? 'block' : 'none';
+        }
+    }
+
+    if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
+    if (subtabBtnStation) subtabBtnStation.addEventListener('click', () => switchLogosSubtab('station'));
 
     visPills.forEach((pill) => {
         pill.addEventListener('click', () => {
@@ -1153,7 +1187,7 @@ async function init() {
         isStationLogoActive = !!active;
         vfx.setStationLogoVisible(isStationLogoActive);
         if (stationLogoBadge) {
-            stationLogoBadge.textContent = isStationLogoActive ? 'ACTIVE [S]' : 'OFF [S]';
+            stationLogoBadge.textContent = isStationLogoActive ? 'STATION: ON' : 'STATION: OFF';
             stationLogoBadge.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
             stationLogoBadge.style.borderColor = isStationLogoActive ? 'rgba(0,255,204,0.4)' : 'rgba(255,255,255,0.15)';
         }
@@ -1163,8 +1197,14 @@ async function init() {
             btnToggleStationLogo.style.borderColor = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
             btnToggleStationLogo.style.background = isStationLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
         }
-        const tabStation = document.querySelector('.activity-tab[data-tab="station"]');
-        if (tabStation) tabStation.classList.toggle('has-dot', isStationLogoActive);
+        if (btnToggleStationLogoTop) {
+            btnToggleStationLogoTop.textContent = isStationLogoActive ? '🟢 STATION LOGO: ON' : '⚪ STATION LOGO: OFF';
+            btnToggleStationLogoTop.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
+            btnToggleStationLogoTop.style.borderColor = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
+            btnToggleStationLogoTop.style.background = isStationLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
+        }
+        const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
+        if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
         if (broadcast) {
             broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
         }
@@ -1172,6 +1212,16 @@ async function init() {
 
     if (btnToggleStationLogo) {
         btnToggleStationLogo.addEventListener('click', () => {
+            updateStationLogoVisibility(!isStationLogoActive, true);
+        });
+    }
+    if (btnToggleStationLogoTop) {
+        btnToggleStationLogoTop.addEventListener('click', () => {
+            updateStationLogoVisibility(!isStationLogoActive, true);
+        });
+    }
+    if (stationLogoBadge) {
+        stationLogoBadge.addEventListener('click', () => {
             updateStationLogoVisibility(!isStationLogoActive, true);
         });
     }
@@ -2006,15 +2056,14 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..7] / [Alt + A] for IDE Console Activity Bar Navigation
+        // [Alt + 1..6] / [Alt + A] for IDE Console Activity Bar Navigation
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
             if (e.key === '3') { e.preventDefault(); switchTab('glow'); return; }
             if (e.key === '4') { e.preventDefault(); switchTab('logo'); return; }
-            if (e.key === '5') { e.preventDefault(); switchTab('station'); return; }
-            if (e.key === '6') { e.preventDefault(); switchTab('hue'); return; }
-            if (e.key === '7') { e.preventDefault(); switchTab('obs'); return; }
+            if (e.key === '5') { e.preventDefault(); switchTab('hue'); return; }
+            if (e.key === '6') { e.preventDefault(); switchTab('obs'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
@@ -2037,9 +2086,13 @@ async function init() {
         else if (e.key === 'a' || e.key === 'A') {
             toggleAutoVJ();
         }
-        // [L] to toggle Logo layer
+        // [L] to toggle DJ Logo layer
         else if (e.key === 'l' || e.key === 'L') {
             toggleLogo();
+        }
+        // [S] to toggle Station Logo layer
+        else if (e.key === 's' || e.key === 'S') {
+            updateStationLogoVisibility(!isStationLogoActive, true);
         }
         // [C] to toggle Clean Display Mode for Stage / 2nd Screen
         else if (e.key === 'c' || e.key === 'C') {

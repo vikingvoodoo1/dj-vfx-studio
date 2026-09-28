@@ -1328,29 +1328,23 @@
                     </svg>
                 </button>
 
-                <button class="activity-tab" data-tab="logo" title="3D DJ Logo Layer & Spin [Alt+4]">
+                <button class="activity-tab" data-tab="logo" title="DJ & Station Logos Branding [Alt+4]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <polygon points="12 2 2 7 12 12 22 7 12 2" />
-                        <polyline points="2 17 12 22 22 17" />
-                        <polyline points="2 12 12 17 22 12" />
+                        <rect x="3" y="3" width="18" height="18" rx="3" ry="3" />
+                        <circle cx="8.5" cy="8.5" r="1.5" />
+                        <polyline points="21 15 16 10 5 21" />
                     </svg>
+                    <span class="act-dot" id="dot-logo"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="station" title="Radio & Broadcast Station Logos [Alt+5]">
-                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5M12 12h.01M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/>
-                    </svg>
-                    <span class="act-dot" id="dot-station"></span>
-                </button>
-
-                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+6]">
+                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+5]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.6 1.4 4.8 3.5 6 .6.3.5.7.5 1h6c0-.3-.1-.7.5-1 2.1-1.2 3.5-3.4 3.5-6a7 7 0 0 0-7-7z" />
                     </svg>
                     <span class="act-dot" id="dot-hue"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+7]">
+                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+6]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
                     </svg>
@@ -1693,254 +1687,267 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- PANE 3: LOGO LAYER, 3D SPIN & BRANDING      -->
+            <!-- PANE 4: DJ LOGO & STATION LOGOS BRANDING   -->
             <!-- ========================================== -->
             <div class="ide-tab-pane" id="pane-logo">
                 <div class="pane-section-title">
-                    <span>⚡ Logo & 3D Layer</span>
-                    <span id="logo-badge" class="hud-badge" style="cursor:pointer;">ACTIVE [L]</span>
-                </div>
-
-                <div class="hud-row" style="margin-top:2px;">
-                    <span class="hud-label">MEDIA SOURCE</span>
-                    <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
-                </div>
-
-                <div class="mode-pills" id="logo-vis-pills" style="margin-top:2px; margin-bottom:4px;">
-                    <div class="mode-pill active" data-vis="on" title="Turn Logo Layer ON">LOGO ON</div>
-                    <div class="mode-pill" data-vis="off" title="Turn Logo Layer OFF">LOGO OFF</div>
-                </div>
-
-                <div class="mode-pills">
-                    <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
-                    <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
-                    <div class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</div>
-                </div>
-
-                <div class="mode-pills">
-                    <div class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</div>
-                    <div class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</div>
-                    <div class="mode-pill" data-blend="2" title="Direct solid render">Direct</div>
-                </div>
-
-                <!-- 9-Way Directional Positioning D-Pad -->
-                <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
-                    <span class="hud-label">🧭 DIRECTIONAL POSITION</span>
-                </div>
-                <div class="mode-pills" id="logo-pos-pills" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:3px;">
-                    <div class="mode-pill" data-pos="top-left" title="Top Left">↖ TOP-L</div>
-                    <div class="mode-pill" data-pos="top" title="Top Center">⬆ TOP</div>
-                    <div class="mode-pill" data-pos="top-right" title="Top Right">↗ TOP-R</div>
-                    <div class="mode-pill" data-pos="left" title="Left Center">⬅ LEFT</div>
-                    <div class="mode-pill active" data-pos="center" title="Screen Center">⏺ CENTER</div>
-                    <div class="mode-pill" data-pos="right" title="Right Center">➡ RIGHT</div>
-                    <div class="mode-pill" data-pos="bottom-left" title="Bottom Left">↙ BOT-L</div>
-                    <div class="mode-pill" data-pos="bottom" title="Bottom Center">⬇ BOTTOM</div>
-                    <div class="mode-pill" data-pos="bottom-right" title="Bottom Right">↘ BOT-R</div>
-                </div>
-
-                <!-- Logo Spin & Free Roam Mode Selector -->
-                <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
-                    <span class="hud-label">🔄 LOGO SPIN / MOTION MODE</span>
-                </div>
-                <div class="mode-pills" id="logo-spin-pills" style="margin-top:2px; margin-bottom:4px; display:grid; grid-template-columns:repeat(2, 1fr); gap:3px;">
-                    <div class="mode-pill active" data-spin="off" title="Static facing camera">STATIC</div>
-                    <div class="mode-pill" data-spin="center" title="Pure horizontal spin on local center point">CENTER SPIN</div>
-                    <div class="mode-pill" data-spin="orbit" title="3D perspective depth offset orbit">3D ORBIT</div>
-                    <div class="mode-pill" data-spin="freeroam" title="Drift and rotate freely across the entire screen">FREE ROAM</div>
-                </div>
-
-                <div class="slider-row" id="row-logo-spin-speed">
-                    <div class="slider-header">
-                        <span>SPIN / ROAM SPEED</span>
-                        <span class="val" id="logo-spin-speed-val">1.0x</span>
+                    <span>⚡ DJ & Station Logos</span>
+                    <div style="display:flex; gap:4px;">
+                        <span id="logo-badge" class="hud-badge" style="cursor:pointer;" title="Toggle DJ Logo Layer [L]">DJ: ON</span>
+                        <span id="station-logo-badge" class="hud-badge" style="cursor:pointer; color:rgba(255,255,255,0.4); border-color:rgba(255,255,255,0.15);" title="Toggle Station Logo Layer [S]">STATION: OFF</span>
                     </div>
-                    <input type="range" id="slider-logo-spin-speed" min="0.1" max="5.0" step="0.1" value="1.0">
                 </div>
 
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>CONTRAST BOOSTER</span>
-                        <span class="val" id="logo-contrast-val">1.35x</span>
+                <!-- Top Master Quick Active Toggle Buttons (Instant 1-Click Select/Deselect for Both Logos) -->
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:10px;">
+                    <button class="btn-mini" id="btn-toggle-dj-logo-top" style="padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; cursor:pointer;" title="Turn DJ Logo Layer ON/OFF [L]">
+                        🟢 DJ LOGO: ON
+                    </button>
+                    <button class="btn-mini" id="btn-toggle-station-logo-top" style="padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;" title="Turn Station Logo Layer ON/OFF [S]">
+                        ⚪ STATION LOGO: OFF
+                    </button>
+                </div>
+
+                <!-- Sub-Tabs Switcher to Edit Either DJ Logo or Station Logo -->
+                <div class="mode-pills" id="logos-subtabs" style="margin-bottom:12px; display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
+                    <button class="mode-pill active" id="subtab-btn-dj" data-subtab="dj" style="padding:7px 10px; font-size:11px; font-weight:700;">🎧 DJ Logo</button>
+                    <button class="mode-pill" id="subtab-btn-station" data-subtab="station" style="padding:7px 10px; font-size:11px; font-weight:700;">📡 Station Logo</button>
+                </div>
+
+                <!-- SUB-SECTION 1: DJ LOGO CONTROLS -->
+                <div id="subtab-content-dj" class="subtab-content active">
+                    <div class="hud-row" style="margin-top:2px;">
+                        <span class="hud-label">DJ MEDIA SOURCE</span>
+                        <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
                     </div>
-                    <input type="range" id="slider-logo-contrast" min="0.8" max="2.5" step="0.05" value="1.35">
-                </div>
 
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>BRIGHTNESS PUNCH</span>
-                        <span class="val" id="logo-bright-val">1.05x</span>
+                    <div class="mode-pills" id="logo-vis-pills" style="margin-top:4px; margin-bottom:6px;">
+                        <div class="mode-pill active" data-vis="on" title="Turn DJ Logo Layer ON">DJ LOGO ON</div>
+                        <div class="mode-pill" data-vis="off" title="Turn DJ Logo Layer OFF">DJ LOGO OFF</div>
                     </div>
-                    <input type="range" id="slider-logo-bright" min="0.6" max="2.0" step="0.05" value="1.05">
-                </div>
 
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>LOGO SCALE</span>
-                        <span class="val" id="logo-scale-val">1.0x</span>
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DJ DISPLAY LAYER MODE:</div>
+                    <div class="mode-pills" style="margin-bottom:6px;">
+                        <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
+                        <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
+                        <div class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</div>
                     </div>
-                    <input type="range" id="slider-logo-scale" min="0.4" max="2.5" step="0.1" value="1.0">
-                </div>
 
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>BASS PULSE IMPACT</span>
-                        <span class="val" id="logo-pulse-val">35%</span>
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DJ BLEND & CUTOUT:</div>
+                    <div class="mode-pills" style="margin-bottom:6px;">
+                        <div class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</div>
+                        <div class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</div>
+                        <div class="mode-pill" data-blend="2" title="Direct solid render">Direct</div>
                     </div>
-                    <input type="range" id="slider-logo-pulse" min="0" max="150" step="5" value="35">
+
+                    <!-- 9-Way Directional Positioning D-Pad -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DJ DIRECTIONAL POSITION:</div>
+                    <div class="mode-pills" id="logo-pos-pills" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:3px; margin-bottom:6px;">
+                        <div class="mode-pill" data-pos="top-left" title="Top Left">↖ TOP-L</div>
+                        <div class="mode-pill" data-pos="top" title="Top Center">⬆ TOP</div>
+                        <div class="mode-pill" data-pos="top-right" title="Top Right">↗ TOP-R</div>
+                        <div class="mode-pill" data-pos="left" title="Left Center">⬅ LEFT</div>
+                        <div class="mode-pill active" data-pos="center" title="Screen Center">⏺ CENTER</div>
+                        <div class="mode-pill" data-pos="right" title="Right Center">➡ RIGHT</div>
+                        <div class="mode-pill" data-pos="bottom-left" title="Bottom Left">↙ BOT-L</div>
+                        <div class="mode-pill" data-pos="bottom" title="Bottom Center">⬇ BOTTOM</div>
+                        <div class="mode-pill" data-pos="bottom-right" title="Bottom Right">↘ BOT-R</div>
+                    </div>
+
+                    <!-- Logo Spin & Free Roam Mode Selector -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DJ SPIN / MOTION MODE:</div>
+                    <div class="mode-pills" id="logo-spin-pills" style="margin-top:2px; margin-bottom:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:3px;">
+                        <div class="mode-pill active" data-spin="off" title="Static facing camera">STATIC</div>
+                        <div class="mode-pill" data-spin="center" title="Pure horizontal spin on local center point">CENTER SPIN</div>
+                        <div class="mode-pill" data-spin="orbit" title="3D perspective depth offset orbit">3D ORBIT</div>
+                        <div class="mode-pill" data-spin="freeroam" title="Drift and rotate freely across the entire screen">FREE ROAM</div>
+                    </div>
+
+                    <div class="slider-row" id="row-logo-spin-speed">
+                        <div class="slider-header">
+                            <span>SPIN / ROAM SPEED</span>
+                            <span class="val" id="logo-spin-speed-val">1.0x</span>
+                        </div>
+                        <input type="range" id="slider-logo-spin-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>CONTRAST BOOSTER</span>
+                            <span class="val" id="logo-contrast-val">1.35x</span>
+                        </div>
+                        <input type="range" id="slider-logo-contrast" min="0.8" max="2.5" step="0.05" value="1.35">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BRIGHTNESS PUNCH</span>
+                            <span class="val" id="logo-bright-val">1.05x</span>
+                        </div>
+                        <input type="range" id="slider-logo-bright" min="0.6" max="2.0" step="0.05" value="1.05">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>DJ LOGO SCALE</span>
+                            <span class="val" id="logo-scale-val">1.0x</span>
+                        </div>
+                        <input type="range" id="slider-logo-scale" min="0.4" max="2.5" step="0.1" value="1.0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BASS PULSE IMPACT</span>
+                            <span class="val" id="logo-pulse-val">35%</span>
+                        </div>
+                        <input type="range" id="slider-logo-pulse" min="0" max="150" step="5" value="35">
+                    </div>
+
+                    <div class="hud-row" style="margin-top:6px;">
+                        <span class="hud-label">CONTRAST SHIELD</span>
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
+                            <input type="checkbox" id="check-logo-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
+                        </label>
+                    </div>
+
+                    <div style="display:flex; gap:6px; margin-top:8px;">
+                        <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom DJ Media</button>
+                        <button class="btn-mini" id="btn-reset-shock" title="Reset to JK McLaren Shock MP4">↺ Shock</button>
+                        <input type="file" id="file-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
+                    </div>
                 </div>
 
-                <div class="hud-row" style="margin-top:6px;">
-                    <span class="hud-label">CONTRAST SHIELD</span>
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
-                        <input type="checkbox" id="check-logo-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
-                    </label>
-                </div>
+                <!-- SUB-SECTION 2: STATION LOGO CONTROLS -->
+                <div id="subtab-content-station" class="subtab-content" style="display:none;">
+                    <!-- Master Toggle & Quick Actions -->
+                    <div style="display:flex; gap:6px; margin-bottom:8px;">
+                        <button class="btn-mini" id="btn-toggle-station-logo" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ STATION LOGO: OFF</button>
+                        <button class="btn-mini" id="btn-upload-station-logo" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload your own station logo (PNG, JPG, SVG, MP4)">📁 + ADD LOGO</button>
+                        <input type="file" id="file-station-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
+                    </div>
 
-                <div style="display:flex; gap:6px; margin-top:8px;">
-                    <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom Media</button>
-                    <button class="btn-mini" id="btn-reset-shock" title="Reset to JK McLaren Shock MP4">↺ Shock</button>
-                    <input type="file" id="file-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
-                </div>
-            </div>
+                    <!-- Station Logo Selector Grid -->
+                    <div class="hud-row" style="margin-bottom:4px;">
+                        <span class="hud-label">SELECT STATION LOGO</span>
+                        <span class="hud-val" id="station-logo-active-name" style="font-size:9px; color:#00ffcc;">None Selected</span>
+                    </div>
 
-            <!-- ========================================== -->
-            <!-- PANE 4: BROADCAST & STATION LOGOS          -->
-            <!-- ========================================== -->
-            <div class="ide-tab-pane" id="pane-station">
-                <div class="pane-section-title">
-                    <span>📻 Broadcast Station Logos</span>
-                    <span class="hud-badge" id="station-logo-badge" style="color:rgba(255,255,255,0.4); border-color:rgba(255,255,255,0.15);">OFF [S]</span>
-                </div>
+                    <div class="station-card-grid" id="station-logos-container">
+                        <!-- 4TM Radio -->
+                        <div class="station-card" data-station-url="/images/station_logos/4TM Primary Logo.png" data-station-title="4TM Radio" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/4TM Primary Logo.png" alt="4TM Radio">
+                            <div class="station-card-info">
+                                <span class="station-card-title">4TM Radio</span>
+                                <span class="station-card-sub">Primary Logo</span>
+                            </div>
+                        </div>
 
-                <!-- Master Toggle & Quick Actions -->
-                <div style="display:flex; gap:6px; margin-bottom:8px;">
-                    <button class="btn-mini" id="btn-toggle-station-logo" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ STATION LOGO: OFF</button>
-                    <button class="btn-mini" id="btn-upload-station-logo" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload your own station logo (PNG, JPG, SVG, MP4)">📁 + ADD LOGO</button>
-                    <input type="file" id="file-station-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
-                </div>
+                        <!-- Disco Squad -->
+                        <div class="station-card" data-station-url="/images/station_logos/DiscoSquad.jpg" data-station-title="Disco Squad" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/DiscoSquad.jpg" alt="Disco Squad">
+                            <div class="station-card-info">
+                                <span class="station-card-title">Disco Squad</span>
+                                <span class="station-card-sub">Radio Squad</span>
+                            </div>
+                        </div>
 
-                <!-- Station Logo Selector Grid -->
-                <div class="hud-row" style="margin-bottom:4px;">
-                    <span class="hud-label">SELECT STATION LOGO</span>
-                    <span class="hud-val" id="station-logo-active-name" style="font-size:9px; color:#00ffcc;">None Selected</span>
-                </div>
+                        <!-- NDC Group -->
+                        <div class="station-card" data-station-url="/images/station_logos/NDCGroup.png" data-station-title="NDC Group" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/NDCGroup.png" alt="NDC Group">
+                            <div class="station-card-info">
+                                <span class="station-card-title">NDC Group</span>
+                                <span class="station-card-sub">Network Logo</span>
+                            </div>
+                        </div>
 
-                <div class="station-card-grid" id="station-logos-container">
-                    <!-- 4TM Radio -->
-                    <div class="station-card" data-station-url="/images/station_logos/4TM Primary Logo.png" data-station-title="4TM Radio" data-station-type="img">
-                        <img class="station-card-thumb" src="/images/station_logos/4TM Primary Logo.png" alt="4TM Radio">
-                        <div class="station-card-info">
-                            <span class="station-card-title">4TM Radio</span>
-                            <span class="station-card-sub">Primary Logo</span>
+                        <!-- NDC Transparent -->
+                        <div class="station-card" data-station-url="/images/station_logos/NDC_nobg.png" data-station-title="NDC (No BG)" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/NDC_nobg.png" alt="NDC No BG">
+                            <div class="station-card-info">
+                                <span class="station-card-title">NDC (No BG)</span>
+                                <span class="station-card-sub">Transparent</span>
+                            </div>
                         </div>
                     </div>
 
-                    <!-- Disco Squad -->
-                    <div class="station-card" data-station-url="/images/station_logos/DiscoSquad.jpg" data-station-title="Disco Squad" data-station-type="img">
-                        <img class="station-card-thumb" src="/images/station_logos/DiscoSquad.jpg" alt="Disco Squad">
-                        <div class="station-card-info">
-                            <span class="station-card-title">Disco Squad</span>
-                            <span class="station-card-sub">Radio Squad</span>
+                    <!-- Placement Position Pills -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">SCREEN POSITION / CORNER:</div>
+                    <div class="mode-pills" id="station-pos-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                        <button class="mode-pill active" data-st-pos="top-right" title="Top Right Corner (Standard Broadcast Watermark)">↗ Top-Right</button>
+                        <button class="mode-pill" data-st-pos="top-left" title="Top Left Corner">↖ Top-Left</button>
+                        <button class="mode-pill" data-st-pos="bottom-right" title="Bottom Right Corner">↘ Bottom-Right</button>
+                        <button class="mode-pill" data-st-pos="bottom-left" title="Bottom Left Corner">↙ Bottom-Left</button>
+                        <button class="mode-pill" data-st-pos="center" title="Center Screen">⦿ Center</button>
+                    </div>
+
+                    <!-- Display Mode -->
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DISPLAY LAYER MODE:</div>
+                    <div class="mode-pills" id="station-mode-pills" style="margin-bottom:6px;">
+                        <button class="mode-pill active" data-st-mode="overlay" title="Crisp overlay watermark in front of 3D scene">📺 Watermark</button>
+                        <button class="mode-pill" data-st-mode="hologram" title="Floating 3D Hologram in stage space">✨ 3D Holo</button>
+                        <button class="mode-pill" data-st-mode="backdrop" title="Gigantic Stadium Backdrop Wall">🌌 Backdrop</button>
+                    </div>
+
+                    <!-- Spin Mode & Animation -->
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">3D ROTATION & SPIN:</div>
+                    <div class="mode-pills" id="station-spin-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                        <button class="mode-pill active" data-st-spin="off">Static</button>
+                        <button class="mode-pill" data-st-spin="center">🌀 Center Spin</button>
+                        <button class="mode-pill" data-st-spin="orbit">🪐 3D Orbit</button>
+                        <button class="mode-pill" data-st-spin="freeroam">🚀 Free Roam</button>
+                    </div>
+
+                    <!-- Spin Speed -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>SPIN SPEED</span>
+                            <span class="val" id="station-spin-speed-val">1.0x</span>
                         </div>
+                        <input type="range" id="slider-station-spin-speed" min="0.2" max="4.0" step="0.1" value="1.0">
                     </div>
 
-                    <!-- NDC Group -->
-                    <div class="station-card" data-station-url="/images/station_logos/NDCGroup.png" data-station-title="NDC Group" data-station-type="img">
-                        <img class="station-card-thumb" src="/images/station_logos/NDCGroup.png" alt="NDC Group">
-                        <div class="station-card-info">
-                            <span class="station-card-title">NDC Group</span>
-                            <span class="station-card-sub">Network Logo</span>
+                    <!-- Scale / Size Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>SIZE SCALE</span>
+                            <span class="val" id="station-scale-val">0.85x</span>
                         </div>
+                        <input type="range" id="slider-station-scale" min="0.2" max="3.0" step="0.05" value="0.85">
                     </div>
 
-                    <!-- NDC Transparent -->
-                    <div class="station-card" data-station-url="/images/station_logos/NDC_nobg.png" data-station-title="NDC (No BG)" data-station-type="img">
-                        <img class="station-card-thumb" src="/images/station_logos/NDC_nobg.png" alt="NDC No BG">
-                        <div class="station-card-info">
-                            <span class="station-card-title">NDC (No BG)</span>
-                            <span class="station-card-sub">Transparent</span>
+                    <!-- Bass Reactive Pulse Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BASS PUNCH REACTIVITY</span>
+                            <span class="val" id="station-pulse-val">25%</span>
                         </div>
+                        <input type="range" id="slider-station-pulse" min="0" max="150" step="5" value="25">
                     </div>
-                </div>
 
-                <!-- Placement Position Pills -->
-                <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">SCREEN POSITION / CORNER:</div>
-                <div class="mode-pills" id="station-pos-pills" style="margin-bottom:6px; flex-wrap:wrap;">
-                    <button class="mode-pill active" data-st-pos="top-right" title="Top Right Corner (Standard Broadcast Watermark)">↗ Top-Right</button>
-                    <button class="mode-pill" data-st-pos="top-left" title="Top Left Corner">↖ Top-Left</button>
-                    <button class="mode-pill" data-st-pos="bottom-right" title="Bottom Right Corner">↘ Bottom-Right</button>
-                    <button class="mode-pill" data-st-pos="bottom-left" title="Bottom Left Corner">↙ Bottom-Left</button>
-                    <button class="mode-pill" data-st-pos="center" title="Center Screen">⦿ Center</button>
-                </div>
-
-                <!-- Display Mode -->
-                <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DISPLAY LAYER MODE:</div>
-                <div class="mode-pills" id="station-mode-pills" style="margin-bottom:6px;">
-                    <button class="mode-pill active" data-st-mode="overlay" title="Crisp overlay watermark in front of 3D scene">📺 Watermark</button>
-                    <button class="mode-pill" data-st-mode="hologram" title="Floating 3D Hologram in stage space">✨ 3D Holo</button>
-                    <button class="mode-pill" data-st-mode="backdrop" title="Gigantic Stadium Backdrop Wall">🌌 Backdrop</button>
-                </div>
-
-                <!-- Spin Mode & Animation -->
-                <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">3D ROTATION & SPIN:</div>
-                <div class="mode-pills" id="station-spin-pills" style="margin-bottom:6px; flex-wrap:wrap;">
-                    <button class="mode-pill active" data-st-spin="off">Static</button>
-                    <button class="mode-pill" data-st-spin="center">🌀 Center Spin</button>
-                    <button class="mode-pill" data-st-spin="orbit">🪐 3D Orbit</button>
-                    <button class="mode-pill" data-st-spin="freeroam">🚀 Free Roam</button>
-                </div>
-
-                <!-- Spin Speed -->
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>SPIN SPEED</span>
-                        <span class="val" id="station-spin-speed-val">1.0x</span>
+                    <!-- Contrast & Brightness -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>CONTRAST BOOST</span>
+                            <span class="val" id="station-contrast-val">1.25x</span>
+                        </div>
+                        <input type="range" id="slider-station-contrast" min="0.5" max="2.5" step="0.05" value="1.25">
                     </div>
-                    <input type="range" id="slider-station-spin-speed" min="0.2" max="4.0" step="0.1" value="1.0">
-                </div>
 
-                <!-- Scale / Size Slider -->
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>SIZE SCALE</span>
-                        <span class="val" id="station-scale-val">0.85x</span>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BRIGHTNESS / CLARITY</span>
+                            <span class="val" id="station-bright-val">1.05x</span>
+                        </div>
+                        <input type="range" id="slider-station-bright" min="0.5" max="2.5" step="0.05" value="1.05">
                     </div>
-                    <input type="range" id="slider-station-scale" min="0.2" max="3.0" step="0.05" value="0.85">
-                </div>
 
-                <!-- Bass Reactive Pulse Slider -->
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>BASS PUNCH REACTIVITY</span>
-                        <span class="val" id="station-pulse-val">25%</span>
+                    <!-- Contrast Dark Shield -->
+                    <div class="hud-row" style="margin-top:6px;">
+                        <span class="hud-label">CONTRAST SHIELD</span>
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
+                            <input type="checkbox" id="check-station-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
+                        </label>
                     </div>
-                    <input type="range" id="slider-station-pulse" min="0" max="150" step="5" value="25">
-                </div>
-
-                <!-- Contrast & Brightness -->
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>CONTRAST BOOST</span>
-                        <span class="val" id="station-contrast-val">1.25x</span>
-                    </div>
-                    <input type="range" id="slider-station-contrast" min="0.5" max="2.5" step="0.05" value="1.25">
-                </div>
-
-                <div class="slider-row">
-                    <div class="slider-header">
-                        <span>BRIGHTNESS / CLARITY</span>
-                        <span class="val" id="station-bright-val">1.05x</span>
-                    </div>
-                    <input type="range" id="slider-station-bright" min="0.5" max="2.5" step="0.05" value="1.05">
-                </div>
-
-                <!-- Contrast Dark Shield -->
-                <div class="hud-row" style="margin-top:6px;">
-                    <span class="hud-label">CONTRAST SHIELD</span>
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
-                        <input type="checkbox" id="check-station-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
-                    </label>
                 </div>
             </div>
 
