@@ -1,37 +1,41 @@
 import { WebSocketServer } from 'ws';
 import http from 'http';
 import { PhilipsHueService } from './hue-service.js';
+import { PioneerDJService } from './pioneer-service.js';
+import { TraktorService } from './traktor-service.js';
+import { NowPlayingService } from './nowplaying-api.js';
 
 // Configuration
 const PORT = process.env.STAGELINQ_PORT || 8080;
 const isForceSim = process.argv.includes('--sim');
 
-console.log('='.repeat(60));
-console.log('  🎛️  DENON STAGELINQ & PHILIPS HUE COMPANION BRIDGE');
-console.log('='.repeat(60));
-
-// Setup HTTP + WebSocket Server
-const server = http.createServer((req, res) => {
-    res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ status: 'ok', service: 'dj-vfx-bridge' }));
-});
-
-const wss = new WebSocketServer({ server });
+console.log('='.repeat(65));
+console.log('  ⚡ DJ VFX STUDIO — UNIVERSAL MULTI-PLATFORM HARDWARE BRIDGE');
+console.log('  🎧 Denon StageLinQ | 💿 Pioneer Pro DJ Link | 🎛️ Traktor Pro | 💡 Hue');
+console.log('='.repeat(65));
 
 let lastTrackData = null;
 let lastBpm = 126.0;
 let lastActiveFX = 0;
+let activeEcosystem = 'auto'; // 'auto', 'stagelinq', 'pioneer', 'traktor', 'link'
 const globalSyncState = new Map();
-let connectedDevices = new Map();
+const connectedDevices = new Map();
+const deckStatuses = new Map([
+    [1, { deck: 1, bpm: 126.0, play: false, artist: 'Eric Prydz', title: 'Opus (Live Intro Mix)', ecosystem: 'none' }],
+    [2, { deck: 2, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }],
+    [3, { deck: 3, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }],
+    [4, { deck: 4, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }]
+]);
 
 // Initialize Philips Hue Lighting Service
 const hueService = new PhilipsHueService();
 hueService.init().catch(err => console.error('[Philips Hue] Init error:', err));
 
+// Broadcast helper functions
 function broadcast(messageObj) {
     const payload = JSON.stringify(messageObj);
     wss.clients.forEach((client) => {
-        if (client.readyState === 1 && client.bufferedAmount < 65536) { // OPEN & not overwhelmed
+        if (client.readyState === 1 && client.bufferedAmount < 65536) {
             client.send(payload);
         }
     });
@@ -40,24 +44,122 @@ function broadcast(messageObj) {
 function relayToOthers(senderWs, messageObj) {
     const payload = JSON.stringify(messageObj);
     wss.clients.forEach((client) => {
-        if (client !== senderWs && client.readyState === 1 && client.bufferedAmount < 65536) { // OPEN & not overwhelmed
+        if (client !== senderWs && client.readyState === 1 && client.bufferedAmount < 65536) {
             client.send(payload);
         }
     });
 }
 
+// Unified Handlers for Hardware Telemetry
+function handleIncomingTrack(trackData) {
+    lastTrackData = trackData;
+    if (trackData.bpm && trackData.bpm > 40 && trackData.bpm < 300) {
+        lastBpm = trackData.bpm;
+    }
+    const deckNum = trackData.deck || 1;
+    const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
+    currentDeck.artist = trackData.artist || currentDeck.artist;
+    currentDeck.title = trackData.title || currentDeck.title;
+    currentDeck.bpm = trackData.bpm || currentDeck.bpm;
+    currentDeck.play = true;
+    currentDeck.ecosystem = trackData.ecosystem || 'auto';
+    deckStatuses.set(deckNum, currentDeck);
+
+    broadcast({
+        type: 'track',
+        ...trackData
+    });
+}
+
+function handleIncomingBPM(bpm, deckNum = 1) {
+    if (bpm > 40 && bpm < 300) {
+        lastBpm = bpm;
+        const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
+        currentDeck.bpm = bpm;
+        deckStatuses.set(deckNum, currentDeck);
+
+        broadcast({
+            type: 'bpm',
+            deck: deckNum,
+            bpm
+        });
+    }
+}
+
+function handleIncomingBeat(deckNum, count) {
+    broadcast({
+        type: 'beat',
+        deck: deckNum || 1,
+        count: count || 1
+    });
+}
+
+function handleIncomingStatus(statusObj) {
+    if (statusObj.device) {
+        connectedDevices.set(statusObj.ecosystem || 'general', statusObj.device);
+    }
+    broadcast({
+        type: 'status',
+        ...statusObj,
+        deviceCount: connectedDevices.size,
+        devices: Array.from(connectedDevices.entries()).map(([k, v]) => ({ ecosystem: k, name: v }))
+    });
+}
+
+// Initialize Pioneer Pro DJ Link & Rekordbox Service
+const pioneerService = new PioneerDJService({
+    onTrack: handleIncomingTrack,
+    onBPM: handleIncomingBPM,
+    onBeat: handleIncomingBeat,
+    onStatus: handleIncomingStatus
+});
+pioneerService.init().catch(err => console.warn('[Pioneer Pro DJ Link] Init notice:', err.message));
+
+// Initialize Native Instruments Traktor Pro Service
+const traktorService = new TraktorService({
+    onTrack: handleIncomingTrack,
+    onBPM: handleIncomingBPM,
+    onBeat: handleIncomingBeat,
+    onStatus: handleIncomingStatus
+});
+traktorService.init().catch(err => console.warn('[Traktor Pro] Init notice:', err.message));
+
+// Initialize Universal Now Playing REST & File Watcher
+const nowPlayingService = new NowPlayingService({
+    onTrack: handleIncomingTrack,
+    onBPM: handleIncomingBPM,
+    onStatus: handleIncomingStatus
+});
+nowPlayingService.init();
+
+// Setup HTTP + WebSocket Server
+const server = http.createServer((req, res) => {
+    // Handle Universal REST API endpoints (/api/track, /api/nowplaying, /api/status)
+    if (nowPlayingService.handleHttpRequest(req, res)) {
+        return;
+    }
+
+    res.writeHead(200, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ 
+        status: 'ok', 
+        service: 'DJ VFX Studio Universal Bridge',
+        ecosystems: ['denon_stagelinq', 'pioneer_prodjlink', 'rekordbox', 'traktor_pro', 'ableton_link']
+    }));
+});
+
+const wss = new WebSocketServer({ server });
+
 wss.on('connection', (ws) => {
-    console.log('[WebSocket] Front-end client connected (OBS / Browser)');
-    
-    // Send immediate initial status for StageLinq & Hue
+    console.log('[WebSocket] Client connected to Universal Bridge (OBS / Browser Studio)');
+
+    // Send immediate initial status
     ws.send(JSON.stringify({
         type: 'status',
         connected: true,
         deviceCount: connectedDevices.size,
-        device: connectedDevices.size > 0 ? Array.from(connectedDevices.values()).join(', ') : null,
-        message: connectedDevices.size > 0 
-            ? `Connected to ${Array.from(connectedDevices.values()).join(', ')}` 
-            : 'Bridge Online (Listening for Prime Decks on UDP 50010)'
+        device: connectedDevices.size > 0 ? Array.from(connectedDevices.values()).join(' • ') : 'Bridge Online (Ready for Denon, Pioneer & Traktor)',
+        devices: Array.from(connectedDevices.entries()).map(([k, v]) => ({ ecosystem: k, name: v })),
+        activeEcosystem
     }));
 
     // Send immediate Philips Hue Status & Room List
@@ -85,18 +187,31 @@ wss.on('connection', (ws) => {
         }));
     }
 
-    // Replay full active state snapshot to the connecting client (e.g. OBS / 2nd screen)
+    // Send 4-deck status snapshot
+    ws.send(JSON.stringify({
+        type: 'decks_snapshot',
+        decks: Array.from(deckStatuses.values())
+    }));
+
+    // Replay full active state snapshot to the connecting client
     globalSyncState.forEach((cachedMsg) => {
         try {
             ws.send(JSON.stringify(cachedMsg));
         } catch (e) {}
     });
 
-    // Handle Client Messages (Hue Configuration, Pairing, Beat Sync, Multi-Window/OBS Sync Relay)
+    // Handle Client Messages
     ws.on('message', async (raw) => {
         try {
             const msg = JSON.parse(raw);
-            if (msg.type === 'hue_discover') {
+            if (msg.type === 'set_ecosystem') {
+                activeEcosystem = msg.ecosystem || 'auto';
+                console.log(`[Bridge] 🎛️ Active DJ Ecosystem set to: ${activeEcosystem.toUpperCase()}`);
+                broadcast({
+                    type: 'ecosystem_changed',
+                    ecosystem: activeEcosystem
+                });
+            } else if (msg.type === 'hue_discover') {
                 const res = await hueService.discoverBridge();
                 broadcast({
                     type: 'hue_status',
@@ -132,7 +247,7 @@ wss.on('connection', (ws) => {
                     hueService.processAudioBeat(msg.data);
                 }
             }
-            // Multi-Window & OBS Studio Real-Time Sync Relay (Audio frames, Scenes, BPM, Flash, Logo, Track Banners)
+            // Multi-Window & OBS Studio Real-Time Sync Relay
             else if (msg.type === 'audio_frame') {
                 relayToOthers(ws, msg);
             } else if (msg.type === 'set_fx') {
@@ -145,7 +260,6 @@ wss.on('connection', (ws) => {
                 lastTrackData = msg;
                 relayToOthers(ws, msg);
             } else if (msg.type === 'request_state') {
-                // Client explicitly requested full active state snapshot
                 if (lastTrackData) ws.send(JSON.stringify({ type: 'track', ...lastTrackData }));
                 if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm }));
                 if (lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
@@ -192,34 +306,27 @@ async function startStageLinq() {
 
         stagelinqInstance = new StageLinqInstance({
             actingAs: ActingAsDevice?.NowPlaying || 'NowPlaying',
-            downloadDbSources: false, // keep lightweight for instant telemetry
+            downloadDbSources: false,
             enableFileTranfer: false
         });
 
         console.log('[StageLinq] 🔍 Scanning local network for Denon Prime players/mixers (UDP 50010)...');
 
-        // Device Connection / Discovery
         stagelinqInstance.on('connected', (info) => {
             const devName = info.source || info.software?.name || 'Denon Prime Player';
-            const devVersion = info.software?.version || '';
-            const devAddr = info.address || 'LAN';
-            console.log(`[StageLinq] 🟢 Hardware Discovered: ${devName} v${devVersion} @ ${devAddr}`);
+            console.log(`[StageLinq] 🟢 Hardware Discovered: ${devName}`);
             
-            connectedDevices.set(info.source || info.address, devName);
-
-            broadcast({
-                type: 'status',
+            connectedDevices.set('denon', devName);
+            handleIncomingStatus({
+                ecosystem: 'stagelinq',
                 connected: true,
-                device: Array.from(connectedDevices.values()).join(', '),
-                message: `Hardware Discovered: ${devName}`
+                device: devName,
+                message: `Denon Hardware Connected: ${devName}`
             });
         });
 
         const lastDeckLoadedTracks = new Map();
-        let lastActiveNowPlayingKey = '';
-        let lastActiveNowPlayingTrack = null;
 
-        // Track Loaded (Background cued / loaded onto a deck)
         stagelinqInstance.on('trackLoaded', (status) => {
             if (!status || !status.title) return;
             const deckKey = String(status.deck || 1);
@@ -231,115 +338,48 @@ async function startStageLinq() {
             if (prevSignature === trackSignature) return;
             lastDeckLoadedTracks.set(deckKey, trackSignature);
 
-            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${status.deck || 1}]: ${artist || 'Unknown'} - ${title || 'Unknown'} (${status.currentBpm || status.masterTempo || '---'} BPM)`);
+            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${status.deck || 1}]: ${artist} - ${title} (${status.currentBpm || status.masterTempo || '---'} BPM)`);
             
-            const deckPayload = {
-                deck: status.deck || 1,
-                artist: artist,
-                title: title,
-                bpm: status.currentBpm || status.masterTempo || lastBpm,
-                key: status.key || '',
-                genre: status.genre || ''
-            };
-
-            // Broadcast deck_loaded so HUD deck indicators update without popping stream overlay
             broadcast({
                 type: 'deck_loaded',
-                ...deckPayload
+                deck: status.deck || 1,
+                artist,
+                title,
+                bpm: status.currentBpm || status.masterTempo || lastBpm,
+                key: status.key || '',
+                genre: status.genre || '',
+                ecosystem: 'stagelinq'
             });
         });
 
-        // Now Playing / Layer change (Live on Air track transition via Fader / Play / Crossfader)
         stagelinqInstance.on('nowPlaying', (status) => {
             if (!status || !status.title) return;
-            const deckKey = String(status.deck || 1);
-            const artist = status.artist || '';
-            const title = status.title || '';
-            const activeSignature = `${deckKey}::${artist} - ${title}`;
-            
-            if (lastActiveNowPlayingKey === activeSignature) return;
-            lastActiveNowPlayingKey = activeSignature;
-
-            console.log(`[StageLinq] ▶️ Now Playing [Deck ${status.deck}]: ${artist} - ${title}`);
-            
-            const trackPayload = {
+            handleIncomingTrack({
                 deck: status.deck || 1,
-                artist: artist,
-                title: title,
+                artist: status.artist || '',
+                title: status.title || '',
                 bpm: status.currentBpm || status.masterTempo || lastBpm,
                 key: status.key || '',
                 play: true,
-                master: !!status.masterStatus
-            };
-
-            lastActiveNowPlayingTrack = trackPayload;
-            lastTrackData = trackPayload;
-            if (trackPayload.bpm && trackPayload.bpm > 40 && trackPayload.bpm < 300) {
-                lastBpm = trackPayload.bpm;
-            }
-
-            // Broadcast live on-air track to stream banner & HUD
-            broadcast({
-                type: 'track',
-                ...trackPayload
+                master: !!status.masterStatus,
+                ecosystem: 'stagelinq',
+                device: 'Denon Prime'
             });
         });
 
-        const lastDeckBeats = new Map();
-        const lastDeckBpms = new Map();
-        const lastDeckBpmTime = new Map();
-
-        // State Changed (BPM / Pitch / Volume / Fader)
         stagelinqInstance.on('stateChanged', (status) => {
             if (status && status.currentBpm) {
-                const deckNum = status.deck || 1;
-                const prevBpm = lastDeckBpms.get(deckNum) || 0;
-                if (Math.abs(status.currentBpm - prevBpm) >= 0.05) {
-                    lastDeckBpms.set(deckNum, status.currentBpm);
-                    lastBpm = status.currentBpm;
-                    broadcast({
-                        type: 'bpm',
-                        deck: deckNum,
-                        bpm: status.currentBpm
-                    });
-                }
+                handleIncomingBPM(status.currentBpm, status.deck || 1);
             }
         });
 
-        // Real-Time Beat Grid / Beat Sync Packets (Throttled to beat transitions)
         stagelinqInstance.on('beatMessage', (info, beatData) => {
             if (!beatData || !beatData.decks) return;
-            const now = Date.now();
-
             beatData.decks.forEach((deckData, idx) => {
                 const deckNum = idx + 1;
-                if (deckData.bpm && deckData.bpm > 40 && deckData.bpm < 300) {
-                    const prevBpm = lastDeckBpms.get(deckNum) || 0;
-                    const prevTime = lastDeckBpmTime.get(deckNum) || 0;
-                    if (Math.abs(deckData.bpm - prevBpm) >= 0.05 || (now - prevTime > 500)) {
-                        lastDeckBpms.set(deckNum, deckData.bpm);
-                        lastDeckBpmTime.set(deckNum, now);
-                        lastBpm = deckData.bpm;
-                        broadcast({
-                            type: 'bpm',
-                            deck: deckNum,
-                            bpm: deckData.bpm
-                        });
-                    }
-                }
+                if (deckData.bpm) handleIncomingBPM(deckData.bpm, deckNum);
                 if (deckData.beat !== undefined) {
-                    const beatCount = Math.floor(deckData.beat % 4) + 1;
-                    const prevBeat = lastDeckBeats.get(deckNum);
-                    if (beatCount !== prevBeat) {
-                        lastDeckBeats.set(deckNum, beatCount);
-                        broadcast({
-                            type: 'beat',
-                            deck: deckNum,
-                            count: beatCount,
-                            rawBeat: deckData.beat,
-                            totalBeats: deckData.totalBeats
-                        });
-                    }
+                    handleIncomingBeat(deckNum, Math.floor(deckData.beat % 4) + 1);
                 }
             });
         });
@@ -349,15 +389,15 @@ async function startStageLinq() {
         });
 
         await stagelinqInstance.connect();
-        console.log('[StageLinq] ✅ Bound to UDP socket. Ready and listening for live decks.');
+        console.log('[StageLinq] ✅ Bound to UDP socket. Listening for Prime decks.');
     } catch (err) {
         console.warn('[StageLinq] Hardware discovery note:', err.message);
-        console.log('[StageLinq] Starting background simulation as fallback while awaiting hardware broadcast...');
+        console.log('[StageLinq] Standby mode active while awaiting hardware connections.');
         runSimulationLoop();
     }
 }
 
-// Fallback / Standby Simulation Loop
+// Standby Simulation Loop (Seamless fallback when no live hardware is transmitting)
 function runSimulationLoop() {
     let simulatedBPM = 126.0;
     let beatCounter = 0;
@@ -369,9 +409,8 @@ function runSimulationLoop() {
     ];
     let trackIndex = 0;
 
-    // Beat clock ticker
     function scheduleNextBeat() {
-        if (connectedDevices.size > 0) return; // Stop simulation if real hardware connects
+        if (connectedDevices.size > 0) return;
         const intervalMs = (60.0 / simulatedBPM) * 1000.0;
         setTimeout(() => {
             if (connectedDevices.size === 0) {
@@ -393,22 +432,19 @@ function runSimulationLoop() {
         trackIndex = (trackIndex + 1) % tracks.length;
         const currentTrack = tracks[trackIndex];
         simulatedBPM = currentTrack.bpm;
-        broadcast({
-            type: 'track',
+        handleIncomingTrack({
             deck: 1,
             artist: currentTrack.artist,
             title: currentTrack.title,
-            bpm: currentTrack.bpm
-        });
-        broadcast({
-            type: 'bpm',
-            deck: 1,
-            bpm: currentTrack.bpm
+            bpm: currentTrack.bpm,
+            ecosystem: 'simulation',
+            device: 'Demo Telemetry'
         });
     }, 45000);
 }
 
 server.listen(PORT, () => {
-    console.log(`[Bridge Server] 🚀 WebSocket server active on ws://localhost:${PORT}`);
+    console.log(`[Universal Bridge Server] 🚀 Active on ws://localhost:${PORT}`);
+    console.log(`[Universal Bridge Server] 🌐 REST API available at http://localhost:${PORT}/api/nowplaying`);
     startStageLinq();
 });

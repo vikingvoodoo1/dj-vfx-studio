@@ -1683,17 +1683,52 @@
                     </div>
                 </div>
 
-                <div class="hud-section">
-                    <div class="hud-row" style="align-items: center;">
-                        <div style="display:flex; align-items:center; gap:8px;">
-                            <img src="/images/logo/engine-dj-logo.png" alt="Engine DJ / Denon Prime" style="height:13px; width:auto; opacity:0.9; filter:drop-shadow(0 0 5px rgba(0,255,204,0.35)); vertical-align:middle;">
-                            <span class="hud-label">STAGELINQ</span>
-                        </div>
-                        <span class="hud-val" id="stagelinq-status">Connecting...</span>
+                <!-- Universal DJ Deck Hardware & Software Integration -->
+                <div class="hud-section" style="margin-top:10px; padding-top:8px; border-top:1px solid rgba(255,255,255,0.08);">
+                    <div class="hud-row" style="align-items:center; margin-bottom:4px;">
+                        <span class="hud-label">🎛️ DJ DECK INTEGRATION PROTOCOL</span>
+                        <button class="btn-mini" id="btn-open-dj-guide" style="font-size:8.5px; padding:2px 6px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.35); color:#00ffcc; cursor:pointer;" title="Open Setup & Connection Guide for Pioneer, Traktor, Denon & Rekordbox">ℹ️ SETUP GUIDE</button>
                     </div>
-                    <div id="stagelinq-deck-badges" style="display:flex; gap:4px; margin-top:4px;">
-                        <span class="hud-badge" id="deck-badge-1" style="flex:1; text-align:center; padding:2px 4px; font-size:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">DECK 1</span>
-                        <span class="hud-badge" id="deck-badge-2" style="flex:1; text-align:center; padding:2px 4px; font-size:9px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1);">DECK 2</span>
+
+                    <!-- Ecosystem Selector Pills -->
+                    <div class="mode-pills" id="dj-ecosystem-pills" style="margin-bottom:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:3px;">
+                        <button class="mode-pill active" data-eco="auto" title="Auto-detect any incoming Pioneer, Traktor, Denon or Ableton Link stream">⚡ AUTO-DETECT ALL</button>
+                        <button class="mode-pill" data-eco="pioneer" title="Pioneer Pro DJ Link (CDJ/XDJ) & Rekordbox DJ Performance Mode">💿 PIONEER / REKORDBOX</button>
+                        <button class="mode-pill" data-eco="traktor" title="Native Instruments Traktor Pro 3/4 Session & Broadcast Link">🎛️ TRAKTOR PRO</button>
+                        <button class="mode-pill" data-eco="stagelinq" title="Denon DJ Engine OS / Prime 4 / SC6000 StageLinQ protocol">🎧 DENON STAGELINQ</button>
+                    </div>
+
+                    <!-- Live Hardware / Software Connection Status Banner -->
+                    <div style="background:rgba(0,0,0,0.45); border:1px solid rgba(0,255,204,0.25); border-radius:6px; padding:6px 8px; margin-bottom:6px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                        <div style="display:flex; align-items:center; gap:6px; overflow:hidden;">
+                            <span class="power-led" id="dj-hardware-led" style="background:#00ff88; box-shadow:0 0 8px #00ff88; flex-shrink:0;"></span>
+                            <span id="dj-hardware-status-text" style="font-size:9.5px; color:#ffffff; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">PIONEER • TRAKTOR • DENON READY</span>
+                        </div>
+                        <span class="hud-badge" id="dj-protocol-badge" style="font-size:8px; padding:1px 5px; background:rgba(0,255,204,0.15); border-color:#00ffcc; color:#00ffcc; flex-shrink:0;">MULTI-SYNC</span>
+                    </div>
+
+                    <!-- 4-Deck Live Telemetry Grid (Decks 1-4 / A-D) -->
+                    <div style="display:grid; grid-template-columns:repeat(4, 1fr); gap:3px;" id="dj-4deck-grid">
+                        <div class="deck-telemetry-box active" id="deck-card-1" style="background:rgba(255,255,255,0.04); border:1px solid rgba(0,255,204,0.3); border-radius:5px; padding:4px 3px; text-align:center;">
+                            <div style="font-size:8px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace;">DECK 1 (A)</div>
+                            <div class="deck-bpm" id="deck-bpm-1" style="font-size:10px; font-weight:800; color:#ffffff; margin:1px 0;">126.0</div>
+                            <div class="deck-status-tag" id="deck-state-1" style="font-size:7px; color:#00ff88; font-weight:700;">● MASTER</div>
+                        </div>
+                        <div class="deck-telemetry-box" id="deck-card-2" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:5px; padding:4px 3px; text-align:center;">
+                            <div style="font-size:8px; font-weight:800; color:rgba(255,255,255,0.5); font-family:'JetBrains Mono',monospace;">DECK 2 (B)</div>
+                            <div class="deck-bpm" id="deck-bpm-2" style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.6); margin:1px 0;">126.0</div>
+                            <div class="deck-status-tag" id="deck-state-2" style="font-size:7px; color:rgba(255,255,255,0.4);">SYNC</div>
+                        </div>
+                        <div class="deck-telemetry-box" id="deck-card-3" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:5px; padding:4px 3px; text-align:center;">
+                            <div style="font-size:8px; font-weight:800; color:rgba(255,255,255,0.5); font-family:'JetBrains Mono',monospace;">DECK 3 (C)</div>
+                            <div class="deck-bpm" id="deck-bpm-3" style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.6); margin:1px 0;">---</div>
+                            <div class="deck-status-tag" id="deck-state-3" style="font-size:7px; color:rgba(255,255,255,0.4);">STANDBY</div>
+                        </div>
+                        <div class="deck-telemetry-box" id="deck-card-4" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:5px; padding:4px 3px; text-align:center;">
+                            <div style="font-size:8px; font-weight:800; color:rgba(255,255,255,0.5); font-family:'JetBrains Mono',monospace;">DECK 4 (D)</div>
+                            <div class="deck-bpm" id="deck-bpm-4" style="font-size:10px; font-weight:800; color:rgba(255,255,255,0.6); margin:1px 0;">---</div>
+                            <div class="deck-status-tag" id="deck-state-4" style="font-size:7px; color:rgba(255,255,255,0.4);">STANDBY</div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -2630,6 +2665,69 @@
             <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
                 <button class="obs-copy-btn" id="btn-do-pair-hue" style="padding:8px 18px; font-size:12px;">🔗 PAIR BRIDGE NOW</button>
                 <button class="btn-mini" id="btn-close-hue-done" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:6px 16px; font-size:11px; cursor:pointer;">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Universal DJ Hardware & Software Integration Guide Modal -->
+    <div id="dj-guide-modal-backdrop" style="display:none; position:fixed; top:0; left:0; width:100vw; height:100vh; z-index:10000; background:rgba(0,0,0,0.85); backdrop-filter:blur(10px); align-items:center; justify-content:center;">
+        <div class="obs-modal" style="width:560px; max-height:85vh; overflow-y:auto;">
+            <div class="obs-modal-header">
+                <div class="obs-modal-title">
+                    <span>🎛️ DJ HARDWARE & SOFTWARE SETUP GUIDE</span>
+                </div>
+                <button class="obs-close-btn" id="btn-close-dj-guide">&times;</button>
+            </div>
+
+            <div style="font-size:11.5px; color:rgba(255,255,255,0.7); margin-bottom:12px; line-height:1.45;">
+                DJ VFX Studio supports plug-and-play synchronization with every major DJ hardware & software ecosystem:
+            </div>
+
+            <!-- Pioneer DJ / Rekordbox -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                <div style="font-size:12px; font-weight:800; color:#00ffcc; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span>💿 Pioneer DJ (CDJ / XDJ / Rekordbox)</span>
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); line-height:1.45;">
+                    • <strong>Standalone Hardware (CDJ-2000NXS2, CDJ-3000, XDJ-XZ/RX3):</strong> Connect your DJ laptop to the Pioneer network switch / Wi-Fi router. The bridge automatically listens on UDP ports <code>50000</code> and <code>50002</code> for Pro DJ Link beat packets and deck speeds.<br>
+                    • <strong>Rekordbox DJ Performance Mode (DDJ/FLX Controllers):</strong> Enable <em>Ableton Link</em> in Rekordbox top bar for beat sync, or use the live session file watcher.
+                </div>
+            </div>
+
+            <!-- Native Instruments Traktor Pro -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                <div style="font-size:12px; font-weight:800; color:#00ffcc; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span>🎛️ Native Instruments Traktor Pro 3 & 4</span>
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); line-height:1.45;">
+                    • <strong>Live Track Titles:</strong> Traktor's internal session history (<code>.nml</code>) in your Documents folder is monitored automatically. New tracks are recognized the instant they are loaded onto Decks A/B/C/D.<br>
+                    • <strong>BPM & Beat Sync:</strong> Click the <strong>LINK</strong> button in Traktor's top header to broadcast clock over Ableton Link.
+                </div>
+            </div>
+
+            <!-- Denon DJ StageLinQ -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                <div style="font-size:12px; font-weight:800; color:#00ffcc; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span>🎧 Denon DJ Engine OS (Prime 4, SC6000, SC Live)</span>
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); line-height:1.45;">
+                    • Plug Ethernet or connect Wi-Fi to your Prime unit. The bridge auto-discovers players over UDP <code>50010</code> and streams real-time 4-deck faders, track waveforms, and beat positions.
+                </div>
+            </div>
+
+            <!-- Universal REST API & File Watcher -->
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:12px;">
+                <div style="font-size:12px; font-weight:800; color:#00ffcc; margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+                    <span>🌐 Universal REST API, Snip & File Drop</span>
+                </div>
+                <div style="font-size:10px; color:rgba(255,255,255,0.8); line-height:1.45;">
+                    • <strong>HTTP REST Push:</strong> <code>POST http://localhost:8080/api/nowplaying</code> with body <code>Artist - Title</code>.<br>
+                    • <strong>File Drop:</strong> Save current track text to <code>nowplaying.txt</code> in the project directory (supported by Snip, Tuna, Serato, VirtualDJ).
+                </div>
+            </div>
+
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+                <button class="btn-mini" id="btn-close-dj-guide-done" style="background:rgba(0,255,204,0.2); border:1px solid #00ffcc; color:#00ffcc; padding:6px 16px; font-size:11px; font-weight:800; cursor:pointer;">Got It</button>
             </div>
         </div>
     </div>

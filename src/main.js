@@ -63,6 +63,23 @@ async function init() {
         });
     }
 
+    // DJ Ecosystem & 4-Deck Telemetry Elements
+    const djEcosystemPills = document.querySelectorAll('#dj-ecosystem-pills .mode-pill[data-eco]');
+    const djHardwareStatusText = document.getElementById('dj-hardware-status-text');
+    const djProtocolBadge = document.getElementById('dj-protocol-badge');
+    const djHardwareLed = document.getElementById('dj-hardware-led');
+    const btnOpenDjGuide = document.getElementById('btn-open-dj-guide');
+    const djGuideModalBackdrop = document.getElementById('dj-guide-modal-backdrop');
+    const btnCloseDjGuide = document.getElementById('btn-close-dj-guide');
+    const btnCloseDjGuideDone = document.getElementById('btn-close-dj-guide-done');
+
+    const deckCards = [
+        { card: document.getElementById('deck-card-1'), bpm: document.getElementById('deck-bpm-1'), state: document.getElementById('deck-state-1') },
+        { card: document.getElementById('deck-card-2'), bpm: document.getElementById('deck-bpm-2'), state: document.getElementById('deck-state-2') },
+        { card: document.getElementById('deck-card-3'), bpm: document.getElementById('deck-bpm-3'), state: document.getElementById('deck-state-3') },
+        { card: document.getElementById('deck-card-4'), bpm: document.getElementById('deck-bpm-4'), state: document.getElementById('deck-state-4') }
+    ];
+
     const eqBass = document.getElementById('eq-bass');
     const eqMid = document.getElementById('eq-mid');
     const eqTreble = document.getElementById('eq-treble');
@@ -2185,7 +2202,48 @@ async function init() {
         });
     }
 
-    // 6. Connect to StageLinq & Philips Hue Companion Bridge via WebSocket
+    // DJ Protocol / Ecosystem Selector
+    djEcosystemPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const eco = pill.getAttribute('data-eco');
+            djEcosystemPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            if (stagelinqClient) stagelinqClient.setEcosystem(eco);
+
+            let label = 'MULTI-SYNC';
+            if (eco === 'pioneer') label = 'PIONEER LINK';
+            else if (eco === 'traktor') label = 'TRAKTOR LINK';
+            else if (eco === 'stagelinq') label = 'STAGELINQ';
+            else if (eco === 'auto') label = 'MULTI-SYNC';
+
+            if (djProtocolBadge) djProtocolBadge.textContent = label;
+            showToast(`🎛️ Switched DJ Ecosystem to: ${pill.textContent.trim()}`);
+        });
+    });
+
+    // DJ Connection Guide Modal Listeners
+    if (btnOpenDjGuide && djGuideModalBackdrop) {
+        btnOpenDjGuide.addEventListener('click', () => {
+            djGuideModalBackdrop.style.display = 'flex';
+        });
+    }
+    if (btnCloseDjGuide && djGuideModalBackdrop) {
+        btnCloseDjGuide.addEventListener('click', () => {
+            djGuideModalBackdrop.style.display = 'none';
+        });
+    }
+    if (btnCloseDjGuideDone && djGuideModalBackdrop) {
+        btnCloseDjGuideDone.addEventListener('click', () => {
+            djGuideModalBackdrop.style.display = 'none';
+        });
+    }
+    if (djGuideModalBackdrop) {
+        djGuideModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === djGuideModalBackdrop) djGuideModalBackdrop.style.display = 'none';
+        });
+    }
+
+    // 6. Connect to Universal DJ Hardware & Software Bridge via WebSocket
     stagelinqClient = setupStageLinqClient({
         onSync: (msg) => handleSyncMessage(msg),
         onBPM: (bpm, deck) => {
@@ -2194,13 +2252,11 @@ async function init() {
                 vfx.setBPM(bpm);
                 if (vfx.setDeckData) vfx.setDeckData({ deck: deck || 1, bpm: Number(bpm) });
                 broadcastSync({ type: 'set_bpm', bpm });
-            }
-            if (deck === 1 && deckBadge1) {
-                deckBadge1.style.borderColor = '#00ffcc';
-                deckBadge1.style.color = '#00ffcc';
-            } else if (deck === 2 && deckBadge2) {
-                deckBadge2.style.borderColor = '#00ffcc';
-                deckBadge2.style.color = '#00ffcc';
+
+                const dIdx = (parseInt(deck, 10) || 1) - 1;
+                if (deckCards[dIdx] && deckCards[dIdx].bpm) {
+                    deckCards[dIdx].bpm.textContent = Number(bpm).toFixed(1);
+                }
             }
         },
         onBeat: (deck, beatCount) => {
@@ -2212,15 +2268,21 @@ async function init() {
                 bpmVal.style.transform = 'scale(1.0)';
             }, 90);
 
-            const activeBadge = (deck === 2 && deckBadge2) ? deckBadge2 : deckBadge1;
-            if (activeBadge) {
-                activeBadge.style.background = 'rgba(0, 255, 204, 0.35)';
-                activeBadge.style.color = '#ffffff';
-                activeBadge.textContent = `DECK ${deck || 1} • [BEAT ${beatCount || 1}]`;
+            const dIdx = (parseInt(deck, 10) || 1) - 1;
+            const targetDeckCard = deckCards[dIdx];
+            if (targetDeckCard && targetDeckCard.card) {
+                targetDeckCard.card.style.background = 'rgba(0, 255, 204, 0.28)';
+                targetDeckCard.card.style.borderColor = '#00ffcc';
+                if (targetDeckCard.state) {
+                    targetDeckCard.state.textContent = `● BEAT ${beatCount || 1}`;
+                }
                 setTimeout(() => {
-                    activeBadge.style.background = 'rgba(255, 255, 255, 0.05)';
-                    activeBadge.style.color = '#00ffcc';
-                }, 120);
+                    targetDeckCard.card.style.background = 'rgba(255, 255, 255, 0.04)';
+                    targetDeckCard.card.style.borderColor = 'rgba(0, 255, 204, 0.3)';
+                    if (targetDeckCard.state) {
+                        targetDeckCard.state.textContent = '● ACTIVE';
+                    }
+                }, 110);
             }
 
             // Auto-VJ Transition every 32 beats (8 bars)
@@ -2234,11 +2296,10 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
-            const deckNum = data.deck || 1;
-            const isDeck2 = String(deckNum).includes('2') || String(deckNum).toUpperCase().includes('B');
-            const targetBadge = (isDeck2 && deckBadge2) ? deckBadge2 : deckBadge1;
-            if (targetBadge) {
-                targetBadge.textContent = `DECK ${deckNum}: ${data.artist ? data.artist.slice(0, 10) : 'LOADED'}`;
+            const dIdx = (parseInt(data.deck, 10) || 1) - 1;
+            if (deckCards[dIdx]) {
+                if (deckCards[dIdx].bpm && data.bpm) deckCards[dIdx].bpm.textContent = Number(data.bpm).toFixed(1);
+                if (deckCards[dIdx].state) deckCards[dIdx].state.textContent = data.artist ? data.artist.slice(0, 8) : 'LOADED';
             }
         },
         onTrack: (trackData) => {
@@ -2251,22 +2312,20 @@ async function init() {
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
 
-            const deckNum = trackData.deck || 1;
-            const isDeck2 = String(deckNum).includes('2') || String(deckNum).toUpperCase().includes('B');
-            const targetBadge = (isDeck2 && deckBadge2) ? deckBadge2 : deckBadge1;
-            const otherBadge = isDeck2 ? deckBadge1 : deckBadge2;
-            
-            if (targetBadge) {
-                targetBadge.style.borderColor = '#00ffcc';
-                targetBadge.style.color = '#00ffcc';
-                targetBadge.style.background = 'rgba(0, 255, 204, 0.18)';
-                targetBadge.textContent = `DECK ${deckNum}: ${trackData.artist ? trackData.artist.slice(0, 10) : 'PLAYING'}`;
-            }
-            if (otherBadge) {
-                otherBadge.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                otherBadge.style.color = 'rgba(255, 255, 255, 0.5)';
-                otherBadge.style.background = 'rgba(255, 255, 255, 0.04)';
-            }
+            const activeIdx = (parseInt(trackData.deck, 10) || 1) - 1;
+            deckCards.forEach((d, idx) => {
+                if (!d.card) return;
+                if (idx === activeIdx) {
+                    d.card.style.borderColor = '#00ffcc';
+                    d.card.style.background = 'rgba(0, 255, 204, 0.18)';
+                    if (d.bpm && trackData.bpm) d.bpm.textContent = Number(trackData.bpm).toFixed(1);
+                    if (d.state) d.state.textContent = '● MASTER';
+                } else {
+                    d.card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    d.card.style.background = 'rgba(255, 255, 255, 0.03)';
+                    if (d.state && d.state.textContent === '● MASTER') d.state.textContent = 'SYNC';
+                }
+            });
 
             // Display Now Playing Track Banner overlay with auto-fadeout
             showTrackBanner(trackData, { force: false });
@@ -2277,13 +2336,37 @@ async function init() {
                 selectFX(nextFX);
             }
         },
+        onDecksSnapshot: (decks) => {
+            if (Array.isArray(decks)) {
+                decks.forEach(deckData => {
+                    const idx = (parseInt(deckData.deck, 10) || 1) - 1;
+                    if (deckCards[idx]) {
+                        if (deckCards[idx].bpm && deckData.bpm) deckCards[idx].bpm.textContent = Number(deckData.bpm).toFixed(1);
+                        if (deckCards[idx].state) deckCards[idx].state.textContent = deckData.play ? '● ACTIVE' : 'STANDBY';
+                    }
+                });
+            }
+        },
         onStatusChange: (status) => {
             if (status.connected) {
-                stagelinqStatus.innerHTML = `<span style="color:#00ffcc">● ${status.device || 'Prime Link Online'}</span>`;
+                if (djHardwareStatusText) {
+                    djHardwareStatusText.textContent = status.device ? status.device.toUpperCase() : 'PIONEER • TRAKTOR • DENON READY';
+                }
+                if (djHardwareLed) {
+                    djHardwareLed.style.background = '#00ff88';
+                    djHardwareLed.style.boxShadow = '0 0 8px #00ff88';
+                }
                 broadcastSync({ type: 'request_state' });
             } else {
-                stagelinqStatus.innerHTML = `<span style="color:rgba(255,255,255,0.4)">○ Bridge Offline</span>`;
+                if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
+                if (djHardwareLed) {
+                    djHardwareLed.style.background = '#ff0055';
+                    djHardwareLed.style.boxShadow = '0 0 6px #ff0055';
+                }
             }
+        },
+        onEcosystemChange: (eco) => {
+            djEcosystemPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-eco') === eco));
         },
         onHueStatus: (status) => {
             isHueActive = !!status.enabled;

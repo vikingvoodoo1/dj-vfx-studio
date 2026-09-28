@@ -1,8 +1,20 @@
 /**
- * StageLinq & Philips Hue Client for DJ-VFX
- * Connects to local Node.js Companion Bridge via WebSocket on localhost:8080
+ * Universal DJ Hardware & Software Bridge Client for DJ VFX Studio
+ * Supports Denon StageLinQ, Pioneer Pro DJ Link / Rekordbox, Traktor Pro & Philips Hue
+ * Connects to local Node.js Companion Bridge via WebSocket on ws://localhost:8080
  */
-export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onStatusChange, onHueStatus, onHuePairingStatus, onSync }) {
+export function setupStageLinqClient({ 
+    onBPM, 
+    onBeat, 
+    onTrack, 
+    onDeckLoaded, 
+    onStatusChange, 
+    onHueStatus, 
+    onHuePairingStatus, 
+    onDecksSnapshot,
+    onEcosystemChange,
+    onSync 
+}) {
     const WS_URL = 'ws://localhost:8080';
     let socket = null;
     let isConnected = false;
@@ -24,7 +36,7 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onS
 
             socket.onopen = () => {
                 isConnected = true;
-                console.log('[StageLinq / Hue Client] Connected to Bridge on localhost:8080');
+                console.log('[Universal DJ Bridge Client] Connected to Bridge on localhost:8080');
                 if (onStatusChange) onStatusChange({ connected: true, message: 'Bridge Connected' });
             };
 
@@ -44,6 +56,12 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onS
                         case 'deck_loaded':
                             if (onDeckLoaded) onDeckLoaded(data);
                             break;
+                        case 'decks_snapshot':
+                            if (onDecksSnapshot) onDecksSnapshot(data.decks);
+                            break;
+                        case 'ecosystem_changed':
+                            if (onEcosystemChange) onEcosystemChange(data.ecosystem);
+                            break;
                         case 'status':
                             if (onStatusChange) onStatusChange(data);
                             break;
@@ -58,7 +76,7 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onS
                             break;
                     }
                 } catch (e) {
-                    console.error('[StageLinq / Hue Client] Error parsing message:', e);
+                    console.error('[Universal DJ Bridge Client] Error parsing message:', e);
                 }
             };
 
@@ -87,6 +105,7 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onS
             if (socket) socket.close();
         },
         sendSync: (msg) => sendJson(msg),
+        setEcosystem: (ecosystem) => sendJson({ type: 'set_ecosystem', ecosystem }),
         discoverHue: () => sendJson({ type: 'hue_discover' }),
         pairHue: (ip) => sendJson({ type: 'hue_pair', ip }),
         getHueRooms: () => sendJson({ type: 'hue_get_rooms' }),
@@ -94,5 +113,3 @@ export function setupStageLinqClient({ onBPM, onBeat, onTrack, onDeckLoaded, onS
         sendHueBeat: (data) => sendJson({ type: 'hue_beat', data })
     };
 }
-
-
