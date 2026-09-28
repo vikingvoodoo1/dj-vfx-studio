@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>DJ VFX - Nightclub Visual Engine, Categorized FX Bank & Branding</title>
+    <title>DJ VFX Studio - Nightclub Visual Engine, Categorized FX Bank & Branding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
@@ -1515,7 +1515,7 @@
         <!-- Vertical Activity Bar (Left Icon Sidebar - VS Code Style) -->
         <div class="activity-bar" id="activity-bar">
             <!-- App Logo / Status Icon -->
-            <div class="activity-logo" id="activity-logo-btn" title="⚡ DJ VFX Engine - Click to Cycle Panes">⚡</div>
+            <div class="activity-logo" id="activity-logo-btn" title="⚡ DJ VFX Studio - Click to Cycle Panes">⚡</div>
 
             <!-- Navigation Icon Tabs -->
             <div class="activity-tabs">
@@ -1562,6 +1562,15 @@
                     </svg>
                     <span class="act-dot" id="dot-obs"></span>
                 </button>
+
+                <button class="activity-tab" data-tab="about" title="About DJ VFX Studio, Project Blurb, Build & Copyright [Alt+7]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span class="act-dot" id="dot-about"></span>
+                </button>
             </div>
 
             <!-- Bottom Action: Show All Panes / Compact Toggle -->
@@ -1582,8 +1591,7 @@
             <!-- Global Top Bar inside Panel -->
             <div class="hud-header">
                 <div class="hud-title-box">
-                    <div class="hud-title">⚡ DJ VFX ENGINE</div>
-                    <div class="hud-build-info" id="hud-build-info" title="Build: 20260927.1100.00">v2.8.0 • 2026-09-27 11:00 BST</div>
+                    <div class="hud-title">⚡ DJ VFX STUDIO</div>
                 </div>
                 <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
                     <button class="btn-mini" id="btn-obs-toggle-hud" title="Enable / Blackout Mute Live Visuals for OBS" style="padding:2px 6px; font-size:9px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; cursor:pointer; font-weight:700;">🟢 OBS</button>
@@ -2121,6 +2129,24 @@
                                 <span class="station-card-sub">Transparent</span>
                             </div>
                         </div>
+
+                        <!-- NDC Group White -->
+                        <div class="station-card" data-station-url="/images/station_logos/NDCGroup_white.png" data-station-title="NDC Group White" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/NDCGroup_white.png" alt="NDC Group White">
+                            <div class="station-card-info">
+                                <span class="station-card-title">NDC Group White</span>
+                                <span class="station-card-sub">White Logo</span>
+                            </div>
+                        </div>
+
+                        <!-- NDC White Transparent -->
+                        <div class="station-card" data-station-url="/images/station_logos/NDC_white_nobg.png" data-station-title="NDC White (No BG)" data-station-type="img">
+                            <img class="station-card-thumb" src="/images/station_logos/NDC_white_nobg.png" alt="NDC White No BG">
+                            <div class="station-card-info">
+                                <span class="station-card-title">NDC White (No BG)</span>
+                                <span class="station-card-sub">White Transparent</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 1. Display Layer Mode -->
@@ -2354,14 +2380,84 @@
                 </div>
             </div>
 
+            <!-- ========================================== -->
+            <!-- PANE 7: ABOUT DJ VFX STUDIO                 -->
+            <!-- ========================================== -->
+            <div class="ide-tab-pane" id="pane-about">
+                <div class="pane-section-title">
+                    <span>ℹ️ About DJ VFX Studio</span>
+                    <span class="hud-badge" id="about-badge-version">v2.8.5</span>
+                </div>
+
+                <!-- Hero Branding Card -->
+                <div style="background:linear-gradient(135deg, rgba(255,0,127,0.14) 0%, rgba(0,255,204,0.14) 100%); border:1px solid rgba(0,255,204,0.35); border-radius:10px; padding:12px 14px; margin-bottom:10px; box-shadow:0 4px 20px rgba(0,0,0,0.6); position:relative; overflow:hidden;">
+                    <div style="position:absolute; top:-20px; right:-20px; width:80px; height:80px; background:radial-gradient(circle, rgba(0,255,204,0.2) 0%, transparent 70%); pointer-events:none;"></div>
+                    <div style="font-size:14px; font-weight:900; color:#ffffff; font-family:'Outfit',sans-serif; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                        <span>⚡ DJ VFX STUDIO</span>
+                    </div>
+                    <div style="font-size:9.5px; color:#00ffcc; font-family:'JetBrains Mono',monospace; margin-top:2px; font-weight:600;">
+                        Professional Live Performance Visualizer & Stage Lighting Engine
+                    </div>
+                </div>
+
+                <!-- Project Blurb -->
+                <div class="hud-section" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:10px 12px; margin-bottom:10px; line-height:1.55;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800;">PROJECT OVERVIEW</div>
+                    <p style="font-size:10px; color:rgba(255,255,255,0.85); margin:0 0 8px 0;">
+                        <strong>DJ VFX Studio</strong> is a real-time, hardware-accelerated 3D visual FX suite built specifically for live DJ club performances, concert stadium LED walls, and multi-camera livestreaming broadcasts.
+                    </p>
+                    <p style="font-size:10px; color:rgba(255,255,255,0.7); margin:0;">
+                        Engineered with instant audio reactive DSP, Denon StageLinQ live metadata synchronisation, Philips Hue smart room entertainment lighting, custom 3D DJ and Station logo layers, and zero-latency OBS Studio broadcast pipelines.
+                    </p>
+                </div>
+
+                <!-- Build Information & Date/Time (DTTM) Card -->
+                <div class="hud-section" style="background:rgba(0,0,0,0.35); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800;">BUILD & SYSTEM METADATA</div>
+                    <div class="hud-row" style="margin-bottom:4px;">
+                        <span class="hud-label">RELEASE VERSION</span>
+                        <span class="hud-val" id="about-build-ver" style="color:#00ffcc; font-weight:700; font-family:'JetBrains Mono',monospace;">v2.8.5</span>
+                    </div>
+                    <div class="hud-row" style="margin-bottom:4px;">
+                        <span class="hud-label">BUILD NUMBER</span>
+                        <span class="hud-val" id="about-build-num" style="color:rgba(255,255,255,0.9); font-family:'JetBrains Mono',monospace;">20260928.1450.00</span>
+                    </div>
+                    <div class="hud-row" style="margin-bottom:4px;">
+                        <span class="hud-label">BUILD DATE & TIME (DTTM)</span>
+                        <span class="hud-val" id="about-build-dttm" style="color:#ffcc00; font-weight:600; font-family:'JetBrains Mono',monospace;">2026-09-28 14:50 BST</span>
+                    </div>
+                    <div class="hud-row" style="margin-bottom:0;">
+                        <span class="hud-label">GRAPHICS PIPELINE</span>
+                        <span class="hud-val" style="color:rgba(255,255,255,0.7); font-family:'JetBrains Mono',monospace; font-size:9px;">Three.js WebGL • 60 FPS</span>
+                    </div>
+                </div>
+
+                <!-- Copyright & Contact Information -->
+                <div class="hud-section" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800;">COPYRIGHT & CONTACT</div>
+                    <div style="font-size:10.5px; color:rgba(255,255,255,0.9); margin-bottom:8px; font-weight:500;">
+                        © 2026 JK McLaren. All rights reserved.
+                    </div>
+                    <div class="hud-row" style="align-items:center; margin-bottom:6px;">
+                        <span class="hud-label">CONTACT EMAIL</span>
+                        <a href="mailto:info@jkmcalren.com" style="color:#00ffcc; text-decoration:none; font-family:'JetBrains Mono',monospace; font-size:10px; font-weight:600; background:rgba(0,255,204,0.1); border:1px solid rgba(0,255,204,0.3); padding:3px 8px; border-radius:4px; transition:all 0.2s ease;">
+                            ✉️ info@jkmcalren.com
+                        </a>
+                    </div>
+                    <button class="btn-mini" id="btn-copy-about-email" style="width:100%; font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.35); color:#00ffcc; cursor:pointer;" title="Copy email address to clipboard">
+                        📋 Copy Email Address
+                    </button>
+                </div>
+            </div>
+
             <!-- Bottom Shortcuts Help Footer -->
             <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid rgba(255,255,255,0.08); font-size: 8.5px; color: rgba(255,255,255,0.4); display: flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:4px;">
-                <span>[Alt+1..5] Tabs</span>
+                <span>[Alt+1..7] Tabs</span>
                 <span>[A] Auto VJ</span>
-                <span>[L] Logo</span>
-                <span>[C] Stage</span>
-                <span>[Space] Flash</span>
-                <span id="footer-build-version" style="color:#00ffcc; font-family:'JetBrains Mono',monospace; font-weight:700;" title="Build #20260927.1100.00 • 2026-09-27 11:00 BST">v2.8.0</span>
+                <span>[L] DJ Logo</span>
+                <span>[S] Station Logo</span>
+                <span>[C] 2nd Screen</span>
+                <span>[Space] Strobe</span>
             </div>
         </div>
     </div>

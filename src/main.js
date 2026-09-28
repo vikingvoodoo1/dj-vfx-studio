@@ -2,21 +2,24 @@ import { setupAudio } from './audio.js';
 import { createVFXScene } from './effects.js';
 import { setupStageLinqClient } from './stagelinq.js';
 
-// DJ-VFX Engine Build Metadata
-const BUILD_VERSION = 'v2.8.0';
-const BUILD_NUMBER = '20260927.1100.00';
-const BUILD_TIME = '2026-09-27 11:00 BST';
+// DJ VFX Studio Build Metadata
+const BUILD_VERSION = 'v2.8.5';
+const BUILD_NUMBER = '20260928.1450.00';
+const BUILD_TIME = '2026-09-28 14:50 BST';
 console.log(
-    `%c⚡ DJ-VFX ENGINE %c ${BUILD_VERSION} (Build #${BUILD_NUMBER}) %c- ONLINE [${BUILD_TIME}]`,
+    `%c⚡ DJ VFX STUDIO %c ${BUILD_VERSION} (Build #${BUILD_NUMBER}) %c- ONLINE [${BUILD_TIME}]`,
     'background:#ff007f; color:#fff; font-weight:bold; padding:4px 8px; border-radius:3px 0 0 3px;',
     'background:#00ffff; color:#020208; font-weight:bold; padding:4px 8px;',
     'background:#12121e; color:#00ffcc; font-weight:bold; padding:4px 8px; border-radius:0 3px 3px 0;'
 );
 window.__DJ_VFX_BUILD__ = {
+    appName: 'DJ VFX Studio',
     version: BUILD_VERSION,
     buildNumber: BUILD_NUMBER,
     buildTime: BUILD_TIME,
-    timestamp: '2026-09-27T11:00:00+01:00'
+    timestamp: '2026-09-28T14:50:00+01:00',
+    copyright: '© 2026 JK McLaren',
+    email: 'info@jkmcalren.com'
 };
 
 async function init() {
@@ -31,10 +34,34 @@ async function init() {
     const trackTitle = document.getElementById('track-title');
     const trackArtist = document.getElementById('track-artist');
 
-    const hudBuildInfo = document.getElementById('hud-build-info');
-    const footerBuildVersion = document.getElementById('footer-build-version');
-    if (hudBuildInfo) hudBuildInfo.textContent = `${BUILD_VERSION} • ${BUILD_TIME}`;
-    if (footerBuildVersion) footerBuildVersion.textContent = BUILD_VERSION;
+    // About Panel Build & Email Info
+    const aboutBuildVer = document.getElementById('about-build-ver');
+    const aboutBuildNum = document.getElementById('about-build-num');
+    const aboutBuildDttm = document.getElementById('about-build-dttm');
+    const aboutBadgeVersion = document.getElementById('about-badge-version');
+    const btnCopyAboutEmail = document.getElementById('btn-copy-about-email');
+
+    if (aboutBuildVer) aboutBuildVer.textContent = BUILD_VERSION;
+    if (aboutBuildNum) aboutBuildNum.textContent = BUILD_NUMBER;
+    if (aboutBuildDttm) aboutBuildDttm.textContent = BUILD_TIME;
+    if (aboutBadgeVersion) aboutBadgeVersion.textContent = BUILD_VERSION;
+
+    if (btnCopyAboutEmail) {
+        btnCopyAboutEmail.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText('info@jkmcalren.com');
+                const origText = btnCopyAboutEmail.innerHTML;
+                btnCopyAboutEmail.innerHTML = '✓ Copied: info@jkmcalren.com';
+                btnCopyAboutEmail.style.background = 'rgba(0,255,204,0.3)';
+                setTimeout(() => {
+                    btnCopyAboutEmail.innerHTML = origText;
+                    btnCopyAboutEmail.style.background = '';
+                }, 2000);
+            } catch (err) {
+                showToast('Email: info@jkmcalren.com');
+            }
+        });
+    }
 
     const eqBass = document.getElementById('eq-bass');
     const eqMid = document.getElementById('eq-mid');
@@ -318,7 +345,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'hue', 'obs'];
+    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'hue', 'obs', 'about'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -2459,7 +2486,7 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..6] / [Alt + A] for IDE Console Activity Bar Navigation
+        // [Alt + 1..7] / [Alt + A] for IDE Console Activity Bar Navigation
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
@@ -2467,6 +2494,7 @@ async function init() {
             if (e.key === '4') { e.preventDefault(); switchTab('logo'); return; }
             if (e.key === '5') { e.preventDefault(); switchTab('hue'); return; }
             if (e.key === '6') { e.preventDefault(); switchTab('obs'); return; }
+            if (e.key === '7') { e.preventDefault(); switchTab('about'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
