@@ -509,15 +509,15 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
-        /* Broadcast & Station Logo Cards Grid */
-        .station-card-grid {
+        /* Broadcast & Station Logo / DJ Media Cards Grid */
+        .station-card-grid, .media-card-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
             gap: 6px;
             margin-bottom: 8px;
         }
 
-        .station-card {
+        .station-card, .dj-card {
             background: rgba(255, 255, 255, 0.04);
             border: 1px solid rgba(255, 255, 255, 0.12);
             border-radius: 8px;
@@ -528,39 +528,40 @@
             cursor: pointer;
             transition: all 0.15s ease;
             user-select: none;
+            position: relative;
         }
 
-        .station-card:hover {
+        .station-card:hover, .dj-card:hover {
             background: rgba(255, 255, 255, 0.08);
             border-color: rgba(0, 255, 204, 0.4);
             transform: translateY(-1px);
         }
 
-        .station-card.active {
+        .station-card.active, .dj-card.active {
             background: rgba(0, 255, 204, 0.16);
             border-color: #00ffcc;
             box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);
         }
 
-        .station-card-thumb {
-            width: 32px;
-            height: 32px;
+        .station-card-thumb, .dj-card-thumb {
+            width: 34px;
+            height: 34px;
             object-fit: contain;
             border-radius: 4px;
-            background: rgba(0, 0, 0, 0.45);
+            background: rgba(0, 0, 0, 0.55);
             padding: 2px;
             border: 1px solid rgba(255, 255, 255, 0.1);
             flex-shrink: 0;
         }
 
-        .station-card-info {
+        .station-card-info, .dj-card-info {
             display: flex;
             flex-direction: column;
             overflow: hidden;
             flex: 1;
         }
 
-        .station-card-title {
+        .station-card-title, .dj-card-title {
             font-size: 10px;
             font-weight: 700;
             color: #ffffff;
@@ -569,14 +570,225 @@
             text-overflow: ellipsis;
         }
 
-        .station-card-sub {
+        .station-card-sub, .dj-card-sub {
             font-size: 8px;
             color: rgba(255, 255, 255, 0.5);
             white-space: nowrap;
         }
 
-        .station-card.active .station-card-title {
+        .station-card.active .station-card-title, .dj-card.active .dj-card-title {
             color: #00ffcc;
+        }
+
+        .card-delete-btn {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: rgba(255, 0, 85, 0.2);
+            border: 1px solid rgba(255, 0, 85, 0.4);
+            color: #ff3366;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            margin-left: 2px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .card-delete-btn:hover {
+            background: #ff0055;
+            color: #ffffff;
+            transform: scale(1.15);
+        }
+
+        /* Master Power Switches Deck (Physical Rocker Switch Look) */
+        .logos-power-deck {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 6px;
+            margin-bottom: 10px;
+        }
+
+        .logo-power-btn {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+            padding: 7px 8px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+
+        .logo-power-btn:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .logo-power-btn .power-btn-label {
+            font-size: 7.5px;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.45);
+        }
+
+        .logo-power-btn .power-btn-status {
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .logo-power-btn .power-led {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            display: inline-block;
+            transition: all 0.15s ease;
+        }
+
+        .logo-power-btn.active {
+            background: linear-gradient(180deg, rgba(0, 255, 204, 0.22) 0%, rgba(0, 200, 180, 0.1) 100%);
+            border-color: #00ffcc;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.25);
+        }
+
+        .logo-power-btn.active .power-btn-label {
+            color: #00ffcc;
+        }
+
+        .logo-power-btn.active .power-led {
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88, 0 0 14px #00ff88;
+        }
+
+        /* Segmented Navigation Tab Switcher */
+        .logos-nav-bar {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4px;
+            background: rgba(18, 18, 32, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
+            padding: 3px;
+            margin-bottom: 12px;
+        }
+
+        .logos-nav-tab {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            padding: 8px 10px;
+            border-radius: 7px;
+            background: transparent;
+            border: 1px solid transparent;
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.18s ease;
+            user-select: none;
+        }
+
+        .logos-nav-tab:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .logos-nav-tab.active {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.25) 0%, rgba(0, 180, 255, 0.25) 100%);
+            border-color: rgba(0, 255, 204, 0.5);
+            color: #00ffff;
+            font-weight: 800;
+            box-shadow: 0 2px 10px rgba(0, 255, 204, 0.2);
+        }
+
+        /* Live Selected Media Preview Frame */
+        .media-preview-card {
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 204, 0.25);
+            border-radius: 8px;
+            padding: 6px 8px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .media-preview-thumb-box {
+            width: 58px;
+            height: 46px;
+            border-radius: 6px;
+            background: #05050e;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .media-preview-thumb-box video,
+        .media-preview-thumb-box img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .media-preview-meta {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            overflow: hidden;
+        }
+
+        .media-preview-name {
+            font-size: 11px;
+            font-weight: 800;
+            color: #00ffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .media-preview-badges {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-wrap: wrap;
+        }
+
+        .media-badge-tag {
+            font-size: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            padding: 1px 5px;
+            border-radius: 4px;
+            background: rgba(0, 255, 204, 0.15);
+            color: #00ffcc;
+            border: 1px solid rgba(0, 255, 204, 0.3);
         }
 
         /* Categorized Bottom FX Bank Selector Toolbar */
@@ -1698,69 +1910,101 @@
                     </div>
                 </div>
 
-                <!-- Top Master Quick Active Toggle Buttons (Instant 1-Click Select/Deselect for Both Logos) -->
-                <div style="display:grid; grid-template-columns: 1fr 1fr; gap:6px; margin-bottom:10px;">
-                    <button class="btn-mini" id="btn-toggle-dj-logo-top" style="padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; cursor:pointer;" title="Turn DJ Logo Layer ON/OFF [L]">
-                        🟢 DJ LOGO: ON
+                <!-- Master Stage Power Rocker Switches (Physical Power Switch Aesthetic) -->
+                <div class="logos-power-deck">
+                    <button class="logo-power-btn active" id="btn-toggle-dj-logo-top" title="Turn DJ Logo Layer ON/OFF [L]">
+                        <span class="power-btn-label">DJ LOGO LAYER [L]</span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="dj-power-status-text">ACTIVE ON</span></span>
                     </button>
-                    <button class="btn-mini" id="btn-toggle-station-logo-top" style="padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;" title="Turn Station Logo Layer ON/OFF [S]">
-                        ⚪ STATION LOGO: OFF
+                    <button class="logo-power-btn" id="btn-toggle-station-logo-top" title="Turn Station Logo Layer ON/OFF [S]">
+                        <span class="power-btn-label">STATION LOGO LAYER [S]</span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="station-power-status-text">OFF</span></span>
                     </button>
                 </div>
 
-                <!-- Sub-Tabs Switcher to Edit Either DJ Logo or Station Logo -->
-                <div class="mode-pills" id="logos-subtabs" style="margin-bottom:12px; display:grid; grid-template-columns: 1fr 1fr; gap:4px;">
-                    <button class="mode-pill active" id="subtab-btn-dj" data-subtab="dj" style="padding:7px 10px; font-size:11px; font-weight:700;">🎧 DJ Logo</button>
-                    <button class="mode-pill" id="subtab-btn-station" data-subtab="station" style="padding:7px 10px; font-size:11px; font-weight:700;">📡 Station Logo</button>
+                <!-- Segmented Sub-Tab Switcher (Distinct Navigation Tabs) -->
+                <div class="logos-nav-bar" id="logos-subtabs">
+                    <button class="logos-nav-tab active" id="subtab-btn-dj" data-subtab="dj">
+                        <span>🎧 DJ LOGO EDITOR</span>
+                    </button>
+                    <button class="logos-nav-tab" id="subtab-btn-station" data-subtab="station">
+                        <span>📡 STATION LOGO EDITOR</span>
+                    </button>
                 </div>
 
-                <!-- SUB-SECTION 1: DJ LOGO CONTROLS -->
+                <!-- ========================================== -->
+                <!-- SUB-SECTION 1: DJ LOGO CONTROLS            -->
+                <!-- ========================================== -->
                 <div id="subtab-content-dj" class="subtab-content active">
-                    <div class="hud-row" style="margin-top:2px;">
-                        <span class="hud-label">DJ MEDIA SOURCE</span>
-                        <span class="hud-val" id="logo-filename" style="font-size:10px; color:#00ffff;">jkmclaren_shock.mp4</span>
+                    <!-- Live Selected DJ Media Preview Monitor -->
+                    <div class="media-preview-card">
+                        <div class="media-preview-thumb-box">
+                            <video id="dj-media-preview-video" src="/images/logo/jkmclaren_shock.mp4" autoplay loop muted playsinline></video>
+                            <img id="dj-media-preview-img" style="display:none;" alt="DJ Media Preview">
+                        </div>
+                        <div class="media-preview-meta">
+                            <span class="media-preview-name" id="dj-media-preview-title">jkmclaren_shock.mp4</span>
+                            <div class="media-preview-badges">
+                                <span class="media-badge-tag" id="dj-media-preview-type">🎬 MP4 VIDEO</span>
+                                <span class="media-badge-tag" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:rgba(0,255,136,0.3);">● LIVE IN 3D</span>
+                            </div>
+                        </div>
+                        <button class="btn-mini" id="btn-reset-shock" style="font-size:9px; padding:3px 6px;" title="Reset to Default JK McLaren Shock MP4">↺ Shock</button>
                     </div>
 
-                    <div class="mode-pills" id="logo-vis-pills" style="margin-top:4px; margin-bottom:6px;">
-                        <div class="mode-pill active" data-vis="on" title="Turn DJ Logo Layer ON">DJ LOGO ON</div>
-                        <div class="mode-pill" data-vis="off" title="Turn DJ Logo Layer OFF">DJ LOGO OFF</div>
+                    <!-- DJ Media Library Selector Grid -->
+                    <div class="hud-row" style="margin-bottom:4px; align-items:center;">
+                        <span class="hud-label">SELECT DJ LOGO / MEDIA</span>
+                        <button class="btn-mini" id="btn-upload-dj-logo" style="font-size:9.5px; font-weight:700; padding:3px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload custom DJ logo or video (PNG, JPG, SVG, MP4, WebM)">📁 + ADD DJ MEDIA</button>
+                        <input type="file" id="file-dj-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
                     </div>
 
-                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DJ DISPLAY LAYER MODE:</div>
-                    <div class="mode-pills" style="margin-bottom:6px;">
-                        <div class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</div>
-                        <div class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</div>
-                        <div class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</div>
+                    <div class="media-card-grid" id="dj-logos-container">
+                        <!-- Default Shock Video -->
+                        <div class="dj-card active" data-dj-url="/images/logo/jkmclaren_shock.mp4" data-dj-title="JK McLaren Shock" data-dj-type="video">
+                            <video class="dj-card-thumb" src="/images/logo/jkmclaren_shock.mp4" autoplay loop muted playsinline></video>
+                            <div class="dj-card-info">
+                                <span class="dj-card-title">JK McLaren Shock</span>
+                                <span class="dj-card-sub">Default Video</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DJ DISPLAY LAYER MODE:</div>
+                    <div class="mode-pills" id="dj-mode-pills" style="margin-bottom:6px;">
+                        <button class="mode-pill active" data-mode="hologram" title="Floating in front of 3D visualizer">3D Front</button>
+                        <button class="mode-pill" data-mode="backdrop" title="Rear concert video backdrop">Backdrop</button>
+                        <button class="mode-pill" data-mode="overlay" title="Foreground HUD watermark">Watermark</button>
                     </div>
 
                     <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DJ BLEND & CUTOUT:</div>
-                    <div class="mode-pills" style="margin-bottom:6px;">
-                        <div class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</div>
-                        <div class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</div>
-                        <div class="mode-pill" data-blend="2" title="Direct solid render">Direct</div>
+                    <div class="mode-pills" id="dj-blend-pills" style="margin-bottom:6px;">
+                        <button class="mode-pill active" data-blend="0" title="Knocks out black background with razor-sharp solid colors">Crisp Cutout</button>
+                        <button class="mode-pill" data-blend="1" title="Additive neon glow hologram">Holo Glow</button>
+                        <button class="mode-pill" data-blend="2" title="Direct solid render">Direct</button>
                     </div>
 
                     <!-- 9-Way Directional Positioning D-Pad -->
                     <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DJ DIRECTIONAL POSITION:</div>
                     <div class="mode-pills" id="logo-pos-pills" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:3px; margin-bottom:6px;">
-                        <div class="mode-pill" data-pos="top-left" title="Top Left">↖ TOP-L</div>
-                        <div class="mode-pill" data-pos="top" title="Top Center">⬆ TOP</div>
-                        <div class="mode-pill" data-pos="top-right" title="Top Right">↗ TOP-R</div>
-                        <div class="mode-pill" data-pos="left" title="Left Center">⬅ LEFT</div>
-                        <div class="mode-pill active" data-pos="center" title="Screen Center">⏺ CENTER</div>
-                        <div class="mode-pill" data-pos="right" title="Right Center">➡ RIGHT</div>
-                        <div class="mode-pill" data-pos="bottom-left" title="Bottom Left">↙ BOT-L</div>
-                        <div class="mode-pill" data-pos="bottom" title="Bottom Center">⬇ BOTTOM</div>
-                        <div class="mode-pill" data-pos="bottom-right" title="Bottom Right">↘ BOT-R</div>
+                        <button class="mode-pill" data-pos="top-left" title="Top Left">↖ TOP-L</button>
+                        <button class="mode-pill" data-pos="top" title="Top Center">⬆ TOP</button>
+                        <button class="mode-pill" data-pos="top-right" title="Top Right">↗ TOP-R</button>
+                        <button class="mode-pill" data-pos="left" title="Left Center">⬅ LEFT</button>
+                        <button class="mode-pill active" data-pos="center" title="Screen Center">⏺ CENTER</button>
+                        <button class="mode-pill" data-pos="right" title="Right Center">➡ RIGHT</button>
+                        <button class="mode-pill" data-pos="bottom-left" title="Bottom Left">↙ BOT-L</button>
+                        <button class="mode-pill" data-pos="bottom" title="Bottom Center">⬇ BOTTOM</button>
+                        <button class="mode-pill" data-pos="bottom-right" title="Bottom Right">↘ BOT-R</button>
                     </div>
 
                     <!-- Logo Spin & Free Roam Mode Selector -->
                     <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DJ SPIN / MOTION MODE:</div>
                     <div class="mode-pills" id="logo-spin-pills" style="margin-top:2px; margin-bottom:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:3px;">
-                        <div class="mode-pill active" data-spin="off" title="Static facing camera">STATIC</div>
-                        <div class="mode-pill" data-spin="center" title="Pure horizontal spin on local center point">CENTER SPIN</div>
-                        <div class="mode-pill" data-spin="orbit" title="3D perspective depth offset orbit">3D ORBIT</div>
-                        <div class="mode-pill" data-spin="freeroam" title="Drift and rotate freely across the entire screen">FREE ROAM</div>
+                        <button class="mode-pill active" data-spin="off" title="Static facing camera">STATIC</button>
+                        <button class="mode-pill" data-spin="center" title="Pure horizontal spin on local center point">CENTER SPIN</button>
+                        <button class="mode-pill" data-spin="orbit" title="3D perspective depth offset orbit">3D ORBIT</button>
+                        <button class="mode-pill" data-spin="freeroam" title="Drift and rotate freely across the entire screen">FREE ROAM</button>
                     </div>
 
                     <div class="slider-row" id="row-logo-spin-speed">
@@ -1809,32 +2053,37 @@
                             <input type="checkbox" id="check-logo-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
                         </label>
                     </div>
-
-                    <div style="display:flex; gap:6px; margin-top:8px;">
-                        <button class="btn-mini" id="btn-load-custom" style="flex:1;">📁 Load Custom DJ Media</button>
-                        <button class="btn-mini" id="btn-reset-shock" title="Reset to JK McLaren Shock MP4">↺ Shock</button>
-                        <input type="file" id="file-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
-                    </div>
                 </div>
 
-                <!-- SUB-SECTION 2: STATION LOGO CONTROLS -->
+                <!-- ========================================== -->
+                <!-- SUB-SECTION 2: STATION LOGO CONTROLS       -->
+                <!-- ========================================== -->
                 <div id="subtab-content-station" class="subtab-content" style="display:none;">
-                    <!-- Master Toggle & Quick Actions -->
-                    <div style="display:flex; gap:6px; margin-bottom:8px;">
-                        <button class="btn-mini" id="btn-toggle-station-logo" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ STATION LOGO: OFF</button>
-                        <button class="btn-mini" id="btn-upload-station-logo" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload your own station logo (PNG, JPG, SVG, MP4)">📁 + ADD LOGO</button>
-                        <input type="file" id="file-station-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
+                    <!-- Active Station Logo Preview Monitor -->
+                    <div class="media-preview-card">
+                        <div class="media-preview-thumb-box">
+                            <img id="station-media-preview-img" src="/images/station_logos/4TM Primary Logo.png" alt="Station Logo Preview">
+                            <video id="station-media-preview-video" style="display:none;" autoplay loop muted playsinline></video>
+                        </div>
+                        <div class="media-preview-meta">
+                            <span class="media-preview-name" id="station-logo-active-name">4TM Radio</span>
+                            <div class="media-preview-badges">
+                                <span class="media-badge-tag" id="station-media-preview-type">🖼️ PNG LOGO</span>
+                                <span class="media-badge-tag" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:rgba(0,255,136,0.3);">● WATERMARK</span>
+                            </div>
+                        </div>
                     </div>
 
                     <!-- Station Logo Selector Grid -->
-                    <div class="hud-row" style="margin-bottom:4px;">
+                    <div class="hud-row" style="margin-bottom:4px; align-items:center;">
                         <span class="hud-label">SELECT STATION LOGO</span>
-                        <span class="hud-val" id="station-logo-active-name" style="font-size:9px; color:#00ffcc;">None Selected</span>
+                        <button class="btn-mini" id="btn-upload-station-logo" style="font-size:9.5px; font-weight:700; padding:3px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload your own station logo (PNG, JPG, SVG, MP4, WebM)">📁 + ADD LOGO</button>
+                        <input type="file" id="file-station-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
                     </div>
 
                     <div class="station-card-grid" id="station-logos-container">
                         <!-- 4TM Radio -->
-                        <div class="station-card" data-station-url="/images/station_logos/4TM Primary Logo.png" data-station-title="4TM Radio" data-station-type="img">
+                        <div class="station-card active" data-station-url="/images/station_logos/4TM Primary Logo.png" data-station-title="4TM Radio" data-station-type="img">
                             <img class="station-card-thumb" src="/images/station_logos/4TM Primary Logo.png" alt="4TM Radio">
                             <div class="station-card-info">
                                 <span class="station-card-title">4TM Radio</span>

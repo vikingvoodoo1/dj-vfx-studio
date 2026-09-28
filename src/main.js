@@ -114,13 +114,93 @@ async function init() {
     const sensVal = document.getElementById('sens-val');
     const bloomVal = document.getElementById('bloom-val');
 
-    // Logo Layer Controls
+    // =========================================================================
+    // IndexedDB Media Storage Manager (Persistent Storage for Uploaded Media)
+    // =========================================================================
+    const MediaDB = {
+        dbName: 'DJ_VFX_MEDIA_DB_V1',
+        dbVersion: 1,
+        _db: null,
+
+        async open() {
+            if (this._db) return this._db;
+            return new Promise((resolve, reject) => {
+                const req = indexedDB.open(this.dbName, this.dbVersion);
+                req.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    if (!db.objectStoreNames.contains('dj_logos')) {
+                        db.createObjectStore('dj_logos', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('station_logos')) {
+                        db.createObjectStore('station_logos', { keyPath: 'id' });
+                    }
+                };
+                req.onsuccess = () => {
+                    this._db = req.result;
+                    resolve(this._db);
+                };
+                req.onerror = () => reject(req.error);
+            });
+        },
+
+        async save(storeName, item) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.put(item);
+                req.onsuccess = () => resolve(req.result);
+                req.onerror = () => reject(req.error);
+            });
+        },
+
+        async getAll(storeName) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readonly');
+                const store = tx.objectStore(storeName);
+                const req = store.getAll();
+                req.onsuccess = () => resolve(req.result || []);
+                req.onerror = () => reject(req.error);
+            });
+        },
+
+        async delete(storeName, id) {
+            const db = await this.open();
+            return new Promise((resolve, reject) => {
+                const tx = db.transaction(storeName, 'readwrite');
+                const store = tx.objectStore(storeName);
+                const req = store.delete(id);
+                req.onsuccess = () => resolve(true);
+                req.onerror = () => reject(req.error);
+            });
+        }
+    };
+
+    // Master Power Switches & Sub-Tabs DOM References
     const btnResetAll = document.getElementById('btn-reset-all');
     const logoBadge = document.getElementById('logo-badge');
-    const logoFilename = document.getElementById('logo-filename');
-    const visPills = document.querySelectorAll('#logo-vis-pills .mode-pill[data-vis]');
-    const modePills = document.querySelectorAll('.mode-pill[data-mode]');
-    const blendPills = document.querySelectorAll('.mode-pill[data-blend]');
+    const stationLogoBadge = document.getElementById('station-logo-badge');
+    const btnToggleDjLogoTop = document.getElementById('btn-toggle-dj-logo-top');
+    const btnToggleStationLogoTop = document.getElementById('btn-toggle-station-logo-top');
+    const djPowerStatusText = document.getElementById('dj-power-status-text');
+    const stationPowerStatusText = document.getElementById('station-power-status-text');
+    const subtabBtnDj = document.getElementById('subtab-btn-dj');
+    const subtabBtnStation = document.getElementById('subtab-btn-station');
+    const subtabContentDj = document.getElementById('subtab-content-dj');
+    const subtabContentStation = document.getElementById('subtab-content-station');
+
+    // DJ Logo Layer DOM References & State
+    const djMediaPreviewVideo = document.getElementById('dj-media-preview-video');
+    const djMediaPreviewImg = document.getElementById('dj-media-preview-img');
+    const djMediaPreviewTitle = document.getElementById('dj-media-preview-title');
+    const djMediaPreviewType = document.getElementById('dj-media-preview-type');
+    const btnResetShock = document.getElementById('btn-reset-shock');
+    const btnUploadDjLogo = document.getElementById('btn-upload-dj-logo');
+    const fileDjLogo = document.getElementById('file-dj-logo');
+    const djLogosContainer = document.getElementById('dj-logos-container');
+    const djModePills = document.querySelectorAll('#dj-mode-pills .mode-pill[data-mode]');
+    const djBlendPills = document.querySelectorAll('#dj-blend-pills .mode-pill[data-blend]');
     const posPills = document.querySelectorAll('#logo-pos-pills .mode-pill[data-pos]');
     const spinPills = document.querySelectorAll('#logo-spin-pills .mode-pill[data-spin]');
     const sliderLogoSpinSpeed = document.getElementById('slider-logo-spin-speed');
@@ -134,25 +214,19 @@ async function init() {
     const logoScaleVal = document.getElementById('logo-scale-val');
     const logoPulseVal = document.getElementById('logo-pulse-val');
     const checkLogoShield = document.getElementById('check-logo-shield');
-    const btnLoadCustom = document.getElementById('btn-load-custom');
-    const btnResetShock = document.getElementById('btn-reset-shock');
-    const fileLogo = document.getElementById('file-logo');
     const dropZone = document.getElementById('drop-zone');
 
-    // Logos Sub-Tab & Top Toggle DOM References
-    const subtabBtnDj = document.getElementById('subtab-btn-dj');
-    const subtabBtnStation = document.getElementById('subtab-btn-station');
-    const subtabContentDj = document.getElementById('subtab-content-dj');
-    const subtabContentStation = document.getElementById('subtab-content-station');
-    const btnToggleDjLogoTop = document.getElementById('btn-toggle-dj-logo-top');
-    const btnToggleStationLogoTop = document.getElementById('btn-toggle-station-logo-top');
+    let currentDjLogoUrl = '/images/logo/jkmclaren_shock.mp4';
+    let currentDjLogoTitle = 'JK McLaren Shock';
+    let isCurrentDjVideo = true;
 
     // Station Logo Layer DOM References & State
-    const stationLogoBadge = document.getElementById('station-logo-badge');
-    const btnToggleStationLogo = document.getElementById('btn-toggle-station-logo');
+    const stationMediaPreviewImg = document.getElementById('station-media-preview-img');
+    const stationMediaPreviewVideo = document.getElementById('station-media-preview-video');
+    const stationLogoActiveName = document.getElementById('station-logo-active-name');
+    const stationMediaPreviewType = document.getElementById('station-media-preview-type');
     const btnUploadStationLogo = document.getElementById('btn-upload-station-logo');
     const fileStationLogo = document.getElementById('file-station-logo');
-    const stationLogoActiveName = document.getElementById('station-logo-active-name');
     const stationLogosContainer = document.getElementById('station-logos-container');
     const stationPosPills = document.querySelectorAll('#station-pos-pills .mode-pill[data-st-pos]');
     const stationModePills = document.querySelectorAll('#station-mode-pills .mode-pill[data-st-mode]');
@@ -746,11 +820,13 @@ async function init() {
             vfx.triggerManualFlash();
         } else if (msg.type === 'set_logo_vis') {
             updateLogoVisibility(msg.vis === 'on' || msg.vis === true, false);
+        } else if (msg.type === 'set_dj_logo_url') {
+            selectDjLogo(msg.url, msg.title, msg.isVideo, false);
         } else if (msg.type === 'set_logo_mode') {
-            modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === msg.mode));
+            djModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === msg.mode));
             vfx.setLogoMode(msg.mode);
         } else if (msg.type === 'set_logo_blend') {
-            blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === String(msg.blend)));
+            djBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === String(msg.blend)));
             vfx.setLogoBlendMode(msg.blend);
         } else if (msg.type === 'set_logo_pos') {
             posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === msg.pos));
@@ -865,6 +941,7 @@ async function init() {
                 broadcastSync({ type: 'set_fx', fx: vfx.getCurrentFX() });
                 broadcastSync({ type: 'set_bpm', bpm: bpmVal ? parseFloat(bpmVal.textContent) || 126 : 126 });
                 broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
+                broadcastSync({ type: 'set_dj_logo_url', url: currentDjLogoUrl, title: currentDjLogoTitle, isVideo: isCurrentDjVideo });
                 const activeSpin = document.querySelector('#logo-spin-pills .mode-pill.active')?.getAttribute('data-spin') || 'off';
                 broadcastSync({ type: 'set_logo_spin', spin: activeSpin });
                 const spinSpeed = sliderLogoSpinSpeed ? parseFloat(sliderLogoSpinSpeed.value) || 1.0 : 1.0;
@@ -1014,7 +1091,9 @@ async function init() {
         }
     });
 
+    // =========================================================================
     // 3. DJ Logo & Station Logo Branding Layer Controls
+    // =========================================================================
     function updateLogoVisibility(active, broadcast = true) {
         isLogoActive = !!active;
         vfx.setLogoVisible(isLogoActive);
@@ -1024,15 +1103,9 @@ async function init() {
             logoBadge.style.borderColor = isLogoActive ? 'rgba(0,255,204,0.3)' : 'rgba(255,255,255,0.1)';
         }
         if (btnToggleDjLogoTop) {
-            btnToggleDjLogoTop.textContent = isLogoActive ? '🟢 DJ LOGO: ON' : '⚪ DJ LOGO: OFF';
-            btnToggleDjLogoTop.style.color = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
-            btnToggleDjLogoTop.style.borderColor = isLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
-            btnToggleDjLogoTop.style.background = isLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
+            btnToggleDjLogoTop.classList.toggle('active', isLogoActive);
+            if (djPowerStatusText) djPowerStatusText.textContent = isLogoActive ? 'ACTIVE ON' : 'OFF';
         }
-        visPills.forEach(p => {
-            const vis = p.getAttribute('data-vis');
-            p.classList.toggle('active', (vis === 'on' && isLogoActive) || (vis === 'off' && !isLogoActive));
-        });
         const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
         if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
         if (broadcast) {
@@ -1064,27 +1137,192 @@ async function init() {
     if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
     if (subtabBtnStation) subtabBtnStation.addEventListener('click', () => switchLogosSubtab('station'));
 
-    visPills.forEach((pill) => {
-        pill.addEventListener('click', () => {
-            const vis = pill.getAttribute('data-vis');
-            updateLogoVisibility(vis === 'on');
-        });
-    });
+    // DJ Media Selector & Live Preview Monitor
+    function selectDjLogo(url, title, isVideo = true, broadcast = true) {
+        currentDjLogoUrl = url;
+        currentDjLogoTitle = title || 'DJ Logo';
+        isCurrentDjVideo = !!isVideo;
 
-    modePills.forEach((pill) => {
+        vfx.loadLogoMedia(url, isVideo);
+
+        // Update Live Preview Monitor
+        if (djMediaPreviewTitle) djMediaPreviewTitle.textContent = currentDjLogoTitle;
+        if (djMediaPreviewType) djMediaPreviewType.textContent = isVideo ? '🎬 MP4 VIDEO' : '🖼️ PNG / JPG';
+
+        if (isVideo) {
+            if (djMediaPreviewImg) djMediaPreviewImg.style.display = 'none';
+            if (djMediaPreviewVideo) {
+                djMediaPreviewVideo.style.display = 'block';
+                djMediaPreviewVideo.src = url;
+                djMediaPreviewVideo.play().catch(() => {});
+            }
+        } else {
+            if (djMediaPreviewVideo) {
+                djMediaPreviewVideo.style.display = 'none';
+                djMediaPreviewVideo.pause();
+            }
+            if (djMediaPreviewImg) {
+                djMediaPreviewImg.style.display = 'block';
+                djMediaPreviewImg.src = url;
+            }
+        }
+
+        // Highlight active card
+        const cards = document.querySelectorAll('#dj-logos-container .dj-card');
+        cards.forEach(card => {
+            const cardUrl = card.getAttribute('data-dj-url');
+            card.classList.toggle('active', cardUrl === url);
+        });
+
+        try {
+            localStorage.setItem('dj_vfx_active_dj_media', JSON.stringify({ url, title: currentDjLogoTitle, isVideo: isCurrentDjVideo }));
+        } catch (e) {}
+
+        if (broadcast) {
+            broadcastSync({
+                type: 'set_dj_logo_url',
+                url,
+                title: currentDjLogoTitle,
+                isVideo: isCurrentDjVideo
+            });
+        }
+    }
+
+    function wireDjCardClick(card) {
+        card.addEventListener('click', () => {
+            const url = card.getAttribute('data-dj-url');
+            const title = card.getAttribute('data-dj-title');
+            const isVideo = card.getAttribute('data-dj-type') === 'video';
+            selectDjLogo(url, title, isVideo, true);
+        });
+    }
+
+    function addDjLogoCard(url, title, isVideo = true, selectImmediately = true, id = null) {
+        if (!djLogosContainer) return;
+
+        const existing = djLogosContainer.querySelector(`.dj-card[data-dj-url="${CSS.escape(url)}"]`);
+        if (existing) {
+            if (selectImmediately) selectDjLogo(url, title, isVideo, true);
+            return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'dj-card';
+        card.setAttribute('data-dj-url', url);
+        card.setAttribute('data-dj-title', title);
+        card.setAttribute('data-dj-type', isVideo ? 'video' : 'img');
+        if (id) card.setAttribute('data-storage-id', id);
+
+        const thumb = document.createElement(isVideo ? 'video' : 'img');
+        thumb.className = 'dj-card-thumb';
+        thumb.src = url;
+        if (isVideo) {
+            thumb.muted = true;
+            thumb.playsInline = true;
+            thumb.autoplay = true;
+            thumb.loop = true;
+        }
+
+        const info = document.createElement('div');
+        info.className = 'dj-card-info';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'dj-card-title';
+        titleSpan.textContent = title;
+
+        const subSpan = document.createElement('span');
+        subSpan.className = 'dj-card-sub';
+        subSpan.textContent = isVideo ? 'Custom Video' : 'Custom Logo';
+
+        info.appendChild(titleSpan);
+        info.appendChild(subSpan);
+        card.appendChild(thumb);
+        card.appendChild(info);
+
+        if (id) {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'card-delete-btn';
+            delBtn.textContent = '✕';
+            delBtn.title = 'Delete saved media';
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await MediaDB.delete('dj_logos', id);
+                card.remove();
+                showToast(`🗑️ Removed ${title}`);
+                if (currentDjLogoUrl === url) {
+                    selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, true);
+                }
+            });
+            card.appendChild(delBtn);
+        }
+
+        djLogosContainer.appendChild(card);
+        wireDjCardClick(card);
+
+        if (selectImmediately) {
+            selectDjLogo(url, title, isVideo, true);
+        }
+    }
+
+    document.querySelectorAll('#dj-logos-container .dj-card').forEach(wireDjCardClick);
+
+    // DJ Upload Handling
+    if (btnUploadDjLogo && fileDjLogo) {
+        btnUploadDjLogo.addEventListener('click', () => fileDjLogo.click());
+        fileDjLogo.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+            const reader = new FileReader();
+
+            reader.onload = async (event) => {
+                const dataUrl = event.target.result;
+                const item = {
+                    id: 'dj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    title: cleanTitle,
+                    filename: file.name,
+                    type: file.type || (isVideo ? 'video/mp4' : 'image/png'),
+                    isVideo,
+                    dataUrl,
+                    timestamp: Date.now()
+                };
+                try {
+                    await MediaDB.save('dj_logos', item);
+                } catch (err) {
+                    console.warn('MediaDB save failed:', err);
+                }
+                addDjLogoCard(dataUrl, cleanTitle, isVideo, true, item.id);
+                showToast(`🎧 Stored & Loaded DJ Media: ${cleanTitle}`);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    if (btnResetShock) {
+        btnResetShock.addEventListener('click', () => {
+            selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, true);
+            showToast('↺ Restored JK McLaren Shock MP4');
+        });
+    }
+
+    // DJ Mode, Blend & Positioning Controls
+    djModePills.forEach((pill) => {
         pill.addEventListener('click', () => {
             const mode = pill.getAttribute('data-mode');
-            modePills.forEach(p => p.classList.remove('active'));
+            djModePills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoMode(mode);
             broadcastSync({ type: 'set_logo_mode', mode });
         });
     });
 
-    blendPills.forEach((pill) => {
+    djBlendPills.forEach((pill) => {
         pill.addEventListener('click', () => {
             const blend = pill.getAttribute('data-blend');
-            blendPills.forEach(p => p.classList.remove('active'));
+            djBlendPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoBlendMode(blend);
             broadcastSync({ type: 'set_logo_blend', blend });
@@ -1191,17 +1429,9 @@ async function init() {
             stationLogoBadge.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
             stationLogoBadge.style.borderColor = isStationLogoActive ? 'rgba(0,255,204,0.4)' : 'rgba(255,255,255,0.15)';
         }
-        if (btnToggleStationLogo) {
-            btnToggleStationLogo.textContent = isStationLogoActive ? '🟢 STATION LOGO: ON' : '⚪ STATION LOGO: OFF';
-            btnToggleStationLogo.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
-            btnToggleStationLogo.style.borderColor = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
-            btnToggleStationLogo.style.background = isStationLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
-        }
         if (btnToggleStationLogoTop) {
-            btnToggleStationLogoTop.textContent = isStationLogoActive ? '🟢 STATION LOGO: ON' : '⚪ STATION LOGO: OFF';
-            btnToggleStationLogoTop.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
-            btnToggleStationLogoTop.style.borderColor = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
-            btnToggleStationLogoTop.style.background = isStationLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
+            btnToggleStationLogoTop.classList.toggle('active', isStationLogoActive);
+            if (stationPowerStatusText) stationPowerStatusText.textContent = isStationLogoActive ? 'ACTIVE ON' : 'OFF';
         }
         const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
         if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
@@ -1210,11 +1440,6 @@ async function init() {
         }
     }
 
-    if (btnToggleStationLogo) {
-        btnToggleStationLogo.addEventListener('click', () => {
-            updateStationLogoVisibility(!isStationLogoActive, true);
-        });
-    }
     if (btnToggleStationLogoTop) {
         btnToggleStationLogoTop.addEventListener('click', () => {
             updateStationLogoVisibility(!isStationLogoActive, true);
@@ -1232,13 +1457,38 @@ async function init() {
         isCurrentStationVideo = !!isVideo;
 
         vfx.loadStationLogoMedia(url, isVideo);
+
+        // Update Live Preview Monitor
         if (stationLogoActiveName) stationLogoActiveName.textContent = currentStationLogoTitle;
+        if (stationMediaPreviewType) stationMediaPreviewType.textContent = isVideo ? '🎬 VIDEO' : '🖼️ PNG / JPG';
+
+        if (isVideo) {
+            if (stationMediaPreviewImg) stationMediaPreviewImg.style.display = 'none';
+            if (stationMediaPreviewVideo) {
+                stationMediaPreviewVideo.style.display = 'block';
+                stationMediaPreviewVideo.src = url;
+                stationMediaPreviewVideo.play().catch(() => {});
+            }
+        } else {
+            if (stationMediaPreviewVideo) {
+                stationMediaPreviewVideo.style.display = 'none';
+                stationMediaPreviewVideo.pause();
+            }
+            if (stationMediaPreviewImg) {
+                stationMediaPreviewImg.style.display = 'block';
+                stationMediaPreviewImg.src = url;
+            }
+        }
 
         const cards = document.querySelectorAll('.station-card');
         cards.forEach(card => {
             const cardUrl = card.getAttribute('data-station-url');
             card.classList.toggle('active', cardUrl === url);
         });
+
+        try {
+            localStorage.setItem('dj_vfx_active_station_logo', JSON.stringify({ url, title: currentStationLogoTitle, isVideo: isCurrentStationVideo }));
+        } catch (e) {}
 
         if (broadcast) {
             broadcastSync({
@@ -1364,28 +1614,49 @@ async function init() {
             const file = e.target.files[0];
             if (!file) return;
 
-            const isVideo = file.type.startsWith('video');
+            const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
             const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
             const reader = new FileReader();
 
-            reader.onload = (event) => {
-                const mediaUrl = event.target.result;
-                addStationLogoCard(mediaUrl, cleanTitle, isVideo, true);
-                showToast(`📻 Added Station Logo: ${cleanTitle}`);
+            reader.onload = async (event) => {
+                const dataUrl = event.target.result;
+                const item = {
+                    id: 'station_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    title: cleanTitle,
+                    filename: file.name,
+                    type: file.type || (isVideo ? 'video/mp4' : 'image/png'),
+                    isVideo,
+                    dataUrl,
+                    timestamp: Date.now()
+                };
+                try {
+                    await MediaDB.save('station_logos', item);
+                } catch (err) {
+                    console.warn('MediaDB save failed:', err);
+                }
+                addStationLogoCard(dataUrl, cleanTitle, isVideo, true, item.id);
+                showToast(`📻 Stored & Loaded Station Logo: ${cleanTitle}`);
             };
 
             reader.readAsDataURL(file);
         });
     }
 
-    function addStationLogoCard(url, title, isVideo = false, selectImmediately = true) {
+    function addStationLogoCard(url, title, isVideo = false, selectImmediately = true, id = null) {
         if (!stationLogosContainer) return;
+
+        const existing = stationLogosContainer.querySelector(`.station-card[data-station-url="${CSS.escape(url)}"]`);
+        if (existing) {
+            if (selectImmediately) selectStationLogo(url, title, isVideo, true);
+            return;
+        }
 
         const card = document.createElement('div');
         card.className = 'station-card';
         card.setAttribute('data-station-url', url);
         card.setAttribute('data-station-title', title);
         card.setAttribute('data-station-type', isVideo ? 'video' : 'img');
+        if (id) card.setAttribute('data-storage-id', id);
 
         const thumb = document.createElement(isVideo ? 'video' : 'img');
         thumb.className = 'station-card-thumb';
@@ -1393,6 +1664,8 @@ async function init() {
         if (isVideo) {
             thumb.muted = true;
             thumb.playsInline = true;
+            thumb.autoplay = true;
+            thumb.loop = true;
         }
 
         const info = document.createElement('div');
@@ -1411,6 +1684,23 @@ async function init() {
         card.appendChild(thumb);
         card.appendChild(info);
 
+        if (id) {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'card-delete-btn';
+            delBtn.textContent = '✕';
+            delBtn.title = 'Delete saved logo';
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await MediaDB.delete('station_logos', id);
+                card.remove();
+                showToast(`🗑️ Removed ${title}`);
+                if (currentStationLogoUrl === url) {
+                    selectStationLogo('/images/station_logos/4TM Primary Logo.png', '4TM Radio', false, true);
+                }
+            });
+            card.appendChild(delBtn);
+        }
+
         stationLogosContainer.appendChild(card);
         wireStationCardClick(card);
 
@@ -1418,6 +1708,84 @@ async function init() {
             selectStationLogo(url, title, isVideo, true);
         }
     }
+
+    // Initialize Persistent Media Libraries from IndexedDB
+    async function initStoredMediaLibraries() {
+        try {
+            // Load DJ Media from IndexedDB
+            const storedDj = await MediaDB.getAll('dj_logos');
+            storedDj.forEach(item => {
+                addDjLogoCard(item.dataUrl, item.title, item.isVideo, false, item.id);
+            });
+
+            // Load Station Logos from IndexedDB
+            const storedStation = await MediaDB.getAll('station_logos');
+            storedStation.forEach(item => {
+                addStationLogoCard(item.dataUrl, item.title, item.isVideo, false, item.id);
+            });
+
+            // Restore active saved choices
+            const savedDj = localStorage.getItem('dj_vfx_active_dj_media');
+            if (savedDj) {
+                try {
+                    const parsed = JSON.parse(savedDj);
+                    selectDjLogo(parsed.url, parsed.title, parsed.isVideo, false);
+                } catch (e) {}
+            }
+
+            const savedStation = localStorage.getItem('dj_vfx_active_station_logo');
+            if (savedStation) {
+                try {
+                    const parsed = JSON.parse(savedStation);
+                    selectStationLogo(parsed.url, parsed.title, parsed.isVideo, false);
+                } catch (e) {}
+            }
+        } catch (err) {
+            console.warn('Failed to load libraries from IndexedDB:', err);
+        }
+    }
+    initStoredMediaLibraries();
+
+    // Drag & Drop
+    window.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        if (dropZone) dropZone.style.display = 'flex';
+    });
+
+    window.addEventListener('dragleave', (e) => {
+        if (e.relatedTarget === null && dropZone) dropZone.style.display = 'none';
+    });
+
+    window.addEventListener('drop', (e) => {
+        e.preventDefault();
+        if (dropZone) dropZone.style.display = 'none';
+        if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+            const file = e.dataTransfer.files[0];
+            const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+            const reader = new FileReader();
+
+            reader.onload = async (event) => {
+                const dataUrl = event.target.result;
+                const item = {
+                    id: 'dj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    title: cleanTitle,
+                    filename: file.name,
+                    type: file.type || (isVideo ? 'video/mp4' : 'image/png'),
+                    isVideo,
+                    dataUrl,
+                    timestamp: Date.now()
+                };
+                try {
+                    await MediaDB.save('dj_logos', item);
+                } catch (err) {}
+                addDjLogoCard(dataUrl, cleanTitle, isVideo, true, item.id);
+                showToast(`🎧 Stored & Loaded DJ Media: ${cleanTitle}`);
+            };
+
+            reader.readAsDataURL(file);
+        }
+    });
 
     // Reset All Console Parameters to Factory Defaults
     function resetAllParameters(broadcast = true) {
@@ -1441,10 +1809,10 @@ async function init() {
         // 2. Logo Layer Visibility & Mode
         updateLogoVisibility(true, false);
 
-        modePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === 'hologram'));
+        djModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-mode') === 'hologram'));
         vfx.setLogoMode('hologram');
 
-        blendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === '0'));
+        djBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-blend') === '0'));
         vfx.setLogoBlendMode(0);
 
         posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === 'center'));
@@ -1494,8 +1862,7 @@ async function init() {
         }
 
         // Reset Media to default JK McLaren Shock
-        vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
-        if (logoFilename) logoFilename.textContent = 'jkmclaren_shock.mp4';
+        selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, false);
 
         // 3. Station Logo Reset
         updateStationLogoVisibility(false, false);
@@ -1534,22 +1901,6 @@ async function init() {
 
     if (btnResetAll) {
         btnResetAll.addEventListener('click', () => resetAllParameters(true));
-    }
-
-    // Custom File Loading
-    if (btnLoadCustom && fileLogo) {
-        btnLoadCustom.addEventListener('click', () => fileLogo.click());
-        fileLogo.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) loadCustomFile(file);
-        });
-    }
-
-    if (btnResetShock) {
-        btnResetShock.addEventListener('click', () => {
-            vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
-            logoFilename.textContent = 'jkmclaren_shock.mp4';
-        });
     }
 
     function loadCustomFile(file) {
