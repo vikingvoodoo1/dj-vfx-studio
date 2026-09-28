@@ -983,9 +983,9 @@
             display: flex;
         }
 
-        /* Detachable Controller Mode (Dedicated Full-Frame DJ Laptop Workstation) */
+        /* Detachable Master Console & Full-Frame Workstation */
         body.controller-mode {
-            background: #060713;
+            background: #070913;
             overflow: hidden;
             width: 100vw;
             height: 100vh;
@@ -993,7 +993,10 @@
             padding: 0;
         }
 
-        body.controller-mode #canvas-container {
+        body.controller-mode #canvas-container,
+        body.controller-mode .controller-banner,
+        body.controller-mode #track-banner,
+        body.controller-mode #fx-bank-panel {
             display: none !important;
         }
 
@@ -1001,79 +1004,103 @@
             position: fixed;
             top: 0;
             left: 0;
+            right: 0;
             bottom: 0;
-            width: 440px;
-            max-width: 440px;
+            width: 100vw;
+            max-width: 100vw;
             height: 100vh;
             max-height: 100vh;
             border-radius: 0;
             border: none;
-            border-right: 1px solid rgba(0, 255, 204, 0.25);
             background: #080a18;
-            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.8);
+            box-shadow: none;
             z-index: 50;
+            display: flex;
         }
 
         body.controller-mode #hud .ide-panel-content {
             max-height: 100vh;
             height: 100vh;
             padding: 14px 18px 24px 18px;
+            flex: 1;
         }
 
-        body.controller-mode .controller-banner {
-            display: flex !important;
-            position: fixed;
-            top: 0;
-            left: 440px;
-            right: 0;
-            height: 52px;
-            border-radius: 0;
-            border: none;
-            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
-            background: rgba(10, 12, 26, 0.96);
-            z-index: 30;
-            padding: 0 20px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        /* FX Bank Pane Cards & Grid */
+        .fx-pane-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-top: 8px;
+            margin-bottom: 12px;
         }
 
-        body.controller-mode #track-banner {
-            top: 72px;
-            left: 460px;
-            right: auto;
-            position: fixed;
-            transform-origin: top left;
-            z-index: 25;
-            max-width: calc(100vw - 490px);
+        .fx-pane-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 9px 10px;
+            cursor: pointer;
+            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            user-select: none;
+            position: relative;
         }
 
-        body.controller-mode #fx-bank-panel {
-            position: fixed;
-            bottom: 0;
-            left: 440px;
-            right: 0;
-            width: auto;
-            max-width: none;
-            transform: none;
-            border-radius: 0;
-            border: none;
-            border-top: 1px solid rgba(255, 0, 127, 0.25);
-            background: #090b1e;
-            box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
-            padding: 14px 20px 16px 20px;
-            z-index: 40;
+        .fx-pane-card:hover {
+            background: rgba(0, 255, 204, 0.1);
+            border-color: rgba(0, 255, 204, 0.4);
+            transform: translateY(-1px);
         }
 
-        @media (max-width: 900px) {
-            body.controller-mode #hud {
-                width: 100vw;
-                max-width: 100vw;
-                border-right: none;
-            }
-            body.controller-mode .controller-banner,
-            body.controller-mode #track-banner,
-            body.controller-mode #fx-bank-panel {
-                display: none !important;
-            }
+        .fx-pane-card.active {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(0, 180, 255, 0.12));
+            border-color: #00ffcc;
+            box-shadow: 0 0 14px rgba(0, 255, 204, 0.35);
+        }
+
+        .fx-pane-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .fx-pane-key {
+            background: rgba(0, 0, 0, 0.5);
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-size: 9.5px;
+            font-weight: 800;
+            color: #ff007f;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .fx-pane-card.active .fx-pane-key {
+            color: #00ffcc;
+            border-color: #00ffcc;
+        }
+
+        .fx-pane-cat-tag {
+            font-size: 8.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.4);
+            letter-spacing: 0.5px;
+        }
+
+        .fx-pane-card.active .fx-pane-cat-tag {
+            color: rgba(0, 255, 204, 0.85);
+        }
+
+        .fx-pane-card-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* OBS Streaming Integration & Modal Styles */
@@ -1287,14 +1314,21 @@
                     <span class="act-dot" id="dot-audio"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="glow" title="Calibration, Glow & Sensitivity [Alt+2]">
+                <button class="activity-tab" data-tab="fx" title="Visual FX Bank & Presets [Alt+2]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                    </svg>
+                    <span class="act-dot" id="dot-fx"></span>
+                </button>
+
+                <button class="activity-tab" data-tab="glow" title="Calibration, Glow & Sensitivity [Alt+3]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                 </button>
 
-                <button class="activity-tab" data-tab="logo" title="3D Logo Layer, Spin & Positioning [Alt+3]">
+                <button class="activity-tab" data-tab="logo" title="3D DJ Logo Layer & Spin [Alt+4]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <polygon points="12 2 2 7 12 12 22 7 12 2" />
                         <polyline points="2 17 12 22 22 17" />
@@ -1302,21 +1336,21 @@
                     </svg>
                 </button>
 
-                <button class="activity-tab" data-tab="station" title="Radio & Broadcast Station Logos [Alt+4]">
+                <button class="activity-tab" data-tab="station" title="Radio & Broadcast Station Logos [Alt+5]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5M12 12h.01M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/>
                     </svg>
                     <span class="act-dot" id="dot-station"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+5]">
+                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+6]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.6 1.4 4.8 3.5 6 .6.3.5.7.5 1h6c0-.3-.1-.7.5-1 2.1-1.2 3.5-3.4 3.5-6a7 7 0 0 0-7-7z" />
                     </svg>
                     <span class="act-dot" id="dot-hue"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+6]">
+                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+7]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
                     </svg>
@@ -1451,7 +1485,176 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- PANE 2: CALIBRATION, GLOW & SENSITIVITY     -->
+            <!-- PANE 2: VISUAL FX BANK & PRESETS           -->
+            <!-- ========================================== -->
+            <div class="ide-tab-pane" id="pane-fx">
+                <div class="pane-section-title">
+                    <span>✨ Visual FX Bank</span>
+                    <span class="hud-badge" id="fx-pane-active-badge">ACTIVE: 3D STUDIO EQ</span>
+                </div>
+
+                <!-- Quick Action Buttons -->
+                <div style="display:flex; gap:6px; margin-bottom:10px;">
+                    <button class="auto-btn" id="btn-auto-vj-fxpane" style="flex:1; padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; cursor:pointer;" title="Toggle Auto VJ Mode">
+                        <span class="fx-key">A</span> AUTO VJ
+                    </button>
+                    <button class="flash-btn" id="btn-flash-fxpane" style="flex:1; padding:7px 8px; font-size:10px; font-weight:800; border-radius:6px; cursor:pointer;" title="Trigger Strobe Flash Burst">
+                        ⚡ STROBE
+                    </button>
+                    <button class="btn-mini" id="btn-random-fx" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#fff; font-weight:700; padding:7px 10px; border-radius:6px; font-size:10px; cursor:pointer;" title="Switch to a random visualizer scene">
+                        🎲 RANDOM
+                    </button>
+                </div>
+
+                <!-- Category Filter Pills -->
+                <div class="mode-pills" id="fx-pane-cat-pills" style="margin-bottom:10px; display:flex; flex-wrap:wrap; gap:4px;">
+                    <button class="mode-pill active" data-fxcat="all" style="padding:4px 8px; font-size:9.5px;">⚡ All (18)</button>
+                    <button class="mode-pill" data-fxcat="eq" style="padding:4px 8px; font-size:9.5px;">📊 Equalizers</button>
+                    <button class="mode-pill" data-fxcat="laser" style="padding:4px 8px; font-size:9.5px;">⚡ Lasers</button>
+                    <button class="mode-pill" data-fxcat="wire" style="padding:4px 8px; font-size:9.5px;">🕸️ Cyber</button>
+                    <button class="mode-pill" data-fxcat="space" style="padding:4px 8px; font-size:9.5px;">🌌 Space</button>
+                </div>
+
+                <!-- FX Cards Grid (18 Shaders) -->
+                <div class="fx-pane-grid" id="fx-pane-grid">
+                    <!-- 📊 Equalizers & Decks -->
+                    <div class="fx-pane-card active" data-fx="0" data-fxcat="eq" title="Hot key: 1">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">1</span>
+                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                        </div>
+                        <div class="fx-pane-card-title">📊 3D Studio EQ</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="1" data-fxcat="eq" title="Hot key: 2">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">2</span>
+                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                        </div>
+                        <div class="fx-pane-card-title">🎯 Circular Spectrum</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="2" data-fxcat="eq" title="Hot key: 3">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">3</span>
+                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                        </div>
+                        <div class="fx-pane-card-title">🌊 Fluid Wave Matrix</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="3" data-fxcat="eq" title="Hot key: 4">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">4</span>
+                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                        </div>
+                        <div class="fx-pane-card-title">🎚️ DJ Waveforms</div>
+                    </div>
+
+                    <!-- ⚡ Lasers & Disco -->
+                    <div class="fx-pane-card" data-fx="4" data-fxcat="laser" title="Hot key: 5">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">5</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">🪩 Disco Ball</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="5" data-fxcat="laser" title="Hot key: 6">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">6</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">🕺 70s Dancefloor</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="6" data-fxcat="laser" title="Hot key: 7">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">7</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">⚡ Dual Lasers</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="7" data-fxcat="laser" title="Hot key: 8">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">8</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">💥 Multi-Beams</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="8" data-fxcat="laser" title="Hot key: 9">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">9</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">💫 Strobe Rings</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="9" data-fxcat="laser" title="Hot key: 0">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">0</span>
+                            <span class="fx-pane-cat-tag">Lasers & Disco</span>
+                        </div>
+                        <div class="fx-pane-card-title">💃 Silhouette Dancers</div>
+                    </div>
+
+                    <!-- 🕸️ Cyber & Retro -->
+                    <div class="fx-pane-card" data-fx="10" data-fxcat="wire" title="Hot key: -">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">-</span>
+                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                        </div>
+                        <div class="fx-pane-card-title">🌅 Synthwave Grid</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="11" data-fxcat="wire" title="Hot key: =">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">=</span>
+                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                        </div>
+                        <div class="fx-pane-card-title">🌄 River & Sun</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="12" data-fxcat="wire" title="Hot key: Q">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">Q</span>
+                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                        </div>
+                        <div class="fx-pane-card-title">💻 Matrix Rain</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="13" data-fxcat="wire" title="Hot key: W">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">W</span>
+                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                        </div>
+                        <div class="fx-pane-card-title">👾 Arcade 80s</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="17" data-fxcat="wire" title="Hot key: Y">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">Y</span>
+                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                        </div>
+                        <div class="fx-pane-card-title">⏱️ Time.is Clock</div>
+                    </div>
+
+                    <!-- 🌌 Space & Galaxy -->
+                    <div class="fx-pane-card" data-fx="14" data-fxcat="space" title="Hot key: E">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">E</span>
+                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                        </div>
+                        <div class="fx-pane-card-title">🚀 Warp Starfield</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="15" data-fxcat="space" title="Hot key: R">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">R</span>
+                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                        </div>
+                        <div class="fx-pane-card-title">🌌 Spiral Galaxy</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="16" data-fxcat="space" title="Hot key: T">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">T</span>
+                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                        </div>
+                        <div class="fx-pane-card-title">✨ Particle Stream</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PANE 3: CALIBRATION, GLOW & SENSITIVITY     -->
             <!-- ========================================== -->
             <div class="ide-tab-pane" id="pane-glow">
                 <div class="pane-section-title">

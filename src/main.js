@@ -234,7 +234,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['audio', 'glow', 'logo', 'hue', 'obs'];
+    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'station', 'hue', 'obs'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -301,7 +301,7 @@ async function init() {
     if (btnDetachConsole) {
         btnDetachConsole.addEventListener('click', () => {
             const controllerUrl = `${window.location.origin}${window.location.pathname}?mode=controller`;
-            window.open(controllerUrl, 'DJ_VFX_MASTER_CONSOLE', 'width=1380,height=880,menubar=no,toolbar=no,location=no,status=no');
+            window.open(controllerUrl, 'DJ_VFX_MASTER_CONSOLE', 'width=520,height=880,menubar=no,toolbar=no,location=no,status=no');
         });
     }
 
@@ -1528,13 +1528,42 @@ async function init() {
     });
 
     // 4. Categorized FX Bank Switching & Filtering
+    const FX_NAMES = [
+        '3D Studio EQ', 'Circular Spectrum', 'Fluid Wave Matrix', 'DJ Deck Waveforms',
+        'Spinning Disco Ball', '70s Disco Dancefloor', 'Dual-Bank Lasers', 'Saber Multi-Beams',
+        'Strobe Rings', 'Silhouette Dancers', 'Synthwave Grid', 'Synthwave River & Sun',
+        'Matrix Code Rain', 'Retro Arcade 80s', 'Warp Starfield', 'Spiral Galaxy Vortex',
+        'Hyper Particle Stream', 'Time.is Clock'
+    ];
+
+    const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
+    const btnFlashFxPane = document.getElementById('btn-flash-fxpane');
+    const btnRandomFx = document.getElementById('btn-random-fx');
+    const fxPaneActiveBadge = document.getElementById('fx-pane-active-badge');
+    const fxPaneCatPills = document.querySelectorAll('#fx-pane-cat-pills button');
+
     function selectFX(index, broadcast = true) {
         const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
         vfx.switchFX(targetIndex);
+
+        // Update bottom bar buttons (if present)
         fxButtons.forEach((btn) => {
             const btnIdx = parseInt(btn.getAttribute('data-fx'), 10);
             btn.classList.toggle('active', btnIdx === targetIndex);
         });
+
+        // Update FX console pane cards
+        const fxPaneCards = document.querySelectorAll('.fx-pane-card');
+        fxPaneCards.forEach((card) => {
+            const cardIdx = parseInt(card.getAttribute('data-fx'), 10);
+            card.classList.toggle('active', cardIdx === targetIndex);
+        });
+
+        // Update active badge in FX pane
+        if (fxPaneActiveBadge) {
+            const name = FX_NAMES[targetIndex] || `FX ${targetIndex + 1}`;
+            fxPaneActiveBadge.textContent = `ACTIVE: ${name.toUpperCase()}`;
+        }
 
         if (broadcast) {
             broadcastSync({ type: 'set_fx', fx: targetIndex });
@@ -1548,7 +1577,16 @@ async function init() {
         });
     });
 
-    // Category Tabs Filtering
+    // FX Pane Card Click Listeners
+    const fxPaneCards = document.querySelectorAll('.fx-pane-card');
+    fxPaneCards.forEach((card) => {
+        card.addEventListener('click', () => {
+            const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
+            selectFX(fxIdx);
+        });
+    });
+
+    // Bottom Bar Category Tabs Filtering
     catTabs.forEach((tab) => {
         tab.addEventListener('click', () => {
             const cat = tab.getAttribute('data-category');
@@ -1566,6 +1604,25 @@ async function init() {
         });
     });
 
+    // Console Pane FX Category Filter Pills
+    fxPaneCatPills.forEach((pill) => {
+        pill.addEventListener('click', () => {
+            const cat = pill.getAttribute('data-fxcat');
+            fxPaneCatPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+
+            const allCards = document.querySelectorAll('.fx-pane-card');
+            allCards.forEach((card) => {
+                const cardCat = card.getAttribute('data-fxcat');
+                if (cat === 'all' || cardCat === cat) {
+                    card.style.display = 'flex';
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+        });
+    });
+
     // Auto-VJ Mode
     function toggleAutoVJ(broadcast = true) {
         isAutoVJ = !isAutoVJ;
@@ -1577,6 +1634,10 @@ async function init() {
             btnAutoVJPanel.classList.toggle('active', isAutoVJ);
             btnAutoVJPanel.textContent = isAutoVJ ? '⚡ AUTO VJ: ON' : '⚡ AUTO VJ TOGGLE';
         }
+        if (btnAutoVJFxPane) {
+            btnAutoVJFxPane.classList.toggle('active', isAutoVJ);
+            btnAutoVJFxPane.innerHTML = isAutoVJ ? `<span class="fx-key">A</span> AUTO VJ: ON` : `<span class="fx-key">A</span> AUTO VJ`;
+        }
         if (broadcast) {
             broadcastSync({ type: 'set_auto_vj', active: isAutoVJ });
         }
@@ -1584,8 +1645,9 @@ async function init() {
 
     if (btnAutoVJ) btnAutoVJ.addEventListener('click', () => toggleAutoVJ(true));
     if (btnAutoVJPanel) btnAutoVJPanel.addEventListener('click', () => toggleAutoVJ(true));
+    if (btnAutoVJFxPane) btnAutoVJFxPane.addEventListener('click', () => toggleAutoVJ(true));
 
-    // Strobe Button
+    // Strobe Flash Action
     function triggerFlashAction() {
         vfx.triggerManualFlash();
         broadcastSync({ type: 'flash' });
@@ -1600,6 +1662,20 @@ async function init() {
 
     if (btnFlash) btnFlash.addEventListener('click', triggerFlashAction);
     if (btnFlashPanel) btnFlashPanel.addEventListener('click', triggerFlashAction);
+    if (btnFlashFxPane) btnFlashFxPane.addEventListener('click', triggerFlashAction);
+
+    // Random FX Action
+    if (btnRandomFx) {
+        btnRandomFx.addEventListener('click', () => {
+            let nextFx;
+            const current = vfx.getCurrentFX();
+            do {
+                nextFx = Math.floor(Math.random() * TOTAL_FX);
+            } while (nextFx === current && TOTAL_FX > 1);
+            selectFX(nextFx);
+            showToast(`🎲 Switched to ${FX_NAMES[nextFx] || 'FX ' + (nextFx + 1)}`);
+        });
+    }
 
     // 5. Calibration Sliders
     if (sliderGain) {
@@ -1930,13 +2006,15 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..5] / [Alt + A] for IDE Console Activity Bar Navigation
+        // [Alt + 1..7] / [Alt + A] for IDE Console Activity Bar Navigation
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
-            if (e.key === '2') { e.preventDefault(); switchTab('glow'); return; }
-            if (e.key === '3') { e.preventDefault(); switchTab('logo'); return; }
-            if (e.key === '4') { e.preventDefault(); switchTab('hue'); return; }
-            if (e.key === '5') { e.preventDefault(); switchTab('obs'); return; }
+            if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
+            if (e.key === '3') { e.preventDefault(); switchTab('glow'); return; }
+            if (e.key === '4') { e.preventDefault(); switchTab('logo'); return; }
+            if (e.key === '5') { e.preventDefault(); switchTab('station'); return; }
+            if (e.key === '6') { e.preventDefault(); switchTab('hue'); return; }
+            if (e.key === '7') { e.preventDefault(); switchTab('obs'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
