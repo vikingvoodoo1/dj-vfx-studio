@@ -4,8 +4,8 @@
   "clientkey": "6CC7E98E33F5FE53268C380A8A1B7D12",
   "enabled": true,
   "targetGroup": "3",
-  "mode": "scene_sync",
-  "intensity": 0.85,
-  "minBrightness": 0.2,
+  "mode": "strobe_only",
+  "intensity": 0.95,
+  "minBrightness": 0.35,
   "sceneColor": "#00ffff"
 }

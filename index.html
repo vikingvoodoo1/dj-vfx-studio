@@ -509,6 +509,76 @@
             background: rgba(255, 255, 255, 0.2);
         }
 
+        /* Broadcast & Station Logo Cards Grid */
+        .station-card-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+
+        .station-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 8px;
+            padding: 6px 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+
+        .station-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(0, 255, 204, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .station-card.active {
+            background: rgba(0, 255, 204, 0.16);
+            border-color: #00ffcc;
+            box-shadow: 0 0 10px rgba(0, 255, 204, 0.35);
+        }
+
+        .station-card-thumb {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            border-radius: 4px;
+            background: rgba(0, 0, 0, 0.45);
+            padding: 2px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            flex-shrink: 0;
+        }
+
+        .station-card-info {
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .station-card-title {
+            font-size: 10px;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .station-card-sub {
+            font-size: 8px;
+            color: rgba(255, 255, 255, 0.5);
+            white-space: nowrap;
+        }
+
+        .station-card.active .station-card-title {
+            color: #00ffcc;
+        }
+
         /* Categorized Bottom FX Bank Selector Toolbar */
         #fx-bank-panel {
             position: absolute;
@@ -676,48 +746,129 @@
         }
 
         /* High-Impact Stream & Nightclub Track Banner Overlay */
+        :root {
+            --banner-scale: 1.4;
+        }
+
         #track-banner {
             position: absolute;
-            top: 16px;
-            right: 16px;
+            top: 24px;
+            right: 24px;
             z-index: 25;
-            background: rgba(8, 9, 20, 0.9);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 255, 204, 0.35);
-            padding: 10px 16px;
-            border-radius: 14px;
-            box-shadow: 0 10px 35px rgba(0, 0, 0, 0.85), 0 0 20px rgba(0, 255, 204, 0.15);
+            background: rgba(6, 8, 20, 0.94);
+            backdrop-filter: blur(28px);
+            -webkit-backdrop-filter: blur(28px);
+            border: 1.5px solid rgba(0, 255, 204, 0.4);
+            padding: 12px 18px;
+            border-radius: 16px;
+            box-shadow: 0 14px 45px rgba(0, 0, 0, 0.9), 0 0 30px rgba(0, 255, 204, 0.2);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 14px;
+            will-change: transform, opacity;
+            transform: translate3d(0, 0, 0) scale(var(--banner-scale, 1.4));
+            transform-origin: top right;
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
             transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            transform: translateY(0) scale(1);
             opacity: 1;
             pointer-events: auto;
-            max-width: 440px;
+            max-width: 520px;
+            contain: layout style;
         }
 
         #track-banner.banner-hidden,
         #track-banner.hidden {
             opacity: 0;
             pointer-events: none;
-            transform: translateY(-20px) scale(0.95);
+            transform: translate3d(0, -30px, 0) scale(calc(var(--banner-scale, 1.4) * 0.95));
         }
 
         .track-icon-box {
-            width: 36px;
-            height: 36px;
-            min-width: 36px;
+            width: 46px;
+            height: 46px;
+            min-width: 46px;
             border-radius: 50%;
-            background: linear-gradient(135deg, rgba(0, 255, 204, 0.2), rgba(255, 0, 127, 0.2));
-            border: 1px solid rgba(0, 255, 204, 0.4);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            box-shadow: 0 0 15px rgba(0, 255, 204, 0.3);
-            animation: spinVinyl 6s linear infinite;
+            position: relative;
+            contain: strict;
+            filter: drop-shadow(0 0 12px rgba(0, 255, 204, 0.35));
+        }
+
+        .vinyl-record {
+            width: 46px;
+            height: 46px;
+            min-width: 46px;
+            border-radius: 50%;
+            background: radial-gradient(circle at center,
+                #101010 0%, #101010 24%,
+                #ff007f 25%, #ff007f 28%,
+                #080808 29%, #1f1f1f 33%, #0c0c0c 38%, #1a1a1a 44%,
+                #090909 50%, #222222 56%, #0d0d0d 63%, #1b1b1b 71%,
+                #070707 80%, #222222 88%, #040404 95%, #000 100%);
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            box-shadow: inset 0 0 5px rgba(0,0,0,0.95), 0 4px 15px rgba(0,0,0,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transform-origin: center center;
+            will-change: transform;
+            animation: spinVinyl 4.5s linear infinite;
+        }
+
+        .vinyl-record::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: conic-gradient(
+                from 0deg,
+                rgba(255, 255, 255, 0.22) 0deg,
+                transparent 40deg,
+                rgba(255, 255, 255, 0.22) 90deg,
+                transparent 130deg,
+                rgba(255, 255, 255, 0.22) 180deg,
+                transparent 220deg,
+                rgba(255, 255, 255, 0.22) 270deg,
+                transparent 310deg,
+                rgba(255, 255, 255, 0.22) 360deg
+            );
+            pointer-events: none;
+        }
+
+        .vinyl-center-label {
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #00ffcc, #ff007f);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.7);
+            box-shadow: 0 0 6px rgba(0, 255, 204, 0.5);
+            position: relative;
+            z-index: 2;
+        }
+
+        .vinyl-label-icon {
+            font-size: 8px;
+            color: #ffffff;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.8);
+            position: absolute;
+            top: 1px;
+        }
+
+        .vinyl-spindle-hole {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #060814;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            position: relative;
+            z-index: 3;
         }
 
         @keyframes spinVinyl {
@@ -728,7 +879,7 @@
         .track-meta {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 3px;
             text-align: left;
             overflow: hidden;
         }
@@ -736,57 +887,62 @@
         .track-header-row {
             display: flex;
             align-items: center;
-            gap: 6px;
+            gap: 7px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 9px;
+            font-size: 10px;
             margin-bottom: 2px;
         }
 
         .track-now-tag {
             color: #00ffcc;
             font-weight: 800;
-            letter-spacing: 0.8px;
+            letter-spacing: 1px;
+            font-size: 10px;
+            text-shadow: 0 0 10px rgba(0, 255, 204, 0.5);
         }
 
         .track-deck-badge {
-            background: rgba(255, 0, 127, 0.2);
-            border: 1px solid rgba(255, 0, 127, 0.4);
+            background: rgba(255, 0, 127, 0.25);
+            border: 1px solid rgba(255, 0, 127, 0.5);
             color: #ff66aa;
-            padding: 1px 5px;
+            padding: 2px 7px;
             border-radius: 4px;
-            font-weight: 700;
-            font-size: 8.5px;
+            font-weight: 800;
+            font-size: 9px;
+            letter-spacing: 0.5px;
         }
 
         .track-bpm-badge {
-            background: rgba(0, 255, 204, 0.15);
-            border: 1px solid rgba(0, 255, 204, 0.3);
+            background: rgba(0, 255, 204, 0.2);
+            border: 1px solid rgba(0, 255, 204, 0.45);
             color: #00ffcc;
-            padding: 1px 5px;
+            padding: 2px 7px;
             border-radius: 4px;
-            font-weight: 700;
-            font-size: 8.5px;
+            font-weight: 800;
+            font-size: 9px;
+            letter-spacing: 0.5px;
         }
 
         .track-title {
-            font-size: 13px;
+            font-size: 15px;
             font-weight: 800;
             color: #ffffff;
-            letter-spacing: 0.3px;
+            letter-spacing: 0.4px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 280px;
+            max-width: 360px;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
         }
 
         .track-artist {
-            font-size: 11px;
-            color: rgba(255, 255, 255, 0.7);
-            font-weight: 400;
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.82);
+            font-weight: 500;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 280px;
+            max-width: 360px;
         }
 
         .click-prompt {
@@ -827,44 +983,97 @@
             display: flex;
         }
 
-        /* Detachable Controller Mode (Full-Featured DJ Laptop Dashboard) */
+        /* Detachable Controller Mode (Dedicated Full-Frame DJ Laptop Workstation) */
         body.controller-mode {
             background: #060713;
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        body.controller-mode #canvas-container {
+            display: none !important;
         }
 
         body.controller-mode #hud {
-            width: 380px;
-            max-height: 88vh;
-            box-shadow: 0 0 50px rgba(0, 255, 204, 0.15), 0 10px 40px rgba(0, 0, 0, 0.9);
-            border-color: rgba(0, 255, 204, 0.35);
+            position: fixed;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 440px;
+            max-width: 440px;
+            height: 100vh;
+            max-height: 100vh;
+            border-radius: 0;
+            border: none;
+            border-right: 1px solid rgba(0, 255, 204, 0.25);
+            background: #080a18;
+            box-shadow: 4px 0 25px rgba(0, 0, 0, 0.8);
+            z-index: 50;
+        }
+
+        body.controller-mode #hud .ide-panel-content {
+            max-height: 100vh;
+            height: 100vh;
+            padding: 14px 18px 24px 18px;
+        }
+
+        body.controller-mode .controller-banner {
+            display: flex !important;
+            position: fixed;
+            top: 0;
+            left: 440px;
+            right: 0;
+            height: 52px;
+            border-radius: 0;
+            border: none;
+            border-bottom: 1px solid rgba(0, 255, 204, 0.2);
+            background: rgba(10, 12, 26, 0.96);
+            z-index: 30;
+            padding: 0 20px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+
+        body.controller-mode #track-banner {
+            top: 72px;
+            left: 460px;
+            right: auto;
+            position: fixed;
+            transform-origin: top left;
+            z-index: 25;
+            max-width: calc(100vw - 490px);
         }
 
         body.controller-mode #fx-bank-panel {
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            box-shadow: 0 0 40px rgba(255, 0, 127, 0.2), 0 14px 45px rgba(0, 0, 0, 0.9);
-            border-color: rgba(255, 0, 127, 0.35);
+            position: fixed;
+            bottom: 0;
+            left: 440px;
+            right: 0;
+            width: auto;
+            max-width: none;
+            transform: none;
+            border-radius: 0;
+            border: none;
+            border-top: 1px solid rgba(255, 0, 127, 0.25);
+            background: #090b1e;
+            box-shadow: 0 -4px 25px rgba(0, 0, 0, 0.6);
+            padding: 14px 20px 16px 20px;
+            z-index: 40;
         }
 
-        .controller-banner {
-            display: none;
-            position: absolute;
-            top: 16px;
-            left: 416px;
-            right: 16px;
-            z-index: 20;
-            background: rgba(10, 10, 24, 0.85);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(0, 255, 204, 0.3);
-            border-radius: 12px;
-            padding: 10px 18px;
-            align-items: center;
-            justify-content: space-between;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
-            color: #ffffff;
-            box-shadow: 0 8px 30px rgba(0,0,0,0.8);
+        @media (max-width: 900px) {
+            body.controller-mode #hud {
+                width: 100vw;
+                max-width: 100vw;
+                border-right: none;
+            }
+            body.controller-mode .controller-banner,
+            body.controller-mode #track-banner,
+            body.controller-mode #fx-bank-panel {
+                display: none !important;
+            }
         }
 
         /* OBS Streaming Integration & Modal Styles */
@@ -1093,14 +1302,21 @@
                     </svg>
                 </button>
 
-                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+4]">
+                <button class="activity-tab" data-tab="station" title="Radio & Broadcast Station Logos [Alt+4]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5M12 12h.01M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5M19.1 4.9C23 8.8 23 15.2 19.1 19.1"/>
+                    </svg>
+                    <span class="act-dot" id="dot-station"></span>
+                </button>
+
+                <button class="activity-tab" data-tab="hue" title="Philips Hue Smart Room Lighting [Alt+5]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18h6M10 22h4M12 2a7 7 0 0 0-7 7c0 2.6 1.4 4.8 3.5 6 .6.3.5.7.5 1h6c0-.3-.1-.7.5-1 2.1-1.2 3.5-3.4 3.5-6a7 7 0 0 0-7-7z" />
                     </svg>
                     <span class="act-dot" id="dot-hue"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+5]">
+                <button class="activity-tab" data-tab="obs" title="OBS Studio Broadcast & Streaming Link [Alt+6]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16M5 20a1 1 0 1 0 0-2 1 1 0 0 0 0 2z" />
                     </svg>
@@ -1386,12 +1602,161 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- PANE 4: PHILIPS HUE SMART LIGHTING          -->
+            <!-- PANE 4: BROADCAST & STATION LOGOS          -->
+            <!-- ========================================== -->
+            <div class="ide-tab-pane" id="pane-station">
+                <div class="pane-section-title">
+                    <span>📻 Broadcast Station Logos</span>
+                    <span class="hud-badge" id="station-logo-badge" style="color:rgba(255,255,255,0.4); border-color:rgba(255,255,255,0.15);">OFF [S]</span>
+                </div>
+
+                <!-- Master Toggle & Quick Actions -->
+                <div style="display:flex; gap:6px; margin-bottom:8px;">
+                    <button class="btn-mini" id="btn-toggle-station-logo" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ STATION LOGO: OFF</button>
+                    <button class="btn-mini" id="btn-upload-station-logo" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload your own station logo (PNG, JPG, SVG, MP4)">📁 + ADD LOGO</button>
+                    <input type="file" id="file-station-logo" accept="image/*,video/mp4,video/webm" style="display:none;">
+                </div>
+
+                <!-- Station Logo Selector Grid -->
+                <div class="hud-row" style="margin-bottom:4px;">
+                    <span class="hud-label">SELECT STATION LOGO</span>
+                    <span class="hud-val" id="station-logo-active-name" style="font-size:9px; color:#00ffcc;">None Selected</span>
+                </div>
+
+                <div class="station-card-grid" id="station-logos-container">
+                    <!-- 4TM Radio -->
+                    <div class="station-card" data-station-url="/images/station_logos/4TM Primary Logo.png" data-station-title="4TM Radio" data-station-type="img">
+                        <img class="station-card-thumb" src="/images/station_logos/4TM Primary Logo.png" alt="4TM Radio">
+                        <div class="station-card-info">
+                            <span class="station-card-title">4TM Radio</span>
+                            <span class="station-card-sub">Primary Logo</span>
+                        </div>
+                    </div>
+
+                    <!-- Disco Squad -->
+                    <div class="station-card" data-station-url="/images/station_logos/DiscoSquad.jpg" data-station-title="Disco Squad" data-station-type="img">
+                        <img class="station-card-thumb" src="/images/station_logos/DiscoSquad.jpg" alt="Disco Squad">
+                        <div class="station-card-info">
+                            <span class="station-card-title">Disco Squad</span>
+                            <span class="station-card-sub">Radio Squad</span>
+                        </div>
+                    </div>
+
+                    <!-- NDC Group -->
+                    <div class="station-card" data-station-url="/images/station_logos/NDCGroup.png" data-station-title="NDC Group" data-station-type="img">
+                        <img class="station-card-thumb" src="/images/station_logos/NDCGroup.png" alt="NDC Group">
+                        <div class="station-card-info">
+                            <span class="station-card-title">NDC Group</span>
+                            <span class="station-card-sub">Network Logo</span>
+                        </div>
+                    </div>
+
+                    <!-- NDC Transparent -->
+                    <div class="station-card" data-station-url="/images/station_logos/NDC_nobg.png" data-station-title="NDC (No BG)" data-station-type="img">
+                        <img class="station-card-thumb" src="/images/station_logos/NDC_nobg.png" alt="NDC No BG">
+                        <div class="station-card-info">
+                            <span class="station-card-title">NDC (No BG)</span>
+                            <span class="station-card-sub">Transparent</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Placement Position Pills -->
+                <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">SCREEN POSITION / CORNER:</div>
+                <div class="mode-pills" id="station-pos-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                    <button class="mode-pill active" data-st-pos="top-right" title="Top Right Corner (Standard Broadcast Watermark)">↗ Top-Right</button>
+                    <button class="mode-pill" data-st-pos="top-left" title="Top Left Corner">↖ Top-Left</button>
+                    <button class="mode-pill" data-st-pos="bottom-right" title="Bottom Right Corner">↘ Bottom-Right</button>
+                    <button class="mode-pill" data-st-pos="bottom-left" title="Bottom Left Corner">↙ Bottom-Left</button>
+                    <button class="mode-pill" data-st-pos="center" title="Center Screen">⦿ Center</button>
+                </div>
+
+                <!-- Display Mode -->
+                <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">DISPLAY LAYER MODE:</div>
+                <div class="mode-pills" id="station-mode-pills" style="margin-bottom:6px;">
+                    <button class="mode-pill active" data-st-mode="overlay" title="Crisp overlay watermark in front of 3D scene">📺 Watermark</button>
+                    <button class="mode-pill" data-st-mode="hologram" title="Floating 3D Hologram in stage space">✨ 3D Holo</button>
+                    <button class="mode-pill" data-st-mode="backdrop" title="Gigantic Stadium Backdrop Wall">🌌 Backdrop</button>
+                </div>
+
+                <!-- Spin Mode & Animation -->
+                <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">3D ROTATION & SPIN:</div>
+                <div class="mode-pills" id="station-spin-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                    <button class="mode-pill active" data-st-spin="off">Static</button>
+                    <button class="mode-pill" data-st-spin="center">🌀 Center Spin</button>
+                    <button class="mode-pill" data-st-spin="orbit">🪐 3D Orbit</button>
+                    <button class="mode-pill" data-st-spin="freeroam">🚀 Free Roam</button>
+                </div>
+
+                <!-- Spin Speed -->
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>SPIN SPEED</span>
+                        <span class="val" id="station-spin-speed-val">1.0x</span>
+                    </div>
+                    <input type="range" id="slider-station-spin-speed" min="0.2" max="4.0" step="0.1" value="1.0">
+                </div>
+
+                <!-- Scale / Size Slider -->
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>SIZE SCALE</span>
+                        <span class="val" id="station-scale-val">0.85x</span>
+                    </div>
+                    <input type="range" id="slider-station-scale" min="0.2" max="3.0" step="0.05" value="0.85">
+                </div>
+
+                <!-- Bass Reactive Pulse Slider -->
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>BASS PUNCH REACTIVITY</span>
+                        <span class="val" id="station-pulse-val">25%</span>
+                    </div>
+                    <input type="range" id="slider-station-pulse" min="0" max="150" step="5" value="25">
+                </div>
+
+                <!-- Contrast & Brightness -->
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>CONTRAST BOOST</span>
+                        <span class="val" id="station-contrast-val">1.25x</span>
+                    </div>
+                    <input type="range" id="slider-station-contrast" min="0.5" max="2.5" step="0.05" value="1.25">
+                </div>
+
+                <div class="slider-row">
+                    <div class="slider-header">
+                        <span>BRIGHTNESS / CLARITY</span>
+                        <span class="val" id="station-bright-val">1.05x</span>
+                    </div>
+                    <input type="range" id="slider-station-bright" min="0.5" max="2.5" step="0.05" value="1.05">
+                </div>
+
+                <!-- Contrast Dark Shield -->
+                <div class="hud-row" style="margin-top:6px;">
+                    <span class="hud-label">CONTRAST SHIELD</span>
+                    <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#00ffcc;">
+                        <input type="checkbox" id="check-station-shield" checked style="accent-color:#00ffcc; cursor:pointer;"> Active
+                    </label>
+                </div>
+            </div>
+
+            <!-- ========================================== -->
+            <!-- PANE 5: PHILIPS HUE SMART LIGHTING          -->
             <!-- ========================================== -->
             <div class="ide-tab-pane" id="pane-hue">
                 <div class="pane-section-title">
                     <span>💡 Philips Hue Lighting</span>
                     <span class="hud-badge" id="hue-status-badge">DISCOVERING...</span>
+                </div>
+
+                <!-- Branded Official Philips Hue Header Card -->
+                <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.22); border-radius:10px; padding:10px 14px; margin-bottom:10px; gap:12px; box-shadow:0 4px 15px rgba(0,0,0,0.5);">
+                    <img src="/images/logo/PhilipsHueLogo.png" alt="Philips Hue" style="height:28px; max-width:130px; object-fit:contain; filter:drop-shadow(0 0 10px rgba(0,255,204,0.35));">
+                    <div style="text-align:right;">
+                        <div style="font-size:10px; color:#00ffcc; font-weight:800; font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">SMART LIGHTING</div>
+                        <div style="font-size:8.5px; color:rgba(255,255,255,0.5);">Entertainment Sync</div>
+                    </div>
                 </div>
 
                 <!-- Master Toggle & Setup Button -->
@@ -1475,6 +1840,7 @@
                     <div style="display:flex; gap:6px; margin-bottom:6px;">
                         <button class="btn-mini" id="btn-toggle-track-banner" style="flex:1; font-size:9.5px; font-weight:800; padding:5px 8px; background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; cursor:pointer;">🟢 TRACK OVERLAY: ON</button>
                         <button class="btn-mini" id="btn-pop-track-banner" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(255,0,127,0.18); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;" title="Manually Pop Track Banner On Stream">⚡ POP NOW</button>
+                        <button class="btn-mini" id="btn-pop-off-track-banner" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); cursor:pointer;" title="Immediately Dismiss Track Banner On Stream">⏹️ POP OFF</button>
                     </div>
 
                     <div class="hud-row" style="margin-top:4px; margin-bottom:2px;">
@@ -1502,6 +1868,18 @@
                         <option value="45">⏱️ 45 seconds display</option>
                         <option value="0">🔒 Stay ON (Always Visible)</option>
                     </select>
+
+                    <div class="hud-row" style="margin-top:7px; margin-bottom:2px;">
+                        <span class="hud-label">OVERLAY SCALE / SIZE</span>
+                        <span class="hud-val" id="track-scale-val" style="color:#00ffcc; font-weight:700;">1.4x (Large)</span>
+                    </div>
+                    <input type="range" id="slider-track-scale" min="0.8" max="2.5" step="0.1" value="1.4" style="width:100%; accent-color:#00ffcc; cursor:pointer;" title="Adjust Now Playing Track Banner size for Big Screen / OBS">
+                    <div style="display:flex; justify-content:space-between; font-size:8px; color:rgba(255,255,255,0.4); margin-top:2px;">
+                        <span>0.8x Compact</span>
+                        <span>1.4x Large</span>
+                        <span>2.0x Stadium</span>
+                        <span>2.5x Max</span>
+                    </div>
                 </div>
             </div>
 
@@ -1518,8 +1896,15 @@
     </div>
 
     <!-- Active Track Banner (Stream & Nightclub Overlay) -->
-    <div id="track-banner" class="track-banner-overlay">
-        <div class="track-icon-box">🎛️</div>
+    <div id="track-banner" class="track-banner-overlay banner-hidden">
+        <div class="track-icon-box">
+            <div class="vinyl-record">
+                <div class="vinyl-center-label">
+                    <span class="vinyl-label-icon">⚡</span>
+                    <div class="vinyl-spindle-hole"></div>
+                </div>
+            </div>
+        </div>
         <div class="track-meta">
             <div class="track-header-row">
                 <span class="track-now-tag">NOW PLAYING</span>

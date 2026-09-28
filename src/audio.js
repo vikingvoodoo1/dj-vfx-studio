@@ -37,9 +37,15 @@ export async function setupAudio(onDeviceListChange) {
                 // Ignore if background oscillator restricted
             }
 
-            // Unconditional auto-resume listeners on focus, blur, visibility change & click
+            // Unconditional auto-resume listeners on focus, blur, visibility change, statechange & click
             const autoResume = () => {
-                if (audioCtx && audioCtx.state === 'suspended') {
+                if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                    audioCtx.resume().catch(() => {});
+                }
+            };
+
+            audioCtx.onstatechange = () => {
+                if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                     audioCtx.resume().catch(() => {});
                 }
             };
@@ -49,6 +55,10 @@ export async function setupAudio(onDeviceListChange) {
             window.addEventListener('pageshow', autoResume);
             document.addEventListener('visibilitychange', autoResume);
             window.addEventListener('mouseenter', autoResume);
+            window.addEventListener('click', autoResume);
+
+            // Active keep-alive watchdog timer
+            setInterval(autoResume, 1500);
         }
     }
 
@@ -67,32 +77,94 @@ export async function setupAudio(onDeviceListChange) {
         }
     }
 
+    let isConnecting = false;
+
     async function connectDevice(deviceId = 'default') {
+        if (isConnecting) return { success: false, error: 'Connection in progress' };
+        isConnecting = true;
         initAudioContext();
 
         // Disconnect existing stream if any
         if (currentStream) {
-            currentStream.getTracks().forEach(track => track.stop());
+            try {
+                currentStream.getTracks().forEach(track => {
+                    track.onended = null;
+                    track.onmute = null;
+                    track.stop();
+                });
+            } catch (e) {}
             currentStream = null;
         }
         if (currentSource) {
-            currentSource.disconnect();
+            try { currentSource.disconnect(); } catch (e) {}
             currentSource = null;
         }
 
-        try {
-            const constraints = {
-                audio: {
-                    deviceId: deviceId && deviceId !== 'default' ? { exact: deviceId } : undefined,
-                    echoCancellation: false,
-                    noiseSuppression: false,
-                    autoGainControl: false,
-                    channelCount: 2
-                },
-                video: false
-            };
+        let stream = null;
+        let lastError = null;
 
-            const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        // Constraint Attempt 1: Exact Device ID
+        if (deviceId && deviceId !== 'default') {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: { exact: deviceId },
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false,
+                        channelCount: 2
+                    },
+                    video: false
+                });
+            } catch (err1) {
+                console.warn(`[Audio Engine] Exact constraint failed for [${deviceId}], trying ideal:`, err1.message);
+                lastError = err1;
+            }
+        }
+
+        // Constraint Attempt 2: Ideal Device ID
+        if (!stream && deviceId && deviceId !== 'default') {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: { ideal: deviceId },
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    },
+                    video: false
+                });
+            } catch (err2) {
+                console.warn(`[Audio Engine] Ideal constraint failed for [${deviceId}], trying default:`, err2.message);
+                lastError = err2;
+            }
+        }
+
+        // Constraint Attempt 3: General System Default Input
+        if (!stream) {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        echoCancellation: false,
+                        noiseSuppression: false,
+                        autoGainControl: false
+                    },
+                    video: false
+                });
+            } catch (err3) {
+                lastError = err3;
+            }
+        }
+
+        isConnecting = false;
+
+        if (!stream) {
+            console.warn(`[Audio Engine] Audio connect failed for [${deviceId}]:`, lastError);
+            isConnected = false;
+            return { success: false, error: lastError ? lastError.message : 'Unknown audio error' };
+        }
+
+        try {
             currentStream = stream;
             currentDeviceId = deviceId;
 
@@ -102,12 +174,14 @@ export async function setupAudio(onDeviceListChange) {
             if (audioTrack) {
                 audioTrack.onended = () => {
                     console.warn('[Audio Engine] Track ended, auto-reconnecting...');
-                    setTimeout(() => connectDevice(currentDeviceId), 500);
+                    setTimeout(() => connectDevice(currentDeviceId), 600);
                 };
                 audioTrack.onmute = () => {
                     console.warn('[Audio Engine] Track muted by OS, attempting resume...');
                     setTimeout(() => {
-                        if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+                        if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                            audioCtx.resume();
+                        }
                     }, 300);
                 };
             }
@@ -115,12 +189,12 @@ export async function setupAudio(onDeviceListChange) {
             currentSource = audioCtx.createMediaStreamSource(stream);
             currentSource.connect(analyser);
 
-            if (audioCtx.state === 'suspended') {
+            if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 await audioCtx.resume();
             }
 
             isConnected = true;
-            console.log(`[Audio Engine] 🎧 Connected live audio input: "${currentDeviceLabel}"`);
+            console.log(`[Audio Engine] 🎧 Connected live audio input: "${currentDeviceLabel}" (id: ${currentDeviceId})`);
 
             if (onDeviceListChange) {
                 const devs = await getAudioDevices();
@@ -129,7 +203,7 @@ export async function setupAudio(onDeviceListChange) {
 
             return { success: true, label: currentDeviceLabel };
         } catch (err) {
-            console.warn(`[Audio Engine] Audio connect failed for [${deviceId}]:`, err);
+            console.warn(`[Audio Engine] Setup source node failed:`, err);
             isConnected = false;
             return { success: false, error: err.message };
         }
@@ -143,6 +217,14 @@ export async function setupAudio(onDeviceListChange) {
         navigator.mediaDevices.addEventListener('devicechange', async () => {
             const devs = await getAudioDevices();
             if (onDeviceListChange) onDeviceListChange(devs, currentDeviceId);
+            // If current device was disconnected or reconnecting, ensure stream is active
+            if (currentDeviceId && currentDeviceId !== 'default') {
+                const stillExists = devs.some(d => d.deviceId === currentDeviceId);
+                if (stillExists && (!isConnected || !currentStream || currentStream.getAudioTracks().some(t => t.readyState === 'ended'))) {
+                    console.log(`[Audio Engine] Auto-reconnecting active device [${currentDeviceId}]...`);
+                    connectDevice(currentDeviceId);
+                }
+            }
         });
     }
 
@@ -187,6 +269,10 @@ export async function setupAudio(onDeviceListChange) {
 
         getAudioData: () => {
             const now = performance.now();
+
+            if (isConnected && audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                audioCtx.resume().catch(() => {});
+            }
 
             if (isConnected && analyser) {
                 analyser.getByteFrequencyData(dataArray);

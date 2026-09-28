@@ -21,8 +21,7 @@ const wss = new WebSocketServer({ server });
 let lastTrackData = null;
 let lastBpm = 126.0;
 let lastActiveFX = 0;
-let lastLogoConfig = {};
-let lastOBSConfig = {};
+const globalSyncState = new Map();
 let connectedDevices = new Map();
 
 // Initialize Philips Hue Lighting Service
@@ -86,6 +85,13 @@ wss.on('connection', (ws) => {
         }));
     }
 
+    // Replay full active state snapshot to the connecting client (e.g. OBS / 2nd screen)
+    globalSyncState.forEach((cachedMsg) => {
+        try {
+            ws.send(JSON.stringify(cachedMsg));
+        } catch (e) {}
+    });
+
     // Handle Client Messages (Hue Configuration, Pairing, Beat Sync, Multi-Window/OBS Sync Relay)
     ws.on('message', async (raw) => {
         try {
@@ -138,16 +144,31 @@ wss.on('connection', (ws) => {
             } else if (msg.type === 'track') {
                 lastTrackData = msg;
                 relayToOthers(ws, msg);
+            } else if (msg.type === 'request_state') {
+                // Client explicitly requested full active state snapshot
+                if (lastTrackData) ws.send(JSON.stringify({ type: 'track', ...lastTrackData }));
+                if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm }));
+                if (lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
+                globalSyncState.forEach((cachedMsg) => {
+                    try { ws.send(JSON.stringify(cachedMsg)); } catch (e) {}
+                });
             } else if (msg.type === 'sync_relay' && msg.payload) {
+                if (msg.payload.type?.startsWith('set_')) {
+                    globalSyncState.set(msg.payload.type, msg.payload);
+                }
                 relayToOthers(ws, msg.payload);
             } else if (
                 msg.type === 'beat_pulse' || 
                 msg.type === 'flash' || 
                 msg.type === 'reset_all' ||
                 msg.type?.startsWith('set_') || 
-                msg.type?.startsWith('pop_') ||
+                msg.type?.startsWith('pop_') || 
+                msg.type?.startsWith('hide_') || 
                 msg.type?.startsWith('trigger_')
             ) {
+                if (msg.type?.startsWith('set_')) {
+                    globalSyncState.set(msg.type, msg);
+                }
                 relayToOthers(ws, msg);
             }
         } catch (e) {
@@ -194,53 +215,70 @@ async function startStageLinq() {
             });
         });
 
-        // Track Loaded
+        const lastDeckLoadedTracks = new Map();
+        let lastActiveNowPlayingKey = '';
+        let lastActiveNowPlayingTrack = null;
+
+        // Track Loaded (Background cued / loaded onto a deck)
         stagelinqInstance.on('trackLoaded', (status) => {
-            if (!status) return;
-            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${status.deck || 1}]: ${status.artist || 'Unknown'} - ${status.title || 'Unknown'} (${status.currentBpm || status.masterTempo || '---'} BPM)`);
+            if (!status || !status.title) return;
+            const deckKey = String(status.deck || 1);
+            const artist = status.artist || '';
+            const title = status.title || '';
+            const trackSignature = `${artist} - ${title}`;
             
-            const trackPayload = {
+            const prevSignature = lastDeckLoadedTracks.get(deckKey);
+            if (prevSignature === trackSignature) return;
+            lastDeckLoadedTracks.set(deckKey, trackSignature);
+
+            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${status.deck || 1}]: ${artist || 'Unknown'} - ${title || 'Unknown'} (${status.currentBpm || status.masterTempo || '---'} BPM)`);
+            
+            const deckPayload = {
                 deck: status.deck || 1,
-                artist: status.artist || '',
-                title: status.title || '',
+                artist: artist,
+                title: title,
                 bpm: status.currentBpm || status.masterTempo || lastBpm,
                 key: status.key || '',
-                genre: status.genre || '',
-                play: !!(status.play || status.playState),
-                master: !!status.masterStatus
+                genre: status.genre || ''
             };
-            
-            lastTrackData = trackPayload;
-            if (trackPayload.bpm && trackPayload.bpm > 40 && trackPayload.bpm < 300) {
-                lastBpm = trackPayload.bpm;
-            }
 
+            // Broadcast deck_loaded so HUD deck indicators update without popping stream overlay
             broadcast({
-                type: 'track',
-                ...trackPayload
+                type: 'deck_loaded',
+                ...deckPayload
             });
         });
 
-        // Now Playing / Layer change
+        // Now Playing / Layer change (Live on Air track transition via Fader / Play / Crossfader)
         stagelinqInstance.on('nowPlaying', (status) => {
-            if (!status) return;
-            console.log(`[StageLinq] ▶️ Now Playing [Deck ${status.deck}]: ${status.artist} - ${status.title}`);
+            if (!status || !status.title) return;
+            const deckKey = String(status.deck || 1);
+            const artist = status.artist || '';
+            const title = status.title || '';
+            const activeSignature = `${deckKey}::${artist} - ${title}`;
+            
+            if (lastActiveNowPlayingKey === activeSignature) return;
+            lastActiveNowPlayingKey = activeSignature;
+
+            console.log(`[StageLinq] ▶️ Now Playing [Deck ${status.deck}]: ${artist} - ${title}`);
             
             const trackPayload = {
                 deck: status.deck || 1,
-                artist: status.artist || '',
-                title: status.title || '',
+                artist: artist,
+                title: title,
                 bpm: status.currentBpm || status.masterTempo || lastBpm,
                 key: status.key || '',
                 play: true,
                 master: !!status.masterStatus
             };
 
+            lastActiveNowPlayingTrack = trackPayload;
             lastTrackData = trackPayload;
             if (trackPayload.bpm && trackPayload.bpm > 40 && trackPayload.bpm < 300) {
                 lastBpm = trackPayload.bpm;
             }
 
+            // Broadcast live on-air track to stream banner & HUD
             broadcast({
                 type: 'track',
                 ...trackPayload

@@ -3499,6 +3499,294 @@ export function createVFXScene(container) {
     }
 
     // =========================================================================
+    // BROADCAST & RADIO STATION LOGO LAYER
+    // =========================================================================
+    const stationLogoGroup = new THREE.Group();
+    stationLogoGroup.renderOrder = 10000;
+    stationLogoGroup.visible = false;
+    scene.add(stationLogoGroup);
+
+    let stationLogoVideoElement = null;
+    let stationLogoTexture = null;
+    let stationLogoMesh = null;
+    let stationLogoShieldMesh = null;
+    let stationLogoVisible = false;
+    let stationLogoMode = 'overlay'; // 'overlay', 'hologram', 'backdrop'
+    let stationLogoPosition = 'top-right'; // 'top-right', 'top-left', 'bottom-right', 'bottom-left', 'center', 'top-center'
+    let stationLogoBaseOpacity = 1.0;
+    let stationLogoBaseScale = 0.85;
+    let stationLogoBassPulseAmount = 0.25;
+    let stationLogoAspectRatio = 1.0;
+    let stationLogoContrast = 1.25;
+    let stationLogoBrightness = 1.05;
+    let isStationShieldActive = true;
+    let stationLogoSpinMode = 'off'; // 'off', 'center', 'orbit', 'freeroam'
+    let stationLogoSpinSpeed = 1.0;
+    let stationLogoSpinAngle = 0.0;
+    let currentStationLogoPosX = 2.4;
+    let currentStationLogoPosY = 1.35;
+    let currentStationLogoBaseZ = 12.0;
+    let currentStationLogoScaleFactor = 0.65;
+
+    // Dark Contrast Shield for Station Logo
+    const stationShieldCanvas = document.createElement('canvas');
+    stationShieldCanvas.width = 256;
+    stationShieldCanvas.height = 256;
+    const stSCtx = stationShieldCanvas.getContext('2d');
+    const stSGrad = stSCtx.createRadialGradient(128, 128, 20, 128, 128, 128);
+    stSGrad.addColorStop(0, 'rgba(2, 2, 8, 0.85)');
+    stSGrad.addColorStop(0.65, 'rgba(2, 2, 8, 0.5)');
+    stSGrad.addColorStop(1, 'rgba(2, 2, 8, 0.0)');
+    stSCtx.fillStyle = stSGrad;
+    stSCtx.fillRect(0, 0, 256, 256);
+
+    const stationShieldTexture = new THREE.CanvasTexture(stationShieldCanvas);
+    const stationShieldMat = new THREE.MeshBasicMaterial({
+        map: stationShieldTexture,
+        transparent: true,
+        opacity: 0.8,
+        depthTest: false,
+        depthWrite: false,
+        fog: false
+    });
+    stationLogoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), stationShieldMat);
+    stationLogoShieldMesh.renderOrder = 9998;
+
+    const stationLogoGeo = new THREE.PlaneGeometry(16, 16);
+    const stationLogoShaderMat = new THREE.ShaderMaterial({
+        uniforms: {
+            map: { value: null },
+            uOpacity: { value: stationLogoBaseOpacity },
+            uContrast: { value: stationLogoContrast },
+            uBrightness: { value: stationLogoBrightness },
+            uLumaCutoff: { value: 0.05 },
+            uLumaSmooth: { value: 0.05 },
+            uBlendMode: { value: 0 }
+        },
+        vertexShader: HighClarityLogoShader.vertexShader,
+        fragmentShader: HighClarityLogoShader.fragmentShader,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        fog: false,
+        side: THREE.DoubleSide
+    });
+
+    stationLogoMesh = new THREE.Mesh(stationLogoGeo, stationLogoShaderMat);
+    stationLogoMesh.renderOrder = 10001;
+
+    const stationLogoPivot = new THREE.Group();
+    stationLogoGroup.add(stationLogoPivot);
+    stationLogoPivot.add(stationLogoShieldMesh);
+    stationLogoPivot.add(stationLogoMesh);
+
+    function applyStationLogoPlacement() {
+        if (!stationLogoMesh) return;
+
+        let baseZ = 12.0;
+        let baseW = 5.5 * stationLogoBaseScale;
+        let posX = 0, posY = 0;
+
+        if (stationLogoMode === 'backdrop') {
+            baseZ = -20;
+            baseW = 45 * stationLogoBaseScale;
+            stationLogoShaderMat.blending = THREE.AdditiveBlending;
+            if (stationLogoShieldMesh) stationLogoShieldMesh.visible = false;
+        } else if (stationLogoMode === 'hologram') {
+            baseZ = 6.9;
+            baseW = 11.5 * stationLogoBaseScale;
+            stationLogoShaderMat.blending = THREE.NormalBlending;
+            if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
+        } else {
+            // Default: Overlay / Broadcast watermark
+            baseZ = 12.0;
+            baseW = 5.5 * stationLogoBaseScale;
+            stationLogoShaderMat.blending = THREE.NormalBlending;
+            if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
+        }
+
+        let scaleFactor = 1.0;
+        if (stationLogoPosition === 'center') {
+            scaleFactor = 1.0;
+            posX = 0;
+            posY = 0;
+        } else if (stationLogoPosition === 'top-left') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? -2.3 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+        } else if (stationLogoPosition === 'top-right') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+        } else if (stationLogoPosition === 'bottom-left') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? -2.3 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
+            posY = (stationLogoMode === 'overlay' ? -1.3 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
+        } else if (stationLogoPosition === 'bottom-right') {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? -1.3 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
+        } else if (stationLogoPosition === 'top-center' || stationLogoPosition === 'top') {
+            scaleFactor = 0.75;
+            posX = 0;
+            posY = (stationLogoMode === 'overlay' ? 1.35 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+        } else {
+            scaleFactor = 0.65;
+            posX = (stationLogoMode === 'overlay' ? 2.3 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
+            posY = (stationLogoMode === 'overlay' ? 1.3 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
+        }
+
+        const w = baseW * scaleFactor;
+        const h = (baseW / stationLogoAspectRatio) * scaleFactor;
+
+        currentStationLogoPosX = posX;
+        currentStationLogoPosY = posY;
+        currentStationLogoBaseZ = baseZ;
+        currentStationLogoScaleFactor = scaleFactor;
+
+        stationLogoPivot.position.set(posX, posY, baseZ);
+        stationLogoPivot.quaternion.copy(camera.quaternion);
+
+        stationLogoMesh.position.set(0, 0, 0);
+        stationLogoMesh.scale.set(w / 16, h / 16, 1);
+        stationLogoMesh.rotation.order = 'YXZ';
+        stationLogoMesh.rotation.set(0, 0, 0);
+
+        if (stationLogoShieldMesh && stationLogoMode !== 'backdrop') {
+            stationLogoShieldMesh.position.set(0, 0, -0.2);
+            stationLogoShieldMesh.rotation.set(0, 0, 0);
+            stationLogoShieldMesh.scale.set((w * 1.35) / 16, (h * 1.4) / 16, 1);
+        }
+    }
+
+    applyStationLogoPlacement();
+
+    function loadStationLogoMedia(sourceUrl, isVideo = false) {
+        try {
+            if (stationLogoVideoElement) {
+                stationLogoVideoElement.pause();
+                stationLogoVideoElement.removeAttribute('src');
+                stationLogoVideoElement.load();
+                stationLogoVideoElement = null;
+            }
+
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.src = sourceUrl;
+                video.crossOrigin = 'anonymous';
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.autoplay = true;
+
+                video.addEventListener('loadedmetadata', () => {
+                    stationLogoAspectRatio = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : 1.0;
+                    applyStationLogoPlacement();
+                });
+
+                stationLogoVideoElement = video;
+                video.play().catch(() => {});
+
+                stationLogoTexture = new THREE.VideoTexture(video);
+                stationLogoTexture.minFilter = THREE.LinearFilter;
+                stationLogoTexture.magFilter = THREE.LinearFilter;
+                stationLogoTexture.colorSpace = THREE.SRGBColorSpace;
+                stationLogoShaderMat.uniforms.map.value = stationLogoTexture;
+                stationLogoShaderMat.needsUpdate = true;
+            } else {
+                const loader = new THREE.TextureLoader();
+                loader.load(sourceUrl, (tex) => {
+                    stationLogoTexture = tex;
+                    stationLogoTexture.minFilter = THREE.LinearFilter;
+                    stationLogoTexture.magFilter = THREE.LinearFilter;
+                    stationLogoTexture.colorSpace = THREE.SRGBColorSpace;
+
+                    if (tex.image && tex.image.width && tex.image.height) {
+                        stationLogoAspectRatio = tex.image.width / tex.image.height;
+                    } else {
+                        stationLogoAspectRatio = 1.0;
+                    }
+
+                    stationLogoShaderMat.uniforms.map.value = stationLogoTexture;
+                    stationLogoShaderMat.needsUpdate = true;
+                    applyStationLogoPlacement();
+                }, undefined, (err) => {
+                    console.error('[StationLogo] Texture load error:', err);
+                });
+            }
+        } catch (err) {
+            console.error('[StationLogo] Error loading media:', err);
+        }
+    }
+
+    function playStationLogoVideo() {
+        if (stationLogoVideoElement && stationLogoVideoElement.paused) {
+            stationLogoVideoElement.play().catch(() => {});
+        }
+    }
+
+    function setStationLogoPosition(pos) {
+        stationLogoPosition = pos;
+        applyStationLogoPlacement();
+    }
+
+    function setStationLogoVisible(visible) {
+        stationLogoVisible = !!visible;
+        stationLogoGroup.visible = stationLogoVisible;
+    }
+
+    function setStationLogoScale(val) {
+        stationLogoBaseScale = Math.max(0.1, Math.min(5.0, Number(val) || 1.0));
+        applyStationLogoPlacement();
+    }
+
+    function setStationLogoMode(mode) {
+        stationLogoMode = mode;
+        applyStationLogoPlacement();
+    }
+
+    function setStationLogoBassPulse(val) {
+        stationLogoBassPulseAmount = Math.max(0, Math.min(1.0, Number(val) || 0));
+    }
+
+    function setStationLogoContrast(val) {
+        stationLogoContrast = Math.max(0.5, Math.min(3.0, Number(val) || 1.0));
+        stationLogoShaderMat.uniforms.uContrast.value = stationLogoContrast;
+    }
+
+    function setStationLogoBrightness(val) {
+        stationLogoBrightness = Math.max(0.5, Math.min(3.0, Number(val) || 1.0));
+        stationLogoShaderMat.uniforms.uBrightness.value = stationLogoBrightness;
+    }
+
+    function setStationLogoBlendMode(modeIdx) {
+        stationLogoShaderMat.uniforms.uBlendMode.value = parseInt(modeIdx, 10) || 0;
+    }
+
+    function setStationLogoShieldVisible(visible) {
+        isStationShieldActive = !!visible;
+        if (stationLogoShieldMesh && stationLogoMode !== 'backdrop') {
+            stationLogoShieldMesh.visible = isStationShieldActive;
+        }
+    }
+
+    function setStationLogoSpinMode(mode) {
+        if (mode === 'center' || mode === 'orbit' || mode === 'freeroam' || mode === 'free_roam') {
+            stationLogoSpinMode = (mode === 'free_roam') ? 'freeroam' : mode;
+        } else if (mode === 'on' || mode === true) {
+            stationLogoSpinMode = 'center';
+        } else {
+            stationLogoSpinMode = 'off';
+        }
+    }
+
+    function setStationLogoSpinSpeed(speed) {
+        stationLogoSpinSpeed = typeof speed === 'number' ? speed : 1.0;
+    }
+
+    // =========================================================================
     // CATEGORIZED VFX BANK: 17 SCENES
     // =========================================================================
     const fxRoots = [];
@@ -4697,7 +4985,7 @@ export function createVFXScene(container) {
     function animate(getAudioDataFn) {
         requestAnimationFrame(() => animate(getAudioDataFn));
 
-        const delta = clock.getDelta();
+        const delta = Math.min(clock.getDelta(), 0.1);
         const elapsedTime = clock.getElapsedTime();
 
         let audio = null;
@@ -4804,6 +5092,78 @@ export function createVFXScene(container) {
                 } else {
                     logoMesh.rotation.set(0, 0, 0);
                     logoSpinAngle = 0;
+                }
+            }
+        }
+
+        // 1b. Animate Station Logo Layer
+        if (stationLogoVisible && stationLogoMesh) {
+            const stPulse = (bassPop * stationLogoBassPulseAmount * 0.25) + (transient * stationLogoBassPulseAmount * 0.2);
+            const wBase = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 5.5 : 11.5)) * stationLogoBaseScale * currentStationLogoScaleFactor * (1.0 + stPulse * 0.25);
+            const hBase = (wBase / stationLogoAspectRatio);
+
+            if (stationLogoShieldMesh && isStationShieldActive && stationLogoMode !== 'backdrop') {
+                stationLogoShieldMesh.position.set(0, 0, -0.2);
+                stationLogoShieldMesh.rotation.set(0, 0, 0);
+            }
+
+            if (stationLogoSpinMode === 'center') {
+                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.quaternion.copy(camera.quaternion);
+
+                stationLogoSpinAngle += delta * stationLogoSpinSpeed * 2.5;
+                const cosSpin = Math.cos(stationLogoSpinAngle);
+                stationLogoMesh.scale.set((wBase / 16) * cosSpin, hBase / 16, 1);
+                stationLogoMesh.position.set(0, 0, 0);
+                stationLogoMesh.rotation.set(0, 0, 0);
+            } else if (stationLogoSpinMode === 'orbit') {
+                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.quaternion.copy(camera.quaternion);
+
+                stationLogoSpinAngle += delta * stationLogoSpinSpeed * 2.5;
+                stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
+                stationLogoMesh.position.set(0, 0, 0);
+                stationLogoMesh.rotation.order = 'YXZ';
+                stationLogoMesh.rotation.y = stationLogoSpinAngle;
+                stationLogoMesh.rotation.x = 0;
+                stationLogoMesh.rotation.z = 0;
+            } else if (stationLogoSpinMode === 'freeroam') {
+                stationLogoSpinAngle += delta * stationLogoSpinSpeed * 1.5;
+                const roamTime = elapsedTime * stationLogoSpinSpeed * 0.45;
+
+                const boundX = stationLogoMode === 'backdrop' ? 14.0 : (stationLogoMode === 'overlay' ? 2.2 : 5.8);
+                const boundY = stationLogoMode === 'backdrop' ? 8.0 : (stationLogoMode === 'overlay' ? 1.2 : 3.4);
+
+                const freeX = Math.sin(roamTime * 1.1 + 1.5) * boundX;
+                const freeY = Math.cos(roamTime * 0.9 + 1.0) * boundY;
+                const freeZ = currentStationLogoBaseZ + Math.sin(roamTime * 0.7) * 1.0;
+
+                stationLogoPivot.position.set(freeX, freeY, freeZ);
+                stationLogoPivot.quaternion.copy(camera.quaternion);
+
+                stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
+                stationLogoMesh.position.set(0, 0, 0);
+                stationLogoMesh.rotation.order = 'YXZ';
+                stationLogoMesh.rotation.y = stationLogoSpinAngle;
+                stationLogoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2;
+                stationLogoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15;
+            } else {
+                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.quaternion.copy(camera.quaternion);
+
+                stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
+                stationLogoMesh.position.set(0, 0, 0);
+                if (Math.abs(stationLogoMesh.rotation.y) > 0.001 || Math.abs(stationLogoMesh.rotation.x) > 0.001 || Math.abs(stationLogoMesh.rotation.z) > 0.001) {
+                    stationLogoMesh.rotation.y = THREE.MathUtils.lerp(stationLogoMesh.rotation.y, 0, delta * 8.0);
+                    stationLogoMesh.rotation.x = THREE.MathUtils.lerp(stationLogoMesh.rotation.x, 0, delta * 8.0);
+                    stationLogoMesh.rotation.z = THREE.MathUtils.lerp(stationLogoMesh.rotation.z, 0, delta * 8.0);
+                    if (Math.abs(stationLogoMesh.rotation.y) < 0.001) {
+                        stationLogoMesh.rotation.set(0, 0, 0);
+                        stationLogoSpinAngle = 0;
+                    }
+                } else {
+                    stationLogoMesh.rotation.set(0, 0, 0);
+                    stationLogoSpinAngle = 0;
                 }
             }
         }
@@ -5412,6 +5772,20 @@ export function createVFXScene(container) {
         setLogoSpinMode,
         setLogoSpinEnabled,
         setLogoSpinSpeed,
+        // Station Logo Layer Exports
+        loadStationLogoMedia,
+        playStationLogoVideo,
+        setStationLogoVisible,
+        setStationLogoScale,
+        setStationLogoMode,
+        setStationLogoPosition,
+        setStationLogoBassPulse,
+        setStationLogoContrast,
+        setStationLogoBrightness,
+        setStationLogoBlendMode,
+        setStationLogoShieldVisible,
+        setStationLogoSpinMode,
+        setStationLogoSpinSpeed,
         setDeckData: (data) => {
             if (!data) return;
             const targetDeck = (data.deck === 2) ? 2 : 1;

@@ -58,14 +58,18 @@ async function init() {
     // Now Playing Track Banner Stream Overlay Elements & State
     const btnToggleTrackBanner = document.getElementById('btn-toggle-track-banner');
     const btnPopTrackBanner = document.getElementById('btn-pop-track-banner');
+    const btnPopOffTrackBanner = document.getElementById('btn-pop-off-track-banner');
     const selectTrackDelay = document.getElementById('select-track-delay');
     const selectTrackDuration = document.getElementById('select-track-duration');
+    const sliderTrackScale = document.getElementById('slider-track-scale');
+    const trackScaleVal = document.getElementById('track-scale-val');
     const trackDeckBadge = document.getElementById('track-deck-badge');
     const trackBpmBadge = document.getElementById('track-bpm-badge');
 
     let isTrackBannerEnabled = true;
     let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
     let trackDurationSec = 30;
+    let trackBannerScale = 1.4;
     let trackBannerDelayTimer = null;
     let trackBannerFadeTimer = null;
 
@@ -135,6 +139,33 @@ async function init() {
     const fileLogo = document.getElementById('file-logo');
     const dropZone = document.getElementById('drop-zone');
 
+    // Station Logo Layer DOM References & State
+    const stationLogoBadge = document.getElementById('station-logo-badge');
+    const btnToggleStationLogo = document.getElementById('btn-toggle-station-logo');
+    const btnUploadStationLogo = document.getElementById('btn-upload-station-logo');
+    const fileStationLogo = document.getElementById('file-station-logo');
+    const stationLogoActiveName = document.getElementById('station-logo-active-name');
+    const stationLogosContainer = document.getElementById('station-logos-container');
+    const stationPosPills = document.querySelectorAll('#station-pos-pills .mode-pill[data-st-pos]');
+    const stationModePills = document.querySelectorAll('#station-mode-pills .mode-pill[data-st-mode]');
+    const stationSpinPills = document.querySelectorAll('#station-spin-pills .mode-pill[data-st-spin]');
+    const sliderStationSpinSpeed = document.getElementById('slider-station-spin-speed');
+    const stationSpinSpeedVal = document.getElementById('station-spin-speed-val');
+    const sliderStationScale = document.getElementById('slider-station-scale');
+    const stationScaleVal = document.getElementById('station-scale-val');
+    const sliderStationPulse = document.getElementById('slider-station-pulse');
+    const stationPulseVal = document.getElementById('station-pulse-val');
+    const sliderStationContrast = document.getElementById('slider-station-contrast');
+    const stationContrastVal = document.getElementById('station-contrast-val');
+    const sliderStationBright = document.getElementById('slider-station-bright');
+    const stationBrightVal = document.getElementById('station-bright-val');
+    const checkStationShield = document.getElementById('check-station-shield');
+
+    let isStationLogoActive = false;
+    let currentStationLogoUrl = '/images/station_logos/4TM Primary Logo.png';
+    let currentStationLogoTitle = '4TM Radio';
+    let isCurrentStationVideo = false;
+
     // FX Category & Presets Elements
     const catTabs = document.querySelectorAll('.cat-tab');
     const fxButtons = document.querySelectorAll('.fx-btn');
@@ -147,6 +178,10 @@ async function init() {
 
     // Load Default Animated Logo Video (JK McLaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
+
+    // Load Default Station Logo (4TM Radio)
+    vfx.loadStationLogoMedia(currentStationLogoUrl, false);
+    vfx.setStationLogoVisible(false);
 
     let audioProcessor = null;
     let isLogoActive = true;
@@ -335,69 +370,100 @@ async function init() {
     // -------------------------------------------------------------------------
     // Now Playing Track Banner Stream Overlay Manager
     // -------------------------------------------------------------------------
-    function setTrackBannerVisibility(show) {
-        if (!trackBanner) return;
-        if (show && isTrackBannerEnabled) {
-            trackBanner.classList.remove('banner-hidden', 'hidden');
-        } else {
+    let lastDisplayedTrackTitle = '';
+    let lastDisplayedTrackArtist = '';
+    let lastDisplayedTrackDeck = 1;
+    let currentDisplayedTrackKey = '';
+
+    function hideTrackBanner() {
+        if (trackBannerDelayTimer) {
+            clearTimeout(trackBannerDelayTimer);
+            trackBannerDelayTimer = null;
+        }
+        if (trackBannerFadeTimer) {
+            clearTimeout(trackBannerFadeTimer);
+            trackBannerFadeTimer = null;
+        }
+        if (trackBanner) {
             trackBanner.classList.add('banner-hidden');
         }
     }
 
-    let lastDisplayedTrackTitle = '';
-    let lastDisplayedTrackArtist = '';
-    let lastDisplayedTrackDeck = null;
+    function showTrackBanner(trackData, options = {}) {
+        if (!trackBanner) return;
 
-    function triggerTrackBannerPopup(trackData, isManualOrForced = false) {
-        if (!trackData || !trackData.title) return;
+        const { force = false, immediate = false, duration = null } = options;
 
-        const isNewTrack = (trackData.title !== lastDisplayedTrackTitle || trackData.artist !== lastDisplayedTrackArtist);
-        
-        // If it's the exact same track and not a manual POP NOW, do not interrupt the fadeout timer
-        if (!isNewTrack && !isManualOrForced) {
+        if (!isTrackBannerEnabled && !force) {
+            hideTrackBanner();
             return;
         }
 
-        lastDisplayedTrackTitle = trackData.title;
-        lastDisplayedTrackArtist = trackData.artist || '';
-        lastDisplayedTrackDeck = trackData.deck || 1;
+        const title = trackData?.title || (trackTitle ? trackTitle.textContent : 'Live Track');
+        const artist = trackData?.artist || (trackArtist ? trackArtist.textContent.split(' • ')[0] : '');
+        const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
+        const deckLabel = String(rawDeck).toUpperCase().startsWith('DECK') ? String(rawDeck).toUpperCase() : `DECK ${rawDeck}`;
+        const bpm = (trackData?.bpm && trackData.bpm > 40 && trackData.bpm < 300) 
+            ? Number(trackData.bpm) 
+            : (Number(bpmVal?.textContent) || 126.0);
 
-        if (trackTitle && trackData.title) trackTitle.textContent = trackData.title;
-        if (trackArtist) trackArtist.textContent = trackData.artist ? `${trackData.artist} • Deck ${lastDisplayedTrackDeck}` : `Deck ${lastDisplayedTrackDeck}`;
-        if (trackDeckBadge) trackDeckBadge.textContent = `DECK ${lastDisplayedTrackDeck}`;
-        if (trackBpmBadge && trackData.bpm) trackBpmBadge.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
+        const trackKey = `${deckLabel}::${title}::${artist}`;
 
-        if (!isTrackBannerEnabled) {
-            setTrackBannerVisibility(false);
+        // If duplicate packet for the already active visible banner, do not interrupt timer
+        if (!force && trackKey === currentDisplayedTrackKey && !trackBanner.classList.contains('banner-hidden')) {
             return;
         }
 
-        if (trackBannerDelayTimer) clearTimeout(trackBannerDelayTimer);
-        if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
+        currentDisplayedTrackKey = trackKey;
+        lastDisplayedTrackTitle = title;
+        lastDisplayedTrackArtist = artist;
+        lastDisplayedTrackDeck = rawDeck;
 
-        // Auto-fadeout duration calculation
-        const duration = trackDurationSec > 0 ? trackDurationSec : 30;
+        // Update DOM elements on HUD and Banner
+        if (trackTitle) trackTitle.textContent = title;
+        if (trackArtist) trackArtist.textContent = artist ? `${artist} • ${deckLabel}` : deckLabel;
+        if (trackDeckBadge) trackDeckBadge.textContent = deckLabel;
+        if (trackBpmBadge) trackBpmBadge.textContent = `${bpm.toFixed(1)} BPM`;
 
-        // Apply trigger delay (e.g. 0s instant or 5s)
-        if (trackDelaySec > 0 && !isManualOrForced) {
-            setTrackBannerVisibility(false);
-            trackBannerDelayTimer = setTimeout(() => {
-                setTrackBannerVisibility(true);
+        // Clear existing timers
+        if (trackBannerDelayTimer) {
+            clearTimeout(trackBannerDelayTimer);
+            trackBannerDelayTimer = null;
+        }
+        if (trackBannerFadeTimer) {
+            clearTimeout(trackBannerFadeTimer);
+            trackBannerFadeTimer = null;
+        }
 
-                if (trackDurationSec > 0) {
-                    trackBannerFadeTimer = setTimeout(() => {
-                        setTrackBannerVisibility(false);
-                    }, duration * 1000);
-                }
-            }, trackDelaySec * 1000);
-        } else {
-            // Immediate
-            setTrackBannerVisibility(true);
-            if (trackDurationSec > 0) {
+        const effectiveDuration = (duration !== null && duration !== undefined) ? duration : trackDurationSec;
+        const delay = (immediate || force || trackDelaySec <= 0) ? 0 : trackDelaySec;
+
+        const renderVisible = () => {
+            trackBanner.classList.remove('banner-hidden', 'hidden');
+
+            if (effectiveDuration > 0) {
                 trackBannerFadeTimer = setTimeout(() => {
-                    setTrackBannerVisibility(false);
-                }, duration * 1000);
+                    hideTrackBanner();
+                }, effectiveDuration * 1000);
             }
+        };
+
+        if (delay > 0 && !force && !immediate) {
+            if (!trackBanner.classList.contains('banner-hidden')) {
+                // Banner already visible, reset duration timer seamlessly
+                if (effectiveDuration > 0) {
+                    trackBannerFadeTimer = setTimeout(() => {
+                        hideTrackBanner();
+                    }, effectiveDuration * 1000);
+                }
+            } else {
+                trackBanner.classList.add('banner-hidden');
+                trackBannerDelayTimer = setTimeout(() => {
+                    renderVisible();
+                }, delay * 1000);
+            }
+        } else {
+            renderVisible();
         }
     }
 
@@ -410,7 +476,7 @@ async function init() {
             btnToggleTrackBanner.style.background = isTrackBannerEnabled ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
         }
         if (!isTrackBannerEnabled) {
-            setTrackBannerVisibility(false);
+            hideTrackBanner();
         }
         showToast(isTrackBannerEnabled ? '🎛️ Track Stream Overlay: ENABLED' : '⚪ Track Stream Overlay: OFF');
         if (broadcast) {
@@ -426,17 +492,28 @@ async function init() {
         btnPopTrackBanner.addEventListener('click', () => {
             const currentTrack = {
                 title: trackTitle ? trackTitle.textContent : 'Live Track',
-                artist: trackArtist ? trackArtist.textContent : '',
+                artist: trackArtist ? trackArtist.textContent.split(' • ')[0] : '',
                 deck: lastDisplayedTrackDeck || 1,
-                bpm: bpmVal ? bpmVal.textContent : 126
+                bpm: Number(bpmVal?.textContent) || 126.0
             };
-            triggerTrackBannerPopup(currentTrack, true);
+            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
             showToast('🎛️ Popped Track Banner on Stream');
 
             broadcastSync({
                 type: 'pop_track_banner_now',
                 trackData: currentTrack,
                 duration: trackDurationSec
+            });
+        });
+    }
+
+    if (btnPopOffTrackBanner) {
+        btnPopOffTrackBanner.addEventListener('click', () => {
+            hideTrackBanner();
+            showToast('⏹️ Dismissed Track Banner on Stream');
+
+            broadcastSync({
+                type: 'hide_track_banner_now'
             });
         });
     }
@@ -449,13 +526,27 @@ async function init() {
         });
     }
 
-    if (selectTrackDuration) {
-        selectTrackDuration.addEventListener('change', (e) => {
-            trackDurationSec = parseInt(e.target.value, 10) || 0;
-            showToast(trackDurationSec > 0 ? `⏱️ Display Duration: ${trackDurationSec}s` : '🔒 Track Banner: Stay ON (Always Visible)');
-            broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
+    function setTrackBannerScale(scale, broadcast = true) {
+        trackBannerScale = Math.min(Math.max(parseFloat(scale) || 1.4, 0.5), 3.0);
+        document.documentElement.style.setProperty('--banner-scale', String(trackBannerScale));
+        if (sliderTrackScale) sliderTrackScale.value = String(trackBannerScale);
+        if (trackScaleVal) {
+            const label = trackBannerScale <= 0.9 ? 'Compact' : (trackBannerScale <= 1.3 ? 'Standard' : (trackBannerScale <= 1.8 ? 'Large' : 'Stadium'));
+            trackScaleVal.textContent = `${trackBannerScale.toFixed(1)}x (${label})`;
+        }
+        if (broadcast) {
+            broadcastSync({ type: 'set_track_banner_scale', scale: trackBannerScale });
+        }
+    }
+
+    if (sliderTrackScale) {
+        sliderTrackScale.addEventListener('input', (e) => {
+            setTrackBannerScale(e.target.value, true);
         });
     }
+
+    // Set initial scale from slider / default
+    setTrackBannerScale(trackBannerScale, false);
 
     function setOBSOutputLive(live, broadcast = true) {
         isOBSOutputLive = !!live;
@@ -700,27 +791,20 @@ async function init() {
         } else if (msg.type === 'reset_all') {
             resetAllParameters(false);
         } else if (msg.type === 'track') {
-            if (trackTitle && msg.title) trackTitle.textContent = msg.title;
-            if (trackArtist && msg.artist) trackArtist.textContent = `${msg.artist} • Deck ${msg.deck || 1}`;
-            if (trackDeckBadge && msg.deck) trackDeckBadge.textContent = `DECK ${msg.deck}`;
-            if (trackBpmBadge && msg.bpm) trackBpmBadge.textContent = `${Number(msg.bpm).toFixed(1)} BPM`;
-            if (bpmVal && msg.bpm) bpmVal.textContent = Number(msg.bpm).toFixed(1);
-            if (msg.bpm) vfx.setBPM(msg.bpm);
-            if (vfx.setDeckData) vfx.setDeckData(msg);
-            // Trigger Track Banner popup on remote OBS / 2nd screen
-            triggerTrackBannerPopup(msg, false);
-        } else if (msg.type === 'trigger_track_banner') {
-            trackDelaySec = msg.delay ?? trackDelaySec;
-            trackDurationSec = msg.duration ?? trackDurationSec;
-            triggerTrackBannerPopup(msg.trackData, false);
-        } else if (msg.type === 'pop_track_banner_now') {
-            setTrackBannerVisibility(true);
-            if (msg.duration > 0) {
-                if (trackBannerFadeTimer) clearTimeout(trackBannerFadeTimer);
-                trackBannerFadeTimer = setTimeout(() => {
-                    setTrackBannerVisibility(false);
-                }, msg.duration * 1000);
+            if (msg.bpm && msg.bpm > 40 && msg.bpm < 300) {
+                if (bpmVal) bpmVal.textContent = Number(msg.bpm).toFixed(1);
+                vfx.setBPM(msg.bpm);
             }
+            if (vfx.setDeckData) vfx.setDeckData(msg);
+            showTrackBanner(msg, { force: false });
+        } else if (msg.type === 'trigger_track_banner') {
+            if (msg.delay !== undefined) trackDelaySec = msg.delay;
+            if (msg.duration !== undefined) trackDurationSec = msg.duration;
+            showTrackBanner(msg.trackData, { force: false });
+        } else if (msg.type === 'pop_track_banner_now') {
+            showTrackBanner(msg.trackData, { force: true, immediate: true, duration: msg.duration });
+        } else if (msg.type === 'hide_track_banner_now') {
+            hideTrackBanner();
         } else if (msg.type === 'set_track_banner_enabled') {
             setTrackBannerEnabled(msg.enabled, false);
         } else if (msg.type === 'set_track_delay') {
@@ -729,12 +813,102 @@ async function init() {
         } else if (msg.type === 'set_track_duration') {
             trackDurationSec = msg.duration;
             if (selectTrackDuration) selectTrackDuration.value = String(msg.duration);
+        } else if (msg.type === 'set_track_banner_scale') {
+            setTrackBannerScale(msg.scale, false);
+        } else if (msg.type === 'set_station_logo_vis') {
+            updateStationLogoVisibility(msg.vis, false);
+        } else if (msg.type === 'set_station_logo_url') {
+            selectStationLogo(msg.url, msg.title, msg.isVideo, false);
+        } else if (msg.type === 'set_station_logo_pos') {
+            stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === msg.pos));
+            vfx.setStationLogoPosition(msg.pos);
+        } else if (msg.type === 'set_station_logo_mode') {
+            stationModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-mode') === msg.mode));
+            vfx.setStationLogoMode(msg.mode);
+        } else if (msg.type === 'set_station_logo_spin') {
+            stationSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-spin') === msg.spin));
+            vfx.setStationLogoSpinMode(msg.spin);
+        } else if (msg.type === 'set_station_logo_spin_speed') {
+            if (sliderStationSpinSpeed) sliderStationSpinSpeed.value = msg.speed;
+            if (stationSpinSpeedVal) stationSpinSpeedVal.textContent = `${Number(msg.speed).toFixed(1)}x`;
+            vfx.setStationLogoSpinSpeed(msg.speed);
+        } else if (msg.type === 'set_station_logo_scale') {
+            if (sliderStationScale) sliderStationScale.value = msg.val;
+            if (stationScaleVal) stationScaleVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setStationLogoScale(msg.val);
+        } else if (msg.type === 'set_station_logo_pulse') {
+            if (sliderStationPulse) sliderStationPulse.value = msg.val;
+            if (stationPulseVal) stationPulseVal.textContent = `${msg.val}%`;
+            vfx.setStationLogoBassPulse(msg.val / 100);
+        } else if (msg.type === 'set_station_logo_contrast') {
+            if (sliderStationContrast) sliderStationContrast.value = msg.val;
+            if (stationContrastVal) stationContrastVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setStationLogoContrast(msg.val);
+        } else if (msg.type === 'set_station_logo_bright') {
+            if (sliderStationBright) sliderStationBright.value = msg.val;
+            if (stationBrightVal) stationBrightVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setStationLogoBrightness(msg.val);
+        } else if (msg.type === 'set_station_logo_shield') {
+            if (checkStationShield) checkStationShield.checked = msg.active;
+            vfx.setStationLogoShieldVisible(msg.active);
+        } else if (msg.type === 'request_state') {
+            // If this window is an active master controller, broadcast full current state snapshot
+            if (!isCleanDisplay && !isOBSMode) {
+                broadcastSync({ type: 'set_fx', fx: vfx.getCurrentFX() });
+                broadcastSync({ type: 'set_bpm', bpm: bpmVal ? parseFloat(bpmVal.textContent) || 126 : 126 });
+                broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
+                const activeSpin = document.querySelector('#logo-spin-pills .mode-pill.active')?.getAttribute('data-spin') || 'off';
+                broadcastSync({ type: 'set_logo_spin', spin: activeSpin });
+                const spinSpeed = sliderLogoSpinSpeed ? parseFloat(sliderLogoSpinSpeed.value) || 1.0 : 1.0;
+                broadcastSync({ type: 'set_logo_spin_speed', speed: spinSpeed });
+                const activeMode = document.querySelector('.mode-pill[data-mode].active')?.getAttribute('data-mode') || 'hologram';
+                broadcastSync({ type: 'set_logo_mode', mode: activeMode });
+                const activeBlend = document.querySelector('.mode-pill[data-blend].active')?.getAttribute('data-blend') || '0';
+                broadcastSync({ type: 'set_logo_blend', blend: activeBlend });
+                const activePos = document.querySelector('#logo-pos-pills .mode-pill.active')?.getAttribute('data-pos') || 'center';
+                broadcastSync({ type: 'set_logo_pos', pos: activePos });
+                if (sliderLogoScale) broadcastSync({ type: 'set_logo_scale', val: parseFloat(sliderLogoScale.value) || 1.0 });
+                if (sliderLogoPulse) broadcastSync({ type: 'set_logo_pulse', val: parseFloat(sliderLogoPulse.value) || 50 });
+                if (sliderLogoContrast) broadcastSync({ type: 'set_logo_contrast', val: parseFloat(sliderLogoContrast.value) || 1.35 });
+                if (sliderLogoBright) broadcastSync({ type: 'set_logo_bright', val: parseFloat(sliderLogoBright.value) || 1.15 });
+                if (checkLogoShield) broadcastSync({ type: 'set_logo_shield', active: checkLogoShield.checked });
+                
+                // Station Logo Sync Snapshot
+                broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
+                broadcastSync({ type: 'set_station_logo_url', url: currentStationLogoUrl, title: currentStationLogoTitle, isVideo: isCurrentStationVideo });
+                const activeStPos = document.querySelector('#station-pos-pills .mode-pill.active')?.getAttribute('data-st-pos') || 'top-right';
+                broadcastSync({ type: 'set_station_logo_pos', pos: activeStPos });
+                const activeStMode = document.querySelector('#station-mode-pills .mode-pill.active')?.getAttribute('data-st-mode') || 'overlay';
+                broadcastSync({ type: 'set_station_logo_mode', mode: activeStMode });
+                const activeStSpin = document.querySelector('#station-spin-pills .mode-pill.active')?.getAttribute('data-st-spin') || 'off';
+                broadcastSync({ type: 'set_station_logo_spin', spin: activeStSpin });
+                if (sliderStationSpinSpeed) broadcastSync({ type: 'set_station_logo_spin_speed', speed: parseFloat(sliderStationSpinSpeed.value) || 1.0 });
+                if (sliderStationScale) broadcastSync({ type: 'set_station_logo_scale', val: parseFloat(sliderStationScale.value) || 0.85 });
+                if (sliderStationPulse) broadcastSync({ type: 'set_station_logo_pulse', val: parseFloat(sliderStationPulse.value) || 25 });
+                if (sliderStationContrast) broadcastSync({ type: 'set_station_logo_contrast', val: parseFloat(sliderStationContrast.value) || 1.25 });
+                if (sliderStationBright) broadcastSync({ type: 'set_station_logo_bright', val: parseFloat(sliderStationBright.value) || 1.05 });
+                if (checkStationShield) broadcastSync({ type: 'set_station_logo_shield', active: checkStationShield.checked });
+
+                if (sliderGain) broadcastSync({ type: 'set_gain', val: parseFloat(sliderGain.value) || 1.0 });
+                if (sliderSens) broadcastSync({ type: 'set_sens', val: parseFloat(sliderSens.value) || 1.0 });
+                if (sliderBloom) broadcastSync({ type: 'set_bloom', val: parseFloat(sliderBloom.value) || 0.35 });
+                broadcastSync({ type: 'set_obs_output', live: isOBSOutputLive });
+                broadcastSync({ type: 'set_obs_overlay', overlay: isOBSOverlayActive });
+                broadcastSync({ type: 'set_track_banner_scale', scale: trackBannerScale });
+                broadcastSync({ type: 'set_track_delay', delay: trackDelaySec });
+                broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
+            }
         }
     }
 
     if (syncChannel) {
         syncChannel.onmessage = (event) => handleSyncMessage(event.data);
     }
+
+    let currentSelectedDeviceId = 'default';
+    try {
+        currentSelectedDeviceId = localStorage.getItem('dj_vfx_audio_device_id') || 'default';
+    } catch (e) {}
 
     // Helper to populate audio devices in select dropdown
     function updateDeviceDropdown(devices, currentId) {
@@ -754,27 +928,38 @@ async function init() {
             audioDeviceSelect.appendChild(opt);
         });
 
-        if (currentId && currentId !== 'default') {
-            audioDeviceSelect.value = currentId;
+        const activeId = currentId || currentSelectedDeviceId;
+        if (activeId && activeId !== 'default') {
+            audioDeviceSelect.value = activeId;
         }
     }
 
     // 2. Audio & Media Activation on User Click or Selection
-    async function enableAudioAndMedia(selectedDeviceId = 'default') {
+    async function enableAudioAndMedia(targetDeviceId = null) {
         vfx.playLogoVideo();
+
+        const deviceToUse = targetDeviceId !== null ? targetDeviceId : currentSelectedDeviceId;
+        if (targetDeviceId !== null) {
+            currentSelectedDeviceId = targetDeviceId;
+            try { localStorage.setItem('dj_vfx_audio_device_id', targetDeviceId); } catch (e) {}
+        }
 
         if (!audioProcessor) {
             audioProcessor = await setupAudio((devs, activeId) => {
-                updateDeviceDropdown(devs, activeId);
+                updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
             });
+
+            if (currentSelectedDeviceId && currentSelectedDeviceId !== 'default') {
+                await audioProcessor.switchDevice(currentSelectedDeviceId);
+            }
 
             const devs = await audioProcessor.getDevices();
             updateDeviceDropdown(devs, audioProcessor.getCurrentDevice().id);
 
             if (sliderGain) audioProcessor.setGain(sliderGain.value);
             if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
-        } else if (selectedDeviceId) {
-            await audioProcessor.switchDevice(selectedDeviceId);
+        } else if (targetDeviceId !== null) {
+            await audioProcessor.switchDevice(deviceToUse);
         }
 
         await audioProcessor.resume();
@@ -796,7 +981,7 @@ async function init() {
         }
     }
 
-    // Connect Audio on startup or first click
+    // Connect Audio on startup with saved device
     enableAudioAndMedia();
 
     if (audioDeviceSelect) {
@@ -807,17 +992,17 @@ async function init() {
 
     if (btnListenAudio) {
         btnListenAudio.addEventListener('click', async () => {
-            const chosenId = audioDeviceSelect ? audioDeviceSelect.value : 'default';
+            const chosenId = audioDeviceSelect ? audioDeviceSelect.value : currentSelectedDeviceId;
             await enableAudioAndMedia(chosenId);
         });
     }
 
     window.addEventListener('click', (e) => {
-        if (!e.target.closest('#hud') && !e.target.closest('#fx-bank-panel')) {
-            enableAudioAndMedia();
+        vfx.playLogoVideo();
+        if (!audioProcessor) {
+            enableAudioAndMedia(currentSelectedDeviceId);
         } else {
-            vfx.playLogoVideo();
-            if (!audioProcessor) enableAudioAndMedia();
+            audioProcessor.resume();
         }
     });
 
@@ -924,6 +1109,7 @@ async function init() {
             spinPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoSpinMode(spin);
+            try { localStorage.setItem('dj_vfx_logo_spin', spin); } catch (e) {}
             broadcastSync({ type: 'set_logo_spin', spin });
         });
     });
@@ -933,15 +1119,254 @@ async function init() {
             const val = parseFloat(e.target.value);
             logoSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoSpinSpeed(val);
+            try { localStorage.setItem('dj_vfx_logo_spin_speed', String(val)); } catch (e) {}
             broadcastSync({ type: 'set_logo_spin_speed', speed: val });
         });
     }
+
+    // Initialize logo spin preferences from localStorage if saved
+    try {
+        const savedSpin = localStorage.getItem('dj_vfx_logo_spin');
+        if (savedSpin) {
+            spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === savedSpin));
+            vfx.setLogoSpinMode(savedSpin);
+        }
+        const savedSpeed = parseFloat(localStorage.getItem('dj_vfx_logo_spin_speed'));
+        if (!isNaN(savedSpeed) && savedSpeed > 0) {
+            if (sliderLogoSpinSpeed) sliderLogoSpinSpeed.value = String(savedSpeed);
+            if (logoSpinSpeedVal) logoSpinSpeedVal.textContent = `${savedSpeed.toFixed(1)}x`;
+            vfx.setLogoSpinSpeed(savedSpeed);
+        }
+    } catch (e) {}
 
     if (checkLogoShield) {
         checkLogoShield.addEventListener('change', (e) => {
             vfx.setLogoShieldVisible(e.target.checked);
             broadcastSync({ type: 'set_logo_shield', active: e.target.checked });
         });
+    }
+
+    // -------------------------------------------------------------------------
+    // 3b. Broadcast & Station Logo Layer Controls
+    // -------------------------------------------------------------------------
+    function updateStationLogoVisibility(active, broadcast = true) {
+        isStationLogoActive = !!active;
+        vfx.setStationLogoVisible(isStationLogoActive);
+        if (stationLogoBadge) {
+            stationLogoBadge.textContent = isStationLogoActive ? 'ACTIVE [S]' : 'OFF [S]';
+            stationLogoBadge.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
+            stationLogoBadge.style.borderColor = isStationLogoActive ? 'rgba(0,255,204,0.4)' : 'rgba(255,255,255,0.15)';
+        }
+        if (btnToggleStationLogo) {
+            btnToggleStationLogo.textContent = isStationLogoActive ? '🟢 STATION LOGO: ON' : '⚪ STATION LOGO: OFF';
+            btnToggleStationLogo.style.color = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.7)';
+            btnToggleStationLogo.style.borderColor = isStationLogoActive ? '#00ffcc' : 'rgba(255,255,255,0.15)';
+            btnToggleStationLogo.style.background = isStationLogoActive ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
+        }
+        const tabStation = document.querySelector('.activity-tab[data-tab="station"]');
+        if (tabStation) tabStation.classList.toggle('has-dot', isStationLogoActive);
+        if (broadcast) {
+            broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
+        }
+    }
+
+    if (btnToggleStationLogo) {
+        btnToggleStationLogo.addEventListener('click', () => {
+            updateStationLogoVisibility(!isStationLogoActive, true);
+        });
+    }
+
+    function selectStationLogo(url, title, isVideo = false, broadcast = true) {
+        currentStationLogoUrl = url;
+        currentStationLogoTitle = title || 'Station Logo';
+        isCurrentStationVideo = !!isVideo;
+
+        vfx.loadStationLogoMedia(url, isVideo);
+        if (stationLogoActiveName) stationLogoActiveName.textContent = currentStationLogoTitle;
+
+        const cards = document.querySelectorAll('.station-card');
+        cards.forEach(card => {
+            const cardUrl = card.getAttribute('data-station-url');
+            card.classList.toggle('active', cardUrl === url);
+        });
+
+        if (broadcast) {
+            broadcastSync({
+                type: 'set_station_logo_url',
+                url,
+                title: currentStationLogoTitle,
+                isVideo: isCurrentStationVideo
+            });
+        }
+    }
+
+    function wireStationCardClick(card) {
+        card.addEventListener('click', () => {
+            const url = card.getAttribute('data-station-url');
+            const title = card.getAttribute('data-station-title');
+            const isVideo = card.getAttribute('data-station-type') === 'video';
+            selectStationLogo(url, title, isVideo, true);
+        });
+    }
+
+    document.querySelectorAll('.station-card').forEach(wireStationCardClick);
+
+    // Initial station logo card active highlight
+    const firstStationCard = document.querySelector('.station-card');
+    if (firstStationCard) {
+        firstStationCard.classList.add('active');
+        if (stationLogoActiveName) stationLogoActiveName.textContent = firstStationCard.getAttribute('data-station-title') || '4TM Radio';
+    }
+
+    // Position pills
+    stationPosPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const pos = pill.getAttribute('data-st-pos');
+            stationPosPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setStationLogoPosition(pos);
+            broadcastSync({ type: 'set_station_logo_pos', pos });
+        });
+    });
+
+    // Mode pills
+    stationModePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const mode = pill.getAttribute('data-st-mode');
+            stationModePills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setStationLogoMode(mode);
+            broadcastSync({ type: 'set_station_logo_mode', mode });
+        });
+    });
+
+    // Spin pills
+    stationSpinPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const spin = pill.getAttribute('data-st-spin');
+            stationSpinPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setStationLogoSpinMode(spin);
+            try { localStorage.setItem('dj_vfx_station_spin', spin); } catch (e) {}
+            broadcastSync({ type: 'set_station_logo_spin', spin });
+        });
+    });
+
+    // Sliders
+    if (sliderStationSpinSpeed) {
+        sliderStationSpinSpeed.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (stationSpinSpeedVal) stationSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
+            vfx.setStationLogoSpinSpeed(val);
+            try { localStorage.setItem('dj_vfx_station_spin_speed', String(val)); } catch (e) {}
+            broadcastSync({ type: 'set_station_logo_spin_speed', speed: val });
+        });
+    }
+
+    if (sliderStationScale) {
+        sliderStationScale.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (stationScaleVal) stationScaleVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setStationLogoScale(val);
+            broadcastSync({ type: 'set_station_logo_scale', val });
+        });
+    }
+
+    if (sliderStationPulse) {
+        sliderStationPulse.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (stationPulseVal) stationPulseVal.textContent = `${val}%`;
+            vfx.setStationLogoBassPulse(val / 100);
+            broadcastSync({ type: 'set_station_logo_pulse', val });
+        });
+    }
+
+    if (sliderStationContrast) {
+        sliderStationContrast.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (stationContrastVal) stationContrastVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setStationLogoContrast(val);
+            broadcastSync({ type: 'set_station_logo_contrast', val });
+        });
+    }
+
+    if (sliderStationBright) {
+        sliderStationBright.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (stationBrightVal) stationBrightVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setStationLogoBrightness(val);
+            broadcastSync({ type: 'set_station_logo_bright', val });
+        });
+    }
+
+    if (checkStationShield) {
+        checkStationShield.addEventListener('change', (e) => {
+            vfx.setStationLogoShieldVisible(e.target.checked);
+            broadcastSync({ type: 'set_station_logo_shield', active: e.target.checked });
+        });
+    }
+
+    // Upload Station Logo (PNG, JPG, SVG, MP4)
+    if (btnUploadStationLogo && fileStationLogo) {
+        btnUploadStationLogo.addEventListener('click', () => fileStationLogo.click());
+
+        fileStationLogo.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const isVideo = file.type.startsWith('video');
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+            const reader = new FileReader();
+
+            reader.onload = (event) => {
+                const mediaUrl = event.target.result;
+                addStationLogoCard(mediaUrl, cleanTitle, isVideo, true);
+                showToast(`📻 Added Station Logo: ${cleanTitle}`);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function addStationLogoCard(url, title, isVideo = false, selectImmediately = true) {
+        if (!stationLogosContainer) return;
+
+        const card = document.createElement('div');
+        card.className = 'station-card';
+        card.setAttribute('data-station-url', url);
+        card.setAttribute('data-station-title', title);
+        card.setAttribute('data-station-type', isVideo ? 'video' : 'img');
+
+        const thumb = document.createElement(isVideo ? 'video' : 'img');
+        thumb.className = 'station-card-thumb';
+        thumb.src = url;
+        if (isVideo) {
+            thumb.muted = true;
+            thumb.playsInline = true;
+        }
+
+        const info = document.createElement('div');
+        info.className = 'station-card-info';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'station-card-title';
+        titleSpan.textContent = title;
+
+        const subSpan = document.createElement('span');
+        subSpan.className = 'station-card-sub';
+        subSpan.textContent = isVideo ? 'Custom Video' : 'Custom Logo';
+
+        info.appendChild(titleSpan);
+        info.appendChild(subSpan);
+        card.appendChild(thumb);
+        card.appendChild(info);
+
+        stationLogosContainer.appendChild(card);
+        wireStationCardClick(card);
+
+        if (selectImmediately) {
+            selectStationLogo(url, title, isVideo, true);
+        }
     }
 
     // Reset All Console Parameters to Factory Defaults
@@ -1021,6 +1446,21 @@ async function init() {
         // Reset Media to default JK McLaren Shock
         vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
         if (logoFilename) logoFilename.textContent = 'jkmclaren_shock.mp4';
+
+        // 3. Station Logo Reset
+        updateStationLogoVisibility(false, false);
+        selectStationLogo('/images/station_logos/4TM Primary Logo.png', '4TM Radio', false, false);
+        stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === 'top-right'));
+        vfx.setStationLogoPosition('top-right');
+        stationModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-mode') === 'overlay'));
+        vfx.setStationLogoMode('overlay');
+        stationSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-spin') === 'off'));
+        vfx.setStationLogoSpinMode('off');
+        if (sliderStationScale) {
+            sliderStationScale.value = 0.85;
+            if (stationScaleVal) stationScaleVal.textContent = '0.85x';
+            vfx.setStationLogoScale(0.85);
+        }
 
         if (broadcast) {
             broadcastSync({ type: 'reset_all' });
@@ -1237,6 +1677,14 @@ async function init() {
                 }
             }
         },
+        onDeckLoaded: (data) => {
+            const deckNum = data.deck || 1;
+            const isDeck2 = String(deckNum).includes('2') || String(deckNum).toUpperCase().includes('B');
+            const targetBadge = (isDeck2 && deckBadge2) ? deckBadge2 : deckBadge1;
+            if (targetBadge) {
+                targetBadge.textContent = `DECK ${deckNum}: ${data.artist ? data.artist.slice(0, 10) : 'LOADED'}`;
+            }
+        },
         onTrack: (trackData) => {
             if (trackData.title) trackTitle.textContent = trackData.title;
             if (trackData.artist) trackArtist.textContent = `${trackData.artist} • Deck ${trackData.deck || 1}`;
@@ -1248,23 +1696,24 @@ async function init() {
             if (vfx.setDeckData) vfx.setDeckData(trackData);
 
             const deckNum = trackData.deck || 1;
-            const targetBadge = (deckNum == 2 && deckBadge2) ? deckBadge2 : deckBadge1;
+            const isDeck2 = String(deckNum).includes('2') || String(deckNum).toUpperCase().includes('B');
+            const targetBadge = (isDeck2 && deckBadge2) ? deckBadge2 : deckBadge1;
+            const otherBadge = isDeck2 ? deckBadge1 : deckBadge2;
+            
             if (targetBadge) {
                 targetBadge.style.borderColor = '#00ffcc';
                 targetBadge.style.color = '#00ffcc';
+                targetBadge.style.background = 'rgba(0, 255, 204, 0.18)';
                 targetBadge.textContent = `DECK ${deckNum}: ${trackData.artist ? trackData.artist.slice(0, 10) : 'PLAYING'}`;
             }
+            if (otherBadge) {
+                otherBadge.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                otherBadge.style.color = 'rgba(255, 255, 255, 0.5)';
+                otherBadge.style.background = 'rgba(255, 255, 255, 0.04)';
+            }
 
-            broadcastSync({
-                type: 'track',
-                title: trackData.title,
-                artist: trackData.artist,
-                deck: trackData.deck,
-                bpm: trackData.bpm
-            });
-
-            // Trigger Track Banner overlay popup on new track with auto-fadeout
-            triggerTrackBannerPopup(trackData, false);
+            // Display Now Playing Track Banner overlay with auto-fadeout
+            showTrackBanner(trackData, { force: false });
 
             // Trigger fresh scene on track change if Auto-VJ active
             if (isAutoVJ) {
@@ -1275,6 +1724,7 @@ async function init() {
         onStatusChange: (status) => {
             if (status.connected) {
                 stagelinqStatus.innerHTML = `<span style="color:#00ffcc">● ${status.device || 'Prime Link Online'}</span>`;
+                broadcastSync({ type: 'request_state' });
             } else {
                 stagelinqStatus.innerHTML = `<span style="color:rgba(255,255,255,0.4)">○ Bridge Offline</span>`;
             }
@@ -1517,7 +1967,6 @@ async function init() {
         else if (e.key === 'c' || e.key === 'C') {
             hud.classList.toggle('hidden');
             fxBankPanel.classList.toggle('hidden');
-            trackBanner.classList.toggle('hidden');
             document.body.style.cursor = hud.classList.contains('hidden') ? 'none' : 'default';
         }
         // [Space] for manual beat strobe / flash
