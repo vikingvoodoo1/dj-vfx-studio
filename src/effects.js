@@ -291,7 +291,7 @@ const WawaSenseiGodrayShader = {
         uTimeSpeed: { value: 0.15 },
         uNoiseScale: { value: 2.5 },
         uSmoothTop: { value: 0.16 },
-        uSmoothBottom: { value: 0.85 },
+        uSmoothBottom: { value: 0.98 },
         uFresnelPower: { value: 2.2 },
         uPulse: { value: 0.0 }
     },
@@ -346,7 +346,7 @@ const WawaSenseiGodrayShader = {
             float localFogDensity = clamp(0.70 + 0.30 * smoke1 + 0.15 * smoke2, 0.30, 1.30);
             
             // Beer-Lambert physical extinction damping along beam depth
-            float fogDamping = exp(-y * 1.30 * localFogDensity);
+            float fogDamping = exp(-y * 0.75 * localFogDensity);
 
             // Dynamic fog illumination (clouds light up brilliantly when beam cuts through)
             float fogIllumination = 0.65 + 0.45 * localFogDensity;
@@ -5318,15 +5318,15 @@ export function createVFXScene(container) {
     const godrayTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
     const godrayTrussMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
     const godrayTrussMesh = new THREE.Mesh(godrayTrussGeo, godrayTrussMat);
-    godrayTrussMesh.position.set(0, 9.5, -4.0);
+    godrayTrussMesh.position.set(0, 11.45, -4.0);
     gSweepingGodrays.add(godrayTrussMesh);
 
     // 2. 8 Moving-Head Godray Light Pods Spanning Across Top Screen
     const numGodrays = 8;
     const godrayFixtures = [];
-    const godrayBeamLength = 28.0;
+    const godrayBeamLength = 36.0;
     const godrayTopRadius = 0.18;
-    const godrayBottomRadius = 3.0;
+    const godrayBottomRadius = 3.6;
 
     // Cone geometry extending down from fixture head (apex at 0,0,0)
     const godrayConeGeo = new THREE.CylinderGeometry(godrayTopRadius, godrayBottomRadius, godrayBeamLength, 48, 1, true);
@@ -5358,7 +5358,7 @@ export function createVFXScene(container) {
     for (let i = 0; i < numGodrays; i++) {
         const normIdx = i / (numGodrays - 1); // 0.0 to 1.0
         const posX = -17.5 + normIdx * 35.0; // evenly spread from left to right
-        const posY = 9.4;
+        const posY = 11.35;
         const posZ = -4.0;
 
         const podGroup = new THREE.Group();
@@ -5406,7 +5406,7 @@ export function createVFXScene(container) {
                 uTimeSpeed: { value: 0.18 },
                 uNoiseScale: { value: 3.8 },
                 uSmoothTop: { value: 0.16 },
-                uSmoothBottom: { value: 0.85 },
+                uSmoothBottom: { value: 0.98 },
                 uFresnelPower: { value: 2.2 },
                 uPulse: { value: 0.0 }
             },
@@ -5438,7 +5438,7 @@ export function createVFXScene(container) {
         });
         const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
         floorImpactMesh.rotation.x = -Math.PI / 2; // Flat on the XZ floor plane!
-        floorImpactMesh.position.set(posX, -7.48, posZ - 6.0);
+        floorImpactMesh.position.set(posX, -10.59, posZ - 6.0);
         gSweepingGodrays.add(floorImpactMesh);
 
         gSweepingGodrays.add(podGroup);
@@ -5480,7 +5480,7 @@ export function createVFXScene(container) {
     });
 
     const fogPlaneGeo = new THREE.PlaneGeometry(55.0, 38.0, 16, 16);
-    const fogLayerHeights = [-6.2, -4.5, -2.8, -1.0, 0.8, 2.6];
+    const fogLayerHeights = [-9.5, -6.5, -3.5, -0.5, 2.5, 5.5, 8.5, 11.0];
     fogLayerHeights.forEach((h, idx) => {
         const fogMesh = new THREE.Mesh(fogPlaneGeo, floatingFogMat);
         fogMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.05 : -0.05);
@@ -5518,14 +5518,14 @@ export function createVFXScene(container) {
     const whiteTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
     const whiteTrussMat = new THREE.MeshBasicMaterial({ color: 0x141824 });
     const whiteTrussMesh = new THREE.Mesh(whiteTrussGeo, whiteTrussMat);
-    whiteTrussMesh.position.set(0, 9.5, -4.0);
+    whiteTrussMesh.position.set(0, 11.45, -4.0);
     gWhiteGodrayProtean.add(whiteTrussMesh);
 
     // 3. 8 Moving-Head Diamond Xenon White Godray Pods Spanning Across Top Screen
     const whiteGodrayFixtures = [];
-    const whiteBeamLength = 28.0;
+    const whiteBeamLength = 36.0;
     const whiteTopRadius = 0.18;
-    const whiteBottomRadius = 3.0;
+    const whiteBottomRadius = 3.6;
 
     const whiteGodrayConeGeo = new THREE.CylinderGeometry(whiteTopRadius, whiteBottomRadius, whiteBeamLength, 48, 1, true);
     whiteGodrayConeGeo.translate(0, -whiteBeamLength * 0.5, 0);
@@ -5536,7 +5536,7 @@ export function createVFXScene(container) {
     for (let i = 0; i < numGodrays; i++) {
         const normIdx = i / (numGodrays - 1);
         const posX = -17.5 + normIdx * 35.0;
-        const posY = 9.4;
+        const posY = 11.35;
         const posZ = -4.0;
 
         const podGroup = new THREE.Group();
@@ -5583,7 +5583,7 @@ export function createVFXScene(container) {
                 uTimeSpeed: { value: 0.18 },
                 uNoiseScale: { value: 3.8 },
                 uSmoothTop: { value: 0.16 },
-                uSmoothBottom: { value: 0.85 },
+                uSmoothBottom: { value: 0.98 },
                 uFresnelPower: { value: 2.2 },
                 uPulse: { value: 0.0 }
             },
@@ -5615,7 +5615,7 @@ export function createVFXScene(container) {
         });
         const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
         floorImpactMesh.rotation.x = -Math.PI / 2;
-        floorImpactMesh.position.set(posX, -7.48, posZ - 6.0);
+        floorImpactMesh.position.set(posX, -10.59, posZ - 6.0);
         gWhiteGodrayProtean.add(floorImpactMesh);
 
         gWhiteGodrayProtean.add(podGroup);
@@ -5700,23 +5700,23 @@ export function createVFXScene(container) {
         transparent: true,
         side: THREE.DoubleSide
     });
-    const discoStageFloorMesh = new THREE.Mesh(new THREE.PlaneGeometry(44.0, 32.0), discoStageFloorMat);
+    const discoStageFloorMesh = new THREE.Mesh(new THREE.PlaneGeometry(50.0, 36.0), discoStageFloorMat);
     discoStageFloorMesh.rotation.x = -Math.PI / 2; // Flat on stage floor plane
-    discoStageFloorMesh.position.set(0, -7.48, -7.0);
+    discoStageFloorMesh.position.set(0, -10.6, -7.0);
     gDiscoGodrays.add(discoStageFloorMesh);
 
     // 3. Stage Rig Truss Header Bar at Top of Screen
     const discoTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
     const discoTrussMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
     const discoTrussMesh = new THREE.Mesh(discoTrussGeo, discoTrussMat);
-    discoTrussMesh.position.set(0, 9.5, -4.0);
+    discoTrussMesh.position.set(0, 11.45, -4.0);
     gDiscoGodrays.add(discoTrussMesh);
 
     // 4. 8 Moving-Head Coloured Godray Pods Spanning Across Top Screen
     const discoGodrayFixtures = [];
-    const discoBeamLength = 28.0;
+    const discoBeamLength = 36.0;
     const discoTopRadius = 0.18;
-    const discoBottomRadius = 3.0;
+    const discoBottomRadius = 3.6;
 
     const discoGodrayConeGeo = new THREE.CylinderGeometry(discoTopRadius, discoBottomRadius, discoBeamLength, 48, 1, true);
     discoGodrayConeGeo.translate(0, -discoBeamLength * 0.5, 0);
@@ -5727,7 +5727,7 @@ export function createVFXScene(container) {
     for (let i = 0; i < numGodrays; i++) {
         const normIdx = i / (numGodrays - 1);
         const posX = -17.5 + normIdx * 35.0;
-        const posY = 9.4;
+        const posY = 11.35;
         const posZ = -4.0;
 
         const podGroup = new THREE.Group();
@@ -5775,7 +5775,7 @@ export function createVFXScene(container) {
                 uTimeSpeed: { value: 0.18 },
                 uNoiseScale: { value: 3.8 },
                 uSmoothTop: { value: 0.22 },
-                uSmoothBottom: { value: 0.85 },
+                uSmoothBottom: { value: 0.98 },
                 uFresnelPower: { value: 2.5 },
                 uPulse: { value: 0.0 }
             },
@@ -5807,7 +5807,7 @@ export function createVFXScene(container) {
         });
         const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
         floorImpactMesh.rotation.x = -Math.PI / 2;
-        floorImpactMesh.position.set(posX, -7.47, posZ - 6.0); // 0.01 above disco floor
+        floorImpactMesh.position.set(posX, -10.59, posZ - 6.0); // 0.01 above disco floor
         gDiscoGodrays.add(floorImpactMesh);
 
         gDiscoGodrays.add(podGroup);
@@ -6763,7 +6763,7 @@ export function createVFXScene(container) {
             floatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.50 + (audio.bassImpact || 0) * 0.25;
             floatingFogMat.uniforms.uIntensity.value = 0.28 + (audio.smoothedBass || 0) * 0.18 + (audio.overall || 0) * 0.12;
 
-            const floorY = -7.48;
+            const floorY = -10.6;
 
             godrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5; // -0.5 (leftmost) to +0.5 (rightmost)
@@ -6880,7 +6880,7 @@ export function createVFXScene(container) {
             whiteFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.35 + (audio.bassImpact || 0) * 0.15;
             whiteFloatingFogMat.uniforms.uIntensity.value = 0.14 + (audio.smoothedBass || 0) * 0.08 + (audio.overall || 0) * 0.05;
 
-            const floorY = -7.48;
+            const floorY = -10.6;
 
             whiteGodrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5;
@@ -6993,7 +6993,7 @@ export function createVFXScene(container) {
             discoFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.35 + (audio.bassImpact || 0) * 0.15;
             discoFloatingFogMat.uniforms.uIntensity.value = 0.14 + (audio.smoothedBass || 0) * 0.08 + (audio.overall || 0) * 0.05;
 
-            const floorY = -7.48;
+            const floorY = -10.6;
 
             discoGodrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5;
