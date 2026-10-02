@@ -280,19 +280,19 @@ const VolumetricPinspotShader = {
 };
 
 // -------------------------------------------------------------------------
-// Wawa Sensei Godray Volumetric Shader (r3f-godrays / WebGPU TSL ported to GLSL)
+// Wawa Sensei Godray Volumetric Shader (r3f-godrays with Atmospheric Fog Damping)
 // -------------------------------------------------------------------------
 const WawaSenseiGodrayShader = {
     uniforms: {
         uColor: { value: new THREE.Color(0x00ffff) },
-        uCoreColor: { value: new THREE.Color(0xffffff) },
-        uIntensity: { value: 1.8 },
+        uCoreColor: { value: new THREE.Color(0xfff5ea) },
+        uIntensity: { value: 0.85 },
         uTime: { value: 0.0 },
-        uTimeSpeed: { value: 0.28 },
-        uNoiseScale: { value: 4.8 },
-        uSmoothTop: { value: 0.12 },
-        uSmoothBottom: { value: 0.92 },
-        uFresnelPower: { value: 4.0 },
+        uTimeSpeed: { value: 0.20 },
+        uNoiseScale: { value: 4.2 },
+        uSmoothTop: { value: 0.18 },
+        uSmoothBottom: { value: 0.82 },
+        uFresnelPower: { value: 2.2 },
         uPulse: { value: 0.0 }
     },
     vertexShader: `
@@ -356,27 +356,146 @@ const WawaSenseiGodrayShader = {
         }
 
         void main() {
-            // Custom UV with 3D Worley noise drifting through beam
+            // 1. Custom UV with 3D Worley noise drifting through beam
             vec3 customUV = vNormalLocal * uNoiseScale + vec3(0.0, uTime * uTimeSpeed, 0.0);
-            float noise = 1.0 - worleyNoise(customUV);
-            noise = pow(noise, 1.4);
+            float worley = 1.0 - worleyNoise(customUV);
+            float noise = pow(worley, 1.25) * 0.88 + 0.12;
 
-            // Longitudinal soft edge fade (Wawa Sensei method: smoothstep(0, smoothBottom) * smoothstep(1, smoothTop))
-            float smoothFade = smoothstep(0.0, uSmoothTop, vUv.y) * smoothstep(1.001, uSmoothBottom, vUv.y);
+            // 2. Longitudinal coordinate: 0.0 (fixture apex) to 1.0 (bottom floor)
+            float y = vUv.y;
 
-            // Inverted Fresnel / limb core brightness (Wawa Sensei method: abs(dot(normalWorld, viewDir))^fresnelPower)
+            // 3. Floating Fog Extinction & Damping (Beer-Lambert Law approximation)
+            // As the beam penetrates through the floating fog medium, intensity is softly damped and scattered
+            float fogCloudDrift = sin(vPositionWorld.x * 0.18 + vPositionWorld.y * 0.25 + uTime * 0.5) * cos(vPositionWorld.z * 0.18 - uTime * 0.35);
+            float localFogDensity = clamp(0.75 + 0.35 * fogCloudDrift, 0.3, 1.2);
+            
+            // Atmospheric extinction damping factor along beam depth (Beer-Lambert)
+            float fogDamping = exp(-y * 1.75 * localFogDensity);
+
+            // 4. Longitudinal soft edge fade (smooth dissipation at top and bottom)
+            float smoothFade = smoothstep(0.0, uSmoothTop, y) * (1.0 - smoothstep(uSmoothBottom, 1.0, y));
+
+            // 5. Softened Inverted Fresnel (Limb-to-core transition)
             vec3 viewDirection = normalize(cameraPosition - vPositionWorld);
-            float fresnel = pow(abs(dot(vNormalWorld, viewDirection)), uFresnelPower);
+            float limb = abs(dot(vNormalWorld, viewDirection));
+            float fresnel = pow(limb, uFresnelPower);
 
-            // Calculate total alpha with audio transient pulse
-            float alpha = noise * fresnel * smoothFade * uIntensity * (1.0 + uPulse * 0.85);
-            if (alpha <= 0.002) discard;
+            // 6. Total alpha calculation with smooth atmospheric damping
+            float alpha = noise * fresnel * smoothFade * fogDamping * uIntensity * (1.0 + uPulse * 0.45);
+            if (alpha <= 0.001) discard;
 
-            // White-hot physical beam core blending
-            float coreGlow = pow(fresnel, 2.2);
-            vec3 finalColor = mix(uColor, uCoreColor, clamp(coreGlow * 0.75 + uPulse * 0.35, 0.0, 1.0)) * (1.0 + uPulse * 1.5);
+            // 7. Atmospheric forward-scattering glow in the fog
+            vec3 scatterGlow = uColor * (1.0 - fogDamping) * 0.25 * localFogDensity;
+
+            // 8. Soft warm core color mixing (no harsh blinding pure white)
+            float coreBlend = pow(fresnel, 2.0) * 0.50 + uPulse * 0.20;
+            vec3 softCore = mix(uColor, uCoreColor, 0.45);
+            vec3 finalColor = (mix(uColor, softCore, clamp(coreBlend, 0.0, 0.70)) + scatterGlow) * (1.0 + uPulse * 0.50);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
+// Floating Nightclub Fog & Atmospheric Haze Shader (Soft volumetric clouds drifting across stage)
+const FloatingAtmosphericFogShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uIntensity: { value: 0.35 },
+        uColor1: { value: new THREE.Color(0x00ffff) },
+        uColor2: { value: new THREE.Color(0xff007f) },
+        uBass: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+    `,
+    fragmentShader: `
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform vec3 uColor1;
+        uniform vec3 uColor2;
+        uniform float uBass;
+
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+
+        // 3D Smooth FBM Simplex Noise for drifting fog clouds
+        vec3 mod289Fog(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 mod289Fog(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+        vec4 permuteFog(vec4 x) { return mod289Fog(((x * 34.0) + 1.0) * x); }
+        vec4 taylorInvSqrtFog(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+        float snoiseFog(vec3 v) {
+            const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+            vec3 i  = floor(v + dot(v, C.yyy));
+            vec3 x0 = v - i + dot(i, C.xxx);
+            vec3 g = step(x0.yzx, x0.xyz);
+            vec3 l = 1.0 - g;
+            vec3 i1 = min(g.xyz, l.zxy);
+            vec3 i2 = max(g.xyz, l.zxy);
+            vec3 x1 = x0 - i1 + C.xxx;
+            vec3 x2 = x0 - i2 + C.yyy;
+            vec3 x3 = x0 - D.yyy;
+            i = mod289Fog(i);
+            vec4 p = permuteFog(permuteFog(permuteFog(
+                        i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                    + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+            float n_ = 0.142857142857;
+            vec3 ns = n_ * D.wyz - D.xzx;
+            vec4 j = p - 49.0 * floor(p * ns.z);
+            vec4 x_ = floor(j * ns.z);
+            vec4 y_ = floor(j - 7.0 * x_);
+            vec4 x = x_ * ns.x + ns.yyyy;
+            vec4 y = y_ * ns.x + ns.yyyy;
+            vec4 h = 1.0 - abs(x) - abs(y);
+            vec4 b0 = vec4(x.xy, y.xy);
+            vec4 b1 = vec4(x.zw, y.zw);
+            vec4 s0 = floor(b0)*2.0 + 1.0;
+            vec4 s1 = floor(b1)*2.0 + 1.0;
+            vec4 sh = -step(h, vec4(0.0));
+            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+            vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+            vec3 p0 = vec3(a0.xy, h.x);
+            vec3 p1 = vec3(a0.zw, h.y);
+            vec3 p2 = vec3(a1.xy, h.z);
+            vec3 p3 = vec3(a1.zw, h.w);
+            vec4 norm = taylorInvSqrtFog(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+            p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+            vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+            m = m * m;
+            return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+
+        void main() {
+            // Drifting 3D coordinates
+            vec3 p = vWorldPos * 0.075;
+            p.x += uTime * 0.04;
+            p.y -= uTime * 0.02;
+            p.z += sin(uTime * 0.03 + vWorldPos.x * 0.05) * 0.3;
+
+            float n1 = snoiseFog(p);
+            float n2 = snoiseFog(p * 2.1 + vec3(uTime * 0.03, -uTime * 0.05, 0.0)) * 0.5;
+            float fogDensity = smoothstep(0.18, 0.78, n1 + n2) * (0.45 + uBass * 0.35);
+
+            // Radial edge & height soft fade
+            float distXZ = length(vWorldPos.xz) / 32.0;
+            float edgeFade = 1.0 - smoothstep(0.4, 1.0, distXZ);
+            float heightFade = smoothstep(-7.5, -3.0, vWorldPos.y) * (1.0 - smoothstep(4.0, 10.0, vWorldPos.y));
+
+            float alpha = fogDensity * edgeFade * heightFade * uIntensity;
+            if (alpha <= 0.003) discard;
+
+            vec3 fogCol = mix(uColor1, uColor2, sin(vWorldPos.x * 0.1 + uTime * 0.2) * 0.5 + 0.5) * 0.8;
+            gl_FragColor = vec4(fogCol * alpha, alpha);
         }
     `
 };
@@ -5028,18 +5147,18 @@ export function createVFXScene(container) {
         const pivotGroup = new THREE.Group();
         podGroup.add(pivotGroup);
 
-        // Godray volumetric shader material (Wawa Sensei Worley noise + Inverted Fresnel)
+        // Godray volumetric shader material (Wawa Sensei Worley noise + Inverted Fresnel + Fog Damping)
         const beamMat = new THREE.ShaderMaterial({
             uniforms: {
                 uColor: { value: new THREE.Color(lensColor) },
-                uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: 1.8 },
+                uCoreColor: { value: new THREE.Color(0xfff5ea) },
+                uIntensity: { value: 0.85 },
                 uTime: { value: 0.0 },
-                uTimeSpeed: { value: 0.28 },
-                uNoiseScale: { value: 4.8 },
-                uSmoothTop: { value: 0.12 },
-                uSmoothBottom: { value: 0.92 },
-                uFresnelPower: { value: 4.0 },
+                uTimeSpeed: { value: 0.20 },
+                uNoiseScale: { value: 4.2 },
+                uSmoothTop: { value: 0.18 },
+                uSmoothBottom: { value: 0.82 },
+                uFresnelPower: { value: 2.2 },
                 uPulse: { value: 0.0 }
             },
             vertexShader: WawaSenseiGodrayShader.vertexShader,
@@ -5053,16 +5172,16 @@ export function createVFXScene(container) {
         const beamMesh = new THREE.Mesh(godrayConeGeo, beamMat);
         pivotGroup.add(beamMesh);
 
-        // Floor light impact pool sprite
+        // Floor light impact pool sprite (softened)
         const floorImpactSprite = new THREE.Sprite(new THREE.SpriteMaterial({
             map: roundStarTex,
             color: lensColor,
             transparent: true,
             blending: THREE.AdditiveBlending,
             depthWrite: false,
-            opacity: 0.65
+            opacity: 0.35
         }));
-        floorImpactSprite.scale.set(7.5, 7.5, 1.0);
+        floorImpactSprite.scale.set(5.5, 5.5, 1.0);
         gSweepingGodrays.add(floorImpactSprite);
 
         gSweepingGodrays.add(podGroup);
@@ -5091,6 +5210,35 @@ export function createVFXScene(container) {
     godrayStageFloorMesh.rotation.x = -Math.PI / 2.2;
     godrayStageFloorMesh.position.set(0, -7.5, -8.0);
     gSweepingGodrays.add(godrayStageFloorMesh);
+
+    // 4. Floating Atmospheric Fog Cloud Layers (Spanning stage floor & beam paths)
+    const godrayFogGroup = new THREE.Group();
+    const floatingFogMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uIntensity: { value: 0.35 },
+            uColor1: { value: new THREE.Color(0x00e5ff) },
+            uColor2: { value: new THREE.Color(0xff007f) },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: FloatingAtmosphericFogShader.vertexShader,
+        fragmentShader: FloatingAtmosphericFogShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    const fogPlaneGeo = new THREE.PlaneGeometry(55.0, 38.0, 16, 16);
+    const fogLayerHeights = [-6.2, -4.5, -2.8, -1.0, 0.8, 2.6];
+    fogLayerHeights.forEach((h, idx) => {
+        const fogMesh = new THREE.Mesh(fogPlaneGeo, floatingFogMat);
+        fogMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.05 : -0.05);
+        fogMesh.rotation.z = (idx * 0.16) - 0.4;
+        fogMesh.position.set(0, h, -4.0 + (idx % 2) * 1.5);
+        godrayFogGroup.add(fogMesh);
+    });
+    gSweepingGodrays.add(godrayFogGroup);
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -5953,6 +6101,11 @@ export function createVFXScene(container) {
             const isKick = audio.isOnset && (audio.bassImpact > 0.40 || bassPop > 0.50);
             const pulse = isKick ? 1.0 : (bassPop * 0.6);
 
+            // Animate Floating Atmospheric Fog medium
+            floatingFogMat.uniforms.uTime.value = elapsedTime;
+            floatingFogMat.uniforms.uBass.value = bassPop;
+            floatingFogMat.uniforms.uIntensity.value = (0.28 + (audio.energy || 0) * 0.16) * (bloomMultiplier * 0.6 + 0.4);
+
             godrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5; // -0.5 (leftmost) to +0.5 (rightmost)
                 let rotZ = 0.0;
@@ -5986,17 +6139,17 @@ export function createVFXScene(container) {
                 fix.pivotGroup.rotation.z = rotZ;
                 fix.pivotGroup.rotation.x = rotX;
 
-                // Update Godray Uniforms
+                // Update Godray Uniforms (Softened, cinematic atmospheric intensity)
                 fix.beamMat.uniforms.uTime.value = elapsedTime;
                 fix.beamMat.uniforms.uPulse.value = pulse;
-                fix.beamMat.uniforms.uIntensity.value = (1.6 + bassPop * 1.0 + pulse * 0.8) * (bloomMultiplier + 0.5);
+                fix.beamMat.uniforms.uIntensity.value = (0.75 + bassPop * 0.30 + pulse * 0.22) * (bloomMultiplier * 0.70 + 0.35);
 
                 // Dynamic Color Cycling / Shimmer
                 const colorShift = Math.sin(elapsedTime * 0.6 + idx * 0.8) * 0.12;
                 const activeCol = fix.baseColor.clone().offsetHSL(colorShift, 0, 0);
                 fix.beamMat.uniforms.uColor.value.copy(activeCol);
                 fix.lensSprite.material.color.copy(activeCol);
-                fix.lensSprite.material.opacity = 0.85 + pulse * 0.15;
+                fix.lensSprite.material.opacity = 0.70 + pulse * 0.20;
                 fix.floorImpactSprite.material.color.copy(activeCol);
 
                 // Calculate floor impact position based on beam direction
@@ -6004,8 +6157,8 @@ export function createVFXScene(container) {
                 const targetZ = fix.podGroup.position.z - Math.tan(rotX) * (fix.podGroup.position.y - floorY);
                 const targetX = fix.podGroup.position.x - Math.tan(rotZ) * (fix.podGroup.position.y - floorY);
                 fix.floorImpactSprite.position.set(targetX, floorY + 0.1, targetZ);
-                fix.floorImpactSprite.scale.setScalar(6.0 + pulse * 3.5 + bassPop * 2.5);
-                fix.floorImpactSprite.material.opacity = 0.45 + pulse * 0.40;
+                fix.floorImpactSprite.scale.setScalar(4.5 + pulse * 2.0 + bassPop * 1.5);
+                fix.floorImpactSprite.material.opacity = 0.25 + pulse * 0.25;
             });
         }
         if (audio.isOnset) {
