@@ -212,9 +212,9 @@ export class PhilipsHueService {
             bridgeIp: this.config.bridgeIp,
             enabled: this.config.enabled,
             targetGroup: this.config.targetGroup,
-            mode: this.config.mode,
-            intensity: this.config.intensity,
-            minBrightness: this.config.minBrightness,
+            mode: this.config.mode || 'scene_sync',
+            intensity: this.config.intensity ?? 0.95,
+            minBrightness: this.config.minBrightness ?? 0.15,
             kickStrobeEnabled: !!this.config.kickStrobeEnabled,
             rooms: this.rooms
         };
@@ -240,50 +240,21 @@ export class PhilipsHueService {
         } = audioData;
 
         // Periodic Kick White Strobe Burst Trigger
-        const isKickHit = isOnset || transientImpulse > 0.38 || bass > 0.48;
-        let isWhiteKickStrobe = false;
+        const isKickHit = isOnset || transientImpulse > 0.35 || bass > 0.45;
         if (this.config.kickStrobeEnabled && isKickHit && (now - this.lastKickDetectionTime > 180)) {
             this.lastKickDetectionTime = now;
             this.kickCount++;
-            // Every 4th kick (or on heavy drop after 1.8s cooldown), trigger a blinding white strobe pop
+            // Every 4th kick (or on heavy drop after 1.8s cooldown), trigger a blinding white strobe pop (85ms burst)
             if (this.kickCount % 4 === 0 || (isDrop && (now - this.lastKickStrobeTime > 1800))) {
                 this.lastKickStrobeTime = now;
-                isWhiteKickStrobe = true;
+                this.kickFlashUntil = now + 85;
             }
         }
 
-        let targetXY = null;
-        if (isStrobe || isWhiteKickStrobe) {
-            targetXY = [0.3127, 0.3290]; // Pure blinding xenon white flash
-        } else if (this.config.mode === 'strobe_only') {
-            targetXY = [0.3127, 0.3290];
-        } else if (this.config.mode === 'bass_flash') {
-            targetXY = (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.30)
-                ? [0.675, 0.322] // Vivid saturated neon crimson
-                : [0.15, 0.06];  // Deep moody nightclub royal blue
-        } else if (this.config.mode === 'rainbow_cycle') {
-            this.colorCycleAngle = (this.colorCycleAngle + 0.15 * (bpm / 120)) % (Math.PI * 2);
-            const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
-            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
-            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
-            targetXY = rgbToCIE(r, g, b);
-        } else {
-            // 'scene_sync' (dynamically matches 3D Visualizer Color Palette)
-            targetXY = hexToCIE(sceneColor);
-        }
+        const isWhiteKickPop = !!(this.kickFlashUntil && now < this.kickFlashUntil);
+        const isManualStrobe = !!isStrobe;
 
-        const xyKey = targetXY ? `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}` : '';
-        const isColorChanged = !!(targetXY && xyKey !== this.lastSentXY);
-        const isPriority = isStrobe || isWhiteKickStrobe || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
-
-        // Rate limiting: Priority kicks, onsets & color changes bypass throttle for zero-latency response
-        if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
-            return;
-        }
-
-        this.lastDispatchTime = now;
-        this.lastSentXY = xyKey;
-
+        let targetXY = [0.3127, 0.3290];
         let targetBri = 0;
         let transitionTime = 0; // Instant 0ms punch
 
@@ -301,34 +272,45 @@ export class PhilipsHueService {
             );
         const punch = Math.min(1.0, Math.max(0.0, rawEnergy));
 
-        if (isStrobe) {
+        if (isManualStrobe || isWhiteKickPop) {
+            // Pure Xenon White Strobe Pop
+            targetXY = [0.3127, 0.3290];
             targetBri = 254;
             transitionTime = 0;
         } else if (this.config.mode === 'strobe_only') {
-            if (isDrop || isOnset || transientImpulse > 0.30 || bass > 0.45) {
+            targetXY = [0.3127, 0.3290];
+            if (isDrop || isOnset || transientImpulse > 0.28 || bass > 0.40) {
                 targetBri = Math.round(minBri + briRange * intensity);
                 transitionTime = 0;
             } else {
-                targetBri = minBri;
-                transitionTime = 0;
+                targetBri = Math.max(1, Math.round(minBri * 0.3));
+                transitionTime = 1;
             }
         } else if (this.config.mode === 'bass_flash') {
-            if (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.30) {
-                targetBri = Math.round(minBri + briRange * Math.min(1.0, punch * 1.25) * intensity);
+            if (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.28) {
+                targetXY = [0.675, 0.322]; // Vivid saturated neon crimson
+                targetBri = Math.round(minBri + briRange * Math.min(1.0, punch * 1.3) * intensity);
                 transitionTime = 0;
             } else {
+                targetXY = [0.15, 0.06];  // Deep moody nightclub royal blue
                 targetBri = minBri;
                 transitionTime = 1;
             }
         } else if (this.config.mode === 'rainbow_cycle') {
+            this.colorCycleAngle = (this.colorCycleAngle + 0.14 * (bpm / 120)) % (Math.PI * 2);
+            const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
+            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
+            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
+            targetXY = rgbToCIE(r, g, b);
             targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.85) * intensity);
-            transitionTime = punch > 0.3 ? 0 : 1;
+            transitionTime = punch > 0.25 ? 0 : 1;
         } else {
-            // Default: 'scene_sync'
+            // Default: 'scene_sync' (dynamically matches 3D Visualizer Color Palette)
+            targetXY = hexToCIE(sceneColor);
             if (isDrop || isOnset) {
                 targetBri = 254;
                 transitionTime = 0;
-            } else if (punch > 0.45) {
+            } else if (punch > 0.4) {
                 targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.8) * intensity);
                 transitionTime = 0;
             } else {
@@ -339,25 +321,33 @@ export class PhilipsHueService {
 
         targetBri = Math.max(1, Math.min(254, targetBri));
 
+        const xyKey = `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}`;
+        const isColorChanged = (xyKey !== this.lastSentXY);
+        const isPriority = isManualStrobe || isWhiteKickPop || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
+
+        // Rate limiting: non-priority resting frames throttled to prevent network flooding
+        if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
+            return;
+        }
+
+        this.lastDispatchTime = now;
+
         const actionBody = {
             on: true,
             bri: targetBri,
+            xy: targetXY,
             transitiontime: transitionTime
         };
 
-        if (targetXY) {
-            actionBody.xy = targetXY;
-        }
-
-        this.sendGroupAction(this.config.targetGroup, actionBody);
+        this.sendGroupAction(this.config.targetGroup, actionBody, xyKey);
     }
 
-    async sendGroupAction(groupId, body) {
+    async sendGroupAction(groupId, body, xyKey = null) {
         if (!this.config.bridgeIp || !this.config.username) return;
 
         // If a request is currently inflight, hold the latest target payload
         if (this.isDispatching) {
-            this.pendingPayload = { groupId, body };
+            this.pendingPayload = { groupId, body, xyKey };
             return;
         }
 
@@ -366,23 +356,38 @@ export class PhilipsHueService {
         const url = `http://${this.config.bridgeIp}/api/${this.config.username}/groups/${target}/action`;
 
         try {
+            if (xyKey) this.lastSentXY = xyKey;
             await fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(600)
+                signal: AbortSignal.timeout(800)
             });
         } catch (e) {
             // Drop late frames
         } finally {
-            this.isDispatching = false;
             if (this.pendingPayload) {
                 const next = this.pendingPayload;
                 this.pendingPayload = null;
-                // Dispatch next frame immediately with 25ms spacing to maintain high-speed rhythm
-                setTimeout(() => {
-                    this.sendGroupAction(next.groupId, next.body).catch(() => {});
-                }, 25);
+                // Dispatch queued latest frame with a tight 20ms safety gap to maintain max responsiveness
+                setTimeout(async () => {
+                    const nextTarget = (next.groupId === 'all' || !next.groupId) ? '0' : next.groupId;
+                    const nextUrl = `http://${this.config.bridgeIp}/api/${this.config.username}/groups/${nextTarget}/action`;
+                    try {
+                        if (next.xyKey) this.lastSentXY = next.xyKey;
+                        await fetch(nextUrl, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(next.body),
+                            signal: AbortSignal.timeout(800)
+                        });
+                    } catch (e) {
+                    } finally {
+                        this.isDispatching = false;
+                    }
+                }, 20);
+            } else {
+                this.isDispatching = false;
             }
         }
     }
