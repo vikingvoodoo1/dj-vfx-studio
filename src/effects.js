@@ -5665,6 +5665,199 @@ export function createVFXScene(container) {
     gWhiteGodrayProtean.add(whiteGodrayFogGroup);
 
     // -------------------------------------------------------------------------
+    // FX 20: 🪩 DISCO DANCE FLOOR WITH COLOURED GODRAYS & ATMOSPHERIC SMOKE
+    // -------------------------------------------------------------------------
+    const gDiscoGodrays = createFXGroup();
+
+    // 1. Protean Clouds Volumetric Shader Backdrop Plane (nimitz / WebGL2 Fundamentals)
+    const discoProteanCloudGeo = new THREE.PlaneGeometry(160.0, 95.0, 1, 1);
+    const discoProteanCloudMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 },
+            uTreble: { value: 0.0 },
+            uIntensity: { value: 0.35 }
+        },
+        vertexShader: ProteanCloudsShader.vertexShader,
+        fragmentShader: ProteanCloudsShader.fragmentShader,
+        depthWrite: false
+    });
+    const discoProteanCloudMesh = new THREE.Mesh(discoProteanCloudGeo, discoProteanCloudMat);
+    discoProteanCloudMesh.position.set(0, 0, -30.0);
+    gDiscoGodrays.add(discoProteanCloudMesh);
+
+    // 2. 70s Saturday Night Fever Illuminated Disco Dance Floor (Flat on Stage Floor)
+    const discoStageFloorMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uBPM: { value: 126.0 }
+        },
+        vertexShader: DiscoFloorShader.vertexShader,
+        fragmentShader: DiscoFloorShader.fragmentShader,
+        transparent: true,
+        side: THREE.DoubleSide
+    });
+    const discoStageFloorMesh = new THREE.Mesh(new THREE.PlaneGeometry(44.0, 32.0), discoStageFloorMat);
+    discoStageFloorMesh.rotation.x = -Math.PI / 2; // Flat on stage floor plane
+    discoStageFloorMesh.position.set(0, -7.48, -7.0);
+    gDiscoGodrays.add(discoStageFloorMesh);
+
+    // 3. Stage Rig Truss Header Bar at Top of Screen
+    const discoTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
+    const discoTrussMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
+    const discoTrussMesh = new THREE.Mesh(discoTrussGeo, discoTrussMat);
+    discoTrussMesh.position.set(0, 9.5, -4.0);
+    gDiscoGodrays.add(discoTrussMesh);
+
+    // 4. 8 Moving-Head Coloured Godray Pods Spanning Across Top Screen
+    const discoGodrayFixtures = [];
+    const discoBeamLength = 28.0;
+    const discoTopRadius = 0.18;
+    const discoBottomRadius = 3.0;
+
+    const discoGodrayConeGeo = new THREE.CylinderGeometry(discoTopRadius, discoBottomRadius, discoBeamLength, 48, 1, true);
+    discoGodrayConeGeo.translate(0, -discoBeamLength * 0.5, 0);
+
+    const discoFixtureDarkMat = new THREE.MeshBasicMaterial({ color: 0x0c101c });
+    const discoFixtureBezelMat = new THREE.MeshBasicMaterial({ color: 0x182032 });
+
+    for (let i = 0; i < numGodrays; i++) {
+        const normIdx = i / (numGodrays - 1);
+        const posX = -17.5 + normIdx * 35.0;
+        const posY = 9.4;
+        const posZ = -4.0;
+
+        const podGroup = new THREE.Group();
+        podGroup.position.set(posX, posY, posZ);
+
+        // Fixed truss mounting bracket
+        const yokeMesh = new THREE.Mesh(fixtureYokeGeo, discoFixtureDarkMat);
+        yokeMesh.position.set(0, 0.45, 0);
+        podGroup.add(yokeMesh);
+
+        // Moving-head pivot group
+        const pivotGroup = new THREE.Group();
+        podGroup.add(pivotGroup);
+
+        // Rotating fixture head casing
+        const headMesh = new THREE.Mesh(fixtureHeadGeo, discoFixtureDarkMat);
+        headMesh.position.set(0, 0.42, 0);
+        pivotGroup.add(headMesh);
+
+        // Outer bezel ring
+        const bezelMesh = new THREE.Mesh(fixtureBezelGeo, discoFixtureBezelMat);
+        bezelMesh.rotation.x = Math.PI / 2;
+        bezelMesh.position.set(0, 0.01, 0);
+        pivotGroup.add(bezelMesh);
+
+        // Colored optical glass lens disc with softer, refined lens intensity
+        const lensColor = godrayPalette[i % godrayPalette.length];
+        const lensDiscMat = new THREE.MeshBasicMaterial({
+            color: lensColor,
+            transparent: true,
+            opacity: 0.70
+        });
+        const lensDiscMesh = new THREE.Mesh(fixtureLensDiscGeo, lensDiscMat);
+        lensDiscMesh.rotation.x = Math.PI / 2;
+        lensDiscMesh.position.set(0, 0.005, 0);
+        pivotGroup.add(lensDiscMesh);
+
+        // Volumetric Godray Shader Material with softer core
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(lensColor) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 0.75 },
+                uTime: { value: 0.0 },
+                uTimeSpeed: { value: 0.18 },
+                uNoiseScale: { value: 3.8 },
+                uSmoothTop: { value: 0.22 },
+                uSmoothBottom: { value: 0.85 },
+                uFresnelPower: { value: 2.5 },
+                uPulse: { value: 0.0 }
+            },
+            vertexShader: WawaSenseiGodrayShader.vertexShader,
+            fragmentShader: WawaSenseiGodrayShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const beamMesh = new THREE.Mesh(discoGodrayConeGeo, beamMat);
+        pivotGroup.add(beamMesh);
+
+        // Circular floor reflection spot pool striking the illuminated disco dance floor
+        const floorImpactMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(lensColor) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 0.85 },
+                uSurge: { value: 0.0 }
+            },
+            vertexShader: FloorSpotShader.vertexShader,
+            fragmentShader: FloorSpotShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
+        floorImpactMesh.rotation.x = -Math.PI / 2;
+        floorImpactMesh.position.set(posX, -7.47, posZ - 6.0); // 0.01 above disco floor
+        gDiscoGodrays.add(floorImpactMesh);
+
+        gDiscoGodrays.add(podGroup);
+
+        discoGodrayFixtures.push({
+            podGroup,
+            pivotGroup,
+            beamMesh,
+            beamMat,
+            lensDiscMesh,
+            floorImpactMesh,
+            floorImpactMat,
+            baseColor: new THREE.Color(lensColor),
+            normIdx,
+            homeX: posX,
+            phaseOffset: i * 0.785,
+            bassSurge: 0.0
+        });
+    }
+
+    // 5. Floating Atmospheric Fog Medium Layers (Illuminated by Coloured Spotlights)
+    const discoGodrayFogGroup = new THREE.Group();
+    const discoFloatingFogMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uIntensity: { value: 0.20 },
+            uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+            uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+            uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+            uSpotIntensity: { value: new Float32Array(8) },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: FloatingAtmosphericFogShader.vertexShader,
+        fragmentShader: FloatingAtmosphericFogShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    fogLayerHeights.forEach((h, idx) => {
+        const fogMesh = new THREE.Mesh(fogPlaneGeo, discoFloatingFogMat);
+        fogMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.05 : -0.05);
+        fogMesh.rotation.z = (idx * 0.16) - 0.4;
+        fogMesh.position.set(0, h, -4.0 + (idx % 2) * 1.5);
+        discoGodrayFogGroup.add(fogMesh);
+    });
+    gDiscoGodrays.add(discoGodrayFogGroup);
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
@@ -5678,6 +5871,9 @@ export function createVFXScene(container) {
         bloomPass.resolution.set(w, h);
         if (proteanCloudMat && proteanCloudMat.uniforms.uResolution) {
             proteanCloudMat.uniforms.uResolution.value.set(w, h);
+        }
+        if (discoProteanCloudMat && discoProteanCloudMat.uniforms.uResolution) {
+            discoProteanCloudMat.uniforms.uResolution.value.set(w, h);
         }
     }
     window.addEventListener('resize', onResize);
@@ -5694,11 +5890,13 @@ export function createVFXScene(container) {
     let camRecoilY = 0.0;
     let camRecoilZ = 0.0;
 
-    // FX 18 & FX 19 Moving-Head Godray State (Staggered Heavy Bass Chase & Pulse Timers)
+    // FX 18, FX 19 & FX 20 Moving-Head Godray State (Staggered Heavy Bass Chase & Pulse Timers)
     let godrayChaseIndex = 0;
     let godrayLastKickTime = 0.0;
     let whiteGodrayChaseIndex = 0;
     let whiteGodrayLastKickTime = 0.0;
+    let discoGodrayChaseIndex = 0;
+    let discoGodrayLastKickTime = 0.0;
 
     // Smooth state variables for Particle Stream (Silky smooth response)
     let streamSmoothBass = 0.0;
@@ -6744,11 +6942,126 @@ export function createVFXScene(container) {
                 fix.lensDiscMesh.material.opacity = Math.min(1.0, 0.55 + fix.bassSurge * 0.45 + (audio.smoothedBass || 0) * 0.20);
             });
         }
-        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19) {
+        // ---------------------------------------------------------------------
+        // FX 20: 🪩 Disco Dance Floor with Coloured Godrays & Atmospheric Smoke
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 20) {
+            // Animate 70s Saturday Night Fever Disco Dancefloor
+            discoStageFloorMat.uniforms.uTime.value = elapsedTime;
+            discoStageFloorMat.uniforms.uBass.value = audio.bass || 0;
+            discoStageFloorMat.uniforms.uBPM.value = currentBPM;
+
+            // Tempo-synchronized arena sweep
+            const sweepSpeed = 0.14 * (currentBPM / 126.0);
+            const sweepTime = elapsedTime * sweepSpeed;
+
+            // Robust heavy bass / kick transient detection
+            const rawBassVal = audio.bass || 0;
+            const bassPopVal = audio.bassImpact || audio.bass || 0;
+            const transientVal = audio.transientImpulse || 0;
+            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+
+            if (isKickHit && (elapsedTime - discoGodrayLastKickTime > 0.14)) {
+                discoGodrayLastKickTime = elapsedTime;
+                discoGodrayChaseIndex = (discoGodrayChaseIndex + 1) % numGodrays;
+
+                const kickPower = Math.min(1.5, Math.max(0.85, bassPopVal * 1.4 + transientVal * 0.75));
+                discoGodrayFixtures[discoGodrayChaseIndex].bassSurge = kickPower;
+
+                const pairIdx = (discoGodrayChaseIndex + 4) % numGodrays;
+                discoGodrayFixtures[pairIdx].bassSurge = Math.max(discoGodrayFixtures[pairIdx].bassSurge, kickPower * 0.75);
+            }
+
+            // Exponential decay of per-fixture bass surge
+            const surgeDecay = Math.exp(-delta * 3.6);
+            discoGodrayFixtures.forEach(fix => {
+                fix.bassSurge *= surgeDecay;
+                if (fix.bassSurge < 0.005) fix.bassSurge = 0.0;
+            });
+
+            // Animate Protean Clouds Volumetric Background Shader (Faded, Moody Smoke)
+            if (discoProteanCloudMat) {
+                discoProteanCloudMat.uniforms.uTime.value = elapsedTime * 0.22;
+                discoProteanCloudMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.45 + (audio.bassImpact || 0) * 0.20;
+                discoProteanCloudMat.uniforms.uMid.value = (audio.smoothedMid || 0);
+                discoProteanCloudMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
+                discoProteanCloudMat.uniforms.uIntensity.value = 0.35 + (audio.smoothedBass || 0) * 0.12;
+            }
+
+            // Animate floating stage fog medium
+            discoFloatingFogMat.uniforms.uTime.value = elapsedTime;
+            discoFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.35 + (audio.bassImpact || 0) * 0.15;
+            discoFloatingFogMat.uniforms.uIntensity.value = 0.14 + (audio.smoothedBass || 0) * 0.08 + (audio.overall || 0) * 0.05;
+
+            const floorY = -7.48;
+
+            discoGodrayFixtures.forEach((fix, idx) => {
+                const norm = fix.normIdx - 0.5;
+
+                // Wide harmonic sways
+                const panHarmonic1 = Math.sin(sweepTime * 0.85 + fix.phaseOffset) * 0.36;
+                const panHarmonic2 = Math.sin(sweepTime * 0.35 + idx * 0.40) * 0.14;
+                const rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.22);
+
+                const tiltHarmonic1 = Math.cos(sweepTime * 0.65 + fix.phaseOffset * 0.7) * 0.15;
+                const tiltHarmonic2 = Math.sin(sweepTime * 0.25 + idx * 0.20) * 0.06;
+                const rotX = 0.28 + tiltHarmonic1 + tiltHarmonic2;
+
+                fix.pivotGroup.rotation.z = rotZ;
+                fix.pivotGroup.rotation.x = rotX;
+
+                // Balanced base breathing & music reactivity with softer lens intensity
+                const breathCycle = Math.sin(elapsedTime * 0.22 + fix.phaseOffset) * 0.5 + 0.5;
+                const baseBreath = 0.30 + Math.pow(breathCycle, 1.4) * 0.20;
+                const musicBassGlow = (audio.smoothedBass || 0) * 0.40;
+                const musicMidGlow = (audio.smoothedMid || 0) * 0.16;
+                const bassBoost = fix.bassSurge * 1.35;
+                const beamIntensity = baseBreath + musicBassGlow + musicMidGlow + bassBoost;
+
+                fix.beamMat.uniforms.uTime.value = elapsedTime;
+                fix.beamMat.uniforms.uIntensity.value = beamIntensity;
+                const activeCol = fix.baseColor;
+                fix.beamMat.uniforms.uColor.value.copy(activeCol);
+
+                // Compute exact ray-plane intersection striking the illuminated disco floor
+                const worldDir = new THREE.Vector3(0, -1, 0).applyEuler(fix.pivotGroup.rotation).normalize();
+                const t = (floorY - fix.podGroup.position.y) / worldDir.y;
+                const hitX = fix.podGroup.position.x + worldDir.x * t;
+                const hitY = floorY + 0.01;
+                const hitZ = fix.podGroup.position.z + worldDir.z * t;
+
+                fix.floorImpactMesh.position.set(hitX, hitY, hitZ);
+
+                const coneRadius = discoTopRadius + t * ((discoBottomRadius - discoTopRadius) / discoBeamLength);
+                const cosTilt = Math.max(0.35, -worldDir.y);
+                const spotWidth = coneRadius * (1.10 + fix.bassSurge * 0.35);
+                const spotLength = (coneRadius * (1.10 + fix.bassSurge * 0.35)) / cosTilt;
+
+                fix.floorImpactMesh.scale.set(spotWidth, spotLength, 1.0);
+                const floorAngle = Math.atan2(worldDir.x, -worldDir.z);
+                fix.floorImpactMesh.rotation.set(-Math.PI / 2, 0, floorAngle, 'ZXY');
+
+                // Update Floor Impact Spot Material (illuminating the disco floor tiles)
+                fix.floorImpactMat.uniforms.uColor.value.copy(activeCol);
+                fix.floorImpactMat.uniforms.uIntensity.value = beamIntensity * 1.15;
+                fix.floorImpactMat.uniforms.uSurge.value = fix.bassSurge + (audio.smoothedBass || 0) * 0.30;
+
+                // Update spotlight uniforms in fog
+                discoFloatingFogMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
+                discoFloatingFogMat.uniforms.uSpotDir.value[idx].copy(worldDir);
+                discoFloatingFogMat.uniforms.uSpotColor.value[idx].copy(activeCol);
+                discoFloatingFogMat.uniforms.uSpotIntensity.value[idx] = beamIntensity;
+
+                // Softer lens disc intensity as requested
+                fix.lensDiscMesh.material.color.copy(activeCol);
+                fix.lensDiscMesh.material.opacity = Math.min(0.65, 0.30 + fix.bassSurge * 0.30 + (audio.smoothedBass || 0) * 0.12);
+            });
+        }
+        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 18 || currentFXIndex === 19) {
+        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -6762,14 +7075,14 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;

@@ -315,7 +315,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 20;
+    const TOTAL_FX = 21;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -2030,7 +2030,8 @@ async function init() {
         'Spinning Disco Ball', '70s Disco Dancefloor', 'Dual-Bank Lasers', 'Saber Multi-Beams',
         'Strobe Rings', 'Silhouette Dancers', 'Synthwave Grid', 'Synthwave River & Sun',
         'Matrix Code Rain', 'Retro Arcade 80s', 'Warp Starfield', 'Spiral Galaxy Vortex',
-        'Hyper Particle Stream', 'Time.is Clock', 'Sweeping Godrays', 'White Godrays & Fog'
+        'Hyper Particle Stream', 'Time.is Clock', 'Sweeping Godrays', 'White Godrays & Fog',
+        'Disco Floor & Godrays'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -2555,7 +2556,7 @@ async function init() {
         });
     }
 
-    // 7. Keyboard Shortcuts (20 Presets)
+    // 7. Keyboard Shortcuts (21 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
         '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
@@ -2567,7 +2568,8 @@ async function init() {
         't': 16, 'T': 16,
         'y': 17, 'Y': 17,
         'u': 18, 'U': 18,
-        'i': 19, 'I': 19
+        'i': 19, 'I': 19,
+        'o': 20, 'O': 20
     };
 
     window.addEventListener('keydown', (e) => {

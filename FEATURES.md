@@ -6,9 +6,10 @@ This document tracks all implemented features, technical innovations, recent enh
 
 ## 🚀 Live Implemented Features
 
-### 1. 🔦 Volumetric Stage & Godray Engine (FX 18 & FX 19)
+### 1. 🔦 Volumetric Stage, Disco Floors & Godray Engine (FX 18, FX 19 & FX 20)
 - [x] **Sweeping Godray Disco Lights (FX 18)**: 8 concert moving-head fixtures mounted across a top stadium truss bar with saturated neon concert palette, Wawa Sensei volumetric cones, Mie forward scattering, staggered heavy bass chase, and locked floor reflection pools.
 - [x] **Pure White Godrays & Protean Volumetric Clouds (FX 19)**: All-white Diamond Xenon monochrome moving-head rig combined with nimitz's raymarched Protean Clouds volumetric fog shader backdrop (from WebGL2 Fundamentals/Shadertoy), creating an ethereal, cinematic atmosphere with audio-reactive fog turbulence and locked floor reflection pools.
+- [x] **Disco Dancefloor with Coloured Godrays & Atmospheric Smoke (FX 20)**: Saturday Night Fever illuminated dancefloor grid layered with 8 colored moving-head spotlights striking the floor tiles, backed by faded Protean volumetric smoke and refined, balanced lens glow.
 - [x] **Wawa Sensei Volumetric Cone Geometry**: Custom GLSL shader with longitudinal striations, Mie forward scattering, and Henyey-Greenstein phase calculation.
 - [x] **Silky Anti-Twitch Shading**: High-frequency speckle noise removed in favor of calm, continuous analytical ray shafts and drifting smoke interaction.
 - [x] **Staggered Heavy Bass Chase**: Multi-head chase sequencer triggered on heavy bass/kick onsets with exponential decay (~400ms sustain), ensuring fixtures flare rhythmically rather than all flashing simultaneously.
