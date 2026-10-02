@@ -6200,39 +6200,48 @@ export function createVFXScene(container) {
         // FX 18: 🔦 Sweeping Godray Disco Lights (Slow, Majestic Moving-Head Rig)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 18) {
-            // Ultra-slow, majestic, fluid arena sweep (graceful, calm, hypnotic)
-            const sweepTime = elapsedTime * 0.080 * speed;
+            // Majestic, fluid arena sweep synced to tempo (graceful, calm, hypnotic)
+            const sweepSpeed = 0.14 * (currentBPM / 126.0);
+            const sweepTime = elapsedTime * sweepSpeed;
 
-            // Staggered heavy bass chase: only react & flare under heavy kicks, not all at once!
-            const isHeavyBass = (audio.isOnset || audio.isKick) && (audio.bassImpact > 0.38 || bassPop > 0.45);
-            if (isHeavyBass && (elapsedTime - godrayLastKickTime > 0.18)) {
+            // Robust heavy bass / kick detection (sensitive, reliable, and musically responsive)
+            const rawBassVal = audio.bass || 0;
+            const bassPopVal = audio.bassImpact || audio.bass || 0;
+            const transientVal = audio.transientImpulse || 0;
+            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+
+            if (isKickHit && (elapsedTime - godrayLastKickTime > 0.14)) {
                 godrayLastKickTime = elapsedTime;
-                // Advance chase index across the 8 moving heads
+                // Advance chase index across the 8 moving heads (staggered response, never all at once)
                 godrayChaseIndex = (godrayChaseIndex + 1) % numGodrays;
-                godrayFixtures[godrayChaseIndex].bassSurge = 1.0;
-                // Symmetrical paired follower for balanced arena stage dynamics
+
+                // Scale surge strength with kick impact
+                const kickPower = Math.min(1.6, Math.max(0.9, bassPopVal * 1.5 + transientVal * 0.8));
+                godrayFixtures[godrayChaseIndex].bassSurge = kickPower;
+
+                // Symmetrical paired follower (left & right stage balance)
                 const pairIdx = (godrayChaseIndex + 4) % numGodrays;
-                godrayFixtures[pairIdx].bassSurge = Math.max(godrayFixtures[pairIdx].bassSurge, 0.75);
+                godrayFixtures[pairIdx].bassSurge = Math.max(godrayFixtures[pairIdx].bassSurge, kickPower * 0.75);
             }
 
-            // Exponential decay of per-fixture bass surge (instant attack, ~380ms smooth fade)
-            const surgeDecay = Math.exp(-delta * 4.8);
+            // Exponential decay of per-fixture bass surge (instant snappy attack, ~400ms smooth fade)
+            const surgeDecay = Math.exp(-delta * 3.6);
             godrayFixtures.forEach(fix => {
                 fix.bassSurge *= surgeDecay;
                 if (fix.bassSurge < 0.005) fix.bassSurge = 0.0;
             });
 
-            // Animate Floating Atmospheric Fog medium smoothly
+            // Animate Floating Atmospheric Fog medium smoothly with bass & overall rhythm
             floatingFogMat.uniforms.uTime.value = elapsedTime;
-            floatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.20;
-            floatingFogMat.uniforms.uIntensity.value = 0.30;
+            floatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.50 + (audio.bassImpact || 0) * 0.25;
+            floatingFogMat.uniforms.uIntensity.value = 0.28 + (audio.smoothedBass || 0) * 0.18 + (audio.overall || 0) * 0.12;
 
             const floorY = -7.48;
 
             godrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5; // -0.5 (leftmost) to +0.5 (rightmost)
 
-                // Slow, graceful, wide harmonic sways (ultra-fluid, zero sudden or hurried motion)
+                // Slow, graceful, wide harmonic sways (ultra-fluid, zero sudden motion)
                 const panHarmonic1 = Math.sin(sweepTime * 0.85 + fix.phaseOffset) * 0.36;
                 const panHarmonic2 = Math.sin(sweepTime * 0.35 + idx * 0.40) * 0.14;
                 const rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.22);
@@ -6244,13 +6253,17 @@ export function createVFXScene(container) {
                 fix.pivotGroup.rotation.z = rotZ;
                 fix.pivotGroup.rotation.x = rotX;
 
-                // Base calm, hypnotic breathing (slow, gentle swell between 0.42 and 0.70)
+                // 1. Organic base breathing
                 const breathCycle = Math.sin(elapsedTime * 0.22 + fix.phaseOffset) * 0.5 + 0.5;
-                const baseIntensity = 0.42 + Math.pow(breathCycle, 1.4) * 0.28;
+                const baseBreath = 0.34 + Math.pow(breathCycle, 1.4) * 0.24; // 0.34 to 0.58
 
-                // Heavy bass boost (only surges on active chase heads)
-                const bassBoost = fix.bassSurge * 1.50;
-                const beamIntensity = baseIntensity + bassBoost;
+                // 2. Continuous smooth music reaction (bassline & mid warmth, zero jitter)
+                const musicBassGlow = (audio.smoothedBass || 0) * 0.48;
+                const musicMidGlow = (audio.smoothedMid || 0) * 0.20;
+
+                // 3. Searing heavy bass surge on active chase fixtures (peaks at 1.8 - 2.5!)
+                const bassBoost = fix.bassSurge * 1.65;
+                const beamIntensity = baseBreath + musicBassGlow + musicMidGlow + bassBoost;
 
                 // Update Godray Uniforms
                 fix.beamMat.uniforms.uTime.value = elapsedTime;
@@ -6281,7 +6294,7 @@ export function createVFXScene(container) {
                 // Update Floor Impact Spot Material (exact color match + intensity + bass surge)
                 fix.floorImpactMat.uniforms.uColor.value.copy(activeCol);
                 fix.floorImpactMat.uniforms.uIntensity.value = beamIntensity;
-                fix.floorImpactMat.uniforms.uSurge.value = fix.bassSurge;
+                fix.floorImpactMat.uniforms.uSurge.value = fix.bassSurge + (audio.smoothedBass || 0) * 0.30;
 
                 // Update Spotlight parameters to dynamically shade the floating fog medium
                 floatingFogMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
@@ -6291,7 +6304,7 @@ export function createVFXScene(container) {
 
                 // Clean lens disc on moving head
                 fix.lensDiscMesh.material.color.copy(activeCol);
-                fix.lensDiscMesh.material.opacity = 0.60 + fix.bassSurge * 0.40;
+                fix.lensDiscMesh.material.opacity = Math.min(1.0, 0.55 + fix.bassSurge * 0.45 + (audio.smoothedBass || 0) * 0.20);
             });
         }
         if (audio.isOnset && currentFXIndex !== 18) {
@@ -6312,7 +6325,7 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = currentFXIndex === 4 ? (bassPop * 0.12 + transient * 0.10) : (currentFXIndex === 18 ? 0.0 : bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
