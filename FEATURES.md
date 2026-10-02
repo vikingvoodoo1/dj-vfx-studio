@@ -6,8 +6,9 @@ This document tracks all implemented features, technical innovations, recent enh
 
 ## 🚀 Live Implemented Features
 
-### 1. 🔦 Volumetric Stage & Godray Engine (FX 18)
-- [x] **Moving-Head Godray Rig**: 8 individual concert moving-head fixtures mounted across a top stadium truss bar.
+### 1. 🔦 Volumetric Stage & Godray Engine (FX 18 & FX 19)
+- [x] **Sweeping Godray Disco Lights (FX 18)**: 8 concert moving-head fixtures mounted across a top stadium truss bar with saturated neon concert palette, Wawa Sensei volumetric cones, Mie forward scattering, staggered heavy bass chase, and locked floor reflection pools.
+- [x] **Pure White Godrays & Protean Volumetric Clouds (FX 19)**: All-white Diamond Xenon monochrome moving-head rig combined with nimitz's raymarched Protean Clouds volumetric fog shader backdrop (from WebGL2 Fundamentals/Shadertoy), creating an ethereal, cinematic atmosphere with audio-reactive fog turbulence and locked floor reflection pools.
 - [x] **Wawa Sensei Volumetric Cone Geometry**: Custom GLSL shader with longitudinal striations, Mie forward scattering, and Henyey-Greenstein phase calculation.
 - [x] **Silky Anti-Twitch Shading**: High-frequency speckle noise removed in favor of calm, continuous analytical ray shafts and drifting smoke interaction.
 - [x] **Staggered Heavy Bass Chase**: Multi-head chase sequencer triggered on heavy bass/kick onsets with exponential decay (~400ms sustain), ensuring fixtures flare rhythmically rather than all flashing simultaneously.

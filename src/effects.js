@@ -573,6 +573,156 @@ const FloatingAtmosphericFogShader = {
         }
     `
 };
+// -------------------------------------------------------------------------
+// Protean Clouds Volumetric Raymarching Shader (nimitz / WebGL2 Fundamentals)
+// Pure Ethereal Platinum Diamond White Monochrome Volumetric Cloudscape
+// -------------------------------------------------------------------------
+const ProteanCloudsShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+        uBass: { value: 0.0 },
+        uMid: { value: 0.0 },
+        uTreble: { value: 0.0 },
+        uIntensity: { value: 1.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+    `,
+    fragmentShader: `
+        uniform float uTime;
+        uniform vec2 uResolution;
+        uniform float uBass;
+        uniform float uMid;
+        uniform float uTreble;
+        uniform float uIntensity;
+        varying vec2 vUv;
+
+        // Protean clouds algorithm by nimitz (https://www.shadertoy.com/view/3l23Rh)
+        mat2 rot(in float a){ float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
+        const mat3 m3 = mat3(0.33338, 0.56034, -0.71817, -0.87887, 0.32651, -0.15323, 0.15162, 0.69596, 0.61339) * 1.93;
+        float mag2(vec2 p){ return dot(p, p); }
+        float linstep(in float mn, in float mx, in float x){ return clamp((x - mn)/(mx - mn), 0.0, 1.0); }
+
+        vec2 disp(float t){ return vec2(sin(t * 0.22), cos(t * 0.175)) * 2.0; }
+
+        vec2 map(vec3 p, float time, float prm1, float bassMod) {
+            vec3 p2 = p;
+            p2.xy -= disp(p.z).xy;
+            p.xy *= rot(sin(p.z + time) * (0.10 + prm1 * 0.05) + time * 0.08);
+            float cl = mag2(p2.xy);
+            float d = 0.0;
+            p *= 0.61;
+            float z = 1.0;
+            float trk = 1.0;
+            float dspAmp = 0.10 + prm1 * 0.20 + bassMod * 0.12;
+            for(int i = 0; i < 5; i++) {
+                p += sin(p.zxy * 0.75 * trk + time * trk * 0.8) * dspAmp;
+                d -= abs(dot(cos(p), sin(p.yzx)) * z);
+                z *= 0.57;
+                trk *= 1.4;
+                p = p * m3;
+            }
+            d = abs(d + prm1 * 3.0) + prm1 * 0.3 - 2.5;
+            return vec2(d + cl * 0.20 + 0.25, cl);
+        }
+
+        float getsat(vec3 c) {
+            float mi = min(min(c.x, c.y), c.z);
+            float ma = max(max(c.x, c.y), c.z);
+            return (ma - mi)/(ma + 1e-7);
+        }
+
+        vec3 iLerp(in vec3 a, in vec3 b, in float x) {
+            vec3 ic = mix(a, b, x) + vec3(1e-6, 0.0, 0.0);
+            float sd = abs(getsat(ic) - mix(getsat(a), getsat(b), x));
+            vec3 dir = normalize(vec3(2.0 * ic.x - ic.y - ic.z, 2.0 * ic.y - ic.x - ic.z, 2.0 * ic.z - ic.y - ic.x));
+            float lgt = dot(vec3(1.0), ic);
+            float ff = dot(dir, normalize(ic));
+            ic += 1.5 * dir * sd * ff * lgt;
+            return clamp(ic, 0.0, 1.0);
+        }
+
+        void main() {
+            vec2 q = vUv;
+            float aspect = uResolution.x / max(1.0, uResolution.y);
+            vec2 p = (vUv - 0.5) * vec2(aspect, 1.0);
+
+            float time = uTime * 1.5;
+            vec3 ro = vec3(0.0, 0.0, time);
+            ro += vec3(sin(uTime * 0.35) * 0.35, 0.0, 0.0);
+
+            float dspAmp = 0.85;
+            ro.xy += disp(ro.z) * dspAmp;
+            float tgtDst = 3.5;
+
+            vec3 target = normalize(ro - vec3(disp(time + tgtDst) * dspAmp, time + tgtDst));
+            vec3 rightdir = normalize(cross(target, vec3(0.0, 1.0, 0.0)));
+            vec3 updir = normalize(cross(rightdir, target));
+            rightdir = normalize(cross(updir, target));
+            vec3 rd = normalize((p.x * rightdir + p.y * updir) * 1.0 - target);
+            rd.xy *= rot(-disp(time + 3.5).x * 0.18);
+
+            float prm1 = smoothstep(-0.4, 0.4, sin(uTime * 0.22));
+            float bassMod = uBass * 0.55;
+
+            // Raymarching volumetric clouds
+            vec4 rez = vec4(0.0);
+            const float ldst = 8.0;
+            vec3 lpos = vec3(disp(time + ldst) * 0.5, time + ldst);
+            float t = 1.5;
+            float fogT = 0.0;
+
+            for(int i = 0; i < 70; i++) {
+                if(rez.a > 0.98) break;
+
+                vec3 pos = ro + t * rd;
+                vec2 mpv = map(pos, time, prm1, bassMod);
+                float den = clamp(mpv.x - 0.3, 0.0, 1.0) * 1.12;
+                float dn = clamp((mpv.x + 2.0), 0.0, 3.0);
+
+                vec4 col = vec4(0.0);
+                if (mpv.x > 0.6) {
+                    // Monochrome Diamond White / Platinum Fog
+                    col = vec4(sin(vec3(4.8, 5.0, 5.2) + mpv.y * 0.08 + sin(pos.z * 0.35) * 0.35 + 1.6) * 0.35 + 0.65, 0.08);
+                    col *= den * den * den;
+                    col.rgb *= linstep(4.0, -2.5, mpv.x) * 2.3;
+                    float dif = clamp((den - map(pos + 0.8, time, prm1, bassMod).x) / 9.0, 0.001, 1.0);
+                    dif += clamp((den - map(pos + 0.35, time, prm1, bassMod).x) / 2.5, 0.001, 1.0);
+
+                    // Ethereal platinum ambient and diffuse illumination
+                    vec3 ambLight = vec3(0.045, 0.052, 0.068) + vec3(uBass * 0.05);
+                    vec3 difLight = vec3(0.12, 0.13, 0.15) * dif * (1.0 + uBass * 0.4);
+                    col.xyz *= den * (ambLight + 1.8 * difLight);
+                }
+
+                float fogC = exp(t * 0.2 - 2.2);
+                col.rgba += vec4(0.055, 0.065, 0.075, 0.10) * clamp(fogC - fogT, 0.0, 1.0) * (1.0 + uBass * 0.25);
+                fogT = fogC;
+                rez = rez + col * (1.0 - rez.a);
+                t += clamp(0.5 - dn * dn * 0.05, 0.09, 0.35);
+            }
+
+            vec3 col = clamp(rez.rgb, 0.0, 1.0);
+            col = iLerp(col.bgr, col.rgb, clamp(1.0 - prm1, 0.05, 1.0));
+
+            // Diamond White / Platinum Fog Grading
+            col = pow(col, vec3(0.55, 0.58, 0.60)) * vec3(1.0, 1.02, 1.06) * uIntensity;
+            
+            // Audio Bass Punch
+            col += vec3(uBass * 0.12, uBass * 0.13, uBass * 0.15);
+
+            // Vignette
+            col *= pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.12) * 0.70 + 0.30;
+
+            gl_FragColor = vec4(col, 1.0);
+        }
+    `
+};
 
 // Concert Stage Moving-Head Beam Shader (Striated Ray Shafts, Atmospheric Fog & Aperture Flare)
 const ConcertStageBeamShader = {
@@ -5341,6 +5491,180 @@ export function createVFXScene(container) {
     gSweepingGodrays.add(godrayFogGroup);
 
     // -------------------------------------------------------------------------
+    // FX 19: ☁️ PURE WHITE GODRAYS & PROTEAN VOLUMETRIC CLOUDS
+    // -------------------------------------------------------------------------
+    const gWhiteGodrayProtean = createFXGroup();
+
+    // 1. Protean Clouds Volumetric Shader Backdrop Plane (nimitz / WebGL2 Fundamentals)
+    const proteanCloudGeo = new THREE.PlaneGeometry(160.0, 95.0, 1, 1);
+    const proteanCloudMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uResolution: { value: new THREE.Vector2(window.innerWidth, window.innerHeight) },
+            uBass: { value: 0.0 },
+            uMid: { value: 0.0 },
+            uTreble: { value: 0.0 },
+            uIntensity: { value: 1.0 }
+        },
+        vertexShader: ProteanCloudsShader.vertexShader,
+        fragmentShader: ProteanCloudsShader.fragmentShader,
+        depthWrite: false
+    });
+    const proteanCloudMesh = new THREE.Mesh(proteanCloudGeo, proteanCloudMat);
+    proteanCloudMesh.position.set(0, 0, -30.0);
+    gWhiteGodrayProtean.add(proteanCloudMesh);
+
+    // 2. Stage Rig Truss Header Bar at Top of Screen
+    const whiteTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
+    const whiteTrussMat = new THREE.MeshBasicMaterial({ color: 0x141824 });
+    const whiteTrussMesh = new THREE.Mesh(whiteTrussGeo, whiteTrussMat);
+    whiteTrussMesh.position.set(0, 9.5, -4.0);
+    gWhiteGodrayProtean.add(whiteTrussMesh);
+
+    // 3. 8 Moving-Head Diamond Xenon White Godray Pods Spanning Across Top Screen
+    const whiteGodrayFixtures = [];
+    const whiteBeamLength = 28.0;
+    const whiteTopRadius = 0.18;
+    const whiteBottomRadius = 3.0;
+
+    const whiteGodrayConeGeo = new THREE.CylinderGeometry(whiteTopRadius, whiteBottomRadius, whiteBeamLength, 48, 1, true);
+    whiteGodrayConeGeo.translate(0, -whiteBeamLength * 0.5, 0);
+
+    const whiteFixtureDarkMat = new THREE.MeshBasicMaterial({ color: 0x0c101c });
+    const whiteFixtureBezelMat = new THREE.MeshBasicMaterial({ color: 0x222a3e });
+
+    for (let i = 0; i < numGodrays; i++) {
+        const normIdx = i / (numGodrays - 1);
+        const posX = -17.5 + normIdx * 35.0;
+        const posY = 9.4;
+        const posZ = -4.0;
+
+        const podGroup = new THREE.Group();
+        podGroup.position.set(posX, posY, posZ);
+
+        // Fixed truss mounting bracket
+        const yokeMesh = new THREE.Mesh(fixtureYokeGeo, whiteFixtureDarkMat);
+        yokeMesh.position.set(0, 0.45, 0);
+        podGroup.add(yokeMesh);
+
+        // Moving-head pivot group
+        const pivotGroup = new THREE.Group();
+        podGroup.add(pivotGroup);
+
+        // Fixture head casing
+        const headMesh = new THREE.Mesh(fixtureHeadGeo, whiteFixtureDarkMat);
+        headMesh.position.set(0, 0.42, 0);
+        pivotGroup.add(headMesh);
+
+        // Outer bezel ring
+        const bezelMesh = new THREE.Mesh(fixtureBezelGeo, whiteFixtureBezelMat);
+        bezelMesh.rotation.x = Math.PI / 2;
+        bezelMesh.position.set(0, 0.01, 0);
+        pivotGroup.add(bezelMesh);
+
+        // Diamond Xenon White optical glass lens disc
+        const lensDiscMat = new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            transparent: true,
+            opacity: 0.95
+        });
+        const lensDiscMesh = new THREE.Mesh(fixtureLensDiscGeo, lensDiscMat);
+        lensDiscMesh.rotation.x = Math.PI / 2;
+        lensDiscMesh.position.set(0, 0.005, 0);
+        pivotGroup.add(lensDiscMesh);
+
+        // Pure Diamond White Godray volumetric shader
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffffff) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 0.85 },
+                uTime: { value: 0.0 },
+                uTimeSpeed: { value: 0.18 },
+                uNoiseScale: { value: 3.8 },
+                uSmoothTop: { value: 0.16 },
+                uSmoothBottom: { value: 0.85 },
+                uFresnelPower: { value: 2.2 },
+                uPulse: { value: 0.0 }
+            },
+            vertexShader: WawaSenseiGodrayShader.vertexShader,
+            fragmentShader: WawaSenseiGodrayShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const beamMesh = new THREE.Mesh(whiteGodrayConeGeo, beamMat);
+        pivotGroup.add(beamMesh);
+
+        // Pure White Floor Reflection Pool
+        const floorImpactMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffffff) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 0.85 },
+                uSurge: { value: 0.0 }
+            },
+            vertexShader: FloorSpotShader.vertexShader,
+            fragmentShader: FloorSpotShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
+        floorImpactMesh.rotation.x = -Math.PI / 2;
+        floorImpactMesh.position.set(posX, -7.48, posZ - 6.0);
+        gWhiteGodrayProtean.add(floorImpactMesh);
+
+        gWhiteGodrayProtean.add(podGroup);
+
+        whiteGodrayFixtures.push({
+            podGroup,
+            pivotGroup,
+            beamMesh,
+            beamMat,
+            lensDiscMesh,
+            floorImpactMesh,
+            floorImpactMat,
+            normIdx,
+            homeX: posX,
+            phaseOffset: i * 0.785,
+            bassSurge: 0.0
+        });
+    }
+
+    // 4. Floating Atmospheric Fog Medium Layers (Monochrome White Haze)
+    const whiteGodrayFogGroup = new THREE.Group();
+    const whiteFloatingFogMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uIntensity: { value: 0.40 },
+            uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+            uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+            uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+            uSpotIntensity: { value: new Float32Array(8) },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: FloatingAtmosphericFogShader.vertexShader,
+        fragmentShader: FloatingAtmosphericFogShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    fogLayerHeights.forEach((h, idx) => {
+        const fogMesh = new THREE.Mesh(fogPlaneGeo, whiteFloatingFogMat);
+        fogMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.05 : -0.05);
+        fogMesh.rotation.z = (idx * 0.16) - 0.4;
+        fogMesh.position.set(0, h, -4.0 + (idx % 2) * 1.5);
+        whiteGodrayFogGroup.add(fogMesh);
+    });
+    gWhiteGodrayProtean.add(whiteGodrayFogGroup);
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
@@ -5352,6 +5676,9 @@ export function createVFXScene(container) {
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         composer.setSize(w, h);
         bloomPass.resolution.set(w, h);
+        if (proteanCloudMat && proteanCloudMat.uniforms.uResolution) {
+            proteanCloudMat.uniforms.uResolution.value.set(w, h);
+        }
     }
     window.addEventListener('resize', onResize);
 
@@ -5367,9 +5694,11 @@ export function createVFXScene(container) {
     let camRecoilY = 0.0;
     let camRecoilZ = 0.0;
 
-    // FX 18 Sweeping Godray Disco Lights State (Staggered Heavy Bass Chase & Pulse Timers)
+    // FX 18 & FX 19 Moving-Head Godray State (Staggered Heavy Bass Chase & Pulse Timers)
     let godrayChaseIndex = 0;
     let godrayLastKickTime = 0.0;
+    let whiteGodrayChaseIndex = 0;
+    let whiteGodrayLastKickTime = 0.0;
 
     // Smooth state variables for Particle Stream (Silky smooth response)
     let streamSmoothBass = 0.0;
@@ -6307,11 +6636,119 @@ export function createVFXScene(container) {
                 fix.lensDiscMesh.material.opacity = Math.min(1.0, 0.55 + fix.bassSurge * 0.45 + (audio.smoothedBass || 0) * 0.20);
             });
         }
-        if (audio.isOnset && currentFXIndex !== 18) {
+        // ---------------------------------------------------------------------
+        // FX 19: ☁️ Pure White Godrays & Protean Volumetric Clouds
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 19) {
+            // Tempo-synchronized majestic arena sweep
+            const sweepSpeed = 0.14 * (currentBPM / 126.0);
+            const sweepTime = elapsedTime * sweepSpeed;
+
+            // Robust heavy bass / kick transient detection
+            const rawBassVal = audio.bass || 0;
+            const bassPopVal = audio.bassImpact || audio.bass || 0;
+            const transientVal = audio.transientImpulse || 0;
+            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+
+            if (isKickHit && (elapsedTime - whiteGodrayLastKickTime > 0.14)) {
+                whiteGodrayLastKickTime = elapsedTime;
+                whiteGodrayChaseIndex = (whiteGodrayChaseIndex + 1) % numGodrays;
+
+                const kickPower = Math.min(1.6, Math.max(0.9, bassPopVal * 1.5 + transientVal * 0.8));
+                whiteGodrayFixtures[whiteGodrayChaseIndex].bassSurge = kickPower;
+
+                const pairIdx = (whiteGodrayChaseIndex + 4) % numGodrays;
+                whiteGodrayFixtures[pairIdx].bassSurge = Math.max(whiteGodrayFixtures[pairIdx].bassSurge, kickPower * 0.75);
+            }
+
+            // Exponential decay of per-fixture bass surge
+            const surgeDecay = Math.exp(-delta * 3.6);
+            whiteGodrayFixtures.forEach(fix => {
+                fix.bassSurge *= surgeDecay;
+                if (fix.bassSurge < 0.005) fix.bassSurge = 0.0;
+            });
+
+            // Animate Protean Clouds Volumetric Background Shader
+            if (proteanCloudMat) {
+                proteanCloudMat.uniforms.uTime.value = elapsedTime * 0.25;
+                proteanCloudMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.65 + (audio.bassImpact || 0) * 0.35;
+                proteanCloudMat.uniforms.uMid.value = (audio.smoothedMid || 0);
+                proteanCloudMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
+                proteanCloudMat.uniforms.uIntensity.value = 0.90 + (audio.smoothedBass || 0) * 0.25;
+            }
+
+            // Animate floating stage fog medium
+            whiteFloatingFogMat.uniforms.uTime.value = elapsedTime;
+            whiteFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.50 + (audio.bassImpact || 0) * 0.25;
+            whiteFloatingFogMat.uniforms.uIntensity.value = 0.28 + (audio.smoothedBass || 0) * 0.18 + (audio.overall || 0) * 0.12;
+
+            const floorY = -7.48;
+
+            whiteGodrayFixtures.forEach((fix, idx) => {
+                const norm = fix.normIdx - 0.5;
+
+                // Wide harmonic sways
+                const panHarmonic1 = Math.sin(sweepTime * 0.85 + fix.phaseOffset) * 0.36;
+                const panHarmonic2 = Math.sin(sweepTime * 0.35 + idx * 0.40) * 0.14;
+                const rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.22);
+
+                const tiltHarmonic1 = Math.cos(sweepTime * 0.65 + fix.phaseOffset * 0.7) * 0.15;
+                const tiltHarmonic2 = Math.sin(sweepTime * 0.25 + idx * 0.20) * 0.06;
+                const rotX = 0.28 + tiltHarmonic1 + tiltHarmonic2;
+
+                fix.pivotGroup.rotation.z = rotZ;
+                fix.pivotGroup.rotation.x = rotX;
+
+                // Organic base breathing & music reactivity
+                const breathCycle = Math.sin(elapsedTime * 0.22 + fix.phaseOffset) * 0.5 + 0.5;
+                const baseBreath = 0.34 + Math.pow(breathCycle, 1.4) * 0.24;
+                const musicBassGlow = (audio.smoothedBass || 0) * 0.48;
+                const musicMidGlow = (audio.smoothedMid || 0) * 0.20;
+                const bassBoost = fix.bassSurge * 1.65;
+                const beamIntensity = baseBreath + musicBassGlow + musicMidGlow + bassBoost;
+
+                fix.beamMat.uniforms.uTime.value = elapsedTime;
+                fix.beamMat.uniforms.uIntensity.value = beamIntensity;
+                fix.beamMat.uniforms.uColor.value.set(0xffffff);
+
+                // Compute exact ray-plane intersection on floor
+                const worldDir = new THREE.Vector3(0, -1, 0).applyEuler(fix.pivotGroup.rotation).normalize();
+                const t = (floorY - fix.podGroup.position.y) / worldDir.y;
+                const hitX = fix.podGroup.position.x + worldDir.x * t;
+                const hitY = floorY + 0.01;
+                const hitZ = fix.podGroup.position.z + worldDir.z * t;
+
+                fix.floorImpactMesh.position.set(hitX, hitY, hitZ);
+
+                const coneRadius = whiteTopRadius + t * ((whiteBottomRadius - whiteTopRadius) / whiteBeamLength);
+                const cosTilt = Math.max(0.35, -worldDir.y);
+                const spotWidth = coneRadius * (1.10 + fix.bassSurge * 0.35);
+                const spotLength = (coneRadius * (1.10 + fix.bassSurge * 0.35)) / cosTilt;
+
+                fix.floorImpactMesh.scale.set(spotWidth, spotLength, 1.0);
+                const floorAngle = Math.atan2(worldDir.x, -worldDir.z);
+                fix.floorImpactMesh.rotation.set(-Math.PI / 2, 0, floorAngle, 'ZXY');
+
+                // Update Floor Impact Spot
+                fix.floorImpactMat.uniforms.uColor.value.set(0xffffff);
+                fix.floorImpactMat.uniforms.uIntensity.value = beamIntensity;
+                fix.floorImpactMat.uniforms.uSurge.value = fix.bassSurge + (audio.smoothedBass || 0) * 0.30;
+
+                // Update spotlight uniforms in fog
+                whiteFloatingFogMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
+                whiteFloatingFogMat.uniforms.uSpotDir.value[idx].copy(worldDir);
+                whiteFloatingFogMat.uniforms.uSpotColor.value[idx].set(0xffffff);
+                whiteFloatingFogMat.uniforms.uSpotIntensity.value[idx] = beamIntensity;
+
+                // Lens disc
+                fix.lensDiscMesh.material.opacity = Math.min(1.0, 0.55 + fix.bassSurge * 0.45 + (audio.smoothedBass || 0) * 0.20);
+            });
+        }
+        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 18) {
+        } else if (currentFXIndex === 18 || currentFXIndex === 19) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -6325,14 +6762,14 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 18) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 18) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;

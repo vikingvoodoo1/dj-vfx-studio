@@ -11,7 +11,7 @@
 
 ## 🌟 Key Highlights
 
-- **19 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **20 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, Protean volumetric clouds, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
 - **High-Precision Audio Engine**: Sub-millisecond transient onset detection, 3-band FFT spectrum analysis (Bass, Mid, Treble), true ITU-R BS.1770 LUFS loudness metering, and dBFS peak-hold telemetry.
 - **StageLinq & DJ Hardware Bridge**: Zero-latency WebSocket bridge connecting live track metadata, cue points, BPM, and active fader status from Denon DJ / Engine OS hardware.
 - **Philips Hue Entertainment Streaming**: Real-time lighting synchronization mapping live bass impacts, drops, and scene color themes directly to smart club/room lights.
@@ -20,7 +20,7 @@
 
 ---
 
-## 🗂️ VFX Scene Bank (19 Distinct Modes)
+## 🗂️ VFX Scene Bank (20 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: 3D Studio LED Equalizer Wall** — Segmented stadium LED towers with peak-hold physics and dynamic hue cascades.
@@ -42,12 +42,13 @@
 - **FX 12: Matrix Code Rain** — Classic cascading digital rain glyphs rendered in glowing phosphor green with audio speed modulation.
 - **FX 13: Retro Arcade 80s Theme** — Vintage vector CRT arcade aesthetics with wireframe geometry and nostalgic neon glow.
 
-### 🌌 Category 4: Space, Particles & Stage Lights (FX 14–18)
+### 🌌 Category 4: Space, Particles & Stage Lights (FX 14–19)
 - **FX 14: Warp Speed Starfield** — Hyperdrive relativistic star streaks accelerating dynamically on track drops.
 - **FX 15: Spiral Galaxy Cosmic Vortex** — 3D volumetric logarithmic accretion spiral with millions of stellar bodies and core luminance.
 - **FX 16: Hyper Particle Stream** — GPU curl-noise particle strands flowing along smooth Bézier splines with chromatic velocity grading.
 - **FX 17: Time.is Precision DJ Clock & Spectrum** — Millisecond-accurate synchronized stage clock with active Denon DJ BPM readout and surrounding gyro gimbal rings.
 - **FX 18: Sweeping Godray Disco Lights** — Top truss moving-head rig featuring 8 independent spotlights with Wawa Sensei volumetric godray cones, Mie forward scattering, continuous 3D FBM participating media smoke, staggered heavy bass chase flaring, and mathematically locked elliptical floor reflection pools.
+- **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Pure Diamond Xenon white 8-head moving spotlight rig combined with nimitz's raymarched Protean Clouds volumetric fog shader backdrop, delivering cinematic ethereal monochrome lighting with bass-reactive cloud turbulence and locked floor reflection pools.
 
 ---
 
