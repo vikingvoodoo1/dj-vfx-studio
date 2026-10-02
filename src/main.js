@@ -2769,29 +2769,34 @@ async function init() {
             vuClipBadge.style.display = 'inline-block';
         }
 
-        // Stream live beat telemetry to Philips Hue Bridge
+        // Stream live beat telemetry to Philips Hue Bridge (Safely isolated)
         if (stagelinqClient && isHueActive && (data.bass !== undefined || data.bassImpact !== undefined)) {
-            const rawBass = data.bass || 0;
-            const transient = data.transientImpulse || 0;
-            const isOnset = !!data.isOnset;
-            const rawMid = data.mid || 0;
-            const rawTreble = data.treble || 0;
+            try {
+                const rawBass = data.bass || 0;
+                const transient = data.transientImpulse || 0;
+                const isOnset = !!data.isOnset;
+                const rawMid = data.mid || 0;
+                const rawTreble = data.treble || 0;
+                const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
 
-            stagelinqClient.sendHueBeat({
-                bass: rawBass,
-                smoothedBass: data.smoothedBass || rawBass,
-                bassImpact: data.bassImpact || rawBass,
-                transientImpulse: transient,
-                isOnset: isOnset,
-                mid: rawMid,
-                smoothedMid: data.smoothedMid || rawMid,
-                treble: rawTreble,
-                overall: data.overall || 0,
-                sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
-                isDrop: isOnset || transient > 0.45 || rawBass > 0.55,
-                isStrobe: false,
-                bpm: currentBPM || 126
-            });
+                stagelinqClient.sendHueBeat({
+                    bass: rawBass,
+                    smoothedBass: data.smoothedBass || rawBass,
+                    bassImpact: data.bassImpact || rawBass,
+                    transientImpulse: transient,
+                    isOnset: isOnset,
+                    mid: rawMid,
+                    smoothedMid: data.smoothedMid || rawMid,
+                    treble: rawTreble,
+                    overall: data.overall || 0,
+                    sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
+                    isDrop: isOnset || transient > 0.45 || rawBass > 0.55,
+                    isStrobe: false,
+                    bpm: liveBpm
+                });
+            } catch (err) {
+                // Ignore Hue telemetry errors to ensure VFX audio pipeline is never interrupted
+            }
         }
 
         return data;
