@@ -133,6 +133,7 @@ async function init() {
     const hueIntensityVal = document.getElementById('hue-intensity-val');
     const sliderHueMinBri = document.getElementById('slider-hue-min-bri');
     const hueMinBriVal = document.getElementById('hue-min-bri-val');
+    const btnHueKickStrobe = document.getElementById('btn-hue-kick-strobe');
     const btnHueTestStrobe = document.getElementById('btn-hue-test-strobe');
 
     // Philips Hue Modal Elements
@@ -145,6 +146,7 @@ async function init() {
     const huePairStatusMsg = document.getElementById('hue-pair-status-msg');
 
     let isHueActive = false;
+    let isHueKickStrobeActive = false;
     let hueCurrentMode = 'scene_sync';
     let hueCurrentIntensity = 0.85;
     let hueCurrentMinBri = 0.15;
@@ -1033,7 +1035,11 @@ async function init() {
                 broadcastSync({ type: 'set_track_banner_scale', scale: trackBannerScale });
                 broadcastSync({ type: 'set_track_delay', delay: trackDelaySec });
                 broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
+                broadcastSync({ type: 'set_hue_kick_strobe', active: isHueKickStrobeActive });
             }
+        } else if (msg.type === 'set_hue_kick_strobe') {
+            isHueKickStrobeActive = !!msg.active;
+            updateKickStrobeBtnState();
         }
     }
 
@@ -2438,6 +2444,11 @@ async function init() {
             if (sliderHueMinBri) sliderHueMinBri.value = Math.round(hueCurrentMinBri * 100);
             if (hueMinBriVal) hueMinBriVal.textContent = `${Math.round(hueCurrentMinBri * 100)}%`;
 
+            if (status.kickStrobeEnabled !== undefined) {
+                isHueKickStrobeActive = !!status.kickStrobeEnabled;
+                updateKickStrobeBtnState();
+            }
+
             hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === hueCurrentMode));
         },
         onHuePairingStatus: (pairStatus) => {
@@ -2542,6 +2553,33 @@ async function init() {
             if (hueMinBriVal) hueMinBriVal.textContent = `${e.target.value}%`;
             stagelinqClient.setHueConfig({ minBrightness: val });
             broadcastSync({ type: 'set_hue_min_bri', val });
+        });
+    }
+
+    function updateKickStrobeBtnState() {
+        if (!btnHueKickStrobe) return;
+        if (isHueKickStrobeActive) {
+            btnHueKickStrobe.textContent = '⚡ STROBE: ON';
+            btnHueKickStrobe.style.color = '#00ffcc';
+            btnHueKickStrobe.style.borderColor = '#00ffcc';
+            btnHueKickStrobe.style.background = 'rgba(0,255,204,0.2)';
+            btnHueKickStrobe.style.boxShadow = '0 0 8px rgba(0,255,204,0.3)';
+        } else {
+            btnHueKickStrobe.textContent = '⚪ OFF';
+            btnHueKickStrobe.style.color = 'rgba(255,255,255,0.7)';
+            btnHueKickStrobe.style.borderColor = 'rgba(255,255,255,0.15)';
+            btnHueKickStrobe.style.background = 'rgba(255,255,255,0.06)';
+            btnHueKickStrobe.style.boxShadow = 'none';
+        }
+    }
+
+    if (btnHueKickStrobe) {
+        btnHueKickStrobe.addEventListener('click', () => {
+            isHueKickStrobeActive = !isHueKickStrobeActive;
+            updateKickStrobeBtnState();
+            stagelinqClient.setHueConfig({ kickStrobeEnabled: isHueKickStrobeActive });
+            showToast(isHueKickStrobeActive ? '⚡ Bass Kick White Strobe: ON' : '⚪ Bass Kick White Strobe: OFF');
+            broadcastSync({ type: 'set_hue_kick_strobe', active: isHueKickStrobeActive });
         });
     }
 

@@ -50,9 +50,10 @@ export class PhilipsHueService {
             enabled: false,
             targetGroup: 'all', // group ID or 'all'
             mode: 'scene_sync', // 'scene_sync', 'bass_flash', 'rainbow_cycle', 'strobe_only'
-            intensity: 0.85,    // 0.0 - 1.0
+            intensity: 0.95,    // 0.0 - 1.0
             minBrightness: 0.15, // minimum resting brightness
-            sceneColor: '#00ffff'
+            sceneColor: '#00ffff',
+            kickStrobeEnabled: false
         };
 
         this.rooms = [];
@@ -61,7 +62,10 @@ export class PhilipsHueService {
         this.lastDispatchTime = 0;
         this.lastSentXY = null;
         this.colorCycleAngle = 0;
-        this.dispatchThrottleMs = 45; // ~22 updates per second maximum with inflight pacing
+        this.kickCount = 0;
+        this.lastKickDetectionTime = 0;
+        this.lastKickStrobeTime = 0;
+        this.dispatchThrottleMs = 40; // ~25 updates per second maximum with inflight pacing
     }
 
     async init() {
@@ -211,6 +215,7 @@ export class PhilipsHueService {
             mode: this.config.mode,
             intensity: this.config.intensity,
             minBrightness: this.config.minBrightness,
+            kickStrobeEnabled: !!this.config.kickStrobeEnabled,
             rooms: this.rooms
         };
     }
@@ -234,8 +239,21 @@ export class PhilipsHueService {
             bpm = 126
         } = audioData;
 
+        // Periodic Kick White Strobe Burst Trigger
+        const isKickHit = isOnset || transientImpulse > 0.38 || bass > 0.48;
+        let isWhiteKickStrobe = false;
+        if (this.config.kickStrobeEnabled && isKickHit && (now - this.lastKickDetectionTime > 180)) {
+            this.lastKickDetectionTime = now;
+            this.kickCount++;
+            // Every 4th kick (or on heavy drop after 1.8s cooldown), trigger a blinding white strobe pop
+            if (this.kickCount % 4 === 0 || (isDrop && (now - this.lastKickStrobeTime > 1800))) {
+                this.lastKickStrobeTime = now;
+                isWhiteKickStrobe = true;
+            }
+        }
+
         let targetXY = null;
-        if (isStrobe) {
+        if (isStrobe || isWhiteKickStrobe) {
             targetXY = [0.3127, 0.3290]; // Pure blinding xenon white flash
         } else if (this.config.mode === 'strobe_only') {
             targetXY = [0.3127, 0.3290];
@@ -256,7 +274,7 @@ export class PhilipsHueService {
 
         const xyKey = targetXY ? `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}` : '';
         const isColorChanged = !!(targetXY && xyKey !== this.lastSentXY);
-        const isPriority = isStrobe || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
+        const isPriority = isStrobe || isWhiteKickStrobe || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
 
         // Rate limiting: Priority kicks, onsets & color changes bypass throttle for zero-latency response
         if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
