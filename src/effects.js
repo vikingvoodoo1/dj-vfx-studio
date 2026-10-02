@@ -379,18 +379,16 @@ const WawaSenseiGodrayShader = {
             // 2. Longitudinal coordinate along cone: 0.0 (top aperture) to 1.0 (stage floor)
             float y = vUv.y;
 
-            // 3. Pixelated & Quantized Fog Interaction (Beer-Lambert with stepped voxel density)
-            vec3 voxelPos = floor(vPositionWorld * 2.2) / 2.2;
-            float cloud1 = sin(voxelPos.x * 0.18 + voxelPos.y * 0.24 + uTime * 0.35) * cos(voxelPos.z * 0.18 - uTime * 0.25);
-            float cloud2 = sin(voxelPos.x * 0.32 - voxelPos.y * 0.18 + uTime * 0.45 + voxelPos.z * 0.22);
-            float rawFog = clamp(0.65 + 0.45 * cloud1 + 0.25 * cloud2, 0.15, 1.5);
+            // 3. Smooth continuous fog interaction along beam path
+            float cloud1 = sin(vPositionWorld.x * 0.16 + vPositionWorld.y * 0.22 + uTime * 0.30) * cos(vPositionWorld.z * 0.16 - uTime * 0.22);
+            float cloud2 = sin(vPositionWorld.x * 0.28 - vPositionWorld.y * 0.16 + uTime * 0.40 + vPositionWorld.z * 0.18);
+            float localFogDensity = clamp(0.68 + 0.42 * cloud1 + 0.22 * cloud2, 0.15, 1.45);
             
-            // Stepped / quantized pixelated fog density
-            float quantizedFog = floor(rawFog * 8.0) / 8.0;
-            float fogDamping = exp(-y * 1.45 * quantizedFog);
+            // Beer-Lambert physical extinction damping along beam depth
+            float fogDamping = exp(-y * 1.45 * localFogDensity);
 
             // Dynamic fog illumination (clouds light up brilliantly when beam cuts through)
-            float fogIllumination = 0.55 + 0.55 * quantizedFog;
+            float fogIllumination = 0.55 + 0.55 * localFogDensity;
 
             // 4. Smooth longitudinal edge falloffs
             float smoothFade = smoothstep(0.0, uSmoothTop, y) * (1.0 - smoothstep(uSmoothBottom, 1.0, y));
@@ -415,7 +413,7 @@ const WawaSenseiGodrayShader = {
             vec3 vibrantColor = pow(uColor, vec3(0.85)) * 1.35;
             
             // Forward scattering ambient glow in the fog
-            vec3 scatterGlow = vibrantColor * (1.0 - fogDamping) * (0.35 + max(0.0, uIntensity - 0.7) * 0.55) * quantizedFog;
+            vec3 scatterGlow = vibrantColor * (1.0 - fogDamping) * (0.35 + max(0.0, uIntensity - 0.7) * 0.55) * localFogDensity;
 
             // Searing luminous core highlight
             float coreBlend = pow(fresnel, 1.8) * clamp(0.30 + (uIntensity - 0.4) * 0.50, 0.15, 0.95);
@@ -429,13 +427,15 @@ const WawaSenseiGodrayShader = {
     `
 };
 
-// Floating Nightclub Fog & Atmospheric Haze Shader (Pixelated / Voxelized Dithered Smoke Cloud Volume)
+// Floating Nightclub Fog & Atmospheric Participating Media (Smooth Volumetric Smoke Dynamically Illuminated by 8 Spotlights)
 const FloatingAtmosphericFogShader = {
     uniforms: {
         uTime: { value: 0.0 },
-        uIntensity: { value: 0.42 },
-        uColor1: { value: new THREE.Color(0x00ffff) },
-        uColor2: { value: new THREE.Color(0xff0066) },
+        uIntensity: { value: 0.45 },
+        uSpotPos: { value: new Array(8).fill(0).map(() => new THREE.Vector3()) },
+        uSpotDir: { value: new Array(8).fill(0).map(() => new THREE.Vector3(0, -1, 0)) },
+        uSpotColor: { value: new Array(8).fill(0).map(() => new THREE.Color()) },
+        uSpotIntensity: { value: new Array(8).fill(0.0) },
         uBass: { value: 0.0 }
     },
     vertexShader: `
@@ -451,14 +451,16 @@ const FloatingAtmosphericFogShader = {
     fragmentShader: `
         uniform float uTime;
         uniform float uIntensity;
-        uniform vec3 uColor1;
-        uniform vec3 uColor2;
+        uniform vec3 uSpotPos[8];
+        uniform vec3 uSpotDir[8];
+        uniform vec3 uSpotColor[8];
+        uniform float uSpotIntensity[8];
         uniform float uBass;
 
         varying vec2 vUv;
         varying vec3 vWorldPos;
 
-        // 3D Smooth FBM Simplex Noise for drifting fog clouds
+        // 3D Smooth FBM Simplex Noise for silky continuous drifting smoke
         vec3 mod289Fog(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
         vec4 mod289Fog(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
         vec4 permuteFog(vec4 x) { return mod289Fog(((x * 34.0) + 1.0) * x); }
@@ -507,51 +509,58 @@ const FloatingAtmosphericFogShader = {
             return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
 
-        // 4x4 Bayer Dithering for stylized pixelated smoke shading
-        float bayerDither4x4(vec2 p) {
-            vec2 b = floor(mod(p, 4.0));
-            float d[16];
-            d[0]=0.0/16.0; d[1]=8.0/16.0; d[2]=2.0/16.0; d[3]=10.0/16.0;
-            d[4]=12.0/16.0; d[5]=4.0/16.0; d[6]=14.0/16.0; d[7]=6.0/16.0;
-            d[8]=3.0/16.0; d[9]=11.0/16.0; d[10]=1.0/16.0; d[11]=9.0/16.0;
-            d[12]=15.0/16.0; d[13]=7.0/16.0; d[14]=13.0/16.0; d[15]=5.0/16.0;
-            return d[int(b.y) * 4 + int(b.x)];
-        }
-
         void main() {
-            // Pixelated / Voxelized 3D Grid sampling
-            float pixelGrid = 2.4; // pixelation resolution
-            vec3 quantizedPos = floor(vWorldPos * pixelGrid) / pixelGrid;
-
-            vec3 p = quantizedPos * 0.085;
-            p.x += uTime * 0.035;
-            p.y -= uTime * 0.015;
-            p.z += sin(uTime * 0.025 + quantizedPos.x * 0.06) * 0.25;
+            // Silky smooth continuous 3D drifting fog coordinates (zero block pixels!)
+            vec3 p = vWorldPos * 0.065;
+            p.x += uTime * 0.025;
+            p.y -= uTime * 0.012;
+            p.z += sin(uTime * 0.02 + vWorldPos.x * 0.04) * 0.20;
 
             float n1 = snoiseFog(p);
-            float n2 = snoiseFog(p * 2.2 + vec3(uTime * 0.03, -uTime * 0.05, 0.0)) * 0.5;
-            float rawDensity = smoothstep(0.12, 0.72, n1 + n2) * (0.50 + uBass * 0.40);
+            float n2 = snoiseFog(p * 2.2 + vec3(uTime * 0.025, -uTime * 0.035, 0.0)) * 0.5;
+            float n3 = snoiseFog(p * 4.4 + vec3(-uTime * 0.04, uTime * 0.02, 0.0)) * 0.25;
+            float rawDensity = smoothstep(0.08, 0.75, (n1 + n2 + n3) * 0.75) * (0.45 + uBass * 0.35);
 
-            // Quantize / Step the density into crisp pixelated smoke levels + Bayer dither
-            float dither = (bayerDither4x4(gl_FragCoord.xy) - 0.5) * 0.12;
-            float fogDensity = floor((rawDensity + dither) * 6.0) / 6.0;
+            // Smooth radial & UV boundary edge falloffs (no square edges!)
+            float uvEdgeFade = smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x) * smoothstep(0.0, 0.18, vUv.y) * smoothstep(1.0, 0.82, vUv.y);
+            float distXZ = length(vWorldPos.xz) / 36.0;
+            float edgeFade = (1.0 - smoothstep(0.35, 0.95, distXZ)) * uvEdgeFade;
+            float heightFade = smoothstep(-8.0, -3.5, vWorldPos.y) * (1.0 - smoothstep(3.0, 8.5, vWorldPos.y));
 
-            // Radial edge & height soft fade + UV boundary fade (no square edges or hard plane cuts!)
-            float uvEdgeFade = smoothstep(0.0, 0.20, vUv.x) * smoothstep(1.0, 0.80, vUv.x) * smoothstep(0.0, 0.20, vUv.y) * smoothstep(1.0, 0.80, vUv.y);
-            float distXZ = length(quantizedPos.xz) / 36.0;
-            float edgeFade = (1.0 - smoothstep(0.30, 0.95, distXZ)) * uvEdgeFade;
-            float heightFade = smoothstep(-8.0, -3.0, quantizedPos.y) * (1.0 - smoothstep(3.0, 9.0, quantizedPos.y));
+            float fogDensity = rawDensity * edgeFade * heightFade;
+            if (fogDensity <= 0.002) discard;
 
-            float alpha = clamp(fogDensity * edgeFade * heightFade * uIntensity, 0.0, 1.0);
-            if (alpha <= 0.003) discard;
+            // Ambient dark moody haze base
+            vec3 ambientHaze = vec3(0.006, 0.012, 0.024);
+            vec3 dynamicLightColor = ambientHaze;
+            float totalLightIntensity = 0.0;
 
-            // Hyper-vibrant electric neon color gradients (Rich Saturated Cyberpunk Nightclub Smoke)
-            vec3 col1 = pow(uColor1, vec3(0.85)) * 1.35;
-            vec3 col2 = pow(uColor2, vec3(0.85)) * 1.35;
-            float colorPhase = sin(quantizedPos.x * 0.12 + uTime * 0.22) * 0.5 + 0.5;
-            vec3 fogCol = mix(col1, col2, colorPhase) * 1.15;
+            // Dynamically shade the fog with the 8 moving-head light beams
+            for (int i = 0; i < 8; i++) {
+                vec3 toFog = vWorldPos - uSpotPos[i];
+                float distAlong = dot(toFog, uSpotDir[i]);
+                
+                if (distAlong > 0.0 && distAlong < 28.0) {
+                    vec3 axialPoint = uSpotPos[i] + uSpotDir[i] * distAlong;
+                    float radDist = length(vWorldPos - axialPoint);
+                    float coneRadius = 0.22 + 2.85 * (distAlong / 28.0);
+                    
+                    // Cone beam mask with soft Penumbra falloff
+                    float beamMask = smoothstep(coneRadius * 1.35, 0.0, radDist);
+                    float depthFade = smoothstep(0.0, 2.0, distAlong) * (1.0 - smoothstep(20.0, 28.0, distAlong));
+                    float beamIllum = beamMask * depthFade * uSpotIntensity[i];
 
-            gl_FragColor = vec4(fogCol * alpha, alpha);
+                    vec3 vibrantSpotCol = pow(uSpotColor[i], vec3(0.85)) * 1.5;
+                    dynamicLightColor += vibrantSpotCol * beamIllum * 1.8;
+                    totalLightIntensity += beamIllum;
+                }
+            }
+
+            // Alpha scales with base fog density + extra density illumination when light cuts through
+            float finalAlpha = clamp(fogDensity * (0.28 + totalLightIntensity * 0.85) * uIntensity, 0.0, 1.0);
+            if (finalAlpha <= 0.002) discard;
+
+            gl_FragColor = vec4(dynamicLightColor * finalAlpha, finalAlpha);
         }
     `
 };
@@ -6213,6 +6222,13 @@ export function createVFXScene(container) {
                 const colorShift = Math.sin(elapsedTime * 0.15 + idx * 0.5) * 0.04;
                 const activeCol = fix.baseColor.clone().offsetHSL(colorShift, 0, 0);
                 fix.beamMat.uniforms.uColor.value.copy(activeCol);
+
+                // Update Spotlight parameters to dynamically shade the floating fog medium
+                floatingFogMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
+                const beamDir = new THREE.Vector3(0, -1, 0).applyEuler(fix.pivotGroup.rotation).normalize();
+                floatingFogMat.uniforms.uSpotDir.value[idx].copy(beamDir);
+                floatingFogMat.uniforms.uSpotColor.value[idx].copy(activeCol);
+                floatingFogMat.uniforms.uSpotIntensity.value[idx] = beamIntensity;
 
                 // Clean lens disc on moving head (clean lens aperture, no hovering halo sprite)
                 fix.lensDiscMesh.material.color.copy(activeCol);
