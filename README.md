@@ -2,21 +2,21 @@
 
 [![WebGL](https://img.shields.io/badge/WebGL-Three.js-blue.svg)](https://threejs.org/)
 [![Vite](https://img.shields.io/badge/Vite-6.x-646CFF.svg)](https://vitejs.dev/)
-[![StageLinq](https://img.shields.io/badge/DJ_Bridge-StageLinq_%26_Hue-00ffcc.svg)](https://github.com/vikingvoodoo1/dj-vfx-studio)
+[![DJ Bridge](https://img.shields.io/badge/DJ_Bridge-StageLinq_%7C_Pro_DJ_Link_%7C_Traktor_%7C_Hue-00ffcc.svg)](https://github.com/vikingvoodoo1/dj-vfx-studio)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
-**DJ VFX Studio** is a real-time, audio-reactive 3D visual effects and stage lighting platform tailored for live DJs, streaming broadcasts (OBS), club venues, and festival stages. Built entirely on **WebGL (Three.js)** and **custom GLSL shaders**, it combines authentic concert moving-head rigs, volumetric participating media fog, retro cyber synthwave landscapes, and live DJ deck telemetry with seamless Denon DJ StageLinq bridge integration and Philips Hue lighting control.
+**DJ VFX Studio** is a real-time, audio-reactive 3D visual effects and stage lighting platform tailored for live DJs, streaming broadcasts (OBS Studio), club venues, and festival stages. Built on **WebGL (Three.js)** and **custom GLSL shaders**, it combines authentic concert moving-head rigs, volumetric participating media fog, retro cyber synthwave landscapes, and live DJ deck telemetry with multi-platform DJ hardware bridge integration (Denon StageLinq, Pioneer Pro DJ Link, Traktor Pro) and smart Philips Hue club lighting control.
 
 ---
 
 ## 🌟 Key Highlights
 
 - **21 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
-- **High-Precision Audio Engine**: Sub-millisecond transient onset detection, 3-band FFT spectrum analysis (Bass, Mid, Treble), true ITU-R BS.1770 LUFS loudness metering, and dBFS peak-hold telemetry.
-- **StageLinq & DJ Hardware Bridge**: Zero-latency WebSocket bridge connecting live track metadata, cue points, BPM, and active fader status from Denon DJ / Engine OS hardware.
-- **Philips Hue Entertainment Streaming**: Real-time lighting synchronization mapping live bass impacts, drops, and scene color themes directly to smart club/room lights.
-- **Multi-Screen & OBS Broadcast**: Native multi-window sync via `BroadcastChannel` and WebSocket relay with transparent HUD layers, clean display modes, and direct OBS browser source support.
-- **Custom DJ Branding Engine**: 3D extruded and billboard DJ logo overlays with beat-reactive pulse physics, protective shields, and 3D orbit/center spin modes.
+- **Universal Multi-Platform DJ Hardware Bridge**: Zero-latency companion bridge supporting **Denon DJ StageLinq** (Prime/Engine OS), **Pioneer Pro DJ Link / Rekordbox** (CDJ/XDJ UDP beat packets), **Native Instruments Traktor Pro** (session watcher & port 8001 metadata), and **Universal REST / File Drop API** (Serato & VirtualDJ).
+- **Philips Hue Smart Lighting Engine**: Ultra-low-latency lighting synchronization with 4 dedicated reaction modes, high-dynamic-range punch, multi-room discovery, and the **⚡ Kick Pop White Strobe** burst system.
+- **Studio-Grade Audio & Loudness Metering**: High-resolution FFT spectrum analysis (Bass, Mid, Treble), transient onset detection, ITU-R BS.1770 LUFS loudness metering, dBFS true-peak gauges, peak-hold needles, and clip alerts.
+- **Multi-Screen & OBS Broadcast**: Multi-window state replication via `BroadcastChannel` and WebSocket relay with transparent HUD layers, clean display modes (`/?clean=1`), and direct OBS browser source support (`/?obs=1`).
+- **Custom DJ & Station Branding Engine**: 3D extruded and billboard DJ logo overlays with beat-reactive pulse physics, protective shields, 3D orbit/center spin modes, and live upload management.
 
 ---
 
@@ -35,8 +35,8 @@
 - **FX 7: Saber Multi-Beam DJ Fixtures** — Multi-head batten laser bars creating tight parallel and fan beam geometries.
 - **FX 8: Strobe Hyper-Rings & Laser Matrix** — Concentric strobe rings pulsing with transient impacts and high-energy laser grids.
 - **FX 9: Silhouette Club Dancers in Glowing Box Light Walls** — Atmospheric backlit dancing silhouette club performers framed in reactive color boxes.
-- **FX 18: Sweeping Godray Disco Lights** — Top truss moving-head rig featuring 8 independent spotlights with Wawa Sensei volumetric godray cones, Mie forward scattering, continuous 3D FBM participating media smoke, staggered heavy bass chase flaring, and mathematically locked elliptical floor reflection pools.
-- **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Pure Diamond Xenon white 8-head moving spotlight rig combined with nimitz's raymarched Protean Clouds volumetric fog shader backdrop, delivering cinematic ethereal monochrome lighting with bass-reactive cloud turbulence and locked floor reflection pools.
+- **FX 18: Sweeping Godray Disco Lights** — Top truss moving-head rig featuring 8 independent spotlights with Wawa Sensei volumetric godray cones, Mie forward scattering, continuous 3D FBM participating media smoke, staggered heavy bass chase flaring, and floor reflection pools.
+- **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Pure Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop, delivering ethereal monochrome lighting with bass-reactive cloud turbulence and floor reflection pools.
 - **FX 20: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic 70s *Saturday Night Fever* illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays striking the floor with live reflection pools, backed by the soft Protean volumetric cloud smoke medium and refined lens glow.
 
 ### 🕸️ Category 3: Cyber & Retro (FX 10–13)
@@ -49,7 +49,36 @@
 - **FX 14: Warp Speed Starfield** — Hyperdrive relativistic star streaks accelerating dynamically on track drops.
 - **FX 15: Spiral Galaxy Cosmic Vortex** — 3D volumetric logarithmic accretion spiral with millions of stellar bodies and core luminance.
 - **FX 16: Hyper Particle Stream** — GPU curl-noise particle strands flowing along smooth Bézier splines with chromatic velocity grading.
-- **FX 17: Time.is Precision DJ Clock & Spectrum** — Millisecond-accurate synchronized stage clock with active Denon DJ BPM readout and surrounding gyro gimbal rings.
+- **FX 17: Time.is Precision DJ Clock & Spectrum** — Millisecond-accurate synchronized stage clock with active DJ BPM readout and surrounding gyro gimbal rings.
+
+---
+
+## 💡 Philips Hue Smart Club Lighting Integration
+
+DJ VFX Studio includes a dedicated Philips Hue streaming engine designed for low-latency club and studio lighting reactivity:
+
+- **Automatic Bridge Discovery & Pairing**: N-UPnP local network discovery and one-click pushlink authentication.
+- **Multi-Room & Zone Selection**: Target specific entertainment zones or room groups (e.g. 10-bulb studio setup).
+- **4 Reactive Lighting Modes**:
+  1. **Scene Sync (Default)**: Automatically tracks the live 3D visualizer color palette (Neon Cyan, Electric Purple, Sunset Gold, Laser Green) with bass punch brightness scaling.
+  2. **Bass Flash**: Deep moody nightclub royal blue at rest, snapping instantly to vivid saturated neon crimson on bass drops and transient kicks.
+  3. **Rainbow Cycle**: Smooth 360° RGB spectrum cycling synchronized dynamically to the live track BPM.
+  4. **Strobe Only**: Rapid high-contrast strobing on beat onsets with low resting ambient floor levels.
+- **⚡ Kick Pop White Strobe**: Independent toggle that fires an instant 85ms xenon-white flash (`[0.3127, 0.3290]` at max brightness, `0ms` transition) on heavy bass kicks, before smoothly reverting to the active color palette without dropping network packets.
+- **Hardware Pacing Queue**: Sequential rate-controlled queue that prevents Zigbee buffer congestion while ensuring instantaneous transient delivery.
+
+---
+
+## 🎧 Universal DJ Hardware & Software Bridge
+
+The companion Node.js bridge server (`server/stagelinq-bridge.js`) provides live multi-platform DJ telemetry:
+
+| Ecosystem | Protocol & Ports | Features Supported |
+|---|---|---|
+| **Denon DJ StageLinq** | UDP 50010 (Discovery), TCP | Engine OS 4-deck status, live BPM, fader positions, track artist/title, album artwork |
+| **Pioneer Pro DJ Link** | UDP 50000, 50002 (Beat Packets) | CDJ-2000/3000 / XDJ beat grid sync, live tempo, Rekordbox beat pulses |
+| **Native Instruments Traktor** | UDP/TCP Port 8001, History Log | Traktor Pro broadcast metadata, live track titles, automatic session log monitoring |
+| **Universal REST & File Drop** | HTTP `/api/nowplaying`, `nowplaying.txt` | Universal metadata ingest for Serato DJ, VirtualDJ, and OBS text overlays |
 
 ---
 
@@ -69,10 +98,13 @@ cd dj-vfx-studio
 npm install
 ```
 
-### Development Server
+### Running the App Locally
 ```bash
 # Start Vite development server
 npm run dev
+
+# In a separate terminal, launch the Universal DJ Bridge & Hue Daemon
+node server/stagelinq-bridge.js
 ```
 Open `http://localhost:5173` in your browser.
 
@@ -85,50 +117,24 @@ npm run build
 npm run preview
 ```
 
-### Running the DJ Hardware & StageLinq Bridge
-```bash
-# Launch the StageLinq & Philips Hue bridge daemon
-node server/stagelinq-bridge.js
-```
-The bridge listens on port `8080` (WebSocket) and establishes UDP discovery with Denon DJ hardware on your local network.
-
----
-
-## 🎛️ Architecture & Technology Stack
-
-```mermaid
-graph TD
-    A[DJ Hardware / StageLinq / Line-In Audio] --> B[Universal DJ Bridge Server]
-    B -->|WebSocket / Port 8080| C[DJ VFX Studio Client Engine]
-    A -->|Microphone / System Line-In| D[Web Audio API Engine]
-    D -->|FFT Bins, LUFS, Transient Onsets| C
-    C --> E[Three.js WebGL Scene Graph]
-    E --> F[Custom GLSL Shaders: Godrays, Smoke, Water, Post-FX]
-    E --> G[Post-Processing: UnrealBloom, Glitch, Aberration]
-    C -->|Hue Entertainment API| H[Philips Hue Bridge]
-    C -->|BroadcastChannel / WebSockets| I[OBS Studio & 2nd Screen Displays]
-```
-
-- **Frontend Core**: Vanilla JavaScript (ES Modules), HTML5 Canvas, Three.js (r128+).
-- **Shader Pipeline**: Custom GLSL fragment and vertex shaders for raymarching, forward scattering, volumetric lighting, and FBM participating media.
-- **Audio Processing**: High-resolution Web Audio API `AnalyserNode`, time-domain RMS/LUFS calculator, exponential smoothing filters.
-- **Backend & Network**: Node.js, `ws` (WebSockets), `dgram` (UDP discovery for StageLinq protocol), `node-hue-api`.
-
 ---
 
 ## ⌨️ Keyboard Shortcuts & Quick Controls
 
 | Key | Action |
 |---|---|
-| `Space` | Manual Strobe Flash / Beat Trigger Pulse |
+| `Space` | Manual Beat Strobe / Xenon Flash Burst |
 | `0` – `9` | Instant Scene Switch (FX 0 through FX 9) |
 | `Shift + 0` – `Shift + 8` | Instant Scene Switch (FX 10 through FX 18) |
+| `H` | Toggle HUD Overlays & FX Toolbar |
+| `F` | Toggle Fullscreen on external HDMI / Projector Output |
+| `O` | Open OBS Streaming Manager Modal |
+| `Shift + O` | Toggle OBS Output Broadcast Mute |
 | `L` | Toggle DJ Logo Layer Visibility |
 | `M` | Cycle Logo Spin Mode (Center Spin / 3D Orbit / Billboard) |
-| `S` | Toggle Logo Protective Shield |
+| `S` | Toggle Logo Protective Glow Shield |
 | `B` | Open Bloom & Post-Processing Calibrator |
-| `C` | Toggle Clean Display Mode (Hide all HUD overlays for clean projectors) |
-| `F` | Toggle Fullscreen Mode |
+| `C` | Toggle Clean Display Mode (Hide all HUD overlays for clean video output) |
 
 ---
 
