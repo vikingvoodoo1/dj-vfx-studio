@@ -234,17 +234,39 @@ export class PhilipsHueService {
             bpm = 126
         } = audioData;
 
-        const isPriority = isStrobe || isDrop || isOnset || transientImpulse > 0.25 || bass > 0.40;
+        let targetXY = null;
+        if (isStrobe) {
+            targetXY = [0.3127, 0.3290]; // Pure blinding xenon white flash
+        } else if (this.config.mode === 'strobe_only') {
+            targetXY = [0.3127, 0.3290];
+        } else if (this.config.mode === 'bass_flash') {
+            targetXY = (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.30)
+                ? [0.675, 0.322] // Vivid saturated neon crimson
+                : [0.15, 0.06];  // Deep moody nightclub royal blue
+        } else if (this.config.mode === 'rainbow_cycle') {
+            this.colorCycleAngle = (this.colorCycleAngle + 0.15 * (bpm / 120)) % (Math.PI * 2);
+            const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
+            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
+            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
+            targetXY = rgbToCIE(r, g, b);
+        } else {
+            // 'scene_sync' (dynamically matches 3D Visualizer Color Palette)
+            targetXY = hexToCIE(sceneColor);
+        }
 
-        // Rate limiting: Priority kick/snare attacks bypass throttle for zero-latency response
+        const xyKey = targetXY ? `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}` : '';
+        const isColorChanged = !!(targetXY && xyKey !== this.lastSentXY);
+        const isPriority = isStrobe || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
+
+        // Rate limiting: Priority kicks, onsets & color changes bypass throttle for zero-latency response
         if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
             return;
         }
 
         this.lastDispatchTime = now;
+        this.lastSentXY = xyKey;
 
         let targetBri = 0;
-        let targetXY = null;
         let transitionTime = 0; // Instant 0ms punch
 
         const intensity = this.config.intensity ?? 0.95;
@@ -263,41 +285,28 @@ export class PhilipsHueService {
 
         if (isStrobe) {
             targetBri = 254;
-            targetXY = [0.3127, 0.3290]; // Pure blinding xenon white flash
             transitionTime = 0;
         } else if (this.config.mode === 'strobe_only') {
             if (isDrop || isOnset || transientImpulse > 0.30 || bass > 0.45) {
                 targetBri = Math.round(minBri + briRange * intensity);
-                targetXY = [0.3127, 0.3290]; // Pure white strobe flash
                 transitionTime = 0;
             } else {
                 targetBri = minBri;
-                targetXY = hexToCIE(sceneColor);
                 transitionTime = 0;
             }
         } else if (this.config.mode === 'bass_flash') {
             if (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.30) {
                 targetBri = Math.round(minBri + briRange * Math.min(1.0, punch * 1.25) * intensity);
-                targetXY = [0.675, 0.322]; // Vivid saturated neon crimson on kick hits
                 transitionTime = 0;
             } else {
                 targetBri = minBri;
-                targetXY = [0.15, 0.06]; // Deep moody nightclub royal blue
                 transitionTime = 1;
             }
         } else if (this.config.mode === 'rainbow_cycle') {
-            this.colorCycleAngle = (this.colorCycleAngle + 0.15 * (bpm / 120)) % (Math.PI * 2);
-            const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
-            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
-            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
-            targetXY = rgbToCIE(r, g, b);
-            
             targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.85) * intensity);
             transitionTime = punch > 0.3 ? 0 : 1;
         } else {
-            // Default: 'scene_sync' (matches 3D Visualizer Color Palette with high-dynamic-range punch)
-            targetXY = hexToCIE(sceneColor);
-
+            // Default: 'scene_sync'
             if (isDrop || isOnset) {
                 targetBri = 254;
                 transitionTime = 0;
@@ -318,13 +327,8 @@ export class PhilipsHueService {
             transitiontime: transitionTime
         };
 
-        // Transmit XY color when changed
         if (targetXY) {
-            const xyKey = `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}`;
-            if (xyKey !== this.lastSentXY) {
-                actionBody.xy = targetXY;
-                this.lastSentXY = xyKey;
-            }
+            actionBody.xy = targetXY;
         }
 
         this.sendGroupAction(this.config.targetGroup, actionBody);

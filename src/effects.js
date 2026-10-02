@@ -7161,28 +7161,61 @@ export function createVFXScene(container) {
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length,
         getCurrentSceneColor: () => {
+            // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
+            if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number') {
+                const hexNum = godrayPalette[godrayChaseIndex % godrayPalette.length];
+                return '#' + hexNum.toString(16).padStart(6, '0');
+            }
+            // FX 20: 🪩 Disco Floor & Coloured Godrays (O) -> Tracks active disco moving head
+            if (currentFXIndex === 20 && typeof discoGodrayChaseIndex === 'number') {
+                const hexNum = godrayPalette[discoGodrayChaseIndex % godrayPalette.length];
+                return '#' + hexNum.toString(16).padStart(6, '0');
+            }
+            // FX 19: ☁️ Pure White Godrays & Fog (I)
+            if (currentFXIndex === 19) {
+                return '#ffffff';
+            }
+            // FX 5: 🕺 70s Disco Dancefloor -> dynamic tempo color cycle
+            if (currentFXIndex === 5) {
+                const discoPalette = ['#ff007f', '#00ffff', '#ffee00', '#00ff66', '#ff00aa', '#00e5ff'];
+                const discoIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 60)) % discoPalette.length);
+                return discoPalette[discoIdx] || '#ff00aa';
+            }
+            // FX 6: ⚡ Dual-Bank Lasers -> Laser beam bank color
+            if (currentFXIndex === 6) {
+                const laserPalette = ['#00e5ff', '#ff0033', '#00ff66', '#ff00aa', '#ffee00'];
+                const lIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 120)) % laserPalette.length);
+                return laserPalette[lIdx] || '#00e5ff';
+            }
+            // FX 7: 💥 Saber Multi-Beams
+            if (currentFXIndex === 7) {
+                const saberPalette = ['#ff0055', '#00e5ff', '#ffaa00', '#00ff66', '#9900ff'];
+                const sIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 90)) % saberPalette.length);
+                return saberPalette[sIdx] || '#ff0033';
+            }
+
             const colors = [
-                '#00ffff', // FX 1:  🌌 Neon Matrix & Cyber Tunnel
-                '#ff007f', // FX 2:  ⚡ Audio Waveform Equalizer
-                '#00ffcc', // FX 3:  🌌 Circular Spectrum Ring
-                '#ffaa00', // FX 4:  🔊 3D Pioneer DJ Decks
-                '#ffd700', // FX 5:  🪩 Spinning Disco Ball
-                '#ff00aa', // FX 6:  🕺 70s Disco Dancefloor
-                '#00e5ff', // FX 7:  ⚡ Dual-Bank Lasers
-                '#ff0033', // FX 8:  💥 Saber Multi-Beams
-                '#ffffff', // FX 9:  💫 Strobe Rings
-                '#ff0088', // FX 10: 💃 Silhouette Dancers
-                '#ff007f', // FX 11: ⚡ Liquid Mercury Audio
-                '#ff4500', // FX 12: 🌌 Cyber Horizon Grid
-                '#00ff66', // FX 13: 💫 Neon Warp Tunnel
-                '#ffff00', // FX 14: 🔊 Holographic Deck Visualizer
-                '#00ffff', // FX 15: 🪩 Neon Wireframe Club
-                '#9900ff', // FX 16: 🌌 Deep Space Galaxy
-                '#00e1ff', // FX 17: 💥 Laser Vortex
-                '#00ffcc', // FX 18: ⏰ Time is Clock & Stars
-                '#00ffff', // FX 19: 🔦 Sweeping Godrays (U)
-                '#ffffff', // FX 20: ☁️ Pure White Godrays & Fog (I)
-                '#ffb700'  // FX 21: 🪩 Disco Floor & Godrays (O)
+                '#00ffff', // FX 0:  🌌 Neon Matrix & Cyber Tunnel
+                '#ff007f', // FX 1:  ⚡ Audio Waveform Equalizer
+                '#00ffcc', // FX 2:  🌌 Circular Spectrum Ring
+                '#ffaa00', // FX 3:  🔊 3D Pioneer DJ Decks
+                '#ffd700', // FX 4:  🪩 Spinning Disco Ball
+                '#ff00aa', // FX 5:  🕺 70s Disco Dancefloor
+                '#00e5ff', // FX 6:  ⚡ Dual-Bank Lasers
+                '#ff0033', // FX 7:  💥 Saber Multi-Beams
+                '#ffffff', // FX 8:  💫 Strobe Rings
+                '#ff0088', // FX 9:  💃 Silhouette Dancers
+                '#ff007f', // FX 10: ⚡ Liquid Mercury Audio
+                '#ff4500', // FX 11: 🌌 Cyber Horizon Grid
+                '#00ff66', // FX 12: 💫 Neon Warp Tunnel
+                '#ffff00', // FX 13: 🔊 Holographic Deck Visualizer
+                '#00ffff', // FX 14: 🪩 Neon Wireframe Club
+                '#9900ff', // FX 15: 🌌 Deep Space Galaxy
+                '#00e1ff', // FX 16: 💥 Laser Vortex
+                '#00ffcc', // FX 17: ⏰ Time is Clock & Stars
+                '#00ffff', // FX 18: 🔦 Sweeping Godrays (U)
+                '#ffffff', // FX 19: ☁️ Pure White Godrays & Fog (I)
+                '#ffb700'  // FX 20: 🪩 Disco Floor & Godrays (O)
             ];
             return colors[currentFXIndex] || '#00ffff';
         }
