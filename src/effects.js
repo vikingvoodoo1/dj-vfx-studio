@@ -279,6 +279,108 @@ const VolumetricPinspotShader = {
     `
 };
 
+// -------------------------------------------------------------------------
+// Wawa Sensei Godray Volumetric Shader (r3f-godrays / WebGPU TSL ported to GLSL)
+// -------------------------------------------------------------------------
+const WawaSenseiGodrayShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0x00ffff) },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 1.8 },
+        uTime: { value: 0.0 },
+        uTimeSpeed: { value: 0.28 },
+        uNoiseScale: { value: 4.8 },
+        uSmoothTop: { value: 0.12 },
+        uSmoothBottom: { value: 0.92 },
+        uFresnelPower: { value: 4.0 },
+        uPulse: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vNormalWorld;
+        varying vec3 vPositionWorld;
+
+        void main() {
+            vUv = uv;
+            vNormalLocal = normal;
+            vNormalWorld = normalize(mat3(modelMatrix) * normal);
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vPositionWorld = worldPos.xyz;
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uTime;
+        uniform float uTimeSpeed;
+        uniform float uNoiseScale;
+        uniform float uSmoothTop;
+        uniform float uSmoothBottom;
+        uniform float uFresnelPower;
+        uniform float uPulse;
+
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vNormalWorld;
+        varying vec3 vPositionWorld;
+
+        // 3D Worley / Cellular noise (matching mx_worley_noise_float from Wawa Sensei / TSL)
+        vec3 hash3Godray(vec3 p) {
+            p = vec3(
+                dot(p, vec3(127.1, 311.7, 74.7)),
+                dot(p, vec3(269.5, 183.3, 246.1)),
+                dot(p, vec3(113.5, 271.9, 124.6))
+            );
+            return fract(sin(p) * 43758.5453123);
+        }
+
+        float worleyNoise(vec3 p) {
+            vec3 i = floor(p);
+            vec3 f = fract(p);
+            float minDist = 1.0;
+            for (int z = -1; z <= 1; z++) {
+                for (int y = -1; y <= 1; y++) {
+                    for (int x = -1; x <= 1; x++) {
+                        vec3 neighbor = vec3(float(x), float(y), float(z));
+                        vec3 point = hash3Godray(i + neighbor);
+                        vec3 diff = neighbor + point - f;
+                        float dist = length(diff);
+                        minDist = min(minDist, dist);
+                    }
+                }
+            }
+            return minDist;
+        }
+
+        void main() {
+            // Custom UV with 3D Worley noise drifting through beam
+            vec3 customUV = vNormalLocal * uNoiseScale + vec3(0.0, uTime * uTimeSpeed, 0.0);
+            float noise = 1.0 - worleyNoise(customUV);
+            noise = pow(noise, 1.4);
+
+            // Longitudinal soft edge fade (Wawa Sensei method: smoothstep(0, smoothBottom) * smoothstep(1, smoothTop))
+            float smoothFade = smoothstep(0.0, uSmoothTop, vUv.y) * smoothstep(1.001, uSmoothBottom, vUv.y);
+
+            // Inverted Fresnel / limb core brightness (Wawa Sensei method: abs(dot(normalWorld, viewDir))^fresnelPower)
+            vec3 viewDirection = normalize(cameraPosition - vPositionWorld);
+            float fresnel = pow(abs(dot(vNormalWorld, viewDirection)), uFresnelPower);
+
+            // Calculate total alpha with audio transient pulse
+            float alpha = noise * fresnel * smoothFade * uIntensity * (1.0 + uPulse * 0.85);
+            if (alpha <= 0.002) discard;
+
+            // White-hot physical beam core blending
+            float coreGlow = pow(fresnel, 2.2);
+            vec3 finalColor = mix(uColor, uCoreColor, clamp(coreGlow * 0.75 + uPulse * 0.35, 0.0, 1.0)) * (1.0 + uPulse * 1.5);
+
+            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
 // Concert Stage Moving-Head Beam Shader (Striated Ray Shafts, Atmospheric Fog & Aperture Flare)
 const ConcertStageBeamShader = {
     uniforms: {
@@ -4865,6 +4967,132 @@ export function createVFXScene(container) {
     gTimeisClock.add(clockStarPoints);
 
     // -------------------------------------------------------------------------
+    // FX 18: 🔦 SWEEPING GODRAY DISCO LIGHTS (WAWA SENSEI R3F-GODRAYS MOVING-HEAD RIG)
+    // -------------------------------------------------------------------------
+    const gSweepingGodrays = createFXGroup();
+
+    // 1. Stage Rig Truss Header Bar at Top of Screen
+    const godrayTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
+    const godrayTrussMat = new THREE.MeshBasicMaterial({ color: 0x111624 });
+    const godrayTrussMesh = new THREE.Mesh(godrayTrussGeo, godrayTrussMat);
+    godrayTrussMesh.position.set(0, 9.5, -4.0);
+    gSweepingGodrays.add(godrayTrussMesh);
+
+    // 2. 8 Moving-Head Godray Light Pods Spanning Across Top Screen
+    const numGodrays = 8;
+    const godrayFixtures = [];
+    const godrayBeamLength = 28.0;
+    const godrayTopRadius = 0.22;
+    const godrayBottomRadius = 3.2;
+
+    // Cone geometry extending down from fixture head (apex at 0,0,0)
+    const godrayConeGeo = new THREE.CylinderGeometry(godrayTopRadius, godrayBottomRadius, godrayBeamLength, 48, 1, true);
+    godrayConeGeo.translate(0, -godrayBeamLength * 0.5, 0); // origin at top lens
+
+    // High-impact neon stage palette (Cyan, Hot Magenta, Emerald Green, Electric Gold, Neon Violet, Amber, Electric Blue, Lime)
+    const godrayPalette = [
+        0x00ffff, 0xff007f, 0x00ff88, 0xffaa00,
+        0x00e5ff, 0xff0055, 0x39ff14, 0xa855f7
+    ];
+
+    for (let i = 0; i < numGodrays; i++) {
+        const normIdx = i / (numGodrays - 1); // 0.0 to 1.0
+        const posX = -17.5 + normIdx * 35.0; // evenly spread from left to right
+        const posY = 9.4;
+        const posZ = -4.0;
+
+        const podGroup = new THREE.Group();
+        podGroup.position.set(posX, posY, posZ);
+
+        // Dark metallic fixture housing
+        const housingGeo = new THREE.CylinderGeometry(0.55, 0.45, 0.9, 16);
+        const housingMat = new THREE.MeshBasicMaterial({ color: 0x080c18 });
+        const housingMesh = new THREE.Mesh(housingGeo, housingMat);
+        housingMesh.position.set(0, 0.2, 0);
+        podGroup.add(housingMesh);
+
+        // Glowing fixture lens aperture
+        const lensColor = godrayPalette[i % godrayPalette.length];
+        const lensSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: starburstTex,
+            color: lensColor,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            opacity: 0.95
+        }));
+        lensSprite.scale.set(2.8, 2.8, 1.0);
+        podGroup.add(lensSprite);
+
+        // Moving-head pivot group (aims the godray beam)
+        const pivotGroup = new THREE.Group();
+        podGroup.add(pivotGroup);
+
+        // Godray volumetric shader material (Wawa Sensei Worley noise + Inverted Fresnel)
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(lensColor) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 1.8 },
+                uTime: { value: 0.0 },
+                uTimeSpeed: { value: 0.28 },
+                uNoiseScale: { value: 4.8 },
+                uSmoothTop: { value: 0.12 },
+                uSmoothBottom: { value: 0.92 },
+                uFresnelPower: { value: 4.0 },
+                uPulse: { value: 0.0 }
+            },
+            vertexShader: WawaSenseiGodrayShader.vertexShader,
+            fragmentShader: WawaSenseiGodrayShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const beamMesh = new THREE.Mesh(godrayConeGeo, beamMat);
+        pivotGroup.add(beamMesh);
+
+        // Floor light impact pool sprite
+        const floorImpactSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: roundStarTex,
+            color: lensColor,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            opacity: 0.65
+        }));
+        floorImpactSprite.scale.set(7.5, 7.5, 1.0);
+        gSweepingGodrays.add(floorImpactSprite);
+
+        gSweepingGodrays.add(podGroup);
+
+        godrayFixtures.push({
+            podGroup,
+            pivotGroup,
+            beamMesh,
+            beamMat,
+            lensSprite,
+            floorImpactSprite,
+            baseColor: new THREE.Color(lensColor),
+            normIdx,
+            homeX: posX
+        });
+    }
+
+    // 3. Stage Floor Ambient Reflection Plane
+    const godrayFloorGeo = new THREE.PlaneGeometry(50.0, 30.0);
+    const godrayFloorMat = new THREE.MeshBasicMaterial({
+        color: 0x020308,
+        transparent: true,
+        opacity: 0.85
+    });
+    const godrayStageFloorMesh = new THREE.Mesh(godrayFloorGeo, godrayFloorMat);
+    godrayStageFloorMesh.rotation.x = -Math.PI / 2.2;
+    godrayStageFloorMesh.position.set(0, -7.5, -8.0);
+    gSweepingGodrays.add(godrayStageFloorMesh);
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
@@ -5716,8 +5944,70 @@ export function createVFXScene(container) {
 
             clockStarPoints.rotation.y = elapsedTime * 0.03;
         }
+        // ---------------------------------------------------------------------
+        // FX 18: 🔦 Sweeping Godray Disco Lights (Wawa Sensei Moving-Head Rig)
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 18) {
+            const sweepTime = elapsedTime * (0.85 + (audio.energy || 0) * 0.4) * speed;
+            const choreoPhase = Math.floor(elapsedTime * 0.12) % 4;
+            const isKick = audio.isOnset && (audio.bassImpact > 0.40 || bassPop > 0.50);
+            const pulse = isKick ? 1.0 : (bassPop * 0.6);
 
-        // 3. Subwoofer Spring-Damped Camera Recoil
+            godrayFixtures.forEach((fix, idx) => {
+                const norm = fix.normIdx - 0.5; // -0.5 (leftmost) to +0.5 (rightmost)
+                let rotZ = 0.0;
+                let rotX = 0.0;
+
+                // Choreography 0: Ballyhoo Wave (Harmonic phase wave sweep)
+                if (choreoPhase === 0) {
+                    rotZ = Math.sin(sweepTime * 1.6 + idx * 0.75) * 0.55;
+                    rotX = Math.cos(sweepTime * 1.2 + idx * 0.5) * 0.35 + 0.15;
+                }
+                // Choreography 1: Criss-Cross X-Fan (Left bank sweeps right, right bank sweeps left)
+                else if (choreoPhase === 1) {
+                    const side = norm < 0 ? -1.0 : 1.0;
+                    const fanSweep = Math.sin(sweepTime * 2.0) * 0.6;
+                    rotZ = side * (0.45 + fanSweep * 0.35);
+                    rotX = Math.sin(sweepTime * 1.5 + idx * 0.3) * 0.25 + 0.2;
+                }
+                // Choreography 2: Synchronized Parallel Searchlight Sweep
+                else if (choreoPhase === 2) {
+                    rotZ = Math.sin(sweepTime * 1.4) * 0.65;
+                    rotX = Math.cos(sweepTime * 1.0) * 0.3 + 0.18;
+                }
+                // Choreography 3: Center Stage Convergence & Explosion
+                else {
+                    const centerAim = -norm * 0.95; // aim directly at center stage
+                    const wobble = Math.sin(sweepTime * 4.0 + idx) * 0.12 * (1.0 - pulse);
+                    rotZ = centerAim + wobble;
+                    rotX = 0.28 + Math.cos(sweepTime * 2.5) * 0.18;
+                }
+
+                fix.pivotGroup.rotation.z = rotZ;
+                fix.pivotGroup.rotation.x = rotX;
+
+                // Update Godray Uniforms
+                fix.beamMat.uniforms.uTime.value = elapsedTime;
+                fix.beamMat.uniforms.uPulse.value = pulse;
+                fix.beamMat.uniforms.uIntensity.value = (1.6 + bassPop * 1.0 + pulse * 0.8) * (bloomMultiplier + 0.5);
+
+                // Dynamic Color Cycling / Shimmer
+                const colorShift = Math.sin(elapsedTime * 0.6 + idx * 0.8) * 0.12;
+                const activeCol = fix.baseColor.clone().offsetHSL(colorShift, 0, 0);
+                fix.beamMat.uniforms.uColor.value.copy(activeCol);
+                fix.lensSprite.material.color.copy(activeCol);
+                fix.lensSprite.material.opacity = 0.85 + pulse * 0.15;
+                fix.floorImpactSprite.material.color.copy(activeCol);
+
+                // Calculate floor impact position based on beam direction
+                const floorY = -7.5;
+                const targetZ = fix.podGroup.position.z - Math.tan(rotX) * (fix.podGroup.position.y - floorY);
+                const targetX = fix.podGroup.position.x - Math.tan(rotZ) * (fix.podGroup.position.y - floorY);
+                fix.floorImpactSprite.position.set(targetX, floorY + 0.1, targetZ);
+                fix.floorImpactSprite.scale.setScalar(6.0 + pulse * 3.5 + bassPop * 2.5);
+                fix.floorImpactSprite.material.opacity = 0.45 + pulse * 0.40;
+            });
+        }
         if (audio.isOnset) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
