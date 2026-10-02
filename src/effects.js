@@ -668,7 +668,7 @@ const ProteanCloudsShader = {
             rd.xy *= rot(-disp(time + 3.5).x * 0.18);
 
             float prm1 = smoothstep(-0.4, 0.4, sin(uTime * 0.22));
-            float bassMod = uBass * 0.55;
+            float bassMod = uBass * 0.35;
 
             // Raymarching volumetric clouds
             vec4 rez = vec4(0.0);
@@ -687,21 +687,21 @@ const ProteanCloudsShader = {
 
                 vec4 col = vec4(0.0);
                 if (mpv.x > 0.6) {
-                    // Monochrome Diamond White / Platinum Fog
-                    col = vec4(sin(vec3(4.8, 5.0, 5.2) + mpv.y * 0.08 + sin(pos.z * 0.35) * 0.35 + 1.6) * 0.35 + 0.65, 0.08);
+                    // Soft, subtle monochrome platinum cloud shapes with deep contrast
+                    col = vec4(sin(vec3(4.8, 5.0, 5.2) + mpv.y * 0.08 + sin(pos.z * 0.35) * 0.35 + 1.6) * 0.25 + 0.75, 0.08);
                     col *= den * den * den;
-                    col.rgb *= linstep(4.0, -2.5, mpv.x) * 2.3;
+                    col.rgb *= linstep(4.0, -2.5, mpv.x) * 1.8;
                     float dif = clamp((den - map(pos + 0.8, time, prm1, bassMod).x) / 9.0, 0.001, 1.0);
                     dif += clamp((den - map(pos + 0.35, time, prm1, bassMod).x) / 2.5, 0.001, 1.0);
 
-                    // Ethereal platinum ambient and diffuse illumination
-                    vec3 ambLight = vec3(0.045, 0.052, 0.068) + vec3(uBass * 0.05);
-                    vec3 difLight = vec3(0.12, 0.13, 0.15) * dif * (1.0 + uBass * 0.4);
-                    col.xyz *= den * (ambLight + 1.8 * difLight);
+                    // Ethereal subtle platinum ambient and diffuse illumination
+                    vec3 ambLight = vec3(0.010, 0.012, 0.016) + vec3(uBass * 0.015);
+                    vec3 difLight = vec3(0.055, 0.062, 0.075) * dif * (1.0 + uBass * 0.25);
+                    col.xyz *= den * (ambLight + 1.6 * difLight);
                 }
 
                 float fogC = exp(t * 0.2 - 2.2);
-                col.rgba += vec4(0.055, 0.065, 0.075, 0.10) * clamp(fogC - fogT, 0.0, 1.0) * (1.0 + uBass * 0.25);
+                col.rgba += vec4(0.008, 0.010, 0.014, 0.03) * clamp(fogC - fogT, 0.0, 1.0) * (1.0 + uBass * 0.15);
                 fogT = fogC;
                 rez = rez + col * (1.0 - rez.a);
                 t += clamp(0.5 - dn * dn * 0.05, 0.09, 0.35);
@@ -710,14 +710,14 @@ const ProteanCloudsShader = {
             vec3 col = clamp(rez.rgb, 0.0, 1.0);
             col = iLerp(col.bgr, col.rgb, clamp(1.0 - prm1, 0.05, 1.0));
 
-            // Diamond White / Platinum Fog Grading
-            col = pow(col, vec3(0.55, 0.58, 0.60)) * vec3(1.0, 1.02, 1.06) * uIntensity;
+            // Deep Moody Contrast Grading (dark velvet shadows, soft faded fog highlights)
+            col = pow(col, vec3(0.95, 0.96, 0.98)) * vec3(1.0, 1.02, 1.05) * uIntensity;
             
-            // Audio Bass Punch
-            col += vec3(uBass * 0.12, uBass * 0.13, uBass * 0.15);
+            // Subtle Audio Bass Pulse
+            col += vec3(uBass * 0.025);
 
-            // Vignette
-            col *= pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.12) * 0.70 + 0.30;
+            // Deep Cinematic Edge Falloff & Vignette
+            col *= pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.18) * 0.85 + 0.15;
 
             gl_FragColor = vec4(col, 1.0);
         }
@@ -5504,7 +5504,7 @@ export function createVFXScene(container) {
             uBass: { value: 0.0 },
             uMid: { value: 0.0 },
             uTreble: { value: 0.0 },
-            uIntensity: { value: 1.0 }
+            uIntensity: { value: 0.35 }
         },
         vertexShader: ProteanCloudsShader.vertexShader,
         fragmentShader: ProteanCloudsShader.fragmentShader,
@@ -5640,7 +5640,7 @@ export function createVFXScene(container) {
     const whiteFloatingFogMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
-            uIntensity: { value: 0.40 },
+            uIntensity: { value: 0.20 },
             uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
             uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
             uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
@@ -6668,19 +6668,19 @@ export function createVFXScene(container) {
                 if (fix.bassSurge < 0.005) fix.bassSurge = 0.0;
             });
 
-            // Animate Protean Clouds Volumetric Background Shader
+            // Animate Protean Clouds Volumetric Background Shader (Subtle, Faded Atmospheric Clouds)
             if (proteanCloudMat) {
-                proteanCloudMat.uniforms.uTime.value = elapsedTime * 0.25;
-                proteanCloudMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.65 + (audio.bassImpact || 0) * 0.35;
+                proteanCloudMat.uniforms.uTime.value = elapsedTime * 0.22;
+                proteanCloudMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.45 + (audio.bassImpact || 0) * 0.20;
                 proteanCloudMat.uniforms.uMid.value = (audio.smoothedMid || 0);
                 proteanCloudMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
-                proteanCloudMat.uniforms.uIntensity.value = 0.90 + (audio.smoothedBass || 0) * 0.25;
+                proteanCloudMat.uniforms.uIntensity.value = 0.35 + (audio.smoothedBass || 0) * 0.12;
             }
 
             // Animate floating stage fog medium
             whiteFloatingFogMat.uniforms.uTime.value = elapsedTime;
-            whiteFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.50 + (audio.bassImpact || 0) * 0.25;
-            whiteFloatingFogMat.uniforms.uIntensity.value = 0.28 + (audio.smoothedBass || 0) * 0.18 + (audio.overall || 0) * 0.12;
+            whiteFloatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.35 + (audio.bassImpact || 0) * 0.15;
+            whiteFloatingFogMat.uniforms.uIntensity.value = 0.14 + (audio.smoothedBass || 0) * 0.08 + (audio.overall || 0) * 0.05;
 
             const floorY = -7.48;
 
