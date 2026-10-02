@@ -280,19 +280,19 @@ const VolumetricPinspotShader = {
 };
 
 // -------------------------------------------------------------------------
-// Wawa Sensei Godray Volumetric Shader (r3f-godrays with Atmospheric Fog Damping)
+// Wawa Sensei Godray Volumetric Shader (Multi-Octave Striations, Mie Forward Scattering & Saturated Vibrancy)
 // -------------------------------------------------------------------------
 const WawaSenseiGodrayShader = {
     uniforms: {
         uColor: { value: new THREE.Color(0x00ffff) },
-        uCoreColor: { value: new THREE.Color(0xfff8ee) },
-        uIntensity: { value: 0.70 },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 0.85 },
         uTime: { value: 0.0 },
-        uTimeSpeed: { value: 0.16 },
+        uTimeSpeed: { value: 0.18 },
         uNoiseScale: { value: 3.8 },
         uSmoothTop: { value: 0.16 },
         uSmoothBottom: { value: 0.85 },
-        uFresnelPower: { value: 2.0 },
+        uFresnelPower: { value: 2.2 },
         uPulse: { value: 0.0 }
     },
     vertexShader: `
@@ -300,6 +300,7 @@ const WawaSenseiGodrayShader = {
         varying vec3 vNormalLocal;
         varying vec3 vNormalWorld;
         varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
 
         void main() {
             vUv = uv;
@@ -307,6 +308,7 @@ const WawaSenseiGodrayShader = {
             vNormalWorld = normalize(mat3(modelMatrix) * normal);
             vec4 worldPos = modelMatrix * vec4(position, 1.0);
             vPositionWorld = worldPos.xyz;
+            vViewDir = normalize(cameraPosition - worldPos.xyz);
             gl_Position = projectionMatrix * viewMatrix * worldPos;
         }
     `,
@@ -326,8 +328,9 @@ const WawaSenseiGodrayShader = {
         varying vec3 vNormalLocal;
         varying vec3 vNormalWorld;
         varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
 
-        // 3D Worley / Cellular noise (matching mx_worley_noise_float from Wawa Sensei / TSL)
+        // 3D Cellular Worley noise
         vec3 hash3Godray(vec3 p) {
             p = vec3(
                 dot(p, vec3(127.1, 311.7, 74.7)),
@@ -356,58 +359,83 @@ const WawaSenseiGodrayShader = {
         }
 
         void main() {
-            // 1. Custom UV with 3D Worley noise drifting through beam
-            vec3 customUV = vNormalLocal * uNoiseScale + vec3(0.0, uTime * uTimeSpeed, 0.0);
-            float worley = 1.0 - worleyNoise(customUV);
-            float noise = pow(worley, 1.20) * 0.85 + 0.15;
+            // 1. Multi-octave 3D volumetric light striations
+            vec3 p1 = vNormalLocal * uNoiseScale + vec3(0.0, uTime * uTimeSpeed, 0.0);
+            float w1 = 1.0 - worleyNoise(p1);
+            vec3 p2 = vNormalLocal * (uNoiseScale * 2.2) + vec3(uTime * 0.08, -uTime * uTimeSpeed * 1.4, 0.0);
+            float w2 = 1.0 - worleyNoise(p2);
 
-            // 2. Longitudinal coordinate: 0.0 (fixture apex) to 1.0 (bottom floor)
+            // Micro-ray filaments / striation shafts radiating down the cone
+            float angle = atan(vNormalLocal.z, vNormalLocal.x);
+            float striation1 = sin(angle * 16.0 + uTime * 0.4) * 0.5 + 0.5;
+            float striation2 = sin(angle * 28.0 - uTime * 0.6 + vUv.y * 12.0) * 0.5 + 0.5;
+
+            // Micro-dust particle shimmer drifting inside the beam
+            float dust = sin(vPositionWorld.x * 22.0 + uTime * 3.0) * sin(vPositionWorld.y * 18.0 - uTime * 2.0) * sin(vPositionWorld.z * 22.0 + uTime * 1.5);
+            float dustShimmer = smoothstep(0.70, 0.98, dust) * 0.32;
+
+            float volumetricNoise = pow(w1 * 0.65 + w2 * 0.35, 1.25) * (0.80 + striation1 * 0.15 + striation2 * 0.10) + dustShimmer;
+
+            // 2. Longitudinal coordinate along cone: 0.0 (top aperture) to 1.0 (stage floor)
             float y = vUv.y;
 
-            // 3. Multi-layer floating fog field intersecting with light rays
-            // Light goes bright and fades as drifting smoke clouds pass through
-            float cloud1 = sin(vPositionWorld.x * 0.14 + vPositionWorld.y * 0.20 + uTime * 0.30) * cos(vPositionWorld.z * 0.14 - uTime * 0.22);
-            float cloud2 = sin(vPositionWorld.x * 0.25 - vPositionWorld.y * 0.15 + uTime * 0.40 + vPositionWorld.z * 0.18);
-            float localFogDensity = clamp(0.68 + 0.42 * cloud1 + 0.22 * cloud2, 0.15, 1.45);
+            // 3. Pixelated & Quantized Fog Interaction (Beer-Lambert with stepped voxel density)
+            vec3 voxelPos = floor(vPositionWorld * 2.2) / 2.2;
+            float cloud1 = sin(voxelPos.x * 0.18 + voxelPos.y * 0.24 + uTime * 0.35) * cos(voxelPos.z * 0.18 - uTime * 0.25);
+            float cloud2 = sin(voxelPos.x * 0.32 - voxelPos.y * 0.18 + uTime * 0.45 + voxelPos.z * 0.22);
+            float rawFog = clamp(0.65 + 0.45 * cloud1 + 0.25 * cloud2, 0.15, 1.5);
             
-            // Beer-Lambert physical extinction damping along beam depth
-            float fogDamping = exp(-y * 1.50 * localFogDensity);
+            // Stepped / quantized pixelated fog density
+            float quantizedFog = floor(rawFog * 8.0) / 8.0;
+            float fogDamping = exp(-y * 1.45 * quantizedFog);
 
-            // Dynamic illumination: beam illuminates fog patches brightly, then softens in clearer air
-            float fogIllumination = 0.50 + 0.50 * localFogDensity;
+            // Dynamic fog illumination (clouds light up brilliantly when beam cuts through)
+            float fogIllumination = 0.55 + 0.55 * quantizedFog;
 
-            // 4. Longitudinal soft edge fade (smooth dissipation at top and bottom)
+            // 4. Smooth longitudinal edge falloffs
             float smoothFade = smoothstep(0.0, uSmoothTop, y) * (1.0 - smoothstep(uSmoothBottom, 1.0, y));
 
-            // 5. Softened Inverted Fresnel (Silky limb-to-core transition)
-            vec3 viewDirection = normalize(cameraPosition - vPositionWorld);
-            float limb = abs(dot(vNormalWorld, viewDirection));
+            // 5. Mie / Henyey-Greenstein Forward Scattering
+            // Light beam axis vector in world space (pointing down from top to floor)
+            vec3 beamAxis = normalize(vec3(0.0, -1.0, 0.0));
+            float cosTheta = dot(vViewDir, -beamAxis);
+            float g = 0.42; // forward scattering anisotropy factor
+            float hgPhase = (1.0 - g * g) / (4.0 * 3.14159 * pow(1.0 + g * g - 2.0 * g * cosTheta, 1.5));
+            float forwardScattering = clamp(hgPhase * 3.2, 0.65, 2.6);
+
+            // 6. Inverted Fresnel & Conical Volumetric Thickness Shading
+            float limb = abs(dot(vNormalWorld, vViewDir));
             float fresnel = pow(limb, uFresnelPower);
 
-            // 6. Total alpha calculation with high-dynamic-range light breathing
-            float alpha = clamp(noise * fresnel * smoothFade * fogDamping * fogIllumination * uIntensity, 0.0, 1.0);
+            // 7. Total Alpha calculation with rich multi-octave shading
+            float alpha = clamp(volumetricNoise * fresnel * smoothFade * fogDamping * fogIllumination * forwardScattering * uIntensity, 0.0, 1.0);
             if (alpha <= 0.001) discard;
 
-            // 7. Atmospheric forward-scattering glow in the fog volume (boosts intensely at full beam power)
-            vec3 scatterGlow = uColor * (1.0 - fogDamping) * (0.28 + max(0.0, uIntensity - 0.7) * 0.42) * localFogDensity;
+            // 8. Hyper-Vibrant Neon Color Grading (Intensely saturated, electric tones, never pale)
+            vec3 vibrantColor = pow(uColor, vec3(0.85)) * 1.35;
+            
+            // Forward scattering ambient glow in the fog
+            vec3 scatterGlow = vibrantColor * (1.0 - fogDamping) * (0.35 + max(0.0, uIntensity - 0.7) * 0.55) * quantizedFog;
 
-            // 8. Luminous core highlight & radiant power surge at peak intensity
-            float coreBlend = pow(fresnel, 1.8) * clamp(0.35 + (uIntensity - 0.5) * 0.45, 0.2, 0.95);
-            float peakRadiance = 1.0 + max(0.0, uIntensity - 0.8) * 0.80;
-            vec3 finalColor = (mix(uColor, uCoreColor, clamp(coreBlend, 0.0, 0.95)) + scatterGlow) * peakRadiance;
+            // Searing luminous core highlight
+            float coreBlend = pow(fresnel, 1.8) * clamp(0.30 + (uIntensity - 0.4) * 0.50, 0.15, 0.95);
+            vec3 saturatedCore = mix(vibrantColor, vec3(1.0, 1.0, 1.0), 0.75);
+            float peakRadiance = 1.0 + max(0.0, uIntensity - 0.75) * 0.95;
+
+            vec3 finalColor = (mix(vibrantColor, saturatedCore, clamp(coreBlend, 0.0, 0.95)) + scatterGlow) * peakRadiance;
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
     `
 };
 
-// Floating Nightclub Fog & Atmospheric Haze Shader (Soft volumetric clouds drifting across stage)
+// Floating Nightclub Fog & Atmospheric Haze Shader (Pixelated / Voxelized Dithered Smoke Cloud Volume)
 const FloatingAtmosphericFogShader = {
     uniforms: {
         uTime: { value: 0.0 },
-        uIntensity: { value: 0.35 },
+        uIntensity: { value: 0.42 },
         uColor1: { value: new THREE.Color(0x00ffff) },
-        uColor2: { value: new THREE.Color(0xff007f) },
+        uColor2: { value: new THREE.Color(0xff0066) },
         uBass: { value: 0.0 }
     },
     vertexShader: `
@@ -479,26 +507,49 @@ const FloatingAtmosphericFogShader = {
             return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
         }
 
+        // 4x4 Bayer Dithering for stylized pixelated smoke shading
+        float bayerDither4x4(vec2 p) {
+            vec2 b = floor(mod(p, 4.0));
+            float d[16];
+            d[0]=0.0/16.0; d[1]=8.0/16.0; d[2]=2.0/16.0; d[3]=10.0/16.0;
+            d[4]=12.0/16.0; d[5]=4.0/16.0; d[6]=14.0/16.0; d[7]=6.0/16.0;
+            d[8]=3.0/16.0; d[9]=11.0/16.0; d[10]=1.0/16.0; d[11]=9.0/16.0;
+            d[12]=15.0/16.0; d[13]=7.0/16.0; d[14]=13.0/16.0; d[15]=5.0/16.0;
+            return d[int(b.y) * 4 + int(b.x)];
+        }
+
         void main() {
-            // Drifting 3D coordinates
-            vec3 p = vWorldPos * 0.075;
-            p.x += uTime * 0.04;
-            p.y -= uTime * 0.02;
-            p.z += sin(uTime * 0.03 + vWorldPos.x * 0.05) * 0.3;
+            // Pixelated / Voxelized 3D Grid sampling
+            float pixelGrid = 2.4; // pixelation resolution
+            vec3 quantizedPos = floor(vWorldPos * pixelGrid) / pixelGrid;
+
+            vec3 p = quantizedPos * 0.085;
+            p.x += uTime * 0.035;
+            p.y -= uTime * 0.015;
+            p.z += sin(uTime * 0.025 + quantizedPos.x * 0.06) * 0.25;
 
             float n1 = snoiseFog(p);
-            float n2 = snoiseFog(p * 2.1 + vec3(uTime * 0.03, -uTime * 0.05, 0.0)) * 0.5;
-            float fogDensity = smoothstep(0.18, 0.78, n1 + n2) * (0.45 + uBass * 0.35);
+            float n2 = snoiseFog(p * 2.2 + vec3(uTime * 0.03, -uTime * 0.05, 0.0)) * 0.5;
+            float rawDensity = smoothstep(0.12, 0.72, n1 + n2) * (0.50 + uBass * 0.40);
+
+            // Quantize / Step the density into crisp pixelated smoke levels + Bayer dither
+            float dither = (bayerDither4x4(gl_FragCoord.xy) - 0.5) * 0.12;
+            float fogDensity = floor((rawDensity + dither) * 6.0) / 6.0;
 
             // Radial edge & height soft fade
-            float distXZ = length(vWorldPos.xz) / 32.0;
-            float edgeFade = 1.0 - smoothstep(0.4, 1.0, distXZ);
-            float heightFade = smoothstep(-7.5, -3.0, vWorldPos.y) * (1.0 - smoothstep(4.0, 10.0, vWorldPos.y));
+            float distXZ = length(quantizedPos.xz) / 36.0;
+            float edgeFade = 1.0 - smoothstep(0.35, 1.0, distXZ);
+            float heightFade = smoothstep(-8.0, -3.0, quantizedPos.y) * (1.0 - smoothstep(3.0, 9.0, quantizedPos.y));
 
-            float alpha = fogDensity * edgeFade * heightFade * uIntensity;
+            float alpha = clamp(fogDensity * edgeFade * heightFade * uIntensity, 0.0, 1.0);
             if (alpha <= 0.003) discard;
 
-            vec3 fogCol = mix(uColor1, uColor2, sin(vWorldPos.x * 0.1 + uTime * 0.2) * 0.5 + 0.5) * 0.8;
+            // Hyper-vibrant electric neon color gradients (Rich Saturated Cyberpunk Nightclub Smoke)
+            vec3 col1 = pow(uColor1, vec3(0.85)) * 1.35;
+            vec3 col2 = pow(uColor2, vec3(0.85)) * 1.35;
+            float colorPhase = sin(quantizedPos.x * 0.12 + uTime * 0.22) * 0.5 + 0.5;
+            vec3 fogCol = mix(col1, col2, colorPhase) * 1.15;
+
             gl_FragColor = vec4(fogCol * alpha, alpha);
         }
     `
@@ -5112,16 +5163,16 @@ export function createVFXScene(container) {
     const godrayConeGeo = new THREE.CylinderGeometry(godrayTopRadius, godrayBottomRadius, godrayBeamLength, 48, 1, true);
     godrayConeGeo.translate(0, -godrayBeamLength * 0.5, 0); // origin at top lens
 
-    // High-impact concert arena palette including pure Xenon Whites, Tungsten Whites, and Golden Yellows
+    // Hyper-vibrant concert arena palette with blazing saturated neon tones (pure vivid hues, zero pale washouts)
     const godrayPalette = [
-        0xffffff, // Fixture 0: Pure Xenon White
-        0xffc400, // Fixture 1: Warm Golden Sun Yellow
-        0x00f3ff, // Fixture 2: Electric Cyan
-        0xfff5ea, // Fixture 3: Warm Tungsten White
-        0xffe600, // Fixture 4: Vivid Neon Gold / Yellow
-        0xff007f, // Fixture 5: Hot Magenta
-        0xffaa00, // Fixture 6: Deep Amber Sun Yellow
-        0x00bfff  // Fixture 7: Electric Sky Blue
+        0xffffff, // Fixture 0: Pure Diamond Xenon White
+        0xffb700, // Fixture 1: Blazing Sun Gold / Amber Yellow
+        0x00ffff, // Fixture 2: Laser Electric Cyan
+        0xff0066, // Fixture 3: Hot Neon Magenta / Fuchsia
+        0xffee00, // Fixture 4: Ultra Electric Lemon Yellow
+        0x00ff66, // Fixture 5: Acid Emerald Green
+        0xff5500, // Fixture 6: Blazing Sunset Orange
+        0x0088ff  // Fixture 7: Deep Royal Neon Sapphire Blue
     ];
 
     // Shared geometries & materials for authentic concert moving-head fixtures
