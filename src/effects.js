@@ -536,9 +536,10 @@ const FloatingAtmosphericFogShader = {
             float dither = (bayerDither4x4(gl_FragCoord.xy) - 0.5) * 0.12;
             float fogDensity = floor((rawDensity + dither) * 6.0) / 6.0;
 
-            // Radial edge & height soft fade
+            // Radial edge & height soft fade + UV boundary fade (no square edges or hard plane cuts!)
+            float uvEdgeFade = smoothstep(0.0, 0.20, vUv.x) * smoothstep(1.0, 0.80, vUv.x) * smoothstep(0.0, 0.20, vUv.y) * smoothstep(1.0, 0.80, vUv.y);
             float distXZ = length(quantizedPos.xz) / 36.0;
-            float edgeFade = 1.0 - smoothstep(0.35, 1.0, distXZ);
+            float edgeFade = (1.0 - smoothstep(0.30, 0.95, distXZ)) * uvEdgeFade;
             float heightFade = smoothstep(-8.0, -3.0, quantizedPos.y) * (1.0 - smoothstep(3.0, 9.0, quantizedPos.y));
 
             float alpha = clamp(fogDensity * edgeFade * heightFade * uIntensity, 0.0, 1.0);
@@ -5183,8 +5184,8 @@ export function createVFXScene(container) {
     const fixtureDarkMat = new THREE.MeshBasicMaterial({ color: 0x0c101c });
     const fixtureBezelMat = new THREE.MeshBasicMaterial({ color: 0x182032 });
 
-    // Flat floor reflection pool geometry (lying flat on XZ floor plane)
-    const floorPoolGeo = new THREE.PlaneGeometry(1.0, 1.0);
+    // Flat circular floor reflection pool geometry (lying flat on XZ floor plane, zero square corners)
+    const floorPoolGeo = new THREE.CircleGeometry(1.0, 32);
 
     for (let i = 0; i < numGodrays; i++) {
         const normIdx = i / (numGodrays - 1); // 0.0 to 1.0
@@ -5215,43 +5216,30 @@ export function createVFXScene(container) {
         bezelMesh.position.set(0, 0.01, 0);
         pivotGroup.add(bezelMesh);
 
-        // Glowing realistic convex glass lens disc
+        // Clean glowing optical glass lens disc (clean lens, NO hovering halo sprite!)
         const lensColor = godrayPalette[i % godrayPalette.length];
         const lensDiscMat = new THREE.MeshBasicMaterial({
             color: lensColor,
             transparent: true,
-            opacity: 0.85
+            opacity: 0.90
         });
         const lensDiscMesh = new THREE.Mesh(fixtureLensDiscGeo, lensDiscMat);
         lensDiscMesh.rotation.x = Math.PI / 2;
         lensDiscMesh.position.set(0, 0.005, 0);
         pivotGroup.add(lensDiscMesh);
 
-        // Realistic soft aperture glow halo (subtle, frosted, no cartoon starburst)
-        const lensSprite = new THREE.Sprite(new THREE.SpriteMaterial({
-            map: roundStarTex,
-            color: lensColor,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            depthWrite: false,
-            opacity: 0.35
-        }));
-        lensSprite.scale.set(1.0, 1.0, 1.0);
-        lensSprite.position.set(0, -0.05, 0);
-        pivotGroup.add(lensSprite);
-
         // Godray volumetric shader material (Wawa Sensei Worley noise + Inverted Fresnel + Fog Damping)
         const beamMat = new THREE.ShaderMaterial({
             uniforms: {
                 uColor: { value: new THREE.Color(lensColor) },
-                uCoreColor: { value: new THREE.Color(0xfff8ee) },
-                uIntensity: { value: 0.70 },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 0.85 },
                 uTime: { value: 0.0 },
-                uTimeSpeed: { value: 0.16 },
+                uTimeSpeed: { value: 0.18 },
                 uNoiseScale: { value: 3.8 },
                 uSmoothTop: { value: 0.16 },
                 uSmoothBottom: { value: 0.85 },
-                uFresnelPower: { value: 2.0 },
+                uFresnelPower: { value: 2.2 },
                 uPulse: { value: 0.0 }
             },
             vertexShader: WawaSenseiGodrayShader.vertexShader,
@@ -5265,7 +5253,7 @@ export function createVFXScene(container) {
         const beamMesh = new THREE.Mesh(godrayConeGeo, beamMat);
         pivotGroup.add(beamMesh);
 
-        // Completely FLAT horizontal floor reflection mesh lying on the dancefloor
+        // Completely FLAT smooth circular floor reflection pool lying on the dancefloor
         const floorImpactMat = new THREE.MeshBasicMaterial({
             map: roundStarTex,
             color: lensColor,
@@ -5288,7 +5276,6 @@ export function createVFXScene(container) {
             beamMesh,
             beamMat,
             lensDiscMesh,
-            lensSprite,
             floorImpactMesh,
             floorImpactMat,
             baseColor: new THREE.Color(lensColor),
@@ -5298,26 +5285,14 @@ export function createVFXScene(container) {
         });
     }
 
-    // 3. Stage Floor Ambient Reflection Plane
-    const godrayFloorGeo = new THREE.PlaneGeometry(50.0, 30.0);
-    const godrayFloorMat = new THREE.MeshBasicMaterial({
-        color: 0x020308,
-        transparent: true,
-        opacity: 0.85
-    });
-    const godrayStageFloorMesh = new THREE.Mesh(godrayFloorGeo, godrayFloorMat);
-    godrayStageFloorMesh.rotation.x = -Math.PI / 2.2;
-    godrayStageFloorMesh.position.set(0, -7.5, -8.0);
-    gSweepingGodrays.add(godrayStageFloorMesh);
-
-    // 4. Floating Atmospheric Fog Cloud Layers (Spanning stage floor & beam paths)
+    // 3. Floating Atmospheric Fog Cloud Layers (Spanning stage floor & beam paths)
     const godrayFogGroup = new THREE.Group();
     const floatingFogMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
-            uIntensity: { value: 0.35 },
-            uColor1: { value: new THREE.Color(0x00e5ff) },
-            uColor2: { value: new THREE.Color(0xff007f) },
+            uIntensity: { value: 0.42 },
+            uColor1: { value: new THREE.Color(0x00ffff) },
+            uColor2: { value: new THREE.Color(0xff0066) },
             uBass: { value: 0.0 }
         },
         vertexShader: FloatingAtmosphericFogShader.vertexShader,
@@ -6195,59 +6170,55 @@ export function createVFXScene(container) {
         // FX 18: 🔦 Sweeping Godray Disco Lights (Slow, Majestic Moving-Head Rig)
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 18) {
-            // Very slow, majestic, fluid sweep speed (no hurried laser strobing)
-            const sweepTime = elapsedTime * 0.22 * speed;
+            // Ultra-slow, majestic, fluid arena sweep (graceful, calm, hypnotic)
+            const sweepTime = elapsedTime * 0.085 * speed;
 
             // Animate Floating Atmospheric Fog medium smoothly
             floatingFogMat.uniforms.uTime.value = elapsedTime;
-            floatingFogMat.uniforms.uBass.value = (audio.smoothedBass || bassPop) * 0.35;
-            floatingFogMat.uniforms.uIntensity.value = 0.25 + (audio.energy || 0) * 0.12;
+            floatingFogMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.35;
+            floatingFogMat.uniforms.uIntensity.value = 0.32 + (audio.energy || 0) * 0.10;
 
             // Overall slow stage atmosphere breathing wave
-            const globalAtmosphereBreath = Math.sin(elapsedTime * 0.28) * 0.15 + 0.85;
+            const globalAtmosphereBreath = Math.sin(elapsedTime * 0.20) * 0.15 + 0.85;
 
             godrayFixtures.forEach((fix, idx) => {
                 const norm = fix.normIdx - 0.5; // -0.5 (leftmost) to +0.5 (rightmost)
 
-                // Slow, graceful harmonic Lissajous moving-head choreographies
-                // Continuous graceful ballyhoo sweeps with zero sudden snapping
-                const panHarmonic1 = Math.sin(sweepTime * 0.95 + fix.phaseOffset) * 0.38;
-                const panHarmonic2 = Math.sin(sweepTime * 0.40 + idx * 0.45) * 0.16;
-                const rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.20);
+                // Slow, graceful, wide harmonic sways (ultra-fluid, zero sudden or hurried motion)
+                const panHarmonic1 = Math.sin(sweepTime * 0.85 + fix.phaseOffset) * 0.36;
+                const panHarmonic2 = Math.sin(sweepTime * 0.35 + idx * 0.40) * 0.14;
+                const rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.22);
 
-                const tiltHarmonic1 = Math.cos(sweepTime * 0.70 + fix.phaseOffset * 0.8) * 0.16;
-                const tiltHarmonic2 = Math.sin(sweepTime * 0.30 + idx * 0.25) * 0.08;
-                const rotX = 0.30 + tiltHarmonic1 + tiltHarmonic2;
+                const tiltHarmonic1 = Math.cos(sweepTime * 0.65 + fix.phaseOffset * 0.7) * 0.15;
+                const tiltHarmonic2 = Math.sin(sweepTime * 0.25 + idx * 0.20) * 0.06;
+                const rotX = 0.28 + tiltHarmonic1 + tiltHarmonic2;
 
                 fix.pivotGroup.rotation.z = rotZ;
                 fix.pivotGroup.rotation.x = rotX;
 
-                // Slow organic light breathing with powerful FULL surges (brightens intensely at peak, softly dims in valleys)
-                const breathCycle = Math.sin(elapsedTime * 0.35 + fix.phaseOffset) * 0.5 + 0.5; // 0.0 to 1.0
+                // Slow, organic, glowing beam breathing through fog
+                const breathCycle = Math.sin(elapsedTime * 0.25 + fix.phaseOffset) * 0.5 + 0.5; // 0.0 to 1.0
                 const individualBreath = Math.pow(breathCycle, 1.3); // smooth graceful swell
-                const fullSurge = Math.pow(individualBreath, 3.2) * 2.2; // dramatic exponential radiance burst at full apex!
-                const musicalWarmth = (audio.smoothedBass || 0) * 0.35 + (audio.energy || 0) * 0.25;
+                const fullSurge = Math.pow(individualBreath, 3.0) * 1.8; // intense glowing swell at peak
+                const musicalWarmth = (audio.smoothedBass || 0) * 0.30 + (audio.energy || 0) * 0.20;
 
-                // High dynamic range: from subtle whisper ~0.22 to radiant full power ~3.2+
-                const beamIntensity = (0.22 + individualBreath * 0.75 + fullSurge + musicalWarmth) * globalAtmosphereBreath;
+                // High dynamic range glowing beam intensity
+                const beamIntensity = (0.28 + individualBreath * 0.70 + fullSurge + musicalWarmth) * globalAtmosphereBreath;
 
                 // Update Godray Uniforms
                 fix.beamMat.uniforms.uTime.value = elapsedTime;
                 fix.beamMat.uniforms.uIntensity.value = beamIntensity;
 
                 // Subtle smooth color drifting
-                const colorShift = Math.sin(elapsedTime * 0.18 + idx * 0.5) * 0.05;
+                const colorShift = Math.sin(elapsedTime * 0.15 + idx * 0.5) * 0.04;
                 const activeCol = fix.baseColor.clone().offsetHSL(colorShift, 0, 0);
                 fix.beamMat.uniforms.uColor.value.copy(activeCol);
 
-                // Realistic top fixture lens glow (brilliant flare at full, subtle frosted glass when dim)
+                // Clean lens disc on moving head (clean lens aperture, no hovering halo sprite)
                 fix.lensDiscMesh.material.color.copy(activeCol);
-                fix.lensDiscMesh.material.opacity = 0.40 + individualBreath * 0.60;
-                fix.lensSprite.material.color.copy(activeCol);
-                fix.lensSprite.material.opacity = 0.15 + individualBreath * 0.55 + fullSurge * 0.35;
-                fix.lensSprite.scale.setScalar(0.75 + individualBreath * 0.80 + fullSurge * 0.90);
+                fix.lensDiscMesh.material.opacity = 0.50 + individualBreath * 0.50;
 
-                // Flat subtle ground specular light pool (glorious specular pool at full power)
+                // Flat subtle ground specular light pool (smooth circular pool)
                 const floorY = -7.48;
                 const dropDist = fix.podGroup.position.y - floorY;
                 const targetZ = fix.podGroup.position.z - Math.tan(rotX) * dropDist;
@@ -6255,12 +6226,12 @@ export function createVFXScene(container) {
                 
                 fix.floorImpactMesh.position.set(targetX, floorY, targetZ);
                 // Elongated ellipse projected onto the horizontal floor plane
-                const spotScaleX = 2.4 + individualBreath * 1.8 + fullSurge * 1.6;
-                const spotScaleZ = (2.4 + individualBreath * 1.8 + fullSurge * 1.6) / Math.max(0.35, Math.cos(rotX));
+                const spotScaleX = 2.4 + individualBreath * 1.6 + fullSurge * 1.4;
+                const spotScaleZ = (2.4 + individualBreath * 1.6 + fullSurge * 1.4) / Math.max(0.35, Math.cos(rotX));
                 fix.floorImpactMesh.scale.set(spotScaleX, spotScaleZ, 1.0);
                 fix.floorImpactMesh.rotation.z = -rotZ; // align elongation with beam sweep angle
                 fix.floorImpactMat.color.copy(activeCol);
-                fix.floorImpactMat.opacity = (0.06 + individualBreath * 0.22 + fullSurge * 0.30) * (bloomMultiplier * 0.5 + 0.5);
+                fix.floorImpactMat.opacity = (0.05 + individualBreath * 0.20 + fullSurge * 0.25) * (bloomMultiplier * 0.5 + 0.5);
             });
         }
         if (audio.isOnset) {
