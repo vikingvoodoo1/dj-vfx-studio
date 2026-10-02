@@ -220,86 +220,105 @@ export class PhilipsHueService {
         if (!this.config.enabled || !this.config.bridgeIp || !this.config.username) return;
 
         const now = performance.now();
-        const isPriority = !!audioData.isStrobe || !!audioData.isDrop || (audioData.bass && audioData.bass > 0.45);
-
-        // Adaptive rate limiting: Priority kicks bypass throttle
-        if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
-            return;
-        }
-
-        this.lastDispatchTime = now;
-
         const {
             bass = 0,
+            smoothedBass = 0,
+            transientImpulse = 0,
+            isOnset = false,
             mid = 0,
             treble = 0,
+            overall = 0,
             sceneColor = '#00ffff',
             isDrop = false,
             isStrobe = false,
             bpm = 126
         } = audioData;
 
+        const isPriority = isStrobe || isDrop || isOnset || transientImpulse > 0.25 || bass > 0.40;
+
+        // Rate limiting: Priority kick/snare attacks bypass throttle for zero-latency response
+        if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
+            return;
+        }
+
+        this.lastDispatchTime = now;
+
         let targetBri = 0;
         let targetXY = null;
-        let transitionTime = 0; // Default instant 0ms punch
+        let transitionTime = 0; // Instant 0ms punch
 
-        const intensity = this.config.intensity ?? 0.85;
-        const minBri = Math.round((this.config.minBrightness ?? 0.20) * 254);
+        const intensity = this.config.intensity ?? 0.95;
+        const minBri = Math.max(1, Math.round((this.config.minBrightness ?? 0.15) * 254));
+        const briRange = 254 - minBri;
+
+        // Expanded Transient & Beat Power
+        const rawEnergy = isOnset
+            ? 1.0
+            : Math.max(
+                transientImpulse * 1.35,
+                Math.pow(bass, 0.75) * 1.45,
+                Math.pow(mid, 1.2) * 0.75
+            );
+        const punch = Math.min(1.0, Math.max(0.0, rawEnergy));
 
         if (isStrobe) {
             targetBri = 254;
-            targetXY = [0.3127, 0.3290]; // Pure white flash
+            targetXY = [0.3127, 0.3290]; // Pure blinding xenon white flash
             transitionTime = 0;
         } else if (this.config.mode === 'strobe_only') {
-            if (isDrop) {
-                targetBri = Math.round(minBri + (254 - minBri) * bass * intensity);
-                targetXY = hexToCIE(sceneColor);
+            if (isDrop || isOnset || transientImpulse > 0.30 || bass > 0.45) {
+                targetBri = Math.round(minBri + briRange * intensity);
+                targetXY = [0.3127, 0.3290]; // Pure white strobe flash
                 transitionTime = 0;
             } else {
                 targetBri = minBri;
-                transitionTime = 1;
+                targetXY = hexToCIE(sceneColor);
+                transitionTime = 0;
             }
         } else if (this.config.mode === 'bass_flash') {
-            const punch = Math.min(1.0, Math.pow(bass, 1.2) * 1.5);
-            targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
-            if (bass > 0.55) {
-                targetXY = [0.675, 0.322]; // Vivid saturated red on kick drop
+            if (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.30) {
+                targetBri = Math.round(minBri + briRange * Math.min(1.0, punch * 1.25) * intensity);
+                targetXY = [0.675, 0.322]; // Vivid saturated neon crimson on kick hits
                 transitionTime = 0;
             } else {
-                targetXY = [0.15, 0.06]; // Deep moody nightclub blue
+                targetBri = minBri;
+                targetXY = [0.15, 0.06]; // Deep moody nightclub royal blue
                 transitionTime = 1;
             }
         } else if (this.config.mode === 'rainbow_cycle') {
-            this.colorCycleAngle = (this.colorCycleAngle + 0.12 * (bpm / 120)) % (Math.PI * 2);
+            this.colorCycleAngle = (this.colorCycleAngle + 0.15 * (bpm / 120)) % (Math.PI * 2);
             const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
-            const g = Math.round(Math.sin(this.colorCycleAngle + 2) * 127 + 128);
-            const b = Math.round(Math.sin(this.colorCycleAngle + 4) * 127 + 128);
+            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
+            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
             targetXY = rgbToCIE(r, g, b);
-            const punch = Math.min(1.0, Math.pow(bass, 1.1) * 1.4);
-            targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
-            transitionTime = bass > 0.4 ? 0 : 1;
+            
+            targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.85) * intensity);
+            transitionTime = punch > 0.3 ? 0 : 1;
         } else {
-            // Default: 'scene_sync' (matches 3D Visualizer Color Palette with bass punch)
+            // Default: 'scene_sync' (matches 3D Visualizer Color Palette with high-dynamic-range punch)
             targetXY = hexToCIE(sceneColor);
-            const punch = Math.min(1.0, Math.pow(bass, 1.1) * 1.45);
-            targetBri = Math.round(minBri + (254 - minBri) * (punch * intensity));
-            if (isDrop) {
+
+            if (isDrop || isOnset) {
                 targetBri = 254;
                 transitionTime = 0;
+            } else if (punch > 0.45) {
+                targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.8) * intensity);
+                transitionTime = 0;
             } else {
-                transitionTime = bass > 0.35 ? 0 : 1;
+                targetBri = Math.round(minBri + briRange * Math.pow(punch, 1.25) * intensity);
+                transitionTime = punch > 0.15 ? 0 : 1;
             }
         }
 
         targetBri = Math.max(1, Math.min(254, targetBri));
 
         const actionBody = {
-            on: targetBri > 2,
+            on: true,
             bri: targetBri,
             transitiontime: transitionTime
         };
 
-        // Only transmit XY color if it has changed to save ZigBee bandwidth
+        // Transmit XY color when changed
         if (targetXY) {
             const xyKey = `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}`;
             if (xyKey !== this.lastSentXY) {
@@ -329,7 +348,7 @@ export class PhilipsHueService {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(800)
+                signal: AbortSignal.timeout(600)
             });
         } catch (e) {
             // Drop late frames
@@ -338,10 +357,10 @@ export class PhilipsHueService {
             if (this.pendingPayload) {
                 const next = this.pendingPayload;
                 this.pendingPayload = null;
-                // Dispatch next frame immediately with 30ms spacing to maintain high-speed rhythm
+                // Dispatch next frame immediately with 25ms spacing to maintain high-speed rhythm
                 setTimeout(() => {
                     this.sendGroupAction(next.groupId, next.body).catch(() => {});
-                }, 30);
+                }, 25);
             }
         }
     }

@@ -7162,11 +7162,27 @@ export function createVFXScene(container) {
         getFXCount: () => fxRoots.length,
         getCurrentSceneColor: () => {
             const colors = [
-                '#00ffff', '#ff007f', '#00ffcc', '#ffaa00',
-                '#ffd700', '#ff00aa', '#00e5ff', '#ff0033',
-                '#ffffff', '#ff0088', '#ff007f', '#ff4500',
-                '#00ff66', '#ffff00', '#00ffff', '#9900ff',
-                '#00e1ff', '#00ffcc'
+                '#00ffff', // FX 1:  🌌 Neon Matrix & Cyber Tunnel
+                '#ff007f', // FX 2:  ⚡ Audio Waveform Equalizer
+                '#00ffcc', // FX 3:  🌌 Circular Spectrum Ring
+                '#ffaa00', // FX 4:  🔊 3D Pioneer DJ Decks
+                '#ffd700', // FX 5:  🪩 Spinning Disco Ball
+                '#ff00aa', // FX 6:  🕺 70s Disco Dancefloor
+                '#00e5ff', // FX 7:  ⚡ Dual-Bank Lasers
+                '#ff0033', // FX 8:  💥 Saber Multi-Beams
+                '#ffffff', // FX 9:  💫 Strobe Rings
+                '#ff0088', // FX 10: 💃 Silhouette Dancers
+                '#ff007f', // FX 11: ⚡ Liquid Mercury Audio
+                '#ff4500', // FX 12: 🌌 Cyber Horizon Grid
+                '#00ff66', // FX 13: 💫 Neon Warp Tunnel
+                '#ffff00', // FX 14: 🔊 Holographic Deck Visualizer
+                '#00ffff', // FX 15: 🪩 Neon Wireframe Club
+                '#9900ff', // FX 16: 🌌 Deep Space Galaxy
+                '#00e1ff', // FX 17: 💥 Laser Vortex
+                '#00ffcc', // FX 18: ⏰ Time is Clock & Stars
+                '#00ffff', // FX 19: 🔦 Sweeping Godrays (U)
+                '#ffffff', // FX 20: ☁️ Pure White Godrays & Fog (I)
+                '#ffb700'  // FX 21: 🪩 Disco Floor & Godrays (O)
             ];
             return colors[currentFXIndex] || '#00ffff';
         }

@@ -2770,15 +2770,27 @@ async function init() {
         }
 
         // Stream live beat telemetry to Philips Hue Bridge
-        if (stagelinqClient && isHueActive && (data.bass || data.bassImpact)) {
+        if (stagelinqClient && isHueActive && (data.bass !== undefined || data.bassImpact !== undefined)) {
+            const rawBass = data.bass || 0;
+            const transient = data.transientImpulse || 0;
+            const isOnset = !!data.isOnset;
+            const rawMid = data.mid || 0;
+            const rawTreble = data.treble || 0;
+
             stagelinqClient.sendHueBeat({
-                bass: data.bassImpact || data.bass || 0,
-                mid: data.mid || 0,
-                treble: data.treble || 0,
+                bass: rawBass,
+                smoothedBass: data.smoothedBass || rawBass,
+                bassImpact: data.bassImpact || rawBass,
+                transientImpulse: transient,
+                isOnset: isOnset,
+                mid: rawMid,
+                smoothedMid: data.smoothedMid || rawMid,
+                treble: rawTreble,
+                overall: data.overall || 0,
                 sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
-                isDrop: !!(data.transientImpulse && data.transientImpulse > 0.8),
+                isDrop: isOnset || transient > 0.45 || rawBass > 0.55,
                 isStrobe: false,
-                bpm: 126
+                bpm: currentBPM || 126
             });
         }
 
