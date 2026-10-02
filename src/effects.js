@@ -5299,9 +5299,11 @@ export function createVFXScene(container) {
     const floatingFogMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
-            uIntensity: { value: 0.42 },
-            uColor1: { value: new THREE.Color(0x00ffff) },
-            uColor2: { value: new THREE.Color(0xff0066) },
+            uIntensity: { value: 0.45 },
+            uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+            uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+            uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+            uSpotIntensity: { value: new Float32Array(8) },
             uBass: { value: 0.0 }
         },
         vertexShader: FloatingAtmosphericFogShader.vertexShader,
