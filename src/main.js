@@ -430,6 +430,80 @@ async function init() {
         }, 2400);
     }
 
+    // =========================================================================
+    // UI THEME & CONTROL PANEL AESTHETICS ENGINE
+    // =========================================================================
+    const themeCards = document.querySelectorAll('.theme-card[data-theme]');
+    const themeActiveBadge = document.getElementById('theme-active-badge');
+    const btnThemeCycle = document.getElementById('btn-theme-cycle');
+    const themesList = ['default', 'cyberpunk', 'obsidian', 'titanium', 'analog'];
+    const themeDisplayNames = {
+        'default': 'CYBER GLASS',
+        'cyberpunk': 'CYBERPUNK MATRIX',
+        'obsidian': 'OBSIDIAN STEALTH',
+        'titanium': 'PIONEER PRO',
+        'analog': 'ANALOG STUDIO'
+    };
+
+    function applyUITheme(themeId, save = true) {
+        if (!themesList.includes(themeId)) themeId = 'default';
+
+        // Remove all previous theme classes
+        themesList.forEach(t => {
+            document.body.classList.remove(`theme-${t}`);
+            document.documentElement.classList.remove(`theme-${t}`);
+        });
+
+        // Add active theme class
+        document.body.classList.add(`theme-${themeId}`);
+        document.documentElement.classList.add(`theme-${themeId}`);
+
+        // Update Theme Cards & Badges
+        themeCards.forEach(card => {
+            card.classList.toggle('active', card.getAttribute('data-theme') === themeId);
+        });
+
+        if (themeActiveBadge) {
+            themeActiveBadge.textContent = themeDisplayNames[themeId] || 'CYBER GLASS';
+        }
+
+        if (save) {
+            try {
+                localStorage.setItem('dj_vfx_ui_theme', themeId);
+            } catch (e) {}
+        }
+    }
+
+    // Initialize Theme from localStorage
+    let currentUITheme = 'default';
+    try {
+        currentUITheme = localStorage.getItem('dj_vfx_ui_theme') || 'default';
+    } catch (e) {}
+    applyUITheme(currentUITheme, false);
+
+    // Theme Card Click Listeners
+    themeCards.forEach(card => {
+        card.addEventListener('click', () => {
+            const themeId = card.getAttribute('data-theme');
+            if (themeId) {
+                applyUITheme(themeId, true);
+                showToast(`🎨 Theme: ${themeDisplayNames[themeId] || themeId.toUpperCase()}`);
+            }
+        });
+    });
+
+    // Quick Theme Cycle Button in Header
+    if (btnThemeCycle) {
+        btnThemeCycle.addEventListener('click', () => {
+            let current = 'default';
+            try { current = localStorage.getItem('dj_vfx_ui_theme') || 'default'; } catch (e) {}
+            const nextIdx = (themesList.indexOf(current) + 1) % themesList.length;
+            const nextTheme = themesList[nextIdx];
+            applyUITheme(nextTheme, true);
+            showToast(`🎨 Theme: ${themeDisplayNames[nextTheme]}`);
+        });
+    }
+
     const btnDetachConsole = document.getElementById('btn-detach-console');
     if (btnDetachConsole) {
         btnDetachConsole.addEventListener('click', () => {
@@ -2701,7 +2775,7 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..7] / [Alt + A] for IDE Console Activity Bar Navigation
+        // [Alt + 1..7] / [Alt + A] / [Alt + T] for IDE Console Navigation & Theme Cycle
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
@@ -2710,6 +2784,11 @@ async function init() {
             if (e.key === '5') { e.preventDefault(); switchTab('hue'); return; }
             if (e.key === '6') { e.preventDefault(); switchTab('obs'); return; }
             if (e.key === '7') { e.preventDefault(); switchTab('about'); return; }
+            if (e.key === 't' || e.key === 'T') {
+                e.preventDefault();
+                if (btnThemeCycle) btnThemeCycle.click();
+                return;
+            }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();

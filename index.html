@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
     <script>
-        // Instant Zero-FOUC Clean Mode Detector for OBS Studio & Stage Displays
+        // Instant Zero-FOUC Clean Mode & Dynamic Theme Detector
         (function() {
             try {
                 var p = new URLSearchParams(window.location.search);
@@ -20,6 +20,8 @@
                 if (p.get('overlay') === 'true' || window.location.hash.includes('overlay')) {
                     document.documentElement.classList.add('obs-transparent-mode');
                 }
+                var savedTheme = localStorage.getItem('dj_vfx_ui_theme') || 'default';
+                document.documentElement.classList.add('theme-' + savedTheme);
             } catch (e) {}
         })();
     </script>
@@ -65,24 +67,277 @@
             z-index: 1;
         }
 
+
+        /* =========================================================================
+           DYNAMIC THEME ARCHITECTURE & CSS VARIABLES SYSTEM
+           ========================================================================= */
+        :root {
+            --hud-font: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+            --hud-mono-font: 'JetBrains Mono', monospace;
+            --hud-bg: rgba(8, 9, 20, 0.92);
+            --hud-backdrop: blur(24px);
+            --hud-border: 1px solid rgba(255, 255, 255, 0.14);
+            --hud-border-dim: rgba(255, 255, 255, 0.08);
+            --hud-shadow: 0 16px 50px rgba(0, 0, 0, 0.95), inset 0 0 15px rgba(0, 255, 255, 0.05);
+            --hud-radius: 14px;
+            --hud-accent: #00ffcc;
+            --hud-accent-glow: 0 0 10px rgba(0, 255, 204, 0.4);
+            --hud-accent-sec: #00ffff;
+            --hud-text: #ffffff;
+            --hud-text-dim: rgba(255, 255, 255, 0.5);
+            --hud-card-bg: rgba(255, 255, 255, 0.04);
+            --hud-card-border: rgba(255, 255, 255, 0.12);
+            --hud-sidebar-bg: rgba(4, 5, 12, 0.96);
+            --hud-sidebar-border: rgba(255, 255, 255, 0.08);
+            --hud-slider-thumb: #00ffff;
+            --hud-slider-glow: 0 0 8px #00ffff;
+            --hud-tab-active-bg: rgba(0, 255, 255, 0.12);
+            --hud-tab-active-border: #00ffff;
+            --hud-badge-bg: rgba(0, 255, 204, 0.15);
+            --hud-badge-border: rgba(0, 255, 204, 0.4);
+            --hud-badge-color: #00ffcc;
+            --hud-btn-bg: rgba(255, 255, 255, 0.08);
+            --hud-btn-border: rgba(255, 255, 255, 0.2);
+            --hud-btn-color: #ffffff;
+            --hud-btn-hover-bg: rgba(255, 255, 255, 0.18);
+            --hud-fx-active-bg: rgba(0, 255, 204, 0.2);
+            --hud-fx-active-border: #00ffcc;
+            --hud-fx-active-glow: 0 0 12px rgba(0, 255, 204, 0.4);
+            --hud-icon-filter: drop-shadow(0 0 2px rgba(0, 255, 204, 0.4));
+        }
+
+        /* 1. THEME: CYBERPUNK NEON MATRIX */
+        body.theme-cyberpunk, html.theme-cyberpunk {
+            --hud-bg: rgba(13, 6, 26, 0.95);
+            --hud-backdrop: blur(20px);
+            --hud-border: 1px solid #ff007f;
+            --hud-border-dim: rgba(255, 0, 127, 0.25);
+            --hud-shadow: 0 0 35px rgba(255, 0, 127, 0.35), inset 0 0 25px rgba(0, 255, 255, 0.2), 0 20px 60px rgba(0, 0, 0, 0.98);
+            --hud-radius: 6px;
+            --hud-accent: #ff007f;
+            --hud-accent-glow: 0 0 15px #ff007f, 0 0 30px rgba(255, 0, 127, 0.5);
+            --hud-accent-sec: #00ffff;
+            --hud-text: #ffffff;
+            --hud-text-dim: rgba(255, 180, 220, 0.7);
+            --hud-card-bg: rgba(255, 0, 127, 0.08);
+            --hud-card-border: rgba(255, 0, 127, 0.35);
+            --hud-sidebar-bg: rgba(9, 4, 18, 0.98);
+            --hud-sidebar-border: rgba(255, 0, 127, 0.3);
+            --hud-slider-thumb: #ff007f;
+            --hud-slider-glow: 0 0 12px #ff007f, 0 0 20px #00ffff;
+            --hud-tab-active-bg: rgba(255, 0, 127, 0.25);
+            --hud-tab-active-border: #ff007f;
+            --hud-badge-bg: rgba(255, 0, 127, 0.2);
+            --hud-badge-border: #ff007f;
+            --hud-badge-color: #ff3399;
+            --hud-btn-bg: rgba(255, 0, 127, 0.15);
+            --hud-btn-border: rgba(255, 0, 127, 0.45);
+            --hud-btn-color: #ff66b2;
+            --hud-btn-hover-bg: rgba(255, 0, 127, 0.3);
+            --hud-fx-active-bg: rgba(255, 0, 127, 0.25);
+            --hud-fx-active-border: #ff007f;
+            --hud-fx-active-glow: 0 0 16px rgba(255, 0, 127, 0.6);
+            --hud-icon-filter: drop-shadow(0 0 6px #ff007f) drop-shadow(0 0 2px #00ffff);
+        }
+
+        /* 2. THEME: OBSIDIAN STEALTH MINIMALIST */
+        body.theme-obsidian, html.theme-obsidian {
+            --hud-bg: rgba(5, 5, 8, 0.98);
+            --hud-backdrop: blur(30px);
+            --hud-border: 1px solid rgba(255, 255, 255, 0.12);
+            --hud-border-dim: rgba(255, 255, 255, 0.05);
+            --hud-shadow: 0 20px 60px rgba(0, 0, 0, 0.98), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+            --hud-radius: 12px;
+            --hud-accent: #ffffff;
+            --hud-accent-glow: 0 0 8px rgba(255, 255, 255, 0.5);
+            --hud-accent-sec: #2dd4bf;
+            --hud-text: #f4f4f5;
+            --hud-text-dim: rgba(161, 161, 170, 0.7);
+            --hud-card-bg: rgba(255, 255, 255, 0.03);
+            --hud-card-border: rgba(255, 255, 255, 0.08);
+            --hud-sidebar-bg: rgba(2, 2, 4, 0.99);
+            --hud-sidebar-border: rgba(255, 255, 255, 0.06);
+            --hud-slider-thumb: #ffffff;
+            --hud-slider-glow: 0 0 8px rgba(255, 255, 255, 0.7);
+            --hud-tab-active-bg: rgba(255, 255, 255, 0.12);
+            --hud-tab-active-border: #ffffff;
+            --hud-badge-bg: rgba(255, 255, 255, 0.1);
+            --hud-badge-border: rgba(255, 255, 255, 0.3);
+            --hud-badge-color: #ffffff;
+            --hud-btn-bg: rgba(255, 255, 255, 0.06);
+            --hud-btn-border: rgba(255, 255, 255, 0.15);
+            --hud-btn-color: #e4e4e7;
+            --hud-btn-hover-bg: rgba(255, 255, 255, 0.15);
+            --hud-fx-active-bg: rgba(255, 255, 255, 0.15);
+            --hud-fx-active-border: #ffffff;
+            --hud-fx-active-glow: 0 0 10px rgba(255, 255, 255, 0.35);
+            --hud-icon-filter: none;
+        }
+
+        /* 3. THEME: TITANIUM PIONEER PRO HARDWARE */
+        body.theme-titanium, html.theme-titanium {
+            --hud-bg: linear-gradient(170deg, #1c1d24 0%, #111217 100%);
+            --hud-backdrop: blur(16px);
+            --hud-border: 1px solid #383a45;
+            --hud-border-dim: #252730;
+            --hud-shadow: 0 20px 50px rgba(0,0,0,0.95), inset 1px 1px 0 rgba(255,255,255,0.08), inset -1px -1px 0 rgba(0,0,0,0.5);
+            --hud-radius: 10px;
+            --hud-accent: #ff8800;
+            --hud-accent-glow: 0 0 12px rgba(255, 136, 0, 0.6);
+            --hud-accent-sec: #00d2ff;
+            --hud-text: #ffffff;
+            --hud-text-dim: #8b8f9e;
+            --hud-card-bg: #15161c;
+            --hud-card-border: #2e303b;
+            --hud-sidebar-bg: #0e0f13;
+            --hud-sidebar-border: #23252e;
+            --hud-slider-thumb: #ff8800;
+            --hud-slider-glow: 0 0 10px #ff8800;
+            --hud-tab-active-bg: rgba(255, 136, 0, 0.18);
+            --hud-tab-active-border: #ff8800;
+            --hud-badge-bg: rgba(255, 136, 0, 0.15);
+            --hud-badge-border: rgba(255, 136, 0, 0.45);
+            --hud-badge-color: #ff9922;
+            --hud-btn-bg: linear-gradient(180deg, #252833 0%, #171820 100%);
+            --hud-btn-border: #3e4252;
+            --hud-btn-color: #ffaa33;
+            --hud-btn-hover-bg: linear-gradient(180deg, #303442 0%, #1e202b 100%);
+            --hud-fx-active-bg: rgba(255, 136, 0, 0.22);
+            --hud-fx-active-border: #ff8800;
+            --hud-fx-active-glow: 0 0 14px rgba(255, 136, 0, 0.5);
+            --hud-icon-filter: drop-shadow(0 0 4px rgba(255, 136, 0, 0.5));
+        }
+
+        /* 4. THEME: ANALOG SYNTHWAVE STUDIO */
+        body.theme-analog, html.theme-analog {
+            --hud-bg: linear-gradient(165deg, #1f140e 0%, #100b08 100%);
+            --hud-backdrop: blur(20px);
+            --hud-border: 1px solid rgba(255, 170, 0, 0.45);
+            --hud-border-dim: rgba(255, 170, 0, 0.15);
+            --hud-shadow: 0 20px 60px rgba(0,0,0,0.95), inset 0 0 20px rgba(255, 170, 0, 0.1);
+            --hud-radius: 8px;
+            --hud-accent: #ffaa00;
+            --hud-accent-glow: 0 0 14px rgba(255, 170, 0, 0.7);
+            --hud-accent-sec: #ff3366;
+            --hud-text: #fff3e0;
+            --hud-text-dim: rgba(255, 204, 128, 0.6);
+            --hud-card-bg: rgba(255, 170, 0, 0.06);
+            --hud-card-border: rgba(255, 170, 0, 0.22);
+            --hud-sidebar-bg: #0c0805;
+            --hud-sidebar-border: rgba(255, 170, 0, 0.2);
+            --hud-slider-thumb: #ffaa00;
+            --hud-slider-glow: 0 0 10px #ffaa00;
+            --hud-tab-active-bg: rgba(255, 170, 0, 0.2);
+            --hud-tab-active-border: #ffaa00;
+            --hud-badge-bg: rgba(255, 170, 0, 0.15);
+            --hud-badge-border: rgba(255, 170, 0, 0.4);
+            --hud-badge-color: #ffbb22;
+            --hud-btn-bg: rgba(255, 170, 0, 0.12);
+            --hud-btn-border: rgba(255, 170, 0, 0.35);
+            --hud-btn-color: #ffcc00;
+            --hud-btn-hover-bg: rgba(255, 170, 0, 0.25);
+            --hud-fx-active-bg: rgba(255, 170, 0, 0.22);
+            --hud-fx-active-border: #ffaa00;
+            --hud-fx-active-glow: 0 0 15px rgba(255, 170, 0, 0.5);
+            --hud-icon-filter: drop-shadow(0 0 5px rgba(255, 170, 0, 0.75));
+        }
+
+        /* Theme Selector Component */
+        .theme-selector-grid {
+            display: grid;
+            grid-template-columns: repeat(1, 1fr);
+            gap: 6px;
+            margin-top: 6px;
+            margin-bottom: 8px;
+        }
+
+        .theme-card {
+            background: var(--hud-card-bg);
+            border: 1px solid var(--hud-card-border);
+            border-radius: 8px;
+            padding: 7px 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+        }
+
+        .theme-card:hover {
+            border-color: var(--hud-accent);
+            transform: translateX(2px);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .theme-card.active {
+            border-color: var(--hud-accent);
+            background: var(--hud-tab-active-bg);
+            box-shadow: var(--hud-accent-glow);
+        }
+
+        .theme-swatch-box {
+            width: 26px;
+            height: 26px;
+            border-radius: 6px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .theme-swatch-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .theme-info {
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .theme-name {
+            font-size: 10.5px;
+            font-weight: 700;
+            color: var(--hud-text);
+        }
+
+        .theme-card.active .theme-name {
+            color: var(--hud-accent);
+        }
+
+        .theme-desc {
+            font-size: 8.5px;
+            color: var(--hud-text-dim);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         /* Top-Left Nightclub Glassmorphic IDE-Style HUD */
         #hud {
             position: absolute;
             top: 16px;
             left: 16px;
             z-index: 20;
-            background: rgba(8, 9, 20, 0.92);
-            backdrop-filter: blur(24px);
-            -webkit-backdrop-filter: blur(24px);
-            border: 1px solid rgba(255, 255, 255, 0.14);
-            box-shadow: 0 16px 50px rgba(0, 0, 0, 0.95), inset 0 0 15px rgba(0, 255, 255, 0.05);
-            border-radius: 14px;
+            background: var(--hud-bg);
+            backdrop-filter: var(--hud-backdrop);
+            -webkit-backdrop-filter: var(--hud-backdrop);
+            border: var(--hud-border);
+            box-shadow: var(--hud-shadow);
+            border-radius: var(--hud-radius);
             width: 410px;
             max-height: 92vh;
             display: flex;
             flex-direction: row;
             overflow: hidden;
-            transition: opacity 0.3s ease, transform 0.3s ease;
+            transition: opacity 0.3s ease, transform 0.3s ease, background 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
         }
 
         #hud.hidden {
@@ -95,8 +350,8 @@
         .activity-bar {
             width: 48px;
             min-width: 48px;
-            background: rgba(4, 5, 12, 0.96);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--hud-sidebar-bg);
+            border-right: 1px solid var(--hud-sidebar-border);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -157,8 +412,8 @@
         }
 
         .activity-tab.active {
-            color: #00ffff;
-            background: rgba(0, 255, 255, 0.12);
+            color: var(--hud-accent);
+            background: var(--hud-tab-active-bg);
         }
 
         .activity-tab.active::before {
@@ -168,15 +423,16 @@
             top: 6px;
             bottom: 6px;
             width: 3px;
-            background: #00ffff;
+            background: var(--hud-tab-active-border);
             border-radius: 0 3px 3px 0;
-            box-shadow: 0 0 10px #00ffff;
+            box-shadow: var(--hud-accent-glow);
         }
 
         .activity-tab .act-icon {
             width: 18px;
             height: 18px;
-            transition: transform 0.15s;
+            filter: var(--hud-icon-filter);
+            transition: transform 0.15s, filter 0.3s ease;
         }
 
         .activity-tab:hover .act-icon {
@@ -1594,6 +1850,7 @@
                     <div class="hud-title">⚡ DJ VFX STUDIO</div>
                 </div>
                 <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
+                    <button class="btn-mini" id="btn-theme-cycle" title="Quick Cycle UI Theme & Icon Style [Alt+T]" style="padding:2px 6px; font-size:9px; background:rgba(255,170,0,0.18); border:1px solid rgba(255,170,0,0.45); color:#ffaa00; cursor:pointer; font-weight:700;">🎨 THEME</button>
                     <button class="btn-mini" id="btn-obs-toggle-hud" title="Enable / Blackout Mute Live Visuals for OBS" style="padding:2px 6px; font-size:9px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; cursor:pointer; font-weight:700;">🟢 OBS</button>
                     <button class="btn-mini" id="btn-obs-feed-hud" title="Open OBS Browser Source URL & Setup" style="padding:2px 6px; font-size:9px; background:rgba(0,180,255,0.2); border:1px solid rgba(0,180,255,0.45); color:#00e1ff; cursor:pointer; font-weight:700;">📡 OBS LINK</button>
                     <button class="btn-mini" id="btn-detach-console" title="Detach full DJ Control Console to a dedicated laptop window" style="padding:2px 6px; font-size:9px; background:rgba(255,0,255,0.18); border:1px solid rgba(255,0,255,0.45); color:#ff66ff; cursor:pointer; font-weight:700;">🎛️ DETACH</button>
@@ -1960,6 +2217,73 @@
                 <div style="display:flex; gap:6px; margin-top:10px;">
                     <button class="auto-btn" id="btn-auto-vj-panel" style="flex:1; padding:6px 10px; font-size:10px;">⚡ AUTO VJ TOGGLE</button>
                     <button class="flash-btn" id="btn-flash-panel" style="flex:1; padding:6px 10px; font-size:10px;">💥 STROBE BURST</button>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- UI THEME & CONTROL PANEL AESTHETICS        -->
+                <!-- ========================================== -->
+                <div class="hud-section" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--hud-border-dim, rgba(255,255,255,0.08));">
+                    <div class="hud-row" style="margin-bottom:6px;">
+                        <span class="hud-label">🎨 UI THEME & PANEL STYLE</span>
+                        <span class="hud-badge" id="theme-active-badge">CYBER GLASS</span>
+                    </div>
+
+                    <div class="theme-selector-grid" id="theme-selector-grid">
+                        <!-- Theme 1: Default Cyber Glass -->
+                        <div class="theme-card active" data-theme="default" title="Cyber Glassmorphism (Default)">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, rgba(8,9,20,0.95), rgba(0,255,204,0.3)); border-color:#00ffcc;">
+                                <div class="theme-swatch-dot" style="background:#00ffcc; box-shadow:0 0 6px #00ffcc;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Cyber Glass (Default)</span>
+                                <span class="theme-desc">Frosted glassmorphism & cyan neon</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 2: Cyberpunk Neon Matrix -->
+                        <div class="theme-card" data-theme="cyberpunk" title="Cyberpunk Neon Matrix">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #12061f, #ff007f); border-color:#ff007f;">
+                                <div class="theme-swatch-dot" style="background:#ff007f; box-shadow:0 0 6px #ff007f;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Cyberpunk Matrix</span>
+                                <span class="theme-desc">High-voltage magenta & laser glow</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 3: Obsidian Stealth -->
+                        <div class="theme-card" data-theme="obsidian" title="Obsidian Stealth Minimalist">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #050508, #202026); border-color:#ffffff;">
+                                <div class="theme-swatch-dot" style="background:#ffffff; box-shadow:0 0 6px #ffffff;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Obsidian Stealth</span>
+                                <span class="theme-desc">Matte OLED black & razor lines</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 4: Titanium Pioneer Pro -->
+                        <div class="theme-card" data-theme="titanium" title="Titanium Pioneer Pro Hardware">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #181920, #ff8800); border-color:#ff8800;">
+                                <div class="theme-swatch-dot" style="background:#ff8800; box-shadow:0 0 6px #ff8800;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Titanium Pioneer Pro</span>
+                                <span class="theme-desc">CDJ carbon & amber LEDs</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 5: Analog Synthwave Studio -->
+                        <div class="theme-card" data-theme="analog" title="Analog Synthwave Studio">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #1a120b, #ffaa00); border-color:#ffaa00;">
+                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Analog Synthwave Studio</span>
+                                <span class="theme-desc">Warm 80s amber phosphor CRT</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2478,24 +2802,79 @@
                     </p>
                 </div>
 
+                <!-- ========================================== -->
+                <!-- GITHUB RELEASES & DESKTOP DOWNLOADS        -->
+                <!-- ========================================== -->
+                <div class="hud-section" style="background:linear-gradient(135deg, rgba(0,255,204,0.08) 0%, rgba(0,128,255,0.08) 100%); border:1px solid rgba(0,255,204,0.3); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
+                        <span>💾 DOWNLOAD LATEST APP (GITHUB)</span>
+                        <span class="hud-badge" style="background:rgba(0,255,204,0.2); border-color:#00ffcc; color:#00ffcc; font-size:8.5px;">v1.0.0 LATEST</span>
+                    </div>
+                    <p style="font-size:9.5px; color:rgba(255,255,255,0.85); margin:0 0 8px 0; line-height:1.45;">
+                        Download packaged standalone desktop application installers (macOS Apple Silicon/Intel & Windows) directly from the official GitHub Releases page:
+                    </p>
+                    <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:6px; background:linear-gradient(135deg, rgba(0,255,204,0.25) 0%, rgba(0,180,255,0.25) 100%); border:1px solid #00ffcc; color:#ffffff; font-weight:800; font-size:10.5px; padding:7px 10px; border-radius:6px; text-decoration:none; margin-bottom:8px; box-shadow:0 0 12px rgba(0,255,204,0.3); transition:all 0.2s ease;">
+                        <span>🚀 Open GitHub Releases & Downloads</span>
+                    </a>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px;">
+                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:5px; padding:5px 8px; text-decoration:none; color:#ffffff; font-size:9px; text-align:center; display:block;">
+                            🍎 <strong>macOS</strong> (.dmg / .zip)
+                        </a>
+                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.15); border-radius:5px; padding:5px 8px; text-decoration:none; color:#ffffff; font-size:9px; text-align:center; display:block;">
+                            🪟 <strong>Windows</strong> (.exe)
+                        </a>
+                    </div>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- HARDWARE REQUIREMENTS & PERFORMANCE GUIDE  -->
+                <!-- ========================================== -->
+                <div class="hud-section" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#ffcc00; font-weight:800;">⚡ HARDWARE REQUIREMENTS & OBS GUIDE</div>
+                    
+                    <div style="margin-bottom:8px; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 8px; border-left:3px solid #00ffcc;">
+                        <div style="font-size:9.5px; font-weight:800; color:#00ffcc; margin-bottom:2px;">RECOMMENDED FOR 4K / OBS LIVE STREAMING:</div>
+                        <div style="font-size:8.5px; color:rgba(255,255,255,0.8); line-height:1.4;">
+                            • <strong>Apple Mac:</strong> M2 Pro / M2 Max / M3 Pro / M4 (16+ GPU Cores) & 16GB+ RAM<br>
+                            • <strong>Windows PC:</strong> Intel i7/i9 12th+ Gen or AMD Ryzen 7 + Dedicated NVIDIA RTX 3060/4070+<br>
+                            • <strong>Displays:</strong> Dedicated 2nd display output for stage projector or OBS HDMI capture
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom:8px; background:rgba(0,0,0,0.3); border-radius:6px; padding:6px 8px; border-left:3px solid #ffaa00;">
+                        <div style="font-size:9.5px; font-weight:800; color:#ffaa00; margin-bottom:2px;">MINIMUM STANDALONE SPECS (1080p 60FPS):</div>
+                        <div style="font-size:8.5px; color:rgba(255,255,255,0.8); line-height:1.4;">
+                            • Apple M1 or Intel Core i5 (8th Gen+) / 8GB RAM / Metal or WebGL2 GPU
+                        </div>
+                    </div>
+
+                    <div style="background:rgba(255,0,127,0.08); border:1px solid rgba(255,0,127,0.25); border-radius:6px; padding:6px 8px;">
+                        <div style="font-size:9px; font-weight:800; color:#ff66aa; margin-bottom:2px;">💡 OBS PERFORMANCE PRO-TIPS:</div>
+                        <div style="font-size:8px; color:rgba(255,255,255,0.75); line-height:1.4;">
+                            • In <strong>OBS Settings ➔ Output</strong>, set Video Encoder to <em>Apple VideoToolbox (Hardware)</em> or <em>NVIDIA NVENC</em> so CPU is not throttled.<br>
+                            • If driving heavy 4K external LED walls, set DPR in Calibration [Alt+3] to 1.0x.
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Build Information & Date/Time (DTTM) Card -->
                 <div class="hud-section" style="background:rgba(0,0,0,0.35); border:1px solid rgba(0,255,204,0.2); border-radius:8px; padding:10px 12px; margin-bottom:10px;">
                     <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800;">BUILD & SYSTEM METADATA</div>
                     <div class="hud-row" style="margin-bottom:4px;">
                         <span class="hud-label">RELEASE VERSION</span>
-                        <span class="hud-val" id="about-build-ver" style="color:#00ffcc; font-weight:700; font-family:'JetBrains Mono',monospace;">v2.8.5</span>
+                        <span class="hud-val" id="about-build-ver" style="color:#00ffcc; font-weight:700; font-family:'JetBrains Mono',monospace;">v1.0.0</span>
                     </div>
                     <div class="hud-row" style="margin-bottom:4px;">
                         <span class="hud-label">BUILD NUMBER</span>
-                        <span class="hud-val" id="about-build-num" style="color:rgba(255,255,255,0.9); font-family:'JetBrains Mono',monospace;">20260928.1450.00</span>
+                        <span class="hud-val" id="about-build-num" style="color:rgba(255,255,255,0.9); font-family:'JetBrains Mono',monospace;">20261004.1830.00</span>
                     </div>
                     <div class="hud-row" style="margin-bottom:4px;">
-                        <span class="hud-label">BUILD DATE & TIME (DTTM)</span>
-                        <span class="hud-val" id="about-build-dttm" style="color:#ffcc00; font-weight:600; font-family:'JetBrains Mono',monospace;">2026-09-28 14:50 BST</span>
+                        <span class="hud-label">DESKTOP PACKAGING</span>
+                        <span class="hud-val" style="color:#00ffcc; font-weight:600; font-family:'JetBrains Mono',monospace; font-size:9px;">Electron & WebGL GPU • 60 FPS</span>
                     </div>
                     <div class="hud-row" style="margin-bottom:0;">
-                        <span class="hud-label">GRAPHICS PIPELINE</span>
-                        <span class="hud-val" style="color:rgba(255,255,255,0.7); font-family:'JetBrains Mono',monospace; font-size:9px;">Three.js WebGL • 60 FPS</span>
+                        <span class="hud-label">GITHUB REPO</span>
+                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio" target="_blank" rel="noopener noreferrer" style="color:#00ffff; text-decoration:none; font-family:'JetBrains Mono',monospace; font-size:9px;">github.com/vikingvoodoo1/dj-vfx-studio</a>
                     </div>
                 </div>
 
