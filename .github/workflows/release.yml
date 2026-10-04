@@ -1,0 +1,72 @@
+name: Build and Release DJ VFX Studio
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build & Package (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Web Application
+        run: npm run build
+
+      - name: Build Electron App & Artifacts
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx electron-builder --publish always
+
+  create-github-release:
+    name: Publish Release Notes
+    needs: build-and-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          name: DJ VFX Studio ${{ github.ref_name }}
+          body: |
+            ## 🎛️ DJ VFX Studio ${{ github.ref_name }} Release
+            
+            ### ✨ Highlights
+            - **22 Audio-Reactive 3D/GLSL Stage Visual Engines** (including Cyberpunk Matrix, VHS Dreamlover, LED Wall, Neural Lattice, and more).
+            - **Philips Hue Smart Lighting Integration** (Dynamic Bass Kick White Strobe, Energy-mapped room color palettes, LAN autodiscovery).
+            - **Live StageLinq / Denon DJ / Rekordbox / Traktor DJ Engine Bridge** with real-time BPM, deck telemetry & dynamic broadcast lower thirds.
+            - **OBS Studio Live Production Feed** (Transparent Stage Camera Overlay + Solid Visual Stage modes).
+            - **High-Precision VU & Loudness Telemetry** (-48dB to 0dBFS True Peak, Integrated LUFS & Headroom Metering).
+            - **macOS System & VLC Headphone Audio Capture** with full multi-channel routing support.
+            - **Multi-Theme Dynamic UI Switcher** (`Cyber Glass`, `Cyberpunk Matrix`, `Obsidian Stealth`, `Titanium Pioneer Pro`, `Analog Synthwave Studio`).
+            
+            ### 📦 Download Instructions:
+            - **macOS (Apple Silicon & Intel)**: Download the `.dmg` or `.zip` file below. Drag into your Applications folder.
+            - **Windows 10/11**: Download the `.exe` (Installer or Portable).
+            - **Linux**: Download the `.AppImage` and run `chmod +x` to execute.
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

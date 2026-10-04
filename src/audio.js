@@ -220,6 +220,7 @@ export async function setupAudio(onDeviceListChange) {
                 currentStream.getTracks().forEach(track => {
                     track.onended = null;
                     track.onmute = null;
+                    track.onunmute = null;
                     track.stop();
                 });
             } catch (e) {}
@@ -237,9 +238,17 @@ export async function setupAudio(onDeviceListChange) {
                     echoCancellation: false,
                     noiseSuppression: false,
                     autoGainControl: false,
-                    channelCount: 2
+                    channelCount: 2,
+                    suppressLocalAudioPlayback: false
                 },
-                video: true
+                video: {
+                    width: { max: 1 },
+                    height: { max: 1 },
+                    frameRate: { max: 1 }
+                },
+                systemAudio: 'include',
+                surfaceSwitching: 'include',
+                selfBrowserSurface: 'exclude'
             });
         } catch (err) {
             isConnecting = false;
@@ -254,12 +263,17 @@ export async function setupAudio(onDeviceListChange) {
             stream.getTracks().forEach(t => t.stop());
             return {
                 success: false,
-                error: 'No audio track received. When sharing screen or tab, ensure "Share Audio" / "Also share tab audio" is enabled.'
+                error: 'No audio track received. In the screen/tab capture dialog, select "Entire Screen" and ensure "Also share system audio" is checked at the bottom left.'
             };
         }
 
-        // Stop video tracks immediately so zero screen recording occurs
-        stream.getVideoTracks().forEach(t => t.stop());
+        // CRITICAL FIX FOR CHROMIUM/MACOS:
+        // Do NOT call `stop()` on video tracks! Calling stop() on the video track terminates the entire
+        // display capture session in Chrome, which immediately closes the audio track and fires onended.
+        // Instead, simply disable the video track so zero video rendering occurs.
+        stream.getVideoTracks().forEach(t => {
+            t.enabled = false;
+        });
 
         try {
             currentStream = stream;
@@ -267,12 +281,31 @@ export async function setupAudio(onDeviceListChange) {
             const audioTrack = audioTracks[0];
             currentDeviceLabel = audioTrack.label || '🖥️ System / Tab Audio Stream';
 
+            // Create an audio-only MediaStream for Web Audio Source
+            const audioOnlyStream = new MediaStream([audioTrack]);
+
             audioTrack.onended = () => {
                 console.warn('[Audio Engine] System/Tab stream ended. Switching back to default...');
-                connectDevice('default');
+                try {
+                    stream.getTracks().forEach(t => t.stop());
+                } catch (e) {}
+                if (currentDeviceId === 'system-tab-audio') {
+                    connectDevice('default');
+                }
             };
 
-            currentSource = audioCtx.createMediaStreamSource(stream);
+            audioTrack.onmute = () => {
+                console.warn('[Audio Engine] System audio track muted by OS');
+            };
+
+            audioTrack.onunmute = () => {
+                console.log('[Audio Engine] System audio track unmuted');
+                if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
+                    audioCtx.resume();
+                }
+            };
+
+            currentSource = audioCtx.createMediaStreamSource(audioOnlyStream);
             currentSource.connect(analyser);
 
             if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {

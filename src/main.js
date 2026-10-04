@@ -1140,6 +1140,14 @@ async function init() {
         defaultOpt.textContent = 'Default System / Deck Input';
         audioDeviceSelect.appendChild(defaultOpt);
 
+        if (currentId === 'system-tab-audio') {
+            const sysOpt = document.createElement('option');
+            sysOpt.value = 'system-tab-audio';
+            sysOpt.textContent = '🖥️ System / Tab Audio Stream (Active)';
+            sysOpt.selected = true;
+            audioDeviceSelect.appendChild(sysOpt);
+        }
+
         devices.forEach((dev, index) => {
             const opt = document.createElement('option');
             opt.value = dev.deviceId;
@@ -1169,7 +1177,7 @@ async function init() {
                 updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
             });
 
-            if (currentSelectedDeviceId && currentSelectedDeviceId !== 'default') {
+            if (currentSelectedDeviceId && currentSelectedDeviceId !== 'default' && currentSelectedDeviceId !== 'system-tab-audio') {
                 await audioProcessor.switchDevice(currentSelectedDeviceId);
             }
 
@@ -1178,7 +1186,7 @@ async function init() {
 
             if (sliderGain) audioProcessor.setGain(sliderGain.value);
             if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
-        } else if (targetDeviceId !== null) {
+        } else if (targetDeviceId !== null && targetDeviceId !== 'system-tab-audio') {
             await audioProcessor.switchDevice(deviceToUse);
         }
 
@@ -1186,14 +1194,15 @@ async function init() {
 
         if (audioProcessor.isConnected()) {
             const devInfo = audioProcessor.getCurrentDevice();
+            const isSysAudio = devInfo.id === 'system-tab-audio';
             const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
-            audioStatus.innerHTML = `<span style="color:#00ffcc" title="${devInfo.label}">● ${cleanLabel}</span>`;
-            if (audioDeviceBadge) audioDeviceBadge.textContent = 'LINE-IN';
+            audioStatus.innerHTML = `<span style="color:${isSysAudio ? '#00d2ff' : '#00ffcc'}" title="${devInfo.label}">● ${cleanLabel}</span>`;
+            if (audioDeviceBadge) audioDeviceBadge.textContent = isSysAudio ? 'SYS AUDIO' : 'LINE-IN';
             const tabAudio = document.querySelector('.activity-tab[data-tab="audio"]');
             if (tabAudio) tabAudio.classList.add('has-dot');
             hudStatus.textContent = 'LIVE REACTIVE';
-            hudStatus.style.borderColor = '#00ffcc';
-            hudStatus.style.color = '#00ffcc';
+            hudStatus.style.borderColor = isSysAudio ? '#00d2ff' : '#00ffcc';
+            hudStatus.style.color = isSysAudio ? '#00d2ff' : '#00ffcc';
         } else {
             audioStatus.innerHTML = `<span style="color:#ffaa00">● Simulated Audio</span>`;
             if (audioDeviceBadge) audioDeviceBadge.textContent = 'SIM';
@@ -1206,6 +1215,7 @@ async function init() {
 
     if (audioDeviceSelect) {
         audioDeviceSelect.addEventListener('change', async (e) => {
+            if (e.target.value === 'system-tab-audio') return;
             await enableAudioAndMedia(e.target.value);
         });
     }
@@ -1237,8 +1247,11 @@ async function init() {
                     hudStatus.textContent = 'LIVE REACTIVE';
                     hudStatus.style.borderColor = '#00d2ff';
                     hudStatus.style.color = '#00d2ff';
-                } else if (res.error && !res.error.includes('Permission denied') && !res.error.includes('cancelled')) {
-                    alert(res.error);
+                    showToast('🖥️ System / Tab Audio Stream Connected!');
+                } else if (res.error) {
+                    if (!res.error.includes('Permission denied') && !res.error.includes('cancelled') && !res.error.includes('canceled')) {
+                        alert(res.error);
+                    }
                 }
             }
         });
