@@ -368,7 +368,6 @@ const WawaSenseiGodrayShader = {
 
             // 7. Total Alpha calculation with rich multi-octave shading
             float alpha = clamp(rayShafts * fresnel * smoothFade * fogDamping * fogIllumination * forwardScattering * uIntensity, 0.0, 1.0);
-            if (alpha <= 0.001) discard;
 
             // 8. Hyper-Vibrant Neon Color Grading (Intensely saturated, electric tones, never pale)
             vec3 vibrantColor = pow(uColor, vec3(0.85)) * 1.35;
@@ -415,10 +414,9 @@ const FloorSpotShader = {
         void main() {
             vec2 p = vUv * 2.0 - 1.0;
             float rSq = dot(p, p);
-            if (rSq > 1.0) discard;
 
             // Ultra-smooth radial falloff (soft Gaussian glow edge, zero square/hard edges)
-            float spot = exp(-rSq * 3.4) * (1.0 - smoothstep(0.70, 1.0, sqrt(rSq)));
+            float spot = (rSq > 1.0) ? 0.0 : (exp(-rSq * 3.4) * (1.0 - smoothstep(0.70, 1.0, sqrt(rSq))));
             
             // Searing white-hot core at center of spotlight impact
             float core = exp(-rSq * 14.0);
@@ -469,92 +467,42 @@ const FloatingAtmosphericFogShader = {
         varying vec2 vUv;
         varying vec3 vWorldPos;
 
-        // 3D Smooth FBM Simplex Noise for silky continuous drifting smoke
-        vec3 mod289Fog(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 mod289Fog(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
-        vec4 permuteFog(vec4 x) { return mod289Fog(((x * 34.0) + 1.0) * x); }
-        vec4 taylorInvSqrtFog(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
-
-        float snoiseFog(vec3 v) {
-            const vec2 C = vec2(1.0/6.0, 1.0/3.0);
-            const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
-            vec3 i  = floor(v + dot(v, C.yyy));
-            vec3 x0 = v - i + dot(i, C.xxx);
-            vec3 g = step(x0.yzx, x0.xyz);
-            vec3 l = 1.0 - g;
-            vec3 i1 = min(g.xyz, l.zxy);
-            vec3 i2 = max(g.xyz, l.zxy);
-            vec3 x1 = x0 - i1 + C.xxx;
-            vec3 x2 = x0 - i2 + C.yyy;
-            vec3 x3 = x0 - D.yyy;
-            i = mod289Fog(i);
-            vec4 p = permuteFog(permuteFog(permuteFog(
-                        i.z + vec4(0.0, i1.z, i2.z, 1.0))
-                    + i.y + vec4(0.0, i1.y, i2.y, 1.0))
-                    + i.x + vec4(0.0, i1.x, i2.x, 1.0));
-            float n_ = 0.142857142857;
-            vec3 ns = n_ * D.wyz - D.xzx;
-            vec4 j = p - 49.0 * floor(p * ns.z);
-            vec4 x_ = floor(j * ns.z);
-            vec4 y_ = floor(j - 7.0 * x_);
-            vec4 x = x_ * ns.x + ns.yyyy;
-            vec4 y = y_ * ns.x + ns.yyyy;
-            vec4 h = 1.0 - abs(x) - abs(y);
-            vec4 b0 = vec4(x.xy, y.xy);
-            vec4 b1 = vec4(x.zw, y.zw);
-            vec4 s0 = floor(b0)*2.0 + 1.0;
-            vec4 s1 = floor(b1)*2.0 + 1.0;
-            vec4 sh = -step(h, vec4(0.0));
-            vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
-            vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
-            vec3 p0 = vec3(a0.xy, h.x);
-            vec3 p1 = vec3(a0.zw, h.y);
-            vec3 p2 = vec3(a1.xy, h.z);
-            vec3 p3 = vec3(a1.zw, h.w);
-            vec4 norm = taylorInvSqrtFog(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
-            p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
-            vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
-            m = m * m;
-            return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        // Silky smooth, ultra-fast 3D wave turbulence for floating nightclub fog
+        float fogTurbulence(vec3 p) {
+            float w1 = sin(p.x * 1.15 + p.y * 0.85 + sin(p.z * 1.05 + p.x * 0.55)) * 0.5 + 0.5;
+            float w2 = sin(p.y * 1.95 - p.z * 1.45 + sin(p.x * 1.65 + p.y * 0.35)) * 0.5 + 0.5;
+            float w3 = cos(p.z * 2.85 + p.x * 2.15 - p.y * 1.25) * 0.5 + 0.5;
+            return w1 * 0.56 + w2 * 0.30 + w3 * 0.14;
         }
 
         void main() {
-            // Silky smooth continuous 3D drifting fog coordinates (zero block pixels!)
             vec3 p = vWorldPos * 0.065;
             p.x += uTime * 0.025;
             p.y -= uTime * 0.012;
             p.z += sin(uTime * 0.02 + vWorldPos.x * 0.04) * 0.20;
 
-            float n1 = snoiseFog(p);
-            float n2 = snoiseFog(p * 2.2 + vec3(uTime * 0.025, -uTime * 0.035, 0.0)) * 0.5;
-            float n3 = snoiseFog(p * 4.4 + vec3(-uTime * 0.04, uTime * 0.02, 0.0)) * 0.25;
-            float rawDensity = smoothstep(0.08, 0.75, (n1 + n2 + n3) * 0.75) * (0.45 + uBass * 0.35);
+            float turb = fogTurbulence(p);
+            float turb2 = fogTurbulence(p * 2.2 + vec3(uTime * 0.02, -uTime * 0.03, 0.0));
+            float combined = turb * 0.70 + turb2 * 0.30;
+            float rawDensity = smoothstep(0.10, 0.76, combined) * (0.45 + uBass * 0.35);
 
-            // Smooth radial & UV boundary edge falloffs (no square edges!)
             float uvEdgeFade = smoothstep(0.0, 0.18, vUv.x) * smoothstep(1.0, 0.82, vUv.x) * smoothstep(0.0, 0.18, vUv.y) * smoothstep(1.0, 0.82, vUv.y);
             float distXZ = length(vWorldPos.xz) / 36.0;
             float edgeFade = (1.0 - smoothstep(0.35, 0.95, distXZ)) * uvEdgeFade;
             float heightFade = smoothstep(-8.0, -3.5, vWorldPos.y) * (1.0 - smoothstep(3.0, 8.5, vWorldPos.y));
 
             float fogDensity = rawDensity * edgeFade * heightFade;
-            if (fogDensity <= 0.002) discard;
 
-            // Ambient dark moody haze base
-            vec3 ambientHaze = vec3(0.006, 0.012, 0.024);
-            vec3 dynamicLightColor = ambientHaze;
+            vec3 dynamicLightColor = vec3(0.006, 0.012, 0.024);
             float totalLightIntensity = 0.0;
 
-            // Dynamically shade the fog with the 8 moving-head light beams
             for (int i = 0; i < 8; i++) {
                 vec3 toFog = vWorldPos - uSpotPos[i];
                 float distAlong = dot(toFog, uSpotDir[i]);
-                
                 if (distAlong > 0.0 && distAlong < 28.0) {
                     vec3 axialPoint = uSpotPos[i] + uSpotDir[i] * distAlong;
                     float radDist = length(vWorldPos - axialPoint);
                     float coneRadius = 0.22 + 2.85 * (distAlong / 28.0);
-                    
-                    // Cone beam mask with soft Penumbra falloff
                     float beamMask = smoothstep(coneRadius * 1.35, 0.0, radDist);
                     float depthFade = smoothstep(0.0, 2.0, distAlong) * (1.0 - smoothstep(20.0, 28.0, distAlong));
                     float beamIllum = beamMask * depthFade * uSpotIntensity[i];
@@ -565,16 +513,321 @@ const FloatingAtmosphericFogShader = {
                 }
             }
 
-            // Alpha scales with base fog density + extra density illumination when light cuts through
             float finalAlpha = clamp(fogDensity * (0.28 + totalLightIntensity * 0.85) * uIntensity, 0.0, 1.0);
-            if (finalAlpha <= 0.002) discard;
-
             gl_FragColor = vec4(dynamicLightColor * finalAlpha, finalAlpha);
         }
     `
 };
 // -------------------------------------------------------------------------
-// Protean Clouds Volumetric Raymarching Shader (nimitz / WebGL2 Fundamentals)
+// VHS Glitch White Typography Shader (High-Contrast, Scanlines, Tracking Noise, RGB Split & Tape Glitch)
+// -------------------------------------------------------------------------
+const VHSGlitchTextShader = {
+    uniforms: {
+        tDiffuse: { value: null },
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uGlitch: { value: 0.0 },
+        uTextColor: { value: new THREE.Color(0xffffff) },
+        uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+        uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+        uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+        uSpotIntensity: { value: new Float32Array(8) }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+
+        void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            vNormal = normalize(mat3(modelMatrix) * normal);
+            vViewDir = normalize(cameraPosition - wp.xyz);
+            gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D tDiffuse;
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uGlitch;
+        uniform vec3 uTextColor;
+        uniform vec3 uSpotPos[8];
+        uniform vec3 uSpotDir[8];
+        uniform vec3 uSpotColor[8];
+        uniform float uSpotIntensity[8];
+
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        varying vec3 vNormal;
+        varying vec3 vViewDir;
+
+        void main() {
+            vec2 uv = vUv;
+            float glitchFactor = clamp(uGlitch + uBass * 0.35, 0.0, 1.8);
+
+            // 1. CRT Cathode Ray Tube Glass Curvature (Convex Barrel Distortion / CC Lens)
+            vec2 uvCent = uv - 0.5;
+            vec2 uvDistort = uvCent;
+            uvDistort.x *= 2.0; // 2:1 aspect ratio compensation
+            float r2 = dot(uvDistort, uvDistort);
+            float barrelStrength = 0.10 + glitchFactor * 0.035;
+            vec2 uvCrt = uv + uvCent * (r2 * barrelStrength + r2 * r2 * 0.03);
+
+            // CRT Tube Border Clipping
+            if (uvCrt.x < 0.010 || uvCrt.x > 0.990 || uvCrt.y < 0.014 || uvCrt.y > 0.986) {
+                discard;
+            }
+
+            // 2. Analog Tape Sync Jitter & Interlace Tear on Beat
+            float syncJitter = sin(uTime * 48.0 + uvCrt.y * 160.0) * 0.0018 * glitchFactor;
+            float tearLine = step(0.965 - glitchFactor * 0.03, sin(uvCrt.y * 36.0 + uTime * 11.0));
+            float tearShift = tearLine * (sin(uTime * 60.0) * 0.014) * glitchFactor;
+            vec2 uvSample = uvCrt + vec2(syncJitter + tearShift, 0.0);
+
+            // 3. RGB Chromatic Channel Shift & Electron Gun Convergence Misalignment
+            float caSpread = (0.0028 + r2 * 0.0035) * (1.0 + glitchFactor * 0.65);
+            vec3 rawR = texture2D(tDiffuse, uvSample + vec2(caSpread, 0.0)).rgb;
+            vec3 rawG = texture2D(tDiffuse, uvSample).rgb;
+            vec3 rawB = texture2D(tDiffuse, uvSample - vec2(caSpread, 0.0)).rgb;
+
+            float rAlpha = texture2D(tDiffuse, uvSample + vec2(caSpread, 0.0)).a;
+            float gAlpha = texture2D(tDiffuse, uvSample).a;
+            float bAlpha = texture2D(tDiffuse, uvSample - vec2(caSpread, 0.0)).a;
+            float maxAlpha = max(max(rAlpha, gAlpha), bAlpha);
+
+            // Discard fully transparent background pixels
+            if (maxAlpha < 0.02) {
+                discard;
+            }
+
+            // Synthesize RGB signal from shifted channels for rich chromatic split
+            vec3 rawSignal = vec3(rawR.r, rawG.g, rawB.b);
+
+            // 4. Boost Color Saturation / Vibrance (After Effects Color Processing)
+            float luma = dot(rawSignal, vec3(0.299, 0.587, 0.114));
+            vec3 vividSignal = mix(vec3(luma), rawSignal, 1.65); // 65% Saturation boost
+
+            // 5. RGB Phosphor Triad Dot Matrix (Sony Trinitron Aperture Grille Grid)
+            float triadCoord = uvCrt.x * 740.0;
+            float triadFrac = fract(triadCoord);
+
+            vec3 triadMask;
+            triadMask.r = smoothstep(0.42, 0.06, abs(triadFrac - 0.166)) * 2.8;
+            triadMask.g = smoothstep(0.42, 0.06, abs(triadFrac - 0.500)) * 2.8;
+            triadMask.b = smoothstep(0.42, 0.06, abs(triadFrac - 0.833)) * 2.8;
+
+            // Vertical phosphor slot divisions (shadow mask black gaps)
+            float triadSlotY = fract(uvCrt.y * 360.0);
+            float slotMask = smoothstep(0.08, 0.18, triadSlotY) * (1.0 - smoothstep(0.82, 0.92, triadSlotY));
+            vec3 phosphorGrid = triadMask * (slotMask * 0.85 + 0.15) + vec3(0.03);
+
+            // 6. Venetian Scanlines & 60Hz Cathode Refresh Bar
+            float scanline = sin(uvCrt.y * 620.0 * 3.14159265);
+            float scanlineMask = smoothstep(-0.45, 0.65, scanline);
+            float scanMod = mix(0.25, 1.18, scanlineMask); // High contrast dark scanline gaps
+
+            // 60Hz rolling scan bar & hum
+            float rollBar = sin(uvCrt.y * 2.6 - uTime * 4.5) * 0.05 + 0.95;
+            float crtHum = 0.98 + 0.02 * sin(uTime * 110.0);
+
+            // 7. Direct Phosphor Emission
+            vec3 phosphorLit = vividSignal * phosphorGrid * scanMod * rollBar * crtHum;
+
+            // 8. Controlled Outer Halation Aura (Clean white phosphor edge glow without washing out core)
+            float glowR = 0.005;
+            vec3 glowSamp = (
+                texture2D(tDiffuse, uvSample + vec2(glowR, 0.0)).rgb +
+                texture2D(tDiffuse, uvSample - vec2(glowR, 0.0)).rgb +
+                texture2D(tDiffuse, uvSample + vec2(0.0, glowR * 1.5)).rgb +
+                texture2D(tDiffuse, uvSample - vec2(0.0, glowR * 1.5)).rgb
+            ) * 0.25;
+
+            vec3 haloAura = glowSamp * vec3(0.92, 0.96, 1.0) * (1.0 - gAlpha * 0.75) * 0.40;
+
+            // Combine phosphor core and edge halation
+            vec3 crtColor = phosphorLit * 1.30 + haloAura;
+
+            // 9. S-Curve Contrast Enhancement (After Effects Curves Step)
+            // Deepens darks, boosts midtone saturation, and keeps highlights crisp
+            crtColor = clamp(crtColor, 0.0, 1.0);
+            crtColor = crtColor * crtColor * (3.0 - 2.0 * crtColor); // S-curve contrast
+            crtColor = pow(crtColor, vec3(0.92)); // Slight gamma tweak for rich punch
+
+            // Audio reactive kick surge
+            crtColor *= (1.0 + uBass * 0.22 + glitchFactor * 0.18);
+
+            // 10. Overhead Godray Spotlight Glass Sheen (Subtle Fresnel reflection)
+            vec3 tubeN = normalize(vec3(uvDistort.x * 0.6, uvDistort.y * 0.8, 1.0));
+            vec3 V = vViewDir;
+            vec3 godrayGlassReflection = vec3(0.0);
+
+            for (int i = 0; i < 8; i++) {
+                vec3 spotPos = uSpotPos[i];
+                vec3 spotDir = uSpotDir[i];
+                vec3 spotCol = uSpotColor[i];
+                float spotInt = uSpotIntensity[i];
+
+                vec3 toWord = vWorldPos - spotPos;
+                float distAlong = dot(toWord, spotDir);
+
+                if (distAlong > 0.0 && distAlong < 34.0) {
+                    vec3 axialPoint = spotPos + spotDir * distAlong;
+                    float radDist = length(vWorldPos - axialPoint);
+                    float coneRadius = 0.20 + 3.4 * (distAlong / 34.0);
+
+                    float beamMask = smoothstep(coneRadius * 1.20, coneRadius * 0.15, radDist);
+                    float depthFade = smoothstep(0.0, 2.5, distAlong) * (1.0 - smoothstep(22.0, 34.0, distAlong));
+                    float beamFactor = beamMask * depthFade * spotInt;
+
+                    if (beamFactor > 0.001) {
+                        vec3 L = normalize(spotPos - vWorldPos);
+                        vec3 H = normalize(L + V);
+                        float glassSpec = pow(max(0.0, dot(tubeN, H)), 48.0) * 0.28;
+                        godrayGlassReflection += spotCol * glassSpec * beamFactor;
+                    }
+                }
+            }
+
+            crtColor += godrayGlassReflection * (gAlpha * 0.35 + 0.04);
+
+            // 11. CRT Glass Tube Border Vignette
+            vec2 vigUV = uvCrt * (1.0 - uvCrt.yx);
+            float tubeVig = clamp(pow(vigUV.x * vigUV.y * 32.0, 0.28), 0.0, 1.0);
+            crtColor *= tubeVig;
+
+            float totalAlpha = clamp(maxAlpha * 1.20, 0.0, 1.0);
+            gl_FragColor = vec4(crtColor, totalAlpha);
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
+// Dual Inward-Billowing Atmospheric Smoke Shader (Rolling in from Left & Right)
+// -------------------------------------------------------------------------
+// -------------------------------------------------------------------------
+// Dual Inward-Billowing Atmospheric Smoke Shader (Rolling in from Left & Right)
+// -------------------------------------------------------------------------
+const DualInwardAtmosphericSmokeShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uIntensity: { value: 0.35 },
+        uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+        uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+        uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+        uSpotIntensity: { value: new Float32Array(8) },
+        uBass: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+        void main() {
+            vUv = uv;
+            vec4 wp = modelMatrix * vec4(position, 1.0);
+            vWorldPos = wp.xyz;
+            gl_Position = projectionMatrix * viewMatrix * wp;
+        }
+    `,
+    fragmentShader: `
+        uniform float uTime;
+        uniform float uIntensity;
+        uniform vec3 uSpotPos[8];
+        uniform vec3 uSpotDir[8];
+        uniform vec3 uSpotColor[8];
+        uniform float uSpotIntensity[8];
+        uniform float uBass;
+
+        varying vec2 vUv;
+        varying vec3 vWorldPos;
+
+        // Ultra-fast, silky continuous procedural wave turbulence (zero permutations, zero tile pipeline stalls)
+        float smokeTurbulence(vec3 p) {
+            float w1 = sin(p.x * 1.35 + p.y * 0.95 + sin(p.z * 1.15 + p.x * 0.65)) * 0.5 + 0.5;
+            float w2 = sin(p.y * 2.10 - p.z * 1.65 + sin(p.x * 1.85 + p.y * 0.45)) * 0.5 + 0.5;
+            float w3 = cos(p.z * 3.10 + p.x * 2.45 - p.y * 1.40) * 0.5 + 0.5;
+            return w1 * 0.55 + w2 * 0.32 + w3 * 0.18;
+        }
+
+        void main() {
+            // Directional Smoke Flow: Left stream advances right (+X), Right stream advances left (-X)
+            float speed = 0.085 + uBass * 0.06;
+            
+            // Left smoke stream (originating X < 0, flowing toward center +X)
+            vec3 pLeft = vWorldPos * 0.08;
+            pLeft.x -= uTime * speed;
+            pLeft.y -= uTime * 0.02;
+            pLeft.z += sin(uTime * 0.05 + vWorldPos.x * 0.06) * 0.30;
+            float leftWeight = smoothstep(5.0, -16.0, vWorldPos.x);
+
+            // Right smoke stream (originating X > 0, flowing toward center -X)
+            vec3 pRight = vWorldPos * 0.08;
+            pRight.x += uTime * speed;
+            pRight.y -= uTime * 0.02;
+            pRight.z += cos(uTime * 0.05 - vWorldPos.x * 0.06) * 0.30;
+            float rightWeight = smoothstep(-5.0, 16.0, vWorldPos.x);
+
+            // Center turbulent eddy
+            vec3 pCenter = vWorldPos * 0.095;
+            float swirlAngle = uTime * 0.22 + length(vWorldPos.xz) * 0.08;
+            pCenter.x += cos(swirlAngle) * 0.40;
+            pCenter.z += sin(swirlAngle) * 0.40;
+            pCenter.y -= uTime * 0.025;
+            float centerWeight = (1.0 - smoothstep(0.0, 12.0, abs(vWorldPos.x))) * 0.75;
+
+            float nL = smokeTurbulence(pLeft);
+            float leftDensity = nL * leftWeight;
+
+            float nR = smokeTurbulence(pRight);
+            float rightDensity = nR * rightWeight;
+
+            float nC = smokeTurbulence(pCenter);
+            float centerDensity = nC * centerWeight;
+
+            float combinedNoise = (leftDensity + rightDensity + centerDensity) * 0.95;
+            float rawDensity = smoothstep(0.12, 0.78, combinedNoise) * (0.50 + uBass * 0.35);
+
+            // Smooth boundary edge falloffs
+            float uvEdgeFade = smoothstep(0.0, 0.16, vUv.x) * smoothstep(1.0, 0.84, vUv.x) * smoothstep(0.0, 0.16, vUv.y) * smoothstep(1.0, 0.84, vUv.y);
+            float distXZ = length(vWorldPos.xz) / 38.0;
+            float edgeFade = (1.0 - smoothstep(0.38, 0.96, distXZ)) * uvEdgeFade;
+            float heightFade = smoothstep(-9.0, -4.0, vWorldPos.y) * (1.0 - smoothstep(4.0, 9.5, vWorldPos.y));
+
+            float smokeDensity = rawDensity * edgeFade * heightFade;
+
+            // Ambient dark atmospheric fog base
+            vec3 dynamicLightColor = vec3(0.015, 0.020, 0.030);
+            float totalLightIntensity = 0.0;
+
+            // Overhead god lights cutting through the rolling smoke billows
+            for (int i = 0; i < 8; i++) {
+                vec3 toSmoke = vWorldPos - uSpotPos[i];
+                float distAlong = dot(toSmoke, uSpotDir[i]);
+                
+                if (distAlong > 0.0 && distAlong < 32.0) {
+                    vec3 axialPoint = uSpotPos[i] + uSpotDir[i] * distAlong;
+                    float radDist = length(vWorldPos - axialPoint);
+                    float coneRadius = 0.22 + 3.0 * (distAlong / 32.0);
+                    
+                    float beamMask = smoothstep(coneRadius * 1.30, 0.0, radDist);
+                    float depthFade = smoothstep(0.0, 2.0, distAlong) * (1.0 - smoothstep(22.0, 32.0, distAlong));
+                    float beamIllum = beamMask * depthFade * uSpotIntensity[i];
+
+                    vec3 spotCol = pow(uSpotColor[i], vec3(0.9)) * 1.6;
+                    dynamicLightColor += spotCol * beamIllum * 2.2;
+                    totalLightIntensity += beamIllum;
+                }
+            }
+
+            float finalAlpha = clamp(smokeDensity * (0.32 + totalLightIntensity * 0.95) * uIntensity, 0.0, 1.0);
+            gl_FragColor = vec4(dynamicLightColor * finalAlpha, finalAlpha);
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
+// Protean Clouds Volumetric Raymarching Shader (High-Performance Optimized)
 // Pure Ethereal Platinum Diamond White Monochrome Volumetric Cloudscape
 // -------------------------------------------------------------------------
 const ProteanCloudsShader = {
@@ -602,7 +855,6 @@ const ProteanCloudsShader = {
         uniform float uIntensity;
         varying vec2 vUv;
 
-        // Protean clouds algorithm by nimitz (https://www.shadertoy.com/view/3l23Rh)
         mat2 rot(in float a){ float c = cos(a), s = sin(a); return mat2(c, s, -s, c); }
         const mat3 m3 = mat3(0.33338, 0.56034, -0.71817, -0.87887, 0.32651, -0.15323, 0.15162, 0.69596, 0.61339) * 1.93;
         float mag2(vec2 p){ return dot(p, p); }
@@ -620,7 +872,7 @@ const ProteanCloudsShader = {
             float z = 1.0;
             float trk = 1.0;
             float dspAmp = 0.10 + prm1 * 0.20 + bassMod * 0.12;
-            for(int i = 0; i < 5; i++) {
+            for(int i = 0; i < 3; i++) {
                 p += sin(p.zxy * 0.75 * trk + time * trk * 0.8) * dspAmp;
                 d -= abs(dot(cos(p), sin(p.yzx)) * z);
                 z *= 0.57;
@@ -670,15 +922,13 @@ const ProteanCloudsShader = {
             float prm1 = smoothstep(-0.4, 0.4, sin(uTime * 0.22));
             float bassMod = uBass * 0.35;
 
-            // Raymarching volumetric clouds
+            // Fast adaptive raymarching volumetric clouds
             vec4 rez = vec4(0.0);
-            const float ldst = 8.0;
-            vec3 lpos = vec3(disp(time + ldst) * 0.5, time + ldst);
             float t = 1.5;
             float fogT = 0.0;
 
-            for(int i = 0; i < 70; i++) {
-                if(rez.a > 0.98) break;
+            for(int i = 0; i < 28; i++) {
+                if(rez.a > 0.95) break;
 
                 vec3 pos = ro + t * rd;
                 vec2 mpv = map(pos, time, prm1, bassMod);
@@ -687,12 +937,10 @@ const ProteanCloudsShader = {
 
                 vec4 col = vec4(0.0);
                 if (mpv.x > 0.6) {
-                    // Soft, subtle monochrome platinum cloud shapes with deep contrast
                     col = vec4(sin(vec3(4.8, 5.0, 5.2) + mpv.y * 0.08 + sin(pos.z * 0.35) * 0.35 + 1.6) * 0.25 + 0.75, 0.08);
                     col *= den * den * den;
                     col.rgb *= linstep(4.0, -2.5, mpv.x) * 1.8;
-                    float dif = clamp((den - map(pos + 0.8, time, prm1, bassMod).x) / 9.0, 0.001, 1.0);
-                    dif += clamp((den - map(pos + 0.35, time, prm1, bassMod).x) / 2.5, 0.001, 1.0);
+                    float dif = clamp((den - map(pos + 0.45, time, prm1, bassMod).x) / 3.0, 0.001, 1.0);
 
                     // Ethereal subtle platinum ambient and diffuse illumination
                     vec3 ambLight = vec3(0.010, 0.012, 0.016) + vec3(uBass * 0.015);
@@ -704,19 +952,15 @@ const ProteanCloudsShader = {
                 col.rgba += vec4(0.008, 0.010, 0.014, 0.03) * clamp(fogC - fogT, 0.0, 1.0) * (1.0 + uBass * 0.15);
                 fogT = fogC;
                 rez = rez + col * (1.0 - rez.a);
-                t += clamp(0.5 - dn * dn * 0.05, 0.09, 0.35);
+                t += clamp(0.60 - dn * dn * 0.05, 0.16, 0.48);
             }
 
             vec3 col = clamp(rez.rgb, 0.0, 1.0);
             col = iLerp(col.bgr, col.rgb, clamp(1.0 - prm1, 0.05, 1.0));
 
-            // Deep Moody Contrast Grading (dark velvet shadows, soft faded fog highlights)
+            // Deep Moody Contrast Grading
             col = pow(col, vec3(0.95, 0.96, 0.98)) * vec3(1.0, 1.02, 1.05) * uIntensity;
-            
-            // Subtle Audio Bass Pulse
             col += vec3(uBass * 0.025);
-
-            // Deep Cinematic Edge Falloff & Vignette
             col *= pow(16.0 * q.x * q.y * (1.0 - q.x) * (1.0 - q.y), 0.18) * 0.85 + 0.15;
 
             gl_FragColor = vec4(col, 1.0);
@@ -3651,13 +3895,22 @@ export function createVFXScene(container) {
     const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 0, 16);
 
+    function getOptimalPixelRatio() {
+        const dpr = window.devicePixelRatio || 1;
+        const maxDim = Math.max(window.innerWidth, window.innerHeight);
+        // On large external monitors (4K / 1440p / Retina displays), cap DPR to prevent 8K framebuffer fill-rate stalls
+        if (maxDim >= 2560) return Math.min(dpr, 1.0);
+        if (maxDim >= 1920) return Math.min(dpr, 1.25);
+        return Math.min(dpr, 1.5);
+    }
+
     const renderer = new THREE.WebGLRenderer({
         antialias: false,
         powerPreference: 'high-performance',
         alpha: true
     });
     renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setPixelRatio(getOptimalPixelRatio());
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
     container.appendChild(renderer.domElement);
@@ -3786,7 +4039,6 @@ export function createVFXScene(container) {
 
         let baseZ = 6.8;
         let baseW = 13.5 * logoBaseScale;
-        let posX = 0, posY = 0;
 
         if (logoMode === 'backdrop') {
             baseZ = -22;
@@ -3810,7 +4062,9 @@ export function createVFXScene(container) {
         let scaleFactor = 1.0;
         if (logoPosition === 'center') {
             scaleFactor = 1.0;
-        } else if (logoPosition === 'top' || logoPosition === 'bottom' || logoPosition === 'left' || logoPosition === 'right' || logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center' || logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
+        } else if (logoPosition === 'top' || logoPosition === 'bottom' || logoPosition === 'left' || logoPosition === 'right' ||
+                   logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center' ||
+                   logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
             scaleFactor = 0.78;
         } else {
             // Corners: top-left, top-right, bottom-left, bottom-right
@@ -3820,41 +4074,74 @@ export function createVFXScene(container) {
         const w = baseW * scaleFactor;
         const h = (baseW / logoAspectRatio) * scaleFactor;
 
-        // Position coordinates mapped to camera frustum
-        if (logoPosition === 'top-left') {
-            posX = (logoMode === 'overlay' ? -2.2 : (logoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (logoMode === 'overlay' ? 1.25 : (logoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (logoPosition === 'top-right') {
-            posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (logoMode === 'overlay' ? 1.25 : (logoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (logoPosition === 'bottom-left') {
-            posX = (logoMode === 'overlay' ? -2.2 : (logoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (logoMode === 'overlay' ? -1.25 : (logoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (logoPosition === 'bottom-right') {
-            posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (logoMode === 'overlay' ? -1.25 : (logoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (logoPosition === 'top' || logoPosition === 'center-top' || logoPosition === 'top-center') {
-            posX = 0;
-            posY = (logoMode === 'overlay' ? 1.35 : (logoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (logoPosition === 'bottom' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center') {
-            posX = 0;
-            posY = (logoMode === 'overlay' ? -1.35 : (logoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (logoPosition === 'left' || logoPosition === 'center-left') {
-            posX = (logoMode === 'overlay' ? -2.2 : (logoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = 0;
-        } else if (logoPosition === 'right' || logoPosition === 'center-right') {
-            posX = (logoMode === 'overlay' ? 2.2 : (logoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = 0;
-        } else if (logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter') {
-            posX = 0;
-            posY = (logoMode === 'overlay' ? 0.85 : (logoMode === 'backdrop' ? 7.0 : 2.5));
-        } else if (logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
-            posX = 0;
-            posY = (logoMode === 'overlay' ? -0.85 : (logoMode === 'backdrop' ? -7.0 : -2.5));
-        } else {
-            // Center
-            posX = 0;
-            posY = 0;
+        // Dynamic Camera Frustum Boundary Math
+        const dist = Math.max(0.1, camera.position.z - baseZ);
+        const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+        const visibleHalfW = visibleHalfH * camera.aspect;
+
+        const marginRatio = logoMode === 'overlay' ? 0.035 : 0.06;
+        const marginX = Math.max(0.12, visibleHalfW * marginRatio);
+        const marginY = Math.max(0.12, visibleHalfH * marginRatio);
+
+        const halfLogoW = w * 0.5;
+        const halfLogoH = h * 0.5;
+
+        let posX = 0, posY = 0;
+
+        switch (logoPosition) {
+            case 'top-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'top-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'bottom-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'bottom-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'top':
+            case 'center-top':
+            case 'top-center':
+                posX = 0;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'bottom':
+            case 'center-bottom':
+            case 'bottom-center':
+                posX = 0;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'left':
+            case 'center-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = 0;
+                break;
+            case 'right':
+            case 'center-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = 0;
+                break;
+            case 'top-quarter':
+            case 'center-top-quarter':
+                posX = 0;
+                posY = visibleHalfH * 0.45;
+                break;
+            case 'bottom-quarter':
+            case 'center-bottom-quarter':
+                posX = 0;
+                posY = -visibleHalfH * 0.45;
+                break;
+            case 'center':
+            default:
+                posX = 0;
+                posY = 0;
+                break;
         }
 
         currentLogoPosX = posX;
@@ -4030,7 +4317,6 @@ export function createVFXScene(container) {
 
         let baseZ = 12.0;
         let baseW = 5.5 * stationLogoBaseScale;
-        let posX = 0, posY = 0;
 
         if (stationLogoMode === 'backdrop') {
             baseZ = -20;
@@ -4053,48 +4339,76 @@ export function createVFXScene(container) {
         let scaleFactor = 1.0;
         if (stationLogoPosition === 'center') {
             scaleFactor = 1.0;
-            posX = 0;
-            posY = 0;
-        } else if (stationLogoPosition === 'top-left') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (stationLogoPosition === 'top-right') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (stationLogoPosition === 'bottom-left') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = (stationLogoMode === 'overlay' ? -1.25 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (stationLogoPosition === 'bottom-right') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? -1.25 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (stationLogoPosition === 'top' || stationLogoPosition === 'top-center' || stationLogoPosition === 'center-top') {
+        } else if (stationLogoPosition === 'top' || stationLogoPosition === 'top-center' || stationLogoPosition === 'center-top' ||
+                   stationLogoPosition === 'bottom' || stationLogoPosition === 'bottom-center' || stationLogoPosition === 'center-bottom') {
             scaleFactor = 0.75;
-            posX = 0;
-            posY = (stationLogoMode === 'overlay' ? 1.35 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
-        } else if (stationLogoPosition === 'bottom' || stationLogoPosition === 'bottom-center' || stationLogoPosition === 'center-bottom') {
-            scaleFactor = 0.75;
-            posX = 0;
-            posY = (stationLogoMode === 'overlay' ? -1.35 : (stationLogoMode === 'backdrop' ? -9.5 : -3.8));
-        } else if (stationLogoPosition === 'left' || stationLogoPosition === 'center-left') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? -2.2 : (stationLogoMode === 'backdrop' ? -18.0 : -6.2));
-            posY = 0;
-        } else if (stationLogoPosition === 'right' || stationLogoPosition === 'center-right') {
-            scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = 0;
         } else {
+            // Corners & sides
             scaleFactor = 0.65;
-            posX = (stationLogoMode === 'overlay' ? 2.2 : (stationLogoMode === 'backdrop' ? 18.0 : 6.2));
-            posY = (stationLogoMode === 'overlay' ? 1.25 : (stationLogoMode === 'backdrop' ? 9.5 : 3.8));
         }
 
         const w = baseW * scaleFactor;
         const h = (baseW / stationLogoAspectRatio) * scaleFactor;
+
+        // Dynamic Camera Frustum Boundary Math
+        const dist = Math.max(0.1, camera.position.z - baseZ);
+        const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
+        const visibleHalfW = visibleHalfH * camera.aspect;
+
+        const marginRatio = stationLogoMode === 'overlay' ? 0.035 : 0.06;
+        const marginX = Math.max(0.12, visibleHalfW * marginRatio);
+        const marginY = Math.max(0.12, visibleHalfH * marginRatio);
+
+        const halfLogoW = w * 0.5;
+        const halfLogoH = h * 0.5;
+
+        let posX = 0, posY = 0;
+
+        switch (stationLogoPosition) {
+            case 'top-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'top-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'bottom-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'bottom-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'top':
+            case 'top-center':
+            case 'center-top':
+                posX = 0;
+                posY = visibleHalfH - halfLogoH - marginY;
+                break;
+            case 'bottom':
+            case 'bottom-center':
+            case 'center-bottom':
+                posX = 0;
+                posY = -visibleHalfH + halfLogoH + marginY;
+                break;
+            case 'left':
+            case 'center-left':
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = 0;
+                break;
+            case 'right':
+            case 'center-right':
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = 0;
+                break;
+            case 'center':
+            default:
+                posX = 0;
+                posY = 0;
+                break;
+        }
 
         currentStationLogoPosX = posX;
         currentStationLogoPosY = posY;
@@ -5479,8 +5793,8 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
 
-    const fogPlaneGeo = new THREE.PlaneGeometry(55.0, 38.0, 16, 16);
-    const fogLayerHeights = [-9.5, -6.5, -3.5, -0.5, 2.5, 5.5, 8.5, 11.0];
+    const fogPlaneGeo = new THREE.PlaneGeometry(55.0, 38.0, 2, 2);
+    const fogLayerHeights = [-6.5, -0.5, 5.5];
     fogLayerHeights.forEach((h, idx) => {
         const fogMesh = new THREE.Mesh(fogPlaneGeo, floatingFogMat);
         fogMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.05 : -0.05);
@@ -5858,15 +6172,292 @@ export function createVFXScene(container) {
     gDiscoGodrays.add(discoGodrayFogGroup);
 
     // -------------------------------------------------------------------------
+    // FX 21: 📼 VHS GLITCH WORDS & GODRAYS ("DREAMLOVER" / "DO YOU BELIEVE?")
+    // -------------------------------------------------------------------------
+    const gVhsGlitchWords = createFXGroup();
+
+    // 1. Dynamic VHS Text Canvas Engine
+    const vhsWordsCanvas = document.createElement('canvas');
+    vhsWordsCanvas.width = 2048;
+    vhsWordsCanvas.height = 1024;
+    const vhsWordsCtx = vhsWordsCanvas.getContext('2d');
+    const vhsWordsTexture = new THREE.CanvasTexture(vhsWordsCanvas);
+    vhsWordsTexture.minFilter = THREE.LinearFilter;
+    vhsWordsTexture.magFilter = THREE.LinearFilter;
+    vhsWordsTexture.generateMipmaps = false;
+
+    const VHS_PHRASES = [
+        "DREAMLOVER",
+        "DO YOU BELIEVE?"
+    ];
+    let vhsCurrentPhraseIdx = 0;
+    let vhsGlitchSpike = 0.0;
+    let vhsLastPhraseSwitchTime = 0.0;
+
+    function renderVhsTextCanvas(phraseIdx) {
+        vhsWordsCtx.clearRect(0, 0, vhsWordsCanvas.width, vhsWordsCanvas.height);
+        const text = VHS_PHRASES[phraseIdx % VHS_PHRASES.length];
+
+        const cx = vhsWordsCanvas.width / 2;
+        const cy = vhsWordsCanvas.height / 2;
+
+        vhsWordsCtx.save();
+        vhsWordsCtx.textAlign = 'center';
+        vhsWordsCtx.textBaseline = 'middle';
+
+        // Auto-fit typography: Measure text and compute exact optimal font size to fill ~90% of canvas width
+        const targetWidth = vhsWordsCanvas.width * 0.90;
+        let testFontSize = 320;
+        vhsWordsCtx.font = `900 ${testFontSize}px "Impact", "Arial Black", -apple-system, BlinkMacSystemFont, "Montserrat", sans-serif`;
+        const measuredWidth = vhsWordsCtx.measureText(text).width;
+        let optimalFontSize = Math.floor(testFontSize * (targetWidth / Math.max(1, measuredWidth)));
+        optimalFontSize = Math.min(340, Math.max(160, optimalFontSize));
+
+        const letterSpacingPx = Math.max(6, Math.floor(optimalFontSize * 0.045));
+        vhsWordsCtx.letterSpacing = `${letterSpacingPx}px`;
+        vhsWordsCtx.font = `900 ${optimalFontSize}px "Impact", "Arial Black", -apple-system, BlinkMacSystemFont, "Montserrat", sans-serif`;
+
+        const textTop = cy - optimalFontSize * 0.55;
+        const textBottom = cy + optimalFontSize * 0.55;
+
+        // 1. Deep Black High-Contrast Border for Sharp Letter Separation (Prevents blow-out)
+        vhsWordsCtx.shadowColor = 'rgba(0, 0, 0, 1.0)';
+        vhsWordsCtx.shadowBlur = 18;
+        vhsWordsCtx.shadowOffsetX = 0;
+        vhsWordsCtx.shadowOffsetY = 4;
+        vhsWordsCtx.lineWidth = Math.max(20, optimalFontSize * 0.09);
+        vhsWordsCtx.strokeStyle = '#000000';
+        vhsWordsCtx.strokeText(text, cx, cy);
+
+        // 2. Pure Crisp White High-Voltage CRT Phosphor Fill
+        vhsWordsCtx.shadowBlur = 0;
+        vhsWordsCtx.shadowOffsetY = 0;
+        const crtGrad = vhsWordsCtx.createLinearGradient(0, textTop, 0, textBottom);
+        crtGrad.addColorStop(0.00, '#ffffff'); // Pure Peak White
+        crtGrad.addColorStop(0.35, '#fafdff'); // Hyper-Bright Electron Core
+        crtGrad.addColorStop(0.70, '#eff6fb'); // Cool Cathode Sheen
+        crtGrad.addColorStop(1.00, '#dceaf4'); // CRT Phosphor Base
+        
+        vhsWordsCtx.fillStyle = crtGrad;
+        vhsWordsCtx.fillText(text, cx, cy);
+
+        // 3. Razor-Sharp Inner Cathode Glow Edge
+        vhsWordsCtx.lineWidth = 3.5;
+        vhsWordsCtx.strokeStyle = 'rgba(255, 255, 255, 0.95)';
+        vhsWordsCtx.strokeText(text, cx, cy);
+
+        vhsWordsCtx.restore();
+        vhsWordsTexture.needsUpdate = true;
+    }
+
+    renderVhsTextCanvas(0);
+
+    // 2. 3D Floating VHS Glitch Text Plane (Responsive Screen-Fitted Geometry)
+    const vhsTextPlaneMat = new THREE.ShaderMaterial({
+        uniforms: {
+            tDiffuse: { value: vhsWordsTexture },
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uGlitch: { value: 0.0 },
+            uTextColor: { value: new THREE.Color(0xffffff) },
+            uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+            uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+            uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffd866)) },
+            uSpotIntensity: { value: new Float32Array(8) }
+        },
+        vertexShader: VHSGlitchTextShader.vertexShader,
+        fragmentShader: VHSGlitchTextShader.fragmentShader,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    const vhsTextPlaneMesh = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.0), vhsTextPlaneMat);
+    vhsTextPlaneMesh.position.set(0, 0.35, 2.5);
+    gVhsGlitchWords.add(vhsTextPlaneMesh);
+
+    function updateVhsTextPlaneScale() {
+        if (!vhsTextPlaneMesh || !camera) return;
+        const aspect = window.innerWidth / Math.max(1, window.innerHeight);
+        const vFovRad = (camera.fov * Math.PI) / 180.0;
+        const dist = Math.max(1.0, 16.0 - vhsTextPlaneMesh.position.z);
+        const frustumH = 2.0 * dist * Math.tan(vFovRad * 0.5);
+        const frustumW = frustumH * aspect;
+
+        // Dominant, bold scale: Fill ~92% of screen width, up to ~65% of screen height
+        let targetW = frustumW * 0.92;
+        let targetH = targetW * 0.5; // 2:1 aspect ratio
+
+        if (targetH > frustumH * 0.65) {
+            targetH = frustumH * 0.65;
+            targetW = targetH * 2.0;
+        }
+
+        vhsTextPlaneMesh.scale.set(targetW, targetH, 1.0);
+    }
+    updateVhsTextPlaneScale();
+
+    // 3. Stage Rig Truss Header Bar at Top of Screen
+    const vhsTrussGeo = new THREE.BoxGeometry(42.0, 0.45, 0.45);
+    const vhsTrussMat = new THREE.MeshBasicMaterial({ color: 0x141824 });
+    const vhsTrussMesh = new THREE.Mesh(vhsTrussGeo, vhsTrussMat);
+    vhsTrussMesh.position.set(0, 11.45, -4.0);
+    gVhsGlitchWords.add(vhsTrussMesh);
+
+    // 4. 8 Moving-Head Subtle Golden-Yellow Godray Pods Spanning Across Top Screen
+    const vhsGodrayFixtures = [];
+    const vhsBeamLength = 36.0;
+    const vhsTopRadius = 0.18;
+    const vhsBottomRadius = 3.6;
+
+    const vhsGodrayConeGeo = new THREE.CylinderGeometry(vhsTopRadius, vhsBottomRadius, vhsBeamLength, 48, 1, true);
+    vhsGodrayConeGeo.translate(0, -vhsBeamLength * 0.5, 0);
+
+    const vhsFixtureDarkMat = new THREE.MeshBasicMaterial({ color: 0x0c101c });
+    const vhsFixtureBezelMat = new THREE.MeshBasicMaterial({ color: 0x222a3e });
+
+    for (let i = 0; i < numGodrays; i++) {
+        const normIdx = i / (numGodrays - 1);
+        const posX = -17.5 + normIdx * 35.0;
+        const posY = 11.35;
+        const posZ = -4.0;
+
+        const podGroup = new THREE.Group();
+        podGroup.position.set(posX, posY, posZ);
+
+        // Fixed truss mounting bracket
+        const yokeMesh = new THREE.Mesh(fixtureYokeGeo, vhsFixtureDarkMat);
+        yokeMesh.position.set(0, 0.45, 0);
+        podGroup.add(yokeMesh);
+
+        // Moving-head pivot group
+        const pivotGroup = new THREE.Group();
+        podGroup.add(pivotGroup);
+
+        // Rotating fixture head casing
+        const headMesh = new THREE.Mesh(fixtureHeadGeo, vhsFixtureDarkMat);
+        headMesh.position.set(0, 0.42, 0);
+        pivotGroup.add(headMesh);
+
+        // Outer bezel ring
+        const bezelMesh = new THREE.Mesh(fixtureBezelGeo, vhsFixtureBezelMat);
+        bezelMesh.rotation.x = Math.PI / 2;
+        bezelMesh.position.set(0, 0.01, 0);
+        pivotGroup.add(bezelMesh);
+
+        // Warm Golden Yellow optical glass lens disc
+        const lensDiscMat = new THREE.MeshBasicMaterial({
+            color: 0xffd866,
+            transparent: true,
+            opacity: 0.70
+        });
+        const lensDiscMesh = new THREE.Mesh(fixtureLensDiscGeo, lensDiscMat);
+        lensDiscMesh.rotation.x = Math.PI / 2;
+        lensDiscMesh.position.set(0, 0.005, 0);
+        pivotGroup.add(lensDiscMesh);
+
+        // Volumetric Godray shader material (Subtle Warm Golden-Yellow Beams)
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffd866) },
+                uCoreColor: { value: new THREE.Color(0xfff2b3) },
+                uIntensity: { value: 0.38 },
+                uTime: { value: 0.0 },
+                uTimeSpeed: { value: 0.18 },
+                uNoiseScale: { value: 3.8 },
+                uSmoothTop: { value: 0.18 },
+                uSmoothBottom: { value: 0.98 },
+                uFresnelPower: { value: 2.2 },
+                uPulse: { value: 0.0 }
+            },
+            vertexShader: WawaSenseiGodrayShader.vertexShader,
+            fragmentShader: WawaSenseiGodrayShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const beamMesh = new THREE.Mesh(vhsGodrayConeGeo, beamMat);
+        pivotGroup.add(beamMesh);
+
+        // Floor reflection spot pool (Warm Golden-Yellow)
+        const floorImpactMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffd866) },
+                uCoreColor: { value: new THREE.Color(0xfff2b3) },
+                uIntensity: { value: 0.38 },
+                uSurge: { value: 0.0 }
+            },
+            vertexShader: FloorSpotShader.vertexShader,
+            fragmentShader: FloorSpotShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            side: THREE.DoubleSide
+        });
+        const floorImpactMesh = new THREE.Mesh(floorPoolGeo, floorImpactMat);
+        floorImpactMesh.rotation.x = -Math.PI / 2;
+        floorImpactMesh.position.set(posX, -10.59, posZ - 6.0);
+        gVhsGlitchWords.add(floorImpactMesh);
+
+        gVhsGlitchWords.add(podGroup);
+
+        vhsGodrayFixtures.push({
+            podGroup,
+            pivotGroup,
+            beamMesh,
+            beamMat,
+            lensDiscMesh,
+            floorImpactMesh,
+            floorImpactMat,
+            normIdx,
+            homeX: posX,
+            phaseOffset: i * 0.785,
+            bassSurge: 0.0
+        });
+    }
+
+    // 5. Dual Inward-Billowing Atmospheric Smoke Medium Layers (Rolling from Left & Right)
+    const vhsSmokeGroup = new THREE.Group();
+    const vhsSmokeMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uIntensity: { value: 0.32 },
+            uSpotPos: { value: Array.from({ length: 8 }, () => new THREE.Vector3()) },
+            uSpotDir: { value: Array.from({ length: 8 }, () => new THREE.Vector3(0, -1, 0)) },
+            uSpotColor: { value: Array.from({ length: 8 }, () => new THREE.Color(0xffffff)) },
+            uSpotIntensity: { value: new Float32Array(8) },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: DualInwardAtmosphericSmokeShader.vertexShader,
+        fragmentShader: DualInwardAtmosphericSmokeShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    const vhsSmokeHeights = [-3.0, 0.5, 4.0];
+    vhsSmokeHeights.forEach((h, idx) => {
+        const smokeMesh = new THREE.Mesh(fogPlaneGeo, vhsSmokeMat);
+        smokeMesh.rotation.x = -Math.PI * 0.5 + (idx % 2 === 0 ? 0.06 : -0.06);
+        smokeMesh.rotation.z = (idx * 0.14) - 0.35;
+        smokeMesh.position.set(0, h, -5.0 + (idx % 3) * 2.5);
+        vhsSmokeGroup.add(smokeMesh);
+    });
+    gVhsGlitchWords.add(vhsSmokeGroup);
+
+    // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
     function onResize() {
-        const w = window.innerWidth;
-        const h = window.innerHeight;
-        camera.aspect = w / h;
+        const w = (container && container.clientWidth > 0) ? container.clientWidth : window.innerWidth;
+        const h = (container && container.clientHeight > 0) ? container.clientHeight : window.innerHeight;
+        camera.aspect = (w > 0 && h > 0) ? (w / h) : (window.innerWidth / window.innerHeight);
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.setPixelRatio(getOptimalPixelRatio());
         composer.setSize(w, h);
         bloomPass.resolution.set(w, h);
         if (proteanCloudMat && proteanCloudMat.uniforms.uResolution) {
@@ -5875,6 +6466,9 @@ export function createVFXScene(container) {
         if (discoProteanCloudMat && discoProteanCloudMat.uniforms.uResolution) {
             discoProteanCloudMat.uniforms.uResolution.value.set(w, h);
         }
+        updateVhsTextPlaneScale();
+        applyLogoPlacement();
+        applyStationLogoPlacement();
     }
     window.addEventListener('resize', onResize);
 
@@ -5897,6 +6491,8 @@ export function createVFXScene(container) {
     let whiteGodrayLastKickTime = 0.0;
     let discoGodrayChaseIndex = 0;
     let discoGodrayLastKickTime = 0.0;
+    let vhsGodrayChaseIndex = 0;
+    let vhsGodrayLastKickTime = 0.0;
 
     // Smooth state variables for Particle Stream (Silky smooth response)
     let streamSmoothBass = 0.0;
@@ -5913,6 +6509,10 @@ export function createVFXScene(container) {
             currentFXIndex = index;
             nightclubPass.uniforms.uAberration.value = 0.3;
             manualFlash = 0.3;
+            if (index === 21) {
+                vhsLastPhraseSwitchTime = clock.getElapsedTime();
+                renderVhsTextCanvas(vhsCurrentPhraseIdx);
+            }
         }
     }
 
@@ -7057,11 +7657,149 @@ export function createVFXScene(container) {
                 fix.lensDiscMesh.material.opacity = Math.min(0.65, 0.30 + fix.bassSurge * 0.30 + (audio.smoothedBass || 0) * 0.12);
             });
         }
-        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20) {
+        // ---------------------------------------------------------------------
+        // FX 21: 📼 VHS Glitch Words & Godrays ("DREAMLOVER" / "DO YOU BELIEVE?")
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 21) {
+            // Phrase alternation timer (~8.0s cadence / 16 beats, tempo-synced)
+            const phraseDuration = Math.max(7.5, 16.0 * (60.0 / currentBPM));
+            if (elapsedTime - vhsLastPhraseSwitchTime > phraseDuration) {
+                vhsLastPhraseSwitchTime = elapsedTime;
+                vhsCurrentPhraseIdx = (vhsCurrentPhraseIdx + 1) % VHS_PHRASES.length;
+                vhsGlitchSpike = 1.8; // Dramatic CRT channel-switch / degauss transition
+                renderVhsTextCanvas(vhsCurrentPhraseIdx);
+            }
+
+            // Heavy bass kick / transient response
+            const rawBassVal = audio.bass || 0;
+            const bassPopVal = audio.bassImpact || audio.bass || 0;
+            const transientVal = audio.transientImpulse || 0;
+            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+
+            if (isKickHit) {
+                vhsGlitchSpike = Math.min(1.4, vhsGlitchSpike + 0.25);
+            }
+
+            // Smooth decay for longer, more cinematic CRT transitions (~1.4s duration)
+            vhsGlitchSpike = Math.max(0.0, vhsGlitchSpike - delta * 1.3);
+
+            // Update VHS Text Shader Uniforms
+            vhsTextPlaneMat.uniforms.uTime.value = elapsedTime;
+            vhsTextPlaneMat.uniforms.uBass.value = (audio.smoothedBass || 0);
+            vhsTextPlaneMat.uniforms.uGlitch.value = vhsGlitchSpike;
+
+            // Tempo-synchronized arena godray sweeps focused onto words
+            const sweepSpeed = 0.15 * (currentBPM / 126.0);
+            const sweepTime = elapsedTime * sweepSpeed;
+
+            if (isKickHit && (elapsedTime - vhsGodrayLastKickTime > 0.14)) {
+                vhsGodrayLastKickTime = elapsedTime;
+                vhsGodrayChaseIndex = (vhsGodrayChaseIndex + 1) % numGodrays;
+
+                const kickPower = Math.min(1.6, Math.max(0.9, bassPopVal * 1.5 + transientVal * 0.8));
+                vhsGodrayFixtures[vhsGodrayChaseIndex].bassSurge = kickPower;
+
+                const pairIdx = (vhsGodrayChaseIndex + 4) % numGodrays;
+                vhsGodrayFixtures[pairIdx].bassSurge = Math.max(vhsGodrayFixtures[pairIdx].bassSurge, kickPower * 0.75);
+            }
+
+            const surgeDecay = Math.exp(-delta * 3.6);
+            vhsGodrayFixtures.forEach(fix => {
+                fix.bassSurge *= surgeDecay;
+                if (fix.bassSurge < 0.005) fix.bassSurge = 0.0;
+            });
+
+            // Animate Inward-Billowing Smoke Medium (rolling in from left & right)
+            vhsSmokeMat.uniforms.uTime.value = elapsedTime;
+            vhsSmokeMat.uniforms.uBass.value = (audio.smoothedBass || 0) * 0.40 + (audio.bassImpact || 0) * 0.20;
+            vhsSmokeMat.uniforms.uIntensity.value = 0.24 + (audio.smoothedBass || 0) * 0.12 + (audio.overall || 0) * 0.06;
+
+            const floorY = -10.6;
+
+            vhsGodrayFixtures.forEach((fix, idx) => {
+                const norm = fix.normIdx - 0.5; // -0.5 to +0.5
+
+                let rotZ = 0.0;
+                let rotX = 0.30;
+
+                // Inner fixtures (indices 2, 3, 4, 5) cross and shine directly over center words
+                // Outer fixtures (indices 0, 1, 6, 7) sweep across incoming left/right smoke billows
+                if (idx >= 2 && idx <= 5) {
+                    const crossPhase = (idx % 2 === 0 ? 1.0 : -1.0);
+                    const focusAngle = -norm * 0.42;
+                    const sway = Math.sin(sweepTime * 1.1 + fix.phaseOffset) * 0.14 * crossPhase;
+                    rotZ = focusAngle + sway;
+                    rotX = 0.32 + Math.cos(sweepTime * 0.8 + idx * 0.3) * 0.08;
+                } else {
+                    const panHarmonic1 = Math.sin(sweepTime * 0.85 + fix.phaseOffset) * 0.38;
+                    const panHarmonic2 = Math.sin(sweepTime * 0.35 + idx * 0.40) * 0.15;
+                    rotZ = panHarmonic1 + panHarmonic2 + (norm * 0.20);
+                    rotX = 0.28 + Math.cos(sweepTime * 0.65 + fix.phaseOffset * 0.7) * 0.14;
+                }
+
+                fix.pivotGroup.rotation.z = rotZ;
+                fix.pivotGroup.rotation.x = rotX;
+
+                // Subtle base breathing & music reactivity (Moody Warm Golden-Yellow Beams)
+                const breathCycle = Math.sin(elapsedTime * 0.22 + fix.phaseOffset) * 0.5 + 0.5;
+                const baseBreath = 0.16 + Math.pow(breathCycle, 1.4) * 0.12;
+                const musicBassGlow = (audio.smoothedBass || 0) * 0.20;
+                const musicMidGlow = (audio.smoothedMid || 0) * 0.10;
+                const bassBoost = fix.bassSurge * 0.50;
+                const beamIntensity = baseBreath + musicBassGlow + musicMidGlow + bassBoost;
+
+                const godrayYellow = new THREE.Color(0xffd866);
+                const godrayCore = new THREE.Color(0xfff2b3);
+
+                fix.beamMat.uniforms.uTime.value = elapsedTime;
+                fix.beamMat.uniforms.uIntensity.value = beamIntensity;
+                fix.beamMat.uniforms.uColor.value.copy(godrayYellow);
+                fix.beamMat.uniforms.uCoreColor.value.copy(godrayCore);
+
+                // Compute exact ray-plane intersection on floor
+                const worldDir = new THREE.Vector3(0, -1, 0).applyEuler(fix.pivotGroup.rotation).normalize();
+                const t = (floorY - fix.podGroup.position.y) / worldDir.y;
+                const hitX = fix.podGroup.position.x + worldDir.x * t;
+                const hitY = floorY + 0.01;
+                const hitZ = fix.podGroup.position.z + worldDir.z * t;
+
+                fix.floorImpactMesh.position.set(hitX, hitY, hitZ);
+
+                const coneRadius = vhsTopRadius + t * ((vhsBottomRadius - vhsTopRadius) / vhsBeamLength);
+                const cosTilt = Math.max(0.35, -worldDir.y);
+                const spotWidth = coneRadius * (1.10 + fix.bassSurge * 0.35);
+                const spotLength = (coneRadius * (1.10 + fix.bassSurge * 0.35)) / cosTilt;
+
+                fix.floorImpactMesh.scale.set(spotWidth, spotLength, 1.0);
+                const floorAngle = Math.atan2(worldDir.x, -worldDir.z);
+                fix.floorImpactMesh.rotation.set(-Math.PI / 2, 0, floorAngle, 'ZXY');
+
+                // Floor Impact Spot
+                fix.floorImpactMat.uniforms.uColor.value.copy(godrayYellow);
+                fix.floorImpactMat.uniforms.uCoreColor.value.copy(godrayCore);
+                fix.floorImpactMat.uniforms.uIntensity.value = beamIntensity * 0.70;
+                fix.floorImpactMat.uniforms.uSurge.value = fix.bassSurge + (audio.smoothedBass || 0) * 0.20;
+
+                // Pass spotlight coordinates into smoke shader and text shader
+                vhsSmokeMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
+                vhsSmokeMat.uniforms.uSpotDir.value[idx].copy(worldDir);
+                vhsSmokeMat.uniforms.uSpotColor.value[idx].copy(godrayYellow);
+                vhsSmokeMat.uniforms.uSpotIntensity.value[idx] = beamIntensity;
+
+                vhsTextPlaneMat.uniforms.uSpotPos.value[idx].copy(fix.podGroup.position);
+                vhsTextPlaneMat.uniforms.uSpotDir.value[idx].copy(worldDir);
+                vhsTextPlaneMat.uniforms.uSpotColor.value[idx].copy(godrayYellow);
+                vhsTextPlaneMat.uniforms.uSpotIntensity.value[idx] = beamIntensity;
+
+                // Lens disc
+                fix.lensDiscMesh.material.opacity = Math.min(0.80, 0.30 + fix.bassSurge * 0.25 + (audio.smoothedBass || 0) * 0.12);
+            });
+        }
+        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20 && currentFXIndex !== 21) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) {
+        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -7075,14 +7813,14 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -7107,6 +7845,8 @@ export function createVFXScene(container) {
 
     return {
         animate,
+        onResize,
+        triggerResize: onResize,
         switchFX,
         triggerBeatPulse,
         triggerManualFlash,
@@ -7160,7 +7900,47 @@ export function createVFXScene(container) {
         },
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length,
+        updateLogoPlacements: () => {
+            applyLogoPlacement();
+            applyStationLogoPlacement();
+        },
+        getCurrentScenePalette: () => {
+            if (currentFXIndex === 18 || currentFXIndex === 20) {
+                return ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
+            }
+            if (currentFXIndex === 19) {
+                return ['#00f0ff', '#ff00aa', '#00ff88', '#ffaa00', '#9900ff', '#00e5ff'];
+            }
+            if (currentFXIndex === 21) {
+                return ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
+            }
+            const scenePalettes = {
+                0: ['#00ffff', '#ff007f', '#00ff66', '#ffaa00', '#9900ff', '#ff0033'], // Neon Cyber Matrix
+                1: ['#ff007f', '#00ffff', '#ffaa00', '#ff0033', '#9900ff', '#00ff66'], // Audio Waveform EQ
+                2: ['#00ffcc', '#0077ff', '#ff00aa', '#00ff66', '#ffcc00', '#ff0055'], // Circular Spectrum Ring
+                3: ['#ffaa00', '#ff3300', '#00e5ff', '#ff007f', '#00ff66', '#9900ff'], // 3D Pioneer Decks
+                4: ['#ffd700', '#ff00ff', '#00ffff', '#ff0055', '#00ffaa', '#9900ff'], // Spinning Disco Ball
+                5: ['#ff007f', '#00ffff', '#ffee00', '#00ff66', '#ff00aa', '#0088ff'], // 70s Disco Floor
+                6: ['#00e5ff', '#ff0033', '#00ff66', '#ff00aa', '#ffee00', '#9900ff'], // Dual-Bank Lasers
+                7: ['#ff0055', '#00e5ff', '#ffaa00', '#00ff66', '#9900ff', '#ff3300'], // Saber Multi-Beams
+                8: ['#ff007f', '#00ffff', '#00ff66', '#ffaa00', '#9900ff', '#ff0033'], // Strobe Rings
+                9: ['#ff0088', '#9900ff', '#00e5ff', '#ffaa00', '#00ff66', '#ff3300'], // Silhouette Dancers
+                10: ['#ff007f', '#00ffcc', '#8000ff', '#ff3300', '#ffee00', '#00ffff'], // Liquid Mercury
+                11: ['#ff4500', '#ff007f', '#00ffff', '#ffbb00', '#00ff66', '#9900ff'], // Cyber Horizon Grid
+                12: ['#00ff66', '#00e5ff', '#ff00aa', '#ffff00', '#ff0055', '#00ffff'], // Neon Warp Tunnel
+                13: ['#ffff00', '#00ffff', '#ff0055', '#00ffaa', '#ffaa00', '#9900ff'], // Holographic Decks
+                14: ['#00ffff', '#ff00aa', '#ffaa00', '#00ff88', '#9900ff', '#ff0033'], // Neon Wireframe Club
+                15: ['#9900ff', '#0044ff', '#ff00aa', '#00ffff', '#ff0055', '#ffff00'], // Deep Space Galaxy
+                16: ['#00e1ff', '#ff0055', '#00ff66', '#ffcc00', '#9900ff', '#ff0033'], // Laser Vortex
+                17: ['#00ffcc', '#ffaa00', '#ff007f', '#0088ff', '#00ff66', '#ff0033'], // Time Clock
+            };
+            return scenePalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
+        },
         getCurrentSceneColor: () => {
+            const time = clock.getElapsedTime();
+            const bps = currentBPM / 60.0;
+            const beatStep = Math.floor(time * bps);
+
             // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
             if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number') {
                 const hexNum = godrayPalette[godrayChaseIndex % godrayPalette.length];
@@ -7171,53 +7951,21 @@ export function createVFXScene(container) {
                 const hexNum = godrayPalette[discoGodrayChaseIndex % godrayPalette.length];
                 return '#' + hexNum.toString(16).padStart(6, '0');
             }
+            // FX 21: 📼 VHS Glitch Words & Godrays (P) -> Crisp white with electric neon glitch pulses
+            if (currentFXIndex === 21) {
+                const vhsPalette = ['#ffffff', '#00ffff', '#ffffff', '#ff007f'];
+                return vhsPalette[beatStep % vhsPalette.length];
+            }
             // FX 19: ☁️ Pure White Godrays & Fog (I)
             if (currentFXIndex === 19) {
-                return '#ffffff';
-            }
-            // FX 5: 🕺 70s Disco Dancefloor -> dynamic tempo color cycle
-            if (currentFXIndex === 5) {
-                const discoPalette = ['#ff007f', '#00ffff', '#ffee00', '#00ff66', '#ff00aa', '#00e5ff'];
-                const discoIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 60)) % discoPalette.length);
-                return discoPalette[discoIdx] || '#ff00aa';
-            }
-            // FX 6: ⚡ Dual-Bank Lasers -> Laser beam bank color
-            if (currentFXIndex === 6) {
-                const laserPalette = ['#00e5ff', '#ff0033', '#00ff66', '#ff00aa', '#ffee00'];
-                const lIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 120)) % laserPalette.length);
-                return laserPalette[lIdx] || '#00e5ff';
-            }
-            // FX 7: 💥 Saber Multi-Beams
-            if (currentFXIndex === 7) {
-                const saberPalette = ['#ff0055', '#00e5ff', '#ffaa00', '#00ff66', '#9900ff'];
-                const sIdx = Math.floor((clock.getElapsedTime() * (currentBPM / 90)) % saberPalette.length);
-                return saberPalette[sIdx] || '#ff0033';
+                const whitePalette = ['#ffffff', '#e0f7ff', '#ffffff', '#fff0f5'];
+                return whitePalette[beatStep % whitePalette.length];
             }
 
-            const colors = [
-                '#00ffff', // FX 0:  🌌 Neon Matrix & Cyber Tunnel
-                '#ff007f', // FX 1:  ⚡ Audio Waveform Equalizer
-                '#00ffcc', // FX 2:  🌌 Circular Spectrum Ring
-                '#ffaa00', // FX 3:  🔊 3D Pioneer DJ Decks
-                '#ffd700', // FX 4:  🪩 Spinning Disco Ball
-                '#ff00aa', // FX 5:  🕺 70s Disco Dancefloor
-                '#00e5ff', // FX 6:  ⚡ Dual-Bank Lasers
-                '#ff0033', // FX 7:  💥 Saber Multi-Beams
-                '#ffffff', // FX 8:  💫 Strobe Rings
-                '#ff0088', // FX 9:  💃 Silhouette Dancers
-                '#ff007f', // FX 10: ⚡ Liquid Mercury Audio
-                '#ff4500', // FX 11: 🌌 Cyber Horizon Grid
-                '#00ff66', // FX 12: 💫 Neon Warp Tunnel
-                '#ffff00', // FX 13: 🔊 Holographic Deck Visualizer
-                '#00ffff', // FX 14: 🪩 Neon Wireframe Club
-                '#9900ff', // FX 15: 🌌 Deep Space Galaxy
-                '#00e1ff', // FX 16: 💥 Laser Vortex
-                '#00ffcc', // FX 17: ⏰ Time is Clock & Stars
-                '#00ffff', // FX 18: 🔦 Sweeping Godrays (U)
-                '#ffffff', // FX 19: ☁️ Pure White Godrays & Fog (I)
-                '#ffb700'  // FX 20: 🪩 Disco Floor & Godrays (O)
-            ];
-            return colors[currentFXIndex] || '#00ffff';
+            // Dynamic Rhythmic Palettes for all scenes (rotates harmonically with tempo & beats)
+            const pal = scenePalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ffffff'];
+            const idx = Math.floor((time * bps) % pal.length);
+            return pal[idx] || '#00ffff';
         }
     };
 }

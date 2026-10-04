@@ -1637,7 +1637,8 @@
                         <div class="eq-bar" title="High Treble"><div class="eq-fill" id="eq-treble"></div></div>
                     </div>
                     <div style="display:flex; gap:6px; margin-top:6px;">
-                        <button class="btn-mini" id="btn-listen-audio" style="flex:1; font-size:9px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-weight:700; padding:4px 6px;">🔴 RE-CONNECT AUDIO</button>
+                        <button class="btn-mini" id="btn-listen-audio" style="flex:1; font-size:9px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-weight:700; padding:4px 6px;">🔴 RE-CONNECT</button>
+                        <button class="btn-mini" id="btn-capture-system-audio" style="flex:1.4; font-size:9px; background:rgba(0,180,255,0.18); border:1px solid rgba(0,180,255,0.45); color:#00d2ff; font-weight:700; padding:4px 6px;" title="Capture audio from browser tab (Spotify web, YouTube, Beatport) or system audio while using headphones">🖥️ CAPTURE TAB / SYS</button>
                     </div>
                 </div>
 
@@ -2312,10 +2313,11 @@
                     </div>
                 </div>
 
-                <!-- Master Toggle & Setup Button -->
+                <!-- Master Toggle, Power Off & Setup Button Row -->
                 <div style="display:flex; gap:6px; margin-bottom:8px;">
-                    <button class="btn-mini" id="btn-hue-toggle" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ HUE: OFF</button>
-                    <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:5px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE SETUP</button>
+                    <button class="btn-mini" id="btn-hue-toggle" style="flex:1; font-size:10px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚡ SYNC: OFF</button>
+                    <button class="btn-mini" id="btn-hue-power" title="Click to toggle physical room lights ON/OFF" style="font-size:9.5px; font-weight:800; padding:6px 9px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.55); cursor:pointer; border-radius:4px;">💡 LIGHTS: OFF</button>
+                    <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:6px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE</button>
                 </div>
 
                 <!-- Room / Zone Selector -->
@@ -2349,18 +2351,18 @@
                 <div class="slider-row">
                     <div class="slider-header">
                         <span>EFFECT INTENSITY / PUNCH</span>
-                        <span class="val" id="hue-intensity-val">85%</span>
+                        <span class="val" id="hue-intensity-val">100%</span>
                     </div>
-                    <input type="range" id="slider-hue-intensity" min="0" max="100" step="5" value="85">
+                    <input type="range" id="slider-hue-intensity" min="0" max="100" step="5" value="100">
                 </div>
 
                 <!-- Ambient Minimum Resting Brightness Slider -->
                 <div class="slider-row">
                     <div class="slider-header">
                         <span>AMBIENT RESTING FLOOR</span>
-                        <span class="val" id="hue-min-bri-val">15%</span>
+                        <span class="val" id="hue-min-bri-val">5%</span>
                     </div>
-                    <input type="range" id="slider-hue-min-bri" min="0" max="80" step="5" value="15">
+                    <input type="range" id="slider-hue-min-bri" min="0" max="60" step="1" value="5">
                 </div>
 
                 <!-- Test Strobe Trigger -->

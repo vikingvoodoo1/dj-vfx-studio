@@ -16,7 +16,7 @@ console.log('='.repeat(65));
 
 let lastTrackData = null;
 let lastBpm = 126.0;
-let lastActiveFX = 0;
+let lastActiveFX = null;
 let activeEcosystem = 'auto'; // 'auto', 'stagelinq', 'pioneer', 'traktor', 'link'
 const globalSyncState = new Map();
 const connectedDevices = new Map();
@@ -180,7 +180,7 @@ wss.on('connection', (ws) => {
             bpm: lastBpm
         }));
     }
-    if (lastActiveFX !== undefined) {
+    if (lastActiveFX !== null && lastActiveFX !== undefined) {
         ws.send(JSON.stringify({
             type: 'set_fx',
             fx: lastActiveFX
@@ -242,6 +242,20 @@ wss.on('connection', (ws) => {
                         ...hueService.getStatus()
                     });
                 }
+            } else if (msg.type === 'hue_turn_off') {
+                await hueService.turnOffLights(msg.groupId);
+                hueService.updateConfig({ enabled: false });
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
+            } else if (msg.type === 'hue_turn_on') {
+                await hueService.turnOnLights(msg.groupId);
+                hueService.updateConfig({ enabled: true });
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
             } else if (msg.type === 'hue_beat') {
                 if (msg.data) {
                     hueService.processAudioBeat(msg.data);
@@ -262,7 +276,7 @@ wss.on('connection', (ws) => {
             } else if (msg.type === 'request_state') {
                 if (lastTrackData) ws.send(JSON.stringify({ type: 'track', ...lastTrackData }));
                 if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm }));
-                if (lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
+                if (lastActiveFX !== null && lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
                 globalSyncState.forEach((cachedMsg) => {
                     try { ws.send(JSON.stringify(cachedMsg)); } catch (e) {}
                 });

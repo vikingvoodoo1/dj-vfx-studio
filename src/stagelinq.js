@@ -110,6 +110,8 @@ export function setupStageLinqClient({
         pairHue: (ip) => sendJson({ type: 'hue_pair', ip }),
         getHueRooms: () => sendJson({ type: 'hue_get_rooms' }),
         setHueConfig: (config) => sendJson({ type: 'hue_set_config', config }),
+        turnOffHue: (groupId) => sendJson({ type: 'hue_turn_off', groupId }),
+        turnOnHue: (groupId) => sendJson({ type: 'hue_turn_on', groupId }),
         sendHueBeat: (data) => sendJson({ type: 'hue_beat', data })
     };
 }

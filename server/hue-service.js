@@ -18,7 +18,7 @@ export function rgbToCIE(r, g, b) {
     green = (green > 0.04045) ? Math.pow((green + 0.055) / (1.0 + 0.055), 2.4) : (green / 12.92);
     blue = (blue > 0.04045) ? Math.pow((blue + 0.055) / (1.0 + 0.055), 2.4) : (blue / 12.92);
 
-    // Wide gamut D65 conversion
+    // Wide gamut D65 conversion matrix
     const X = red * 0.664511 + green * 0.154324 + blue * 0.162028;
     const Y = red * 0.283881 + green * 0.668433 + blue * 0.047685;
     const Z = red * 0.000088 + green * 0.072310 + blue * 0.986039;
@@ -41,6 +41,50 @@ export function hexToCIE(hex) {
     return rgbToCIE(r, g, b);
 }
 
+// 100% Saturated HSV to RGB (Pure Primary / Secondary / Tertiary Gamut Extremes)
+export function hsvToRGB(h, s = 1.0, v = 1.0) {
+    const normH = ((h % 360) + 360) % 360;
+    const c = v * s;
+    const x = c * (1 - Math.abs(((normH / 60) % 2) - 1));
+    const m = v - c;
+    let r = 0, g = 0, b = 0;
+
+    if (normH < 60) {
+        r = c; g = x; b = 0;
+    } else if (normH < 120) {
+        r = x; g = c; b = 0;
+    } else if (normH < 180) {
+        r = 0; g = c; b = x;
+    } else if (normH < 240) {
+        r = 0; g = x; b = c;
+    } else if (normH < 300) {
+        r = x; g = 0; b = c;
+    } else {
+        r = c; g = 0; b = x;
+    }
+
+    return [
+        Math.round((r + m) * 255),
+        Math.round((g + m) * 255),
+        Math.round((b + m) * 255)
+    ];
+}
+
+export function hsvToCIE(h, s = 1.0, v = 1.0) {
+    const [r, g, b] = hsvToRGB(h, s, v);
+    return rgbToCIE(r, g, b);
+}
+
+// Curated high-impact club & festival palettes
+const BASS_FLASH_PALETTE = [
+    [0.7006, 0.2993], // Electric Crimson Red
+    [0.1530, 0.1980], // High-Voltage Cyan
+    [0.1724, 0.7468], // Acid Neon Lime
+    [0.3800, 0.1500], // Hot Magenta / Pink
+    [0.4430, 0.5150], // Pure Gold
+    [0.1355, 0.0399]  // Deep Royal Cobalt
+];
+
 export class PhilipsHueService {
     constructor() {
         this.config = {
@@ -50,29 +94,48 @@ export class PhilipsHueService {
             enabled: false,
             targetGroup: 'all', // group ID or 'all'
             mode: 'scene_sync', // 'scene_sync', 'bass_flash', 'rainbow_cycle', 'strobe_only'
-            intensity: 0.95,    // 0.0 - 1.0
-            minBrightness: 0.15, // minimum resting brightness
+            intensity: 1.0,     // 0.0 - 1.0
+            minBrightness: 0.05, // minimum resting brightness (5% for high dynamic range)
             sceneColor: '#00ffff',
             kickStrobeEnabled: false
         };
 
         this.rooms = [];
         this.isDispatching = false;
-        this.pendingPayload = null;
-        this.lastDispatchTime = 0;
-        this.lastSentXY = null;
-        this.colorCycleAngle = 0;
+        this.queuedPayload = null;
+        this.decayTimer = null;
+        this.lastKickTime = 0;
         this.kickCount = 0;
-        this.lastKickDetectionTime = 0;
-        this.lastKickStrobeTime = 0;
-        this.dispatchThrottleMs = 40; // ~25 updates per second maximum with inflight pacing
+        this.lastSentXY = null;
+        this.lastSentBri = -1;
+        this.colorCycleAngle = 0;
+        this.lastHeartbeatTime = 0;
+
+        // Adaptive Dynamic Energy Envelope Tracker (Auto-Gain Calibration)
+        this.bassEma = 0.15;
+        this.bassMin = 0.04;
+        this.bassMax = 0.60;
     }
 
     async init() {
         await this.loadConfig();
         if (this.config.bridgeIp && this.config.username) {
             console.log(`[Philips Hue] 💡 Loaded Hue config for Bridge @ ${this.config.bridgeIp}`);
-            await this.fetchRooms();
+            const rooms = await this.fetchRooms();
+            if (!rooms || rooms.length === 0) {
+                console.log('[Philips Hue] ⚠️ Configured IP unreachable. Auto-discovering Hue Bridge on local LAN...');
+                const disc = await this.discoverBridge();
+                if (disc.success && disc.ip && disc.ip !== this.config.bridgeIp) {
+                    console.log(`[Philips Hue] 🔄 Discovered bridge @ ${disc.ip}. Testing saved credentials...`);
+                    const verified = await this.testCredentials(disc.ip, this.config.username);
+                    if (verified) {
+                        this.config.bridgeIp = disc.ip;
+                        await this.saveConfig();
+                        console.log(`[Philips Hue] ✅ Automatically re-verified Bridge on new IP: ${disc.ip}`);
+                        await this.fetchRooms();
+                    }
+                }
+            }
         } else {
             console.log('[Philips Hue] 💡 Initializing auto-discovery for local Hue Bridge...');
             this.discoverBridge().catch(() => {});
@@ -96,9 +159,23 @@ export class PhilipsHueService {
         }
     }
 
+    async testCredentials(ip, username) {
+        if (!ip || !username) return false;
+        try {
+            const url = `http://${ip}/api/${username}/config`;
+            const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.name && !data.error && !Array.isArray(data)) {
+                    return true;
+                }
+            }
+        } catch (e) {}
+        return false;
+    }
+
     async discoverBridge() {
         try {
-            // 1. Philips Hue N-UPnP Cloud Discovery
             const res = await fetch('https://discovery.meethue.com', { signal: AbortSignal.timeout(4000) });
             if (res.ok) {
                 const data = await res.json();
@@ -110,9 +187,25 @@ export class PhilipsHueService {
                     return { success: true, ip: discoveredIp };
                 }
             }
-        } catch (err) {
-            // N-UPnP failed or offline
+        } catch (err) {}
+
+        const fallbackHosts = ['philips-hue.local', 'hue-bridge.local'];
+        for (const host of fallbackHosts) {
+            try {
+                const res = await fetch(`http://${host}/api/config`, { signal: AbortSignal.timeout(2000) });
+                if (res.ok) {
+                    const cfg = await res.json();
+                    if (cfg && (cfg.ipaddress || cfg.name)) {
+                        const targetIp = cfg.ipaddress || host;
+                        console.log(`[Philips Hue] 🔍 Discovered Hue Bridge via mDNS @ ${targetIp}`);
+                        this.config.bridgeIp = targetIp;
+                        await this.saveConfig();
+                        return { success: true, ip: targetIp };
+                    }
+                }
+            } catch (e) {}
         }
+
         return { success: false, ip: this.config.bridgeIp || null };
     }
 
@@ -125,7 +218,26 @@ export class PhilipsHueService {
             }
         }
 
-        const bridgeUrl = `http://${targetIp || this.config.bridgeIp}/api`;
+        const currentIp = targetIp || this.config.bridgeIp;
+
+        if (this.config.username) {
+            const alreadyValid = await this.testCredentials(currentIp, this.config.username);
+            if (alreadyValid) {
+                this.config.bridgeIp = currentIp;
+                await this.saveConfig();
+                await this.fetchRooms();
+                console.log(`[Philips Hue] 🎉 Existing paired credentials re-verified on Bridge @ ${currentIp}`);
+                return {
+                    status: 'paired',
+                    ip: currentIp,
+                    username: this.config.username,
+                    rooms: this.rooms,
+                    message: 'Connected & Paired Successfully (Auto-Verified)!'
+                };
+            }
+        }
+
+        const bridgeUrl = `http://${currentIp}/api`;
         try {
             const res = await fetch(bridgeUrl, {
                 method: 'POST',
@@ -143,7 +255,7 @@ export class PhilipsHueService {
                     if (data[0].error.type === 101) {
                         return { 
                             status: 'press_button', 
-                            ip: targetIp, 
+                            ip: currentIp, 
                             message: '👉 Press the physical link button on top of your Philips Hue Bridge, then click Pair again within 30 seconds.' 
                         };
                     }
@@ -151,7 +263,7 @@ export class PhilipsHueService {
                 }
 
                 if (data[0].success && data[0].success.username) {
-                    this.config.bridgeIp = targetIp || this.config.bridgeIp;
+                    this.config.bridgeIp = currentIp;
                     this.config.username = data[0].success.username;
                     this.config.clientkey = data[0].success.clientkey || null;
                     await this.saveConfig();
@@ -168,7 +280,7 @@ export class PhilipsHueService {
             }
             return { status: 'error', message: 'Unexpected response from Hue Bridge.' };
         } catch (err) {
-            return { status: 'error', message: `Could not reach Hue Bridge at ${targetIp}. Check IP address.` };
+            return { status: 'error', message: `Could not reach Hue Bridge at ${currentIp}. Check IP address.` };
         }
     }
 
@@ -201,9 +313,47 @@ export class PhilipsHueService {
         return this.rooms;
     }
 
+    async turnOffLights(groupId = null) {
+        this.config.enabled = false;
+        await this.saveConfig().catch(() => {});
+        if (this.decayTimer) {
+            clearTimeout(this.decayTimer);
+            this.decayTimer = null;
+        }
+        this.queuedPayload = null;
+        this.lastSentBri = 0;
+        this.lastSentXY = null;
+        const target = (groupId === 'all' || !groupId) ? '0' : String(groupId);
+        console.log(`[Philips Hue] 🌑 Turning OFF physical lights for Group ${target}...`);
+        await this.sendAction(target, { on: false, transitiontime: 2 }, true);
+        if (target === '0' && Array.isArray(this.rooms)) {
+            for (const room of this.rooms) {
+                if (room.id && room.id !== 'all' && room.id !== '0') {
+                    await this.sendAction(room.id, { on: false, transitiontime: 2 }, true);
+                }
+            }
+        }
+    }
+
+    async turnOnLights(groupId = null) {
+        this.config.enabled = true;
+        await this.saveConfig().catch(() => {});
+        const target = (groupId === 'all' || !groupId) ? '0' : String(groupId);
+        console.log(`[Philips Hue] 💡 Turning ON physical lights for Group ${target}...`);
+        const targetBri = Math.max(15, Math.round((this.config.minBrightness || 0.10) * 254));
+        await this.sendAction(target, { on: true, bri: targetBri, transitiontime: 2 }, true);
+    }
+
     updateConfig(newConfig) {
+        const wasEnabled = this.config.enabled;
         this.config = { ...this.config, ...newConfig };
         this.saveConfig().catch(() => {});
+
+        if (newConfig.enabled === false && wasEnabled) {
+            this.turnOffLights(this.config.targetGroup).catch(() => {});
+        } else if (newConfig.enabled === true && !wasEnabled) {
+            this.turnOnLights(this.config.targetGroup).catch(() => {});
+        }
     }
 
     getStatus() {
@@ -213,15 +363,15 @@ export class PhilipsHueService {
             enabled: this.config.enabled,
             targetGroup: this.config.targetGroup,
             mode: this.config.mode || 'scene_sync',
-            intensity: this.config.intensity ?? 0.95,
-            minBrightness: this.config.minBrightness ?? 0.15,
+            intensity: this.config.intensity ?? 1.0,
+            minBrightness: this.config.minBrightness ?? 0.05,
             kickStrobeEnabled: !!this.config.kickStrobeEnabled,
             rooms: this.rooms
         };
     }
 
-    // High-Performance Audio-to-Light Dispatcher (Ultra-Low Latency & Punchy Snap)
-    async processAudioBeat(audioData) {
+    // High-Impact Rhythmic Audio Envelope Engine (Instant 0ms Attack + Smooth 200ms Decay)
+    processAudioBeat(audioData) {
         if (!this.config.enabled || !this.config.bridgeIp || !this.config.username) return;
 
         const now = performance.now();
@@ -234,120 +384,136 @@ export class PhilipsHueService {
             treble = 0,
             overall = 0,
             sceneColor = '#00ffff',
+            scenePalette = [],
             isDrop = false,
             isStrobe = false,
             bpm = 126
         } = audioData;
 
-        // Periodic Kick White Strobe Burst Trigger
-        const isKickHit = isOnset || transientImpulse > 0.35 || bass > 0.45;
-        if (this.config.kickStrobeEnabled && isKickHit && (now - this.lastKickDetectionTime > 180)) {
-            this.lastKickDetectionTime = now;
-            this.kickCount++;
-            // Every 4th kick (or on heavy drop after 1.8s cooldown), trigger a blinding white strobe pop (85ms burst)
-            if (this.kickCount % 4 === 0 || (isDrop && (now - this.lastKickStrobeTime > 1800))) {
-                this.lastKickStrobeTime = now;
-                this.kickFlashUntil = now + 85;
-            }
-        }
+        const intensity = this.config.intensity ?? 1.0;
+        const minBri = Math.max(1, Math.round((this.config.minBrightness ?? 0.05) * 254));
+        const maxBri = Math.max(minBri + 20, Math.round(254 * intensity));
 
-        const isWhiteKickPop = !!(this.kickFlashUntil && now < this.kickFlashUntil);
-        const isManualStrobe = !!isStrobe;
+        // 1. Manual Strobe Flash (Spacebar or HUD Button)
+        if (isStrobe) {
+            if (this.decayTimer) clearTimeout(this.decayTimer);
+            this.sendAction(this.config.targetGroup, {
+                on: true,
+                bri: 254,
+                xy: [0.3127, 0.3290], // Pure Xenon White
+                transitiontime: 0
+            }, true);
 
-        let targetXY = [0.3127, 0.3290];
-        let targetBri = 0;
-        let transitionTime = 0; // Instant 0ms punch
-
-        const intensity = this.config.intensity ?? 0.95;
-        const minBri = Math.max(1, Math.round((this.config.minBrightness ?? 0.15) * 254));
-        const briRange = 254 - minBri;
-
-        // Expanded Transient & Beat Power
-        const rawEnergy = isOnset
-            ? 1.0
-            : Math.max(
-                transientImpulse * 1.35,
-                Math.pow(bass, 0.75) * 1.45,
-                Math.pow(mid, 1.2) * 0.75
-            );
-        const punch = Math.min(1.0, Math.max(0.0, rawEnergy));
-
-        if (isManualStrobe || isWhiteKickPop) {
-            // Pure Xenon White Strobe Pop
-            targetXY = [0.3127, 0.3290];
-            targetBri = 254;
-            transitionTime = 0;
-        } else if (this.config.mode === 'strobe_only') {
-            targetXY = [0.3127, 0.3290];
-            if (isDrop || isOnset || transientImpulse > 0.28 || bass > 0.40) {
-                targetBri = Math.round(minBri + briRange * intensity);
-                transitionTime = 0;
-            } else {
-                targetBri = Math.max(1, Math.round(minBri * 0.3));
-                transitionTime = 1;
-            }
-        } else if (this.config.mode === 'bass_flash') {
-            if (isDrop || isOnset || bass > 0.35 || transientImpulse > 0.28) {
-                targetXY = [0.675, 0.322]; // Vivid saturated neon crimson
-                targetBri = Math.round(minBri + briRange * Math.min(1.0, punch * 1.3) * intensity);
-                transitionTime = 0;
-            } else {
-                targetXY = [0.15, 0.06];  // Deep moody nightclub royal blue
-                targetBri = minBri;
-                transitionTime = 1;
-            }
-        } else if (this.config.mode === 'rainbow_cycle') {
-            this.colorCycleAngle = (this.colorCycleAngle + 0.14 * (bpm / 120)) % (Math.PI * 2);
-            const r = Math.round(Math.sin(this.colorCycleAngle) * 127 + 128);
-            const g = Math.round(Math.sin(this.colorCycleAngle + 2.094) * 127 + 128);
-            const b = Math.round(Math.sin(this.colorCycleAngle + 4.188) * 127 + 128);
-            targetXY = rgbToCIE(r, g, b);
-            targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.85) * intensity);
-            transitionTime = punch > 0.25 ? 0 : 1;
-        } else {
-            // Default: 'scene_sync' (dynamically matches 3D Visualizer Color Palette)
-            targetXY = hexToCIE(sceneColor);
-            if (isDrop || isOnset) {
-                targetBri = 254;
-                transitionTime = 0;
-            } else if (punch > 0.4) {
-                targetBri = Math.round(minBri + briRange * Math.pow(punch, 0.8) * intensity);
-                transitionTime = 0;
-            } else {
-                targetBri = Math.round(minBri + briRange * Math.pow(punch, 1.25) * intensity);
-                transitionTime = punch > 0.15 ? 0 : 1;
-            }
-        }
-
-        targetBri = Math.max(1, Math.min(254, targetBri));
-
-        const xyKey = `${targetXY[0].toFixed(3)},${targetXY[1].toFixed(3)}`;
-        const isColorChanged = (xyKey !== this.lastSentXY);
-        const isPriority = isManualStrobe || isWhiteKickPop || isDrop || isOnset || isColorChanged || transientImpulse > 0.20 || bass > 0.35;
-
-        // Rate limiting: non-priority resting frames throttled to prevent network flooding
-        if (!isPriority && (now - this.lastDispatchTime < this.dispatchThrottleMs)) {
+            this.decayTimer = setTimeout(() => {
+                this.sendRestingState(sceneColor, minBri, scenePalette);
+            }, 140);
             return;
         }
 
-        this.lastDispatchTime = now;
+        // 2. Adaptive Bass Tracking (Catches every kick drum regardless of master volume level)
+        this.bassEma = this.bassEma * 0.88 + bass * 0.12;
+        this.bassMax = Math.max(bass, this.bassMax * 0.99);
+        this.bassMin = Math.min(bass, this.bassMin * 1.01);
+        const dynamicSpread = Math.max(0.08, this.bassMax - this.bassMin);
+        const relativeBass = (bass - this.bassMin) / dynamicSpread;
 
-        const actionBody = {
-            on: true,
-            bri: targetBri,
-            xy: targetXY,
-            transitiontime: transitionTime
-        };
+        // Minimum time spacing prevents zigbee congestion while allowing fast beats & roll drops
+        const minSpacingMs = Math.max(160, (60000 / Math.max(60, Math.min(200, bpm))) * 0.45);
+        const isKickHit = isOnset ||
+                          transientImpulse > 0.10 ||
+                          (bass > (this.bassEma * 1.06) && bass > 0.04) ||
+                          relativeBass > 0.45 ||
+                          isDrop;
 
-        this.sendGroupAction(this.config.targetGroup, actionBody, xyKey);
+        if (isKickHit && (now - this.lastKickTime > minSpacingMs)) {
+            this.lastKickTime = now;
+            this.kickCount++;
+
+            if (this.decayTimer) clearTimeout(this.decayTimer);
+
+            let flashXY = [0.1530, 0.1980];
+            let flashBri = maxBri;
+
+            // Check if Kick White Strobe is active (bursts ONLY on rare heavy drops or explicit strobe mode)
+            const isWhitePop = (this.config.mode === 'strobe_only') || 
+                               (this.config.kickStrobeEnabled && isDrop && (this.kickCount % 8 === 0));
+
+            if (isWhitePop) {
+                flashXY = [0.3127, 0.3290]; // Pure Xenon White Strobe
+                flashBri = 254;
+            } else if (this.config.mode === 'bass_flash') {
+                // Saturated high-contrast club color flip on every kick
+                flashXY = BASS_FLASH_PALETTE[this.kickCount % BASS_FLASH_PALETTE.length];
+                flashBri = maxBri;
+            } else if (this.config.mode === 'rainbow_cycle') {
+                // Jumps 60 degrees through 100% saturated color spectrum on each beat
+                this.colorCycleAngle = (this.colorCycleAngle + 60) % 360;
+                flashXY = hsvToCIE(this.colorCycleAngle, 1.0, 1.0);
+                flashBri = maxBri;
+            } else {
+                // 'scene_sync': Step through the active scene's harmonic palette on every beat!
+                const palette = Array.isArray(scenePalette) && scenePalette.length > 0 
+                    ? scenePalette 
+                    : ['#00ffff', '#ff007f', '#00ff66', '#ffaa00', '#9900ff', '#ffffff'];
+                const hexColor = palette[this.kickCount % palette.length] || sceneColor;
+                flashXY = hexToCIE(hexColor);
+                flashBri = maxBri;
+            }
+
+            // Attack: Instant snap (0ms transition)
+            this.sendAction(this.config.targetGroup, {
+                on: true,
+                bri: flashBri,
+                xy: flashXY,
+                transitiontime: 0
+            }, true);
+
+            // Decay: Smooth exponential release back to resting floor
+            const holdDurationMs = isWhitePop ? 80 : 110;
+            this.decayTimer = setTimeout(() => {
+                this.sendRestingState(sceneColor, minBri, scenePalette);
+            }, holdDurationMs);
+
+            return;
+        }
+
+        // 3. Resting State / Ambient Heartbeat (Paced updates when no kicks are firing)
+        if (now - this.lastKickTime > 350 && (now - this.lastHeartbeatTime > 400)) {
+            this.lastHeartbeatTime = now;
+            this.sendRestingState(sceneColor, minBri, scenePalette);
+        }
     }
 
-    async sendGroupAction(groupId, body, xyKey = null) {
+    sendRestingState(sceneColor, minBri, scenePalette = []) {
+        if (!this.config.enabled) return;
+        let restingXY = hexToCIE(sceneColor);
+        if (this.config.mode === 'bass_flash') {
+            restingXY = [0.1355, 0.0399]; // Deep moody royal blue / indigo
+        } else if (this.config.mode === 'strobe_only') {
+            restingXY = [0.3127, 0.3290];
+        } else if (this.config.mode === 'rainbow_cycle') {
+            restingXY = hsvToCIE(this.colorCycleAngle, 1.0, 1.0);
+        }
+
+        const xyKey = `${restingXY[0].toFixed(3)},${restingXY[1].toFixed(3)}`;
+        if (xyKey !== this.lastSentXY || this.lastSentBri !== minBri) {
+            this.sendAction(this.config.targetGroup, {
+                on: true,
+                bri: minBri,
+                xy: restingXY,
+                transitiontime: 2 // 200ms smooth fade down to resting level
+            }, false);
+        }
+    }
+
+    async sendAction(groupId, body, isPriority = false) {
         if (!this.config.bridgeIp || !this.config.username) return;
 
-        // If a request is currently inflight, hold the latest target payload
         if (this.isDispatching) {
-            this.pendingPayload = { groupId, body, xyKey };
+            // Priority events (kick flashes, manual strobes) preempt pending payloads
+            if (isPriority || !this.queuedPayload || !this.queuedPayload.isPriority) {
+                this.queuedPayload = { groupId, body, isPriority };
+            }
             return;
         }
 
@@ -356,38 +522,26 @@ export class PhilipsHueService {
         const url = `http://${this.config.bridgeIp}/api/${this.config.username}/groups/${target}/action`;
 
         try {
-            if (xyKey) this.lastSentXY = xyKey;
-            await fetch(url, {
+            const res = await fetch(url, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(body),
-                signal: AbortSignal.timeout(800)
+                signal: AbortSignal.timeout(1200)
             });
+            if (body.xy) this.lastSentXY = `${body.xy[0].toFixed(3)},${body.xy[1].toFixed(3)}`;
+            if (body.bri !== undefined) this.lastSentBri = body.bri;
+            if (isPriority) {
+                console.log(`[Philips Hue] 💥 Beat Flash #${this.kickCount} -> Group ${target} (bri: ${body.bri}, xy: [${body.xy ? body.xy.join(',') : ''}])`);
+            }
         } catch (e) {
-            // Drop late frames
+            console.error(`[Philips Hue] ⚠️ Action error on Group ${target}:`, e.message);
         } finally {
-            if (this.pendingPayload) {
-                const next = this.pendingPayload;
-                this.pendingPayload = null;
-                // Dispatch queued latest frame with a tight 20ms safety gap to maintain max responsiveness
-                setTimeout(async () => {
-                    const nextTarget = (next.groupId === 'all' || !next.groupId) ? '0' : next.groupId;
-                    const nextUrl = `http://${this.config.bridgeIp}/api/${this.config.username}/groups/${nextTarget}/action`;
-                    try {
-                        if (next.xyKey) this.lastSentXY = next.xyKey;
-                        await fetch(nextUrl, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(next.body),
-                            signal: AbortSignal.timeout(800)
-                        });
-                    } catch (e) {
-                    } finally {
-                        this.isDispatching = false;
-                    }
-                }, 20);
-            } else {
-                this.isDispatching = false;
+            this.isDispatching = false;
+            // If another event was queued during dispatch, execute immediately
+            if (this.queuedPayload) {
+                const next = this.queuedPayload;
+                this.queuedPayload = null;
+                this.sendAction(next.groupId, next.body, next.isPriority);
             }
         }
     }

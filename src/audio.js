@@ -209,6 +209,92 @@ export async function setupAudio(onDeviceListChange) {
         }
     }
 
+    async function connectDisplayAudio() {
+        if (isConnecting) return { success: false, error: 'Connection in progress' };
+        isConnecting = true;
+        initAudioContext();
+
+        // Disconnect existing stream if any
+        if (currentStream) {
+            try {
+                currentStream.getTracks().forEach(track => {
+                    track.onended = null;
+                    track.onmute = null;
+                    track.stop();
+                });
+            } catch (e) {}
+            currentStream = null;
+        }
+        if (currentSource) {
+            try { currentSource.disconnect(); } catch (e) {}
+            currentSource = null;
+        }
+
+        let stream = null;
+        try {
+            stream = await navigator.mediaDevices.getDisplayMedia({
+                audio: {
+                    echoCancellation: false,
+                    noiseSuppression: false,
+                    autoGainControl: false,
+                    channelCount: 2
+                },
+                video: true
+            });
+        } catch (err) {
+            isConnecting = false;
+            console.warn('[Audio Engine] System/Tab audio capture cancelled or failed:', err);
+            return { success: false, error: err.message };
+        }
+
+        isConnecting = false;
+
+        const audioTracks = stream.getAudioTracks();
+        if (!audioTracks || audioTracks.length === 0) {
+            stream.getTracks().forEach(t => t.stop());
+            return {
+                success: false,
+                error: 'No audio track received. When sharing screen or tab, ensure "Share Audio" / "Also share tab audio" is enabled.'
+            };
+        }
+
+        // Stop video tracks immediately so zero screen recording occurs
+        stream.getVideoTracks().forEach(t => t.stop());
+
+        try {
+            currentStream = stream;
+            currentDeviceId = 'system-tab-audio';
+            const audioTrack = audioTracks[0];
+            currentDeviceLabel = audioTrack.label || '🖥️ System / Tab Audio Stream';
+
+            audioTrack.onended = () => {
+                console.warn('[Audio Engine] System/Tab stream ended. Switching back to default...');
+                connectDevice('default');
+            };
+
+            currentSource = audioCtx.createMediaStreamSource(stream);
+            currentSource.connect(analyser);
+
+            if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
+                await audioCtx.resume();
+            }
+
+            isConnected = true;
+            console.log(`[Audio Engine] 🖥️ Connected live System/Tab audio: "${currentDeviceLabel}"`);
+
+            if (onDeviceListChange) {
+                const devs = await getAudioDevices();
+                onDeviceListChange(devs, currentDeviceId);
+            }
+
+            return { success: true, label: currentDeviceLabel };
+        } catch (err) {
+            console.warn('[Audio Engine] Setup system audio source failed:', err);
+            isConnected = false;
+            return { success: false, error: err.message };
+        }
+    }
+
     // Auto-attempt initial connection
     await connectDevice('default');
 
@@ -218,7 +304,7 @@ export async function setupAudio(onDeviceListChange) {
             const devs = await getAudioDevices();
             if (onDeviceListChange) onDeviceListChange(devs, currentDeviceId);
             // If current device was disconnected or reconnecting, ensure stream is active
-            if (currentDeviceId && currentDeviceId !== 'default') {
+            if (currentDeviceId && currentDeviceId !== 'default' && currentDeviceId !== 'system-tab-audio') {
                 const stillExists = devs.some(d => d.deviceId === currentDeviceId);
                 if (stillExists && (!isConnected || !currentStream || currentStream.getAudioTracks().some(t => t.readyState === 'ended'))) {
                     console.log(`[Audio Engine] Auto-reconnecting active device [${currentDeviceId}]...`);
@@ -256,6 +342,7 @@ export async function setupAudio(onDeviceListChange) {
         getCurrentDevice: () => ({ id: currentDeviceId, label: currentDeviceLabel }),
         getDevices: getAudioDevices,
         switchDevice: connectDevice,
+        captureSystemAudio: connectDisplayAudio,
         resume: async () => {
             if (audioCtx && audioCtx.state === 'suspended') {
                 await audioCtx.resume();
@@ -301,7 +388,7 @@ export async function setupAudio(onDeviceListChange) {
                 }
                 const rawTreble = Math.min(1.0, (trebleSum / trebleBins / 255) * gainMultiplier);
 
-                // 4. Dynamic Transient / Kick Drum Onset Detection
+                // 4. Dynamic Transient / Kick Drum Onset Detection (Adaptive Dynamic Energy Floor)
                 let avgEnergy = 0;
                 for (let i = 0; i < historyLength; i++) {
                     avgEnergy += bassEnergyHistory[i];
@@ -312,8 +399,9 @@ export async function setupAudio(onDeviceListChange) {
                 historyIndex = (historyIndex + 1) % historyLength;
 
                 let isOnset = false;
-                const minTimeBetweenHitsMs = 200; // Natural minimum spacing between bass hits
-                if (rawBass > 0.18 && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
+                const minTimeBetweenHitsMs = 180; // Natural minimum spacing between bass hits
+                const dynamicFloor = Math.max(0.04, avgEnergy * 0.35);
+                if (rawBass > dynamicFloor && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;
                     lastHitTime = now;

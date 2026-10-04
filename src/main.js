@@ -119,12 +119,14 @@ async function init() {
 
     const audioDeviceSelect = document.getElementById('audio-device-select');
     const btnListenAudio = document.getElementById('btn-listen-audio');
+    const btnCaptureSystemAudio = document.getElementById('btn-capture-system-audio');
     const deckBadge1 = document.getElementById('deck-badge-1');
     const deckBadge2 = document.getElementById('deck-badge-2');
 
     // Philips Hue Lighting Elements
     const hueStatusBadge = document.getElementById('hue-status-badge');
     const btnHueToggle = document.getElementById('btn-hue-toggle');
+    const btnHuePower = document.getElementById('btn-hue-power');
     const btnHueSetup = document.getElementById('btn-hue-setup');
     const hueRoomSelect = document.getElementById('hue-room-select');
     const hueRoomCount = document.getElementById('hue-room-count');
@@ -148,9 +150,10 @@ async function init() {
     let isHueActive = false;
     let isHueKickStrobeActive = false;
     let hueCurrentMode = 'scene_sync';
-    let hueCurrentIntensity = 0.85;
-    let hueCurrentMinBri = 0.15;
+    let hueCurrentIntensity = 1.0;
+    let hueCurrentMinBri = 0.05;
     let hueTargetGroup = 'all';
+    let lastHueBeatSentTime = 0;
 
     // Calibration Sliders
     const sliderGain = document.getElementById('slider-gain');
@@ -317,7 +320,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 21;
+    const TOTAL_FX = 22;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -859,6 +862,7 @@ async function init() {
             setOBSOverlayMode(msg.overlay, false);
         } else if (msg.type === 'set_fx') {
             selectFX(msg.fx, false);
+            try { localStorage.setItem('dj_vfx_current_fx', String(msg.fx)); } catch (e) {}
         } else if (msg.type === 'set_bpm') {
             if (bpmVal) bpmVal.textContent = Number(msg.bpm).toFixed(1);
             vfx.setBPM(msg.bpm);
@@ -987,8 +991,8 @@ async function init() {
             if (checkStationShield) checkStationShield.checked = msg.active;
             vfx.setStationLogoShieldVisible(msg.active);
         } else if (msg.type === 'request_state') {
-            // If this window is an active master controller, broadcast full current state snapshot
-            if (!isCleanDisplay && !isOBSMode) {
+            // Broadcast full current state snapshot (from master controller or clean display)
+            if (!isOBSMode) {
                 broadcastSync({ type: 'set_fx', fx: vfx.getCurrentFX() });
                 broadcastSync({ type: 'set_bpm', bpm: bpmVal ? parseFloat(bpmVal.textContent) || 126 : 126 });
                 broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
@@ -1136,6 +1140,33 @@ async function init() {
         btnListenAudio.addEventListener('click', async () => {
             const chosenId = audioDeviceSelect ? audioDeviceSelect.value : currentSelectedDeviceId;
             await enableAudioAndMedia(chosenId);
+        });
+    }
+
+    if (btnCaptureSystemAudio) {
+        btnCaptureSystemAudio.addEventListener('click', async () => {
+            vfx.playLogoVideo();
+            if (!audioProcessor) {
+                audioProcessor = await setupAudio((devs, activeId) => {
+                    updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
+                });
+            }
+            if (audioProcessor && audioProcessor.captureSystemAudio) {
+                const res = await audioProcessor.captureSystemAudio();
+                if (res.success) {
+                    const devInfo = audioProcessor.getCurrentDevice();
+                    const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
+                    audioStatus.innerHTML = `<span style="color:#00d2ff" title="${devInfo.label}">● ${cleanLabel}</span>`;
+                    if (audioDeviceBadge) audioDeviceBadge.textContent = 'SYS AUDIO';
+                    const tabAudio = document.querySelector('.activity-tab[data-tab="audio"]');
+                    if (tabAudio) tabAudio.classList.add('has-dot');
+                    hudStatus.textContent = 'LIVE REACTIVE';
+                    hudStatus.style.borderColor = '#00d2ff';
+                    hudStatus.style.color = '#00d2ff';
+                } else if (res.error && !res.error.includes('Permission denied') && !res.error.includes('cancelled')) {
+                    alert(res.error);
+                }
+            }
         });
     }
 
@@ -2037,7 +2068,7 @@ async function init() {
         'Strobe Rings', 'Silhouette Dancers', 'Synthwave Grid', 'Synthwave River & Sun',
         'Matrix Code Rain', 'Retro Arcade 80s', 'Warp Starfield', 'Spiral Galaxy Vortex',
         'Hyper Particle Stream', 'Time.is Clock', 'Sweeping Godrays', 'White Godrays & Fog',
-        'Disco Floor & Godrays'
+        'Disco Floor & Godrays', 'VHS Glitch Words'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -2049,6 +2080,10 @@ async function init() {
     function selectFX(index, broadcast = true) {
         const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
         vfx.switchFX(targetIndex);
+
+        try {
+            localStorage.setItem('dj_vfx_current_fx', String(targetIndex));
+        } catch (e) {}
 
         // Update bottom bar buttons (if present)
         fxButtons.forEach((btn) => {
@@ -2073,6 +2108,17 @@ async function init() {
             broadcastSync({ type: 'set_fx', fx: targetIndex });
         }
     }
+
+    // Restore Saved FX Scene from LocalStorage on Startup
+    try {
+        const savedFX = localStorage.getItem('dj_vfx_current_fx');
+        if (savedFX !== null) {
+            const parsed = parseInt(savedFX, 10);
+            if (!isNaN(parsed) && parsed >= 0 && parsed < TOTAL_FX) {
+                selectFX(parsed, false);
+            }
+        }
+    } catch (e) {}
 
     fxButtons.forEach((btn) => {
         btn.addEventListener('click', () => {
@@ -2404,23 +2450,12 @@ async function init() {
                 inputHueIp.value = status.bridgeIp;
             }
 
-            // Update Toggle Button
-            if (btnHueToggle) {
-                if (isHueActive) {
-                    btnHueToggle.textContent = '💡 HUE: ACTIVE';
-                    btnHueToggle.style.color = '#00ffcc';
-                    btnHueToggle.style.borderColor = '#00ffcc';
-                    btnHueToggle.style.background = 'rgba(0,255,204,0.2)';
-                } else {
-                    btnHueToggle.textContent = '⚪ HUE: OFF';
-                    btnHueToggle.style.color = 'rgba(255,255,255,0.7)';
-                    btnHueToggle.style.borderColor = 'rgba(255,255,255,0.15)';
-                    btnHueToggle.style.background = 'rgba(255,255,255,0.06)';
-                }
+            if (status.enabled !== undefined) {
+                isHueActive = !!status.enabled;
             }
 
-            const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
-            if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
+            // Update Master Toggle & Power Buttons
+            updateHueButtonsAndBadges();
 
             // Populate Rooms Dropdown
             if (hueRoomSelect && Array.isArray(status.rooms) && status.rooms.length > 0) {
@@ -2468,14 +2503,68 @@ async function init() {
         }
     });
 
+    function updateHueButtonsAndBadges() {
+        if (btnHueToggle) {
+            if (isHueActive) {
+                btnHueToggle.textContent = '⚡ SYNC: ACTIVE';
+                btnHueToggle.style.color = '#00ffcc';
+                btnHueToggle.style.borderColor = '#00ffcc';
+                btnHueToggle.style.background = 'rgba(0,255,204,0.2)';
+            } else {
+                btnHueToggle.textContent = '⚪ SYNC: OFF';
+                btnHueToggle.style.color = 'rgba(255,255,255,0.7)';
+                btnHueToggle.style.borderColor = 'rgba(255,255,255,0.15)';
+                btnHueToggle.style.background = 'rgba(255,255,255,0.06)';
+            }
+        }
+
+        if (btnHuePower) {
+            if (isHueActive) {
+                btnHuePower.textContent = '💡 LIGHTS: ON';
+                btnHuePower.style.background = 'rgba(0,255,204,0.18)';
+                btnHuePower.style.borderColor = 'rgba(0,255,204,0.5)';
+                btnHuePower.style.color = '#00ffcc';
+                btnHuePower.title = 'Philips Hue lights are ON. Click to turn lights OFF.';
+            } else {
+                btnHuePower.textContent = '🌑 LIGHTS: OFF';
+                btnHuePower.style.background = 'rgba(255,255,255,0.06)';
+                btnHuePower.style.borderColor = 'rgba(255,255,255,0.15)';
+                btnHuePower.style.color = 'rgba(255,255,255,0.55)';
+                btnHuePower.title = 'Philips Hue lights are OFF. Click to turn lights ON.';
+            }
+        }
+
+        const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
+        if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
+    }
+
     // Philips Hue UI Event Listeners
     if (btnHueToggle) {
         btnHueToggle.addEventListener('click', () => {
             isHueActive = !isHueActive;
-            const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
-            if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
-            stagelinqClient.setHueConfig({ enabled: isHueActive });
-            showToast(isHueActive ? '💡 Philips Hue Sync: ENABLED' : '⚪ Philips Hue Sync: OFF');
+            updateHueButtonsAndBadges();
+            if (isHueActive) {
+                stagelinqClient.turnOnHue(hueTargetGroup);
+                showToast('💡 Philips Hue Sync: ENABLED');
+            } else {
+                stagelinqClient.turnOffHue(hueTargetGroup);
+                showToast('⚪ Philips Hue: Disabled & Lights Turned OFF');
+            }
+            broadcastSync({ type: 'set_hue_enabled', enabled: isHueActive });
+        });
+    }
+
+    if (btnHuePower) {
+        btnHuePower.addEventListener('click', () => {
+            isHueActive = !isHueActive;
+            updateHueButtonsAndBadges();
+            if (isHueActive) {
+                stagelinqClient.turnOnHue(hueTargetGroup);
+                showToast('💡 Philips Hue: Room Lights Turned ON');
+            } else {
+                stagelinqClient.turnOffHue(hueTargetGroup);
+                showToast('🌑 Philips Hue: Room Lights Turned OFF');
+            }
             broadcastSync({ type: 'set_hue_enabled', enabled: isHueActive });
         });
     }
@@ -2594,7 +2683,7 @@ async function init() {
         });
     }
 
-    // 7. Keyboard Shortcuts (21 Presets)
+    // 7. Keyboard Shortcuts (22 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
         '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
@@ -2607,7 +2696,8 @@ async function init() {
         'y': 17, 'Y': 17,
         'u': 18, 'U': 18,
         'i': 19, 'I': 19,
-        'o': 20, 'O': 20
+        'o': 20, 'O': 20,
+        'p': 21, 'P': 21
     };
 
     window.addEventListener('keydown', (e) => {
@@ -2807,33 +2897,40 @@ async function init() {
             vuClipBadge.style.display = 'inline-block';
         }
 
-        // Stream live beat telemetry to Philips Hue Bridge (Safely isolated)
+        // Stream live beat telemetry to Philips Hue Bridge (Adaptive Onsets & High Dynamic Range)
         if (stagelinqClient && isHueActive && (data.bass !== undefined || data.bassImpact !== undefined)) {
-            try {
-                const rawBass = data.bass || 0;
-                const transient = data.transientImpulse || 0;
-                const isOnset = !!data.isOnset;
-                const rawMid = data.mid || 0;
-                const rawTreble = data.treble || 0;
-                const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
+            const rawBass = data.bass || 0;
+            const transient = data.transientImpulse || 0;
+            const isOnset = !!data.isOnset;
+            const isKickDrop = isOnset || transient > 0.10 || (rawBass > (data.smoothedBass * 1.05) && rawBass > 0.04);
+            const now = performance.now();
 
-                stagelinqClient.sendHueBeat({
-                    bass: rawBass,
-                    smoothedBass: data.smoothedBass || rawBass,
-                    bassImpact: data.bassImpact || rawBass,
-                    transientImpulse: transient,
-                    isOnset: isOnset,
-                    mid: rawMid,
-                    smoothedMid: data.smoothedMid || rawMid,
-                    treble: rawTreble,
-                    overall: data.overall || 0,
-                    sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
-                    isDrop: isOnset || transient > 0.45 || rawBass > 0.55,
-                    isStrobe: false,
-                    bpm: liveBpm
-                });
-            } catch (err) {
-                // Ignore Hue telemetry errors to ensure VFX audio pipeline is never interrupted
+            if (isKickDrop || (now - lastHueBeatSentTime > 120)) {
+                lastHueBeatSentTime = now;
+                try {
+                    const rawMid = data.mid || 0;
+                    const rawTreble = data.treble || 0;
+                    const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
+
+                    stagelinqClient.sendHueBeat({
+                        bass: rawBass,
+                        smoothedBass: data.smoothedBass || rawBass,
+                        bassImpact: data.bassImpact || rawBass,
+                        transientImpulse: transient,
+                        isOnset: isOnset,
+                        mid: rawMid,
+                        smoothedMid: data.smoothedMid || rawMid,
+                        treble: rawTreble,
+                        overall: data.overall || 0,
+                        sceneColor: vfx.getCurrentSceneColor ? vfx.getCurrentSceneColor() : '#00ffff',
+                        scenePalette: vfx.getCurrentScenePalette ? vfx.getCurrentScenePalette() : [],
+                        isDrop: transient > 0.65 || (rawBass > 0.70 && (data.bassImpact || 0) > 0.80),
+                        isStrobe: false,
+                        bpm: liveBpm
+                    });
+                } catch (err) {
+                    // Ignore Hue telemetry errors to ensure VFX audio pipeline is never interrupted
+                }
             }
         }
 

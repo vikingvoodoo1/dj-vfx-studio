@@ -11,7 +11,7 @@
 
 ## 🌟 Key Highlights
 
-- **21 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **22 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
 - **Universal Multi-Platform DJ Hardware Bridge**: Zero-latency companion bridge supporting **Denon DJ StageLinq** (Prime/Engine OS), **Pioneer Pro DJ Link / Rekordbox** (CDJ/XDJ UDP beat packets), **Native Instruments Traktor Pro** (session watcher & port 8001 metadata), and **Universal REST / File Drop API** (Serato & VirtualDJ).
 - **Philips Hue Smart Lighting Engine**: Ultra-low-latency lighting synchronization with 4 dedicated reaction modes, high-dynamic-range punch, multi-room discovery, and the **⚡ Kick Pop White Strobe** burst system.
 - **Studio-Grade Audio & Loudness Metering**: High-resolution FFT spectrum analysis (Bass, Mid, Treble), transient onset detection, ITU-R BS.1770 LUFS loudness metering, dBFS true-peak gauges, peak-hold needles, and clip alerts.
@@ -20,7 +20,7 @@
 
 ---
 
-## 🗂️ VFX Scene Bank (21 Distinct Modes)
+## 🗂️ VFX Scene Bank (22 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: 3D Studio LED Equalizer Wall** — Segmented stadium LED towers with peak-hold physics and dynamic hue cascades.
@@ -39,11 +39,12 @@
 - **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Pure Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop, delivering ethereal monochrome lighting with bass-reactive cloud turbulence and floor reflection pools.
 - **FX 20: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic 70s *Saturday Night Fever* illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays striking the floor with live reflection pools, backed by the soft Protean volumetric cloud smoke medium and refined lens glow.
 
-### 🕸️ Category 3: Cyber & Retro (FX 10–13)
+### 🕸️ Category 3: Cyber & Retro (FX 10–13, FX 21)
 - **FX 10: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.
 - **FX 11: Synthwave River, Mountains & 80s Sun** — Custom procedural GLSL shader featuring segmented outrun sun rays, glowing reflective river, and twilight star skies.
 - **FX 12: Matrix Code Rain** — Classic cascading digital rain glyphs rendered in glowing phosphor green with audio speed modulation.
 - **FX 13: Retro Arcade 80s Theme** — Vintage vector CRT arcade aesthetics with wireframe geometry and nostalgic neon glow.
+- **FX 21: VHS Glitch Words with Overhead Godrays & Inward Smoke** — Alternating bold white typography (*"DREAMLOVER"* / *"DO YOU BELIEVE?"*) with real-time VHS scanlines, horizontal tape tracking tears, RGB chromatic displacement, and analog static noise, illuminated by 8 downward-pointing moving-head godray spotlights with dual-directional atmospheric smoke billowing inward from left and right wings.
 
 ### 🌌 Category 4: Space, Particles & Stage Lights (FX 14–17)
 - **FX 14: Warp Speed Starfield** — Hyperdrive relativistic star streaks accelerating dynamically on track drops.

@@ -4,7 +4,9 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node server/dev-runner.js",
+    "dev:vite": "vite",
+    "start": "node server/dev-runner.js",
     "bridge": "node server/stagelinq-bridge.js",
     "build": "vite build",
     "preview": "vite preview"
