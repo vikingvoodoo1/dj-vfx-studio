@@ -2173,15 +2173,99 @@ async function init() {
         }
     } catch (e) {}
 
-    fxButtons.forEach((btn) => {
+    // FX Pane Elements & Filtering
+    const fxSearchInput = document.getElementById('fx-search-input');
+    const btnFxSearchClear = document.getElementById('btn-fx-search-clear');
+    const fxSearchCount = document.getElementById('fx-search-count');
+    const fxPaneCards = document.querySelectorAll('.fx-pane-card');
+    const fxCategoryBtns = document.querySelectorAll('.fx-category-btn, #fx-pane-cat-pills button');
+
+    let currentFxCategory = 'all';
+    let currentFxSearchQuery = '';
+
+    function filterFxCards() {
+        let visibleCount = 0;
+        const q = currentFxSearchQuery.toLowerCase().trim();
+
+        fxPaneCards.forEach((card) => {
+            const cardCat = card.getAttribute('data-fxcat') || '';
+            const title = (card.querySelector('.fx-pane-card-title')?.textContent || '').toLowerCase();
+            const key = (card.querySelector('.fx-pane-key')?.textContent || '').toLowerCase();
+            const catTag = (card.querySelector('.fx-pane-cat-tag')?.textContent || '').toLowerCase();
+
+            const matchesCategory = (currentFxCategory === 'all' || cardCat === currentFxCategory);
+            const matchesSearch = !q || title.includes(q) || key.includes(q) || catTag.includes(q);
+
+            if (matchesCategory && matchesSearch) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        if (fxSearchCount) {
+            fxSearchCount.textContent = `${visibleCount} / ${TOTAL_FX}`;
+        }
+
+        // Show "no results" state if 0 visible
+        let noResults = document.getElementById('fx-pane-no-results');
+        if (visibleCount === 0) {
+            if (!noResults) {
+                noResults = document.createElement('div');
+                noResults.id = 'fx-pane-no-results';
+                noResults.className = 'fx-pane-no-results';
+                const grid = document.getElementById('fx-pane-grid');
+                if (grid) grid.appendChild(noResults);
+            }
+            noResults.innerHTML = `🔍 No shaders match "<strong>${q}</strong>" in this category.`;
+            noResults.style.display = 'block';
+        } else if (noResults) {
+            noResults.style.display = 'none';
+        }
+    }
+
+    if (fxSearchInput) {
+        fxSearchInput.addEventListener('input', (e) => {
+            currentFxSearchQuery = e.target.value;
+            if (btnFxSearchClear) {
+                btnFxSearchClear.style.display = currentFxSearchQuery ? 'block' : 'none';
+            }
+            filterFxCards();
+        });
+        // Prevent global hotkeys from firing while typing in search
+        fxSearchInput.addEventListener('keydown', (e) => {
+            e.stopPropagation();
+            if (e.key === 'Escape') {
+                fxSearchInput.value = '';
+                currentFxSearchQuery = '';
+                if (btnFxSearchClear) btnFxSearchClear.style.display = 'none';
+                filterFxCards();
+                fxSearchInput.blur();
+            }
+        });
+    }
+
+    if (btnFxSearchClear) {
+        btnFxSearchClear.addEventListener('click', () => {
+            if (fxSearchInput) fxSearchInput.value = '';
+            currentFxSearchQuery = '';
+            btnFxSearchClear.style.display = 'none';
+            filterFxCards();
+            if (fxSearchInput) fxSearchInput.focus();
+        });
+    }
+
+    fxCategoryBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
-            const fxIdx = parseInt(btn.getAttribute('data-fx'), 10);
-            selectFX(fxIdx);
+            const cat = btn.getAttribute('data-fxcat') || 'all';
+            currentFxCategory = cat;
+            fxCategoryBtns.forEach(b => b.classList.toggle('active', (b.getAttribute('data-fxcat') || 'all') === cat));
+            filterFxCards();
         });
     });
 
     // FX Pane Card Click Listeners
-    const fxPaneCards = document.querySelectorAll('.fx-pane-card');
     fxPaneCards.forEach((card) => {
         card.addEventListener('click', () => {
             const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
@@ -2207,25 +2291,6 @@ async function init() {
                     btn.style.display = 'inline-flex';
                 } else {
                     btn.style.display = 'none';
-                }
-            });
-        });
-    });
-
-    // Console Pane FX Category Filter Pills
-    fxPaneCatPills.forEach((pill) => {
-        pill.addEventListener('click', () => {
-            const cat = pill.getAttribute('data-fxcat');
-            fxPaneCatPills.forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-
-            const allCards = document.querySelectorAll('.fx-pane-card');
-            allCards.forEach((card) => {
-                const cardCat = card.getAttribute('data-fxcat');
-                if (cat === 'all' || cardCat === cat) {
-                    card.style.display = 'flex';
-                } else {
-                    card.style.display = 'none';
                 }
             });
         });

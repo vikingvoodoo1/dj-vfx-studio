@@ -335,43 +335,122 @@
             font-family: 'JetBrains Mono', 'Share Tech Mono', monospace;
         }
 
+        /* Unified Skeuomorphic Panel Header */
         .hud-header {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            border-bottom: 1px solid #2b2e3a;
-            padding-bottom: 6px;
-            margin-bottom: 8px;
+            border-bottom: 1px solid #282a34;
+            padding-bottom: 8px;
+            margin-bottom: 10px;
+            gap: 8px;
         }
 
         .hud-title-box {
             display: flex;
             flex-direction: column;
-            gap: 1px;
+            gap: 3px;
         }
 
         .hud-title {
-            font-size: 12px;
+            font-size: 11.5px;
             font-weight: 900;
             letter-spacing: 1.2px;
             text-transform: uppercase;
-            color: #e5e7ec;
+            color: #f0f2f7;
             text-shadow: 0 1px 0 rgba(255,255,255,0.1), 0 -1px 0 rgba(0,0,0,0.95);
             font-family: 'JetBrains Mono', monospace;
+            display: flex;
+            align-items: center;
+            gap: 4px;
         }
 
-        .hud-build-info {
+        .hud-status-line {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .hud-header-tools {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .rack-tool-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            height: 25px;
+            padding: 0 8px;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 8.5px;
-            font-family: 'JetBrains Mono', 'Share Tech Mono', monospace;
-            color: #7b808e;
-            letter-spacing: 0.5px;
-            text-shadow: 0 -1px 0 rgba(0,0,0,0.9);
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            color: #d8dbe2;
+            background: linear-gradient(180deg, #2c2f3b 0%, #1c1d24 100%);
+            border: 1px solid #3d4150;
+            border-radius: 4px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15), inset 0 -1px 0 rgba(0,0,0,0.5);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            user-select: none;
+            outline: none;
+        }
+
+        .rack-tool-btn:hover {
+            color: #ffffff;
+            background: linear-gradient(180deg, #383c4c 0%, #242630 100%);
+            border-color: #555b70;
+            box-shadow: 0 3px 6px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.25);
+            transform: translateY(-1px);
+        }
+
+        .rack-tool-btn:active {
+            transform: translateY(1px);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
+            background: #15161b;
+        }
+
+        .rack-tool-btn#btn-detach-console {
+            border-color: rgba(255, 0, 255, 0.35);
+            color: #ff99ff;
+        }
+        .rack-tool-btn#btn-detach-console:hover {
+            background: linear-gradient(180deg, rgba(255,0,255,0.22) 0%, #201322 100%);
+            border-color: #ff00ff;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(255,0,255,0.35);
+        }
+
+        .rack-tool-btn#btn-popout {
+            border-color: rgba(0, 255, 204, 0.35);
+            color: #00ffcc;
+        }
+        .rack-tool-btn#btn-popout:hover {
+            background: linear-gradient(180deg, rgba(0,255,204,0.2) 0%, #102120 100%);
+            border-color: #00ffcc;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(0,255,204,0.3);
+        }
+
+        .rack-tool-btn.danger {
+            border-color: rgba(255, 0, 127, 0.35);
+            color: #ff66aa;
+            padding: 0 6px;
+        }
+        .rack-tool-btn.danger:hover {
+            background: linear-gradient(180deg, rgba(255,0,127,0.25) 0%, #23121a 100%);
+            border-color: #ff007f;
+            color: #ffffff;
+            box-shadow: 0 0 10px rgba(255,0,127,0.35);
         }
 
         .hud-badge {
-            font-size: 9.5px;
+            font-size: 9px;
             font-family: 'JetBrains Mono', monospace;
-            padding: 2px 8px;
+            padding: 2px 7px;
             border-radius: 4px;
             background: linear-gradient(180deg, #2b1f0a 0%, #160f04 100%);
             color: #ffbb22;
@@ -1484,39 +1563,180 @@
             flex: 1;
         }
 
-        /* FX Bank Pane Cards & Grid */
+        /* FX Bank Search & Filter Toolbar */
+        .fx-search-container {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+            background: #0e0f14;
+            border: 1px solid #2b2e3a;
+            border-radius: 4px;
+            padding: 3px 7px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.7);
+        }
+
+        .fx-search-input-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .fx-search-icon {
+            width: 12px;
+            height: 12px;
+            color: #8c909e;
+            flex-shrink: 0;
+        }
+
+        .fx-search-input {
+            width: 100%;
+            background: transparent;
+            border: none;
+            outline: none;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            padding: 3px 0;
+        }
+
+        .fx-search-input::placeholder {
+            color: #636775;
+            font-size: 8.5px;
+        }
+
+        .fx-search-clear {
+            background: none;
+            border: none;
+            color: #8c909e;
+            cursor: pointer;
+            font-size: 10px;
+            padding: 2px 4px;
+            display: none;
+            border-radius: 3px;
+        }
+        .fx-search-clear:hover {
+            color: #ffffff;
+            background: rgba(255,255,255,0.1);
+        }
+
+        .fx-search-count {
+            font-size: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #ffaa00;
+            background: rgba(255,170,0,0.1);
+            border: 1px solid rgba(255,170,0,0.25);
+            border-radius: 3px;
+            padding: 1px 4px;
+            white-space: nowrap;
+        }
+
+        /* FX Category Segmented Switcher */
+        .fx-category-bar {
+            display: flex;
+            background: #0e0f14;
+            border: 1px solid #282a34;
+            border-radius: 4px;
+            padding: 2px;
+            gap: 2px;
+            margin-bottom: 6px;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.7);
+        }
+
+        .fx-category-btn {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 3px;
+            padding: 4px 2px;
+            background: transparent;
+            border: 1px solid transparent;
+            border-radius: 3px;
+            color: #8c909e;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 8px;
+            font-weight: 800;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            white-space: nowrap;
+            outline: none;
+        }
+
+        .fx-category-btn:hover {
+            color: #ffffff;
+            background: rgba(255,255,255,0.04);
+        }
+
+        .fx-category-btn.active {
+            background: linear-gradient(180deg, #2c2f3b 0%, #1c1d24 100%);
+            border-color: #ffaa00;
+            color: #ffaa00;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
+        }
+
+        /* FX Bank Quick Action Strip */
+        .fx-quick-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 5px;
+            margin-bottom: 8px;
+        }
+
+        .fx-quick-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            padding: 6px 4px;
+            font-size: 8.5px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.4px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            outline: none;
+        }
+
+        /* FX Bank Channel Strip Cards & Grid */
         .fx-pane-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 8px;
-            margin-top: 8px;
-            margin-bottom: 12px;
+            gap: 5px;
+            margin-top: 4px;
+            margin-bottom: 8px;
         }
 
         .fx-pane-card {
-            background: rgba(255, 255, 255, 0.04);
-            border: 1px solid rgba(255, 255, 255, 0.12);
-            border-radius: 8px;
-            padding: 9px 10px;
+            background: linear-gradient(180deg, #21232c 0%, #15161c 100%);
+            border: 1px solid #323542;
+            box-shadow: 0 3px 5px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.5);
+            border-radius: 4px;
+            padding: 6px 8px;
             cursor: pointer;
-            transition: all 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex;
             flex-direction: column;
-            gap: 4px;
+            gap: 3px;
             user-select: none;
             position: relative;
+            outline: none;
         }
 
         .fx-pane-card:hover {
-            background: rgba(0, 255, 204, 0.1);
-            border-color: rgba(0, 255, 204, 0.4);
-            transform: translateY(-1px);
+            background: linear-gradient(180deg, #2a2d39 0%, #1c1d25 100%);
+            border-color: #ffaa00;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.7), inset 0 1px 0 rgba(255,255,255,0.2);
+            transform: translateY(-1.5px);
         }
 
         .fx-pane-card.active {
-            background: linear-gradient(135deg, rgba(0, 255, 204, 0.22), rgba(0, 180, 255, 0.12));
-            border-color: #00ffcc;
-            box-shadow: 0 0 14px rgba(0, 255, 204, 0.35);
+            background: linear-gradient(180deg, #2b2210 0%, #181308 100%);
+            border-color: #ffaa00;
+            box-shadow: 0 0 12px rgba(255,170,0,0.45), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 0 8px rgba(255,170,0,0.15);
         }
 
         .fx-pane-card-top {
@@ -1526,40 +1746,63 @@
         }
 
         .fx-pane-key {
-            background: rgba(0, 0, 0, 0.5);
-            border: 1px solid rgba(255, 255, 255, 0.25);
-            border-radius: 4px;
+            background: #0a0b0e;
+            border: 1px solid #3e4252;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.8);
+            border-radius: 3px;
             padding: 1px 5px;
-            font-size: 9.5px;
+            font-size: 8px;
             font-weight: 800;
-            color: #ff007f;
+            color: #ffaa00;
             font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.3px;
         }
 
         .fx-pane-card.active .fx-pane-key {
             color: #00ffcc;
             border-color: #00ffcc;
+            box-shadow: 0 0 6px rgba(0,255,204,0.4);
         }
 
         .fx-pane-cat-tag {
-            font-size: 8.5px;
-            font-weight: 700;
+            font-size: 7.5px;
+            font-weight: 800;
             text-transform: uppercase;
-            color: rgba(255, 255, 255, 0.4);
+            color: #727685;
             letter-spacing: 0.5px;
+            font-family: 'JetBrains Mono', monospace;
         }
 
         .fx-pane-card.active .fx-pane-cat-tag {
-            color: rgba(0, 255, 204, 0.85);
+            color: #ffaa00;
         }
 
         .fx-pane-card-title {
-            font-size: 11.5px;
-            font-weight: 700;
-            color: #ffffff;
+            font-size: 10px;
+            font-weight: 800;
+            color: #e5e7ec;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.1px;
+        }
+
+        .fx-pane-card.active .fx-pane-card-title {
+            color: #ffffff;
+            text-shadow: 0 0 8px rgba(255,170,0,0.5);
+        }
+
+        .fx-pane-no-results {
+            grid-column: span 2;
+            text-align: center;
+            padding: 16px 12px;
+            font-size: 9.5px;
+            color: #8c909e;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0,0,0,0.3);
+            border: 1px dashed #343744;
+            border-radius: 4px;
         }
 
         /* OBS Streaming Integration & Modal Styles */
@@ -1817,12 +2060,24 @@
             <div class="hud-header">
                 <div class="hud-title-box">
                     <div class="hud-title">⚡ DJ VFX STUDIO</div>
+                    <div class="hud-status-line">
+                        <span class="power-led" id="hud-power-led" style="background:#00ffcc; box-shadow:0 0 6px #00ffcc;"></span>
+                        <span class="hud-badge" id="hud-status">STANDBY</span>
+                    </div>
                 </div>
-                <div style="display:flex; align-items:center; gap:4px; flex-wrap:wrap; justify-content:flex-end;">
-                    <button class="btn-mini" id="btn-detach-console" title="Detach full DJ Control Console to a dedicated laptop window" style="padding:3px 7px; font-size:9.5px; background:rgba(255,0,255,0.18); border:1px solid rgba(255,0,255,0.45); color:#ff66ff; cursor:pointer; font-weight:700;">🎛️ DETACH</button>
-                    <button class="btn-mini" id="btn-popout" title="Open Clean Visualizer Display in a new window for 2nd Screen / Projector / OBS" style="padding:3px 7px; font-size:9.5px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#cccccc; cursor:pointer;">🖥️ 2ND</button>
-                    <button class="btn-mini" id="btn-reset-all" title="Reset all console parameters to default values" style="padding:3px 6px; font-size:9.5px; background:rgba(255,0,127,0.15); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;">↺</button>
-                    <div class="hud-badge" id="hud-status">STANDBY</div>
+                <div class="hud-header-tools">
+                    <button class="rack-tool-btn" id="btn-detach-console" title="Detach full DJ Control Console to a dedicated laptop window">
+                        <span class="tool-icon">🎛️</span>
+                        <span class="tool-text">CONTROLLER</span>
+                    </button>
+                    <button class="rack-tool-btn" id="btn-popout" title="Open Clean Visualizer Display in a new window for 2nd Screen / Projector / OBS">
+                        <span class="tool-icon">🖥️</span>
+                        <span class="tool-text">2ND SCREEN</span>
+                    </button>
+                    <button class="rack-tool-btn danger" id="btn-reset-all" title="Reset all console parameters to default values">
+                        <span class="tool-icon">↺</span>
+                        <span class="tool-text">RESET</span>
+                    </button>
                 </div>
             </div>
 
@@ -1965,26 +2220,39 @@
                     <span class="hud-badge" id="fx-pane-active-badge">ACTIVE: 3D STUDIO EQ</span>
                 </div>
 
-                <!-- Quick Action Buttons -->
-                <div style="display:flex; gap:6px; margin-bottom:10px;">
-                    <button class="auto-btn" id="btn-auto-vj-fxpane" style="flex:1; padding:7px 8px; font-size:10px; font-weight:800; border-radius:4px; cursor:pointer;" title="Toggle Auto VJ Mode">
-                        <span class="fx-key">A</span> AUTO VJ
-                    </button>
-                    <button class="flash-btn" id="btn-flash-fxpane" style="flex:1; padding:7px 8px; font-size:10px; font-weight:800; border-radius:4px; cursor:pointer;" title="Trigger Strobe Flash Burst">
-                        ⚡ STROBE
-                    </button>
-                    <button class="btn-mini" id="btn-random-fx" style="background:linear-gradient(180deg, #323542 0%, #181921 100%); border:1px solid #404454; color:#fff; font-weight:700; padding:7px 10px; border-radius:4px; font-size:10px; cursor:pointer;" title="Switch to a random visualizer scene">
-                        🎲 RANDOM
-                    </button>
+                <!-- Search & Filter Controls -->
+                <div class="fx-search-container">
+                    <div class="fx-search-input-wrap">
+                        <svg class="fx-search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="fx-search-input" class="fx-search-input" placeholder="Search 22 shaders (e.g. laser, disco, grid, eq)..." autocomplete="off" spellcheck="false">
+                        <button class="fx-search-clear" id="btn-fx-search-clear" title="Clear Search">✕</button>
+                    </div>
+                    <span class="fx-search-count" id="fx-search-count">22 / 22</span>
                 </div>
 
-                <!-- Category Filter Pills -->
-                <div class="mode-pills" id="fx-pane-cat-pills" style="margin-bottom:10px; display:flex; flex-wrap:wrap; gap:4px;">
-                    <button class="mode-pill active" data-fxcat="all" style="padding:4px 8px; font-size:9.5px;">⚡ All (22)</button>
-                    <button class="mode-pill" data-fxcat="eq" style="padding:4px 8px; font-size:9.5px;">📊 Equalizers</button>
-                    <button class="mode-pill" data-fxcat="laser" style="padding:4px 8px; font-size:9.5px;">⚡ Lasers</button>
-                    <button class="mode-pill" data-fxcat="wire" style="padding:4px 8px; font-size:9.5px;">🕸️ Cyber</button>
-                    <button class="mode-pill" data-fxcat="space" style="padding:4px 8px; font-size:9.5px;">🌌 Space</button>
+                <!-- Category Filter Segmented Tabs -->
+                <div class="fx-category-bar" id="fx-pane-cat-pills">
+                    <button class="fx-category-btn active" data-fxcat="all">⚡ ALL (22)</button>
+                    <button class="fx-category-btn" data-fxcat="eq">📊 EQ (4)</button>
+                    <button class="fx-category-btn" data-fxcat="laser">⚡ LASERS (7)</button>
+                    <button class="fx-category-btn" data-fxcat="wire">🕸️ CYBER (6)</button>
+                    <button class="fx-category-btn" data-fxcat="space">🌌 SPACE (3)</button>
+                </div>
+
+                <!-- Quick Action Switches -->
+                <div class="fx-quick-actions">
+                    <button class="auto-btn fx-quick-btn" id="btn-auto-vj-fxpane" title="Toggle Auto VJ Mode [A]">
+                        <span class="fx-key">A</span> AUTO VJ
+                    </button>
+                    <button class="flash-btn fx-quick-btn" id="btn-flash-fxpane" title="Trigger Strobe Flash Burst [Space]">
+                        ⚡ STROBE
+                    </button>
+                    <button class="rack-tool-btn fx-quick-btn" id="btn-random-fx" title="Switch to a random visualizer scene">
+                        🎲 RANDOM
+                    </button>
                 </div>
 
                 <!-- FX Cards Grid (22 Shaders) -->
