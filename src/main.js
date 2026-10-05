@@ -352,10 +352,40 @@ async function init() {
     const tabPanes = document.querySelectorAll('.ide-tab-pane');
     const btnActAll = document.getElementById('btn-act-all');
     const activityLogoBtn = document.getElementById('activity-logo-btn');
-    const dotAudio = document.getElementById('dot-audio');
-    const dotHue = document.getElementById('dot-hue');
-    const dotObs = document.getElementById('dot-obs');
+    const dotPerform = document.getElementById('dot-perform') || document.getElementById('dot-audio');
+    const dotFx = document.getElementById('dot-fx');
+    const dotBranding = document.getElementById('dot-branding');
+    const dotSetup = document.getElementById('dot-setup');
     const audioDeviceBadge = document.getElementById('audio-device-badge');
+
+    // Setup Sub-Drawers Elements & State (OBS, HUE, BRIDGES, ABOUT)
+    const setupSubtabs = document.querySelectorAll('.setup-nav-tab[data-setuptab]');
+    const setupContents = {
+        obs: document.getElementById('setup-content-obs'),
+        hue: document.getElementById('setup-content-hue'),
+        bridge: document.getElementById('setup-content-bridge'),
+        about: document.getElementById('setup-content-about')
+    };
+
+    function switchSetupSubtab(subtabId) {
+        setupSubtabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-setuptab') === subtabId);
+        });
+        Object.entries(setupContents).forEach(([key, el]) => {
+            if (el) {
+                const isActive = key === subtabId;
+                el.classList.toggle('active', isActive);
+                el.style.display = isActive ? 'block' : 'none';
+            }
+        });
+    }
+
+    setupSubtabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const subtabId = tab.getAttribute('data-setuptab');
+            if (subtabId) switchSetupSubtab(subtabId);
+        });
+    });
 
     // Duplicate Controls inside Feature Panes
     const btnAutoVJPanel = document.getElementById('btn-auto-vj-panel');
@@ -367,12 +397,20 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['audio', 'fx', 'glow', 'logo', 'hue', 'obs', 'about'];
+    const tabOrder = ['perform', 'fx', 'branding', 'setup'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
         if (hud) hud.classList.remove('show-all-panes');
         if (btnActAll) btnActAll.classList.remove('active');
+
+        // Aliases for consolidated setup & branding tabs
+        if (tabId === 'audio') tabId = 'perform';
+        if (tabId === 'glow' || tabId === 'logo') tabId = 'branding';
+        if (tabId === 'obs' || tabId === 'hue' || tabId === 'about' || tabId === 'bridge') {
+            switchSetupSubtab(tabId);
+            tabId = 'setup';
+        }
 
         activityTabs.forEach(tab => {
             tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
@@ -411,7 +449,7 @@ async function init() {
             if (isAll) {
                 activityTabs.forEach(tab => tab.classList.remove('active'));
             } else {
-                switchTab(tabOrder[currentTabIndex] || 'audio');
+                switchTab(tabOrder[currentTabIndex] || 'perform');
             }
         });
     }
@@ -722,7 +760,7 @@ async function init() {
             btnModalObsToggle.style.background = isOBSOutputLive ? liveBg : mutedBg;
         }
 
-        const tabObs = document.querySelector('.activity-tab[data-tab="obs"]');
+        const tabObs = document.querySelector('.activity-tab[data-tab="setup"], .activity-tab[data-tab="obs"]');
         if (tabObs) tabObs.classList.toggle('has-dot', isOBSOutputLive);
 
         if (broadcast) {
@@ -1126,7 +1164,7 @@ async function init() {
             const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
             audioStatus.innerHTML = `<span style="color:${isSysAudio ? '#00d2ff' : '#00ffcc'}" title="${devInfo.label}">● ${cleanLabel}</span>`;
             if (audioDeviceBadge) audioDeviceBadge.textContent = isSysAudio ? 'SYS AUDIO' : 'LINE-IN';
-            const tabAudio = document.querySelector('.activity-tab[data-tab="audio"]');
+            const tabAudio = document.querySelector('.activity-tab[data-tab="perform"], .activity-tab[data-tab="audio"]');
             if (tabAudio) tabAudio.classList.add('has-dot');
             hudStatus.textContent = 'LIVE REACTIVE';
             hudStatus.style.borderColor = isSysAudio ? '#00d2ff' : '#00ffcc';
@@ -1170,7 +1208,7 @@ async function init() {
                     const cleanLabel = devInfo.label.length > 22 ? devInfo.label.slice(0, 20) + '...' : devInfo.label;
                     audioStatus.innerHTML = `<span style="color:#00d2ff" title="${devInfo.label}">● ${cleanLabel}</span>`;
                     if (audioDeviceBadge) audioDeviceBadge.textContent = 'SYS AUDIO';
-                    const tabAudio = document.querySelector('.activity-tab[data-tab="audio"]');
+                    const tabAudio = document.querySelector('.activity-tab[data-tab="perform"], .activity-tab[data-tab="audio"]');
                     if (tabAudio) tabAudio.classList.add('has-dot');
                     hudStatus.textContent = 'LIVE REACTIVE';
                     hudStatus.style.borderColor = '#00d2ff';
@@ -1209,7 +1247,7 @@ async function init() {
             btnToggleDjLogoTop.classList.toggle('active', isLogoActive);
             if (djPowerStatusText) djPowerStatusText.textContent = isLogoActive ? 'ACTIVE ON' : 'OFF';
         }
-        const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
+        const tabLogo = document.querySelector('.activity-tab[data-tab="branding"], .activity-tab[data-tab="logo"]');
         if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
         if (broadcast) {
             broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
@@ -1536,7 +1574,7 @@ async function init() {
             btnToggleStationLogoTop.classList.toggle('active', isStationLogoActive);
             if (stationPowerStatusText) stationPowerStatusText.textContent = isStationLogoActive ? 'ACTIVE ON' : 'OFF';
         }
-        const tabLogo = document.querySelector('.activity-tab[data-tab="logo"]');
+        const tabLogo = document.querySelector('.activity-tab[data-tab="branding"], .activity-tab[data-tab="logo"]');
         if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive);
         if (broadcast) {
             broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
@@ -2554,7 +2592,7 @@ async function init() {
             }
         }
 
-        const tabHue = document.querySelector('.activity-tab[data-tab="hue"]');
+        const tabHue = document.querySelector('.activity-tab[data-tab="setup"], .activity-tab[data-tab="hue"]');
         if (tabHue) tabHue.classList.toggle('has-dot', isHueActive);
     }
 
@@ -2721,15 +2759,15 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..7] / [Alt + A] / [Alt + T] for IDE Console Navigation & Theme Cycle
+        // [Alt + 1..4] for 4 Master Consoles, [Alt + A] for Show All
         if (e.altKey) {
-            if (e.key === '1') { e.preventDefault(); switchTab('audio'); return; }
+            if (e.key === '1') { e.preventDefault(); switchTab('perform'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
-            if (e.key === '3') { e.preventDefault(); switchTab('glow'); return; }
-            if (e.key === '4') { e.preventDefault(); switchTab('logo'); return; }
-            if (e.key === '5') { e.preventDefault(); switchTab('hue'); return; }
-            if (e.key === '6') { e.preventDefault(); switchTab('obs'); return; }
-            if (e.key === '7') { e.preventDefault(); switchTab('about'); return; }
+            if (e.key === '3') { e.preventDefault(); switchTab('branding'); return; }
+            if (e.key === '4') { e.preventDefault(); switchTab('setup'); return; }
+            if (e.key === '5') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('hue'); return; }
+            if (e.key === '6') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('bridge'); return; }
+            if (e.key === '7') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('about'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
@@ -2787,11 +2825,9 @@ async function init() {
                 document.exitFullscreen().catch(err => console.log(err));
             }
         }
-        // [H] to toggle HUD & FX Toolbar
+        // [H] to toggle Bottom FX Bank Toolbar
         else if (e.key === 'h' || e.key === 'H') {
-            hud.classList.toggle('hidden');
-            fxBankPanel.classList.toggle('hidden');
-            trackBanner.classList.toggle('hidden');
+            if (fxBankPanel) fxBankPanel.classList.toggle('hidden');
         }
         // [O] to open OBS Streaming Manager or Shift+[O] to toggle OBS Output Mute
         else if (e.key === 'o' || e.key === 'O') {
