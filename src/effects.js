@@ -4079,9 +4079,9 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
-        const marginRatio = logoMode === 'overlay' ? 0.035 : 0.06;
-        const marginX = Math.max(0.12, visibleHalfW * marginRatio);
-        const marginY = Math.max(0.12, visibleHalfH * marginRatio);
+        const marginRatio = (logoMode === 'overlay' || logoMode === 'hologram') ? 0.012 : 0.03;
+        const marginX = Math.max(0.04, visibleHalfW * marginRatio);
+        const marginY = Math.max(0.04, visibleHalfH * marginRatio);
 
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
@@ -4293,7 +4293,7 @@ export function createVFXScene(container) {
             uBrightness: { value: stationLogoBrightness },
             uLumaCutoff: { value: 0.05 },
             uLumaSmooth: { value: 0.05 },
-            uBlendMode: { value: 0 }
+            uBlendMode: { value: 2 } // Default to Direct (2) for PNG logos to keep full color & opacity
         },
         vertexShader: HighClarityLogoShader.vertexShader,
         fragmentShader: HighClarityLogoShader.fragmentShader,
@@ -4355,9 +4355,9 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
-        const marginRatio = stationLogoMode === 'overlay' ? 0.035 : 0.06;
-        const marginX = Math.max(0.12, visibleHalfW * marginRatio);
-        const marginY = Math.max(0.12, visibleHalfH * marginRatio);
+        const marginRatio = (stationLogoMode === 'overlay' || stationLogoMode === 'hologram') ? 0.012 : 0.03;
+        const marginX = Math.max(0.04, visibleHalfW * marginRatio);
+        const marginY = Math.max(0.04, visibleHalfH * marginRatio);
 
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
@@ -4443,7 +4443,7 @@ export function createVFXScene(container) {
 
             if (isVideo) {
                 const video = document.createElement('video');
-                video.src = sourceUrl;
+                video.src = encodeURI(sourceUrl);
                 video.crossOrigin = 'anonymous';
                 video.loop = true;
                 video.muted = true;
@@ -4468,7 +4468,7 @@ export function createVFXScene(container) {
                 stationLogoShaderMat.needsUpdate = true;
             } else {
                 const loader = new THREE.TextureLoader();
-                loader.load(sourceUrl, (tex) => {
+                loader.load(encodeURI(sourceUrl), (tex) => {
                     stationLogoTexture = tex;
                     stationLogoTexture.minFilter = THREE.LinearFilter;
                     stationLogoTexture.magFilter = THREE.LinearFilter;
