@@ -1009,14 +1009,41 @@
             transform: translateY(1.5px);
         }
 
-        /* FX Preset Cards Grid / Flex */
+        /* FX Preset Cards Grid / Flex (2-Row Rack for All, 1-Row for Categories) */
         .fx-presets-row {
             display: flex;
             align-items: center;
-            gap: 6px;
-            overflow-x: auto;
-            scrollbar-width: none;
+            justify-content: center;
+            gap: 5px 6px;
+            flex-wrap: wrap;
             max-width: 100%;
+            transition: all 0.2s ease;
+        }
+
+        .fx-presets-row.all-mode {
+            display: grid;
+            grid-template-columns: repeat(11, auto);
+            gap: 5px 6px;
+            justify-content: center;
+            max-width: 95vw;
+        }
+
+        @media (max-width: 1480px) {
+            .fx-presets-row.all-mode {
+                grid-template-columns: repeat(11, auto);
+            }
+        }
+
+        @media (max-width: 1280px) {
+            .fx-presets-row.all-mode {
+                grid-template-columns: repeat(8, auto);
+            }
+        }
+
+        @media (max-width: 960px) {
+            .fx-presets-row.all-mode {
+                grid-template-columns: repeat(6, auto);
+            }
         }
 
         .fx-presets-row::-webkit-scrollbar {
@@ -1028,18 +1055,20 @@
             border: 1px solid #404454;
             box-shadow: 0 4px 6px rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.6);
             color: #d8dbe2;
-            padding: 6px 12px;
+            padding: 5px 9px;
             border-radius: 4px;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 11px;
+            font-size: 10.5px;
             font-weight: 700;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 6px;
+            justify-content: center;
+            gap: 5px;
             white-space: nowrap;
             text-shadow: 0 -1px 0 rgba(0,0,0,0.95);
             transition: all 0.1s ease;
+            user-select: none;
         }
 
         .fx-btn:hover {
@@ -2810,8 +2839,8 @@
             </div>
         </div>
 
-        <!-- FX Preset Buttons Row (22 Presets) -->
-        <div class="fx-presets-row" id="fx-presets-row">
+        <!-- FX Preset Buttons Row (22 Presets - 2-Row Hardware Rack) -->
+        <div class="fx-presets-row all-mode" id="fx-presets-row">
             <!-- 📊 Equalizers & Decks -->
             <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
             <button class="fx-btn" data-fx="1" data-cat="eq"><span class="fx-key">2</span> 🎯 Circular Spectrum</button>

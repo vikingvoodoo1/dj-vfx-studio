@@ -2152,11 +2152,16 @@ async function init() {
     });
 
     // Bottom Bar Category Tabs Filtering
+    const fxPresetsRowEl = document.getElementById('fx-presets-row');
     catTabs.forEach((tab) => {
         tab.addEventListener('click', () => {
             const cat = tab.getAttribute('data-category');
             catTabs.forEach(t => t.classList.remove('active'));
             tab.classList.add('active');
+
+            if (fxPresetsRowEl) {
+                fxPresetsRowEl.classList.toggle('all-mode', cat === 'all');
+            }
 
             fxButtons.forEach((btn) => {
                 const btnCat = btn.getAttribute('data-cat');
