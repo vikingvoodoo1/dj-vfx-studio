@@ -1975,7 +1975,7 @@
                     <span class="act-dot" id="dot-fx"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="glow" title="Calibration, Glow & Sensitivity [Alt+3]">
+                <button class="activity-tab" data-tab="glow" title="⚙️ Settings, Themes & Calibration [Alt+3]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -2378,11 +2378,95 @@
             </div>
 
             <!-- ========================================== -->
-            <!-- PANE 3: CALIBRATION, GLOW & SENSITIVITY     -->
+            <!-- PANE 3: SETTINGS, THEMES & CALIBRATION     -->
             <!-- ========================================== -->
             <div class="ide-tab-pane" id="pane-glow">
                 <div class="pane-section-title">
-                    <span>🎛️ Calibration & Glow</span>
+                    <span>⚙️ Settings & UI Themes</span>
+                    <span class="hud-badge" id="theme-active-badge">CYBER GLASS</span>
+                </div>
+
+                <!-- ========================================== -->
+                <!-- UI THEME & CONTROL PANEL AESTHETICS        -->
+                <!-- ========================================== -->
+                <div class="hud-section" style="margin-bottom:12px;">
+                    <div class="hud-row" style="margin-bottom:6px;">
+                        <span class="hud-label">🎨 CHOOSE CONTROL PANEL THEME</span>
+                        <span style="font-size:8px; color:rgba(255,255,255,0.4); font-family:'JetBrains Mono',monospace;">Alt + T to cycle</span>
+                    </div>
+
+                    <div class="theme-selector-grid" id="theme-selector-grid">
+                        <!-- Theme 1: Default Cyber Glass -->
+                        <div class="theme-card active" data-theme="default" title="Cyber Glassmorphism (Default)">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, rgba(8,9,20,0.95), rgba(0,255,204,0.3)); border-color:#00ffcc;">
+                                <div class="theme-swatch-dot" style="background:#00ffcc; box-shadow:0 0 6px #00ffcc;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Cyber Glass (Default)</span>
+                                <span class="theme-desc">Frosted glassmorphism & cyan neon</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 2: Studio Hardware Pro (Universal Audio Skeuomorphic) -->
+                        <div class="theme-card" data-theme="hardware" title="Universal Audio / Studio Console Hardware Skeuomorphism">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #2a2d36, #121317); border:1px solid #4a4e5c; box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">
+                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Studio Hardware Pro 🎛️</span>
+                                <span class="theme-desc">Analog console rack, milled faders & tactile 3D</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 3: Cyberpunk Neon Matrix -->
+                        <div class="theme-card" data-theme="cyberpunk" title="Cyberpunk Neon Matrix">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #12061f, #ff007f); border-color:#ff007f;">
+                                <div class="theme-swatch-dot" style="background:#ff007f; box-shadow:0 0 6px #ff007f;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Cyberpunk Matrix</span>
+                                <span class="theme-desc">High-voltage magenta & laser glow</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 4: Obsidian Stealth -->
+                        <div class="theme-card" data-theme="obsidian" title="Obsidian Stealth Minimalist">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #050508, #202026); border-color:#ffffff;">
+                                <div class="theme-swatch-dot" style="background:#ffffff; box-shadow:0 0 6px #ffffff;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Obsidian Stealth</span>
+                                <span class="theme-desc">Matte OLED black & razor lines</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 5: Titanium Pioneer Pro -->
+                        <div class="theme-card" data-theme="titanium" title="Titanium Pioneer Pro Hardware">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #181920, #ff8800); border-color:#ff8800;">
+                                <div class="theme-swatch-dot" style="background:#ff8800; box-shadow:0 0 6px #ff8800;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Titanium Pioneer Pro</span>
+                                <span class="theme-desc">CDJ carbon & amber LEDs</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 6: Analog Synthwave Studio -->
+                        <div class="theme-card" data-theme="analog" title="Analog Synthwave Studio">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #1a120b, #ffaa00); border-color:#ffaa00;">
+                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Analog Synthwave Studio</span>
+                                <span class="theme-desc">Warm 80s amber phosphor CRT</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Calibration Sliders Section -->
+                <div class="pane-section-title" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--hud-border-dim, rgba(255,255,255,0.08));">
+                    <span>🎚️ Audio Calibration & Glow</span>
                     <span class="hud-badge">PUNCH</span>
                 </div>
 
@@ -2413,84 +2497,6 @@
                 <div style="display:flex; gap:6px; margin-top:10px;">
                     <button class="auto-btn" id="btn-auto-vj-panel" style="flex:1; padding:6px 10px; font-size:10px;">⚡ AUTO VJ TOGGLE</button>
                     <button class="flash-btn" id="btn-flash-panel" style="flex:1; padding:6px 10px; font-size:10px;">💥 STROBE BURST</button>
-                </div>
-
-                <!-- ========================================== -->
-                <!-- UI THEME & CONTROL PANEL AESTHETICS        -->
-                <!-- ========================================== -->
-                <div class="hud-section" style="margin-top:14px; padding-top:10px; border-top:1px solid var(--hud-border-dim, rgba(255,255,255,0.08));">
-                    <div class="hud-row" style="margin-bottom:6px;">
-                        <span class="hud-label">🎨 UI THEME & PANEL STYLE</span>
-                        <span class="hud-badge" id="theme-active-badge">CYBER GLASS</span>
-                    </div>
-
-                    <div class="theme-selector-grid" id="theme-selector-grid">
-                        <!-- Theme 1: Default Cyber Glass -->
-                        <div class="theme-card active" data-theme="default" title="Cyber Glassmorphism (Default)">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, rgba(8,9,20,0.95), rgba(0,255,204,0.3)); border-color:#00ffcc;">
-                                <div class="theme-swatch-dot" style="background:#00ffcc; box-shadow:0 0 6px #00ffcc;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Cyber Glass (Default)</span>
-                                <span class="theme-desc">Frosted glassmorphism & cyan neon</span>
-                            </div>
-                        </div>
-
-                        <!-- Theme 2: Studio Hardware Pro (Universal Audio Skeuomorphic) -->
-                        <div class="theme-card" data-theme="hardware" title="Universal Audio / Studio Console Hardware Skeuomorphism">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #2a2d36, #121317); border:1px solid #4a4e5c; box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">
-                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Studio Hardware Pro 🎛️</span>
-                                <span class="theme-desc">Analog console rack, milled faders & tactile 3D</span>
-                            </div>
-                        </div>
-
-                        <!-- Theme 2: Cyberpunk Neon Matrix -->
-                        <div class="theme-card" data-theme="cyberpunk" title="Cyberpunk Neon Matrix">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #12061f, #ff007f); border-color:#ff007f;">
-                                <div class="theme-swatch-dot" style="background:#ff007f; box-shadow:0 0 6px #ff007f;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Cyberpunk Matrix</span>
-                                <span class="theme-desc">High-voltage magenta & laser glow</span>
-                            </div>
-                        </div>
-
-                        <!-- Theme 3: Obsidian Stealth -->
-                        <div class="theme-card" data-theme="obsidian" title="Obsidian Stealth Minimalist">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #050508, #202026); border-color:#ffffff;">
-                                <div class="theme-swatch-dot" style="background:#ffffff; box-shadow:0 0 6px #ffffff;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Obsidian Stealth</span>
-                                <span class="theme-desc">Matte OLED black & razor lines</span>
-                            </div>
-                        </div>
-
-                        <!-- Theme 4: Titanium Pioneer Pro -->
-                        <div class="theme-card" data-theme="titanium" title="Titanium Pioneer Pro Hardware">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #181920, #ff8800); border-color:#ff8800;">
-                                <div class="theme-swatch-dot" style="background:#ff8800; box-shadow:0 0 6px #ff8800;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Titanium Pioneer Pro</span>
-                                <span class="theme-desc">CDJ carbon & amber LEDs</span>
-                            </div>
-                        </div>
-
-                        <!-- Theme 5: Analog Synthwave Studio -->
-                        <div class="theme-card" data-theme="analog" title="Analog Synthwave Studio">
-                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #1a120b, #ffaa00); border-color:#ffaa00;">
-                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
-                            </div>
-                            <div class="theme-info">
-                                <span class="theme-name">Analog Synthwave Studio</span>
-                                <span class="theme-desc">Warm 80s amber phosphor CRT</span>
-                            </div>
-                        </div>
-                    </div>
                 </div>
             </div>
 

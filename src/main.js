@@ -501,7 +501,15 @@ async function init() {
             const nextIdx = (themesList.indexOf(current) + 1) % themesList.length;
             const nextTheme = themesList[nextIdx];
             applyUITheme(nextTheme, true);
+            switchTab('glow');
             showToast(`🎨 Theme: ${themeDisplayNames[nextTheme]}`);
+        });
+    }
+
+    if (themeActiveBadge) {
+        themeActiveBadge.style.cursor = 'pointer';
+        themeActiveBadge.addEventListener('click', () => {
+            switchTab('glow');
         });
     }
 
