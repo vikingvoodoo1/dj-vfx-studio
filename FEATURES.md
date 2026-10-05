@@ -7,12 +7,13 @@ This document tracks all features, architectural components, lighting integratio
 ## 🚀 Complete Feature Catalog
 
 ### 1. 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine *(NEW)*
-- [x] **5 Curated Visual Themes**:
+- [x] **6 Curated Visual Themes**:
   1. **Cyber Glass (Default)**: Sleek frosted glassmorphism (`rgba(8,9,20,0.92)`), cyan neon (`#00ffcc`), soft diffuse drop shadows, and modern vector stroke icons.
-  2. **Cyberpunk Matrix**: Deep dark violet-obsidian chassis, high-voltage hot magenta (`#ff007f`) & electric cyan (`#00ffff`), chamfered razor borders, and chromatic laser-glow icons.
-  3. **Obsidian Stealth**: Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents, minimalist monochromatic geometric icons.
-  4. **Titanium Pioneer Pro Hardware**: Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks, and recessed illuminated keypads.
-  5. **Analog Synthwave Studio**: Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges, and warm vintage glowing icons.
+  2. **Studio Hardware Pro (Universal Audio Skeuomorphic)**: Full analog mixing console & rack unit skeuomorphism, brushed dark charcoal metallic chassis, 3D rack bolted bezel, milled mixing console faders with recessed grooves, dual-stage physical 3D push buttons with mechanical inset press, debossed screen-printed labels, and analog warm instrument LEDs.
+  3. **Cyberpunk Matrix**: Deep dark violet-obsidian chassis, high-voltage hot magenta (`#ff007f`) & electric cyan (`#00ffff`), chamfered razor borders, and chromatic laser-glow icons.
+  4. **Obsidian Stealth**: Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents, minimalist monochromatic geometric icons.
+  5. **Titanium Pioneer Pro Hardware**: Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks, and recessed illuminated keypads.
+  6. **Analog Synthwave Studio**: Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges, and warm vintage glowing icons.
 - [x] **Zero-FOUC Theme Persistence**: Instant `localStorage` loading before DOM rendering to eliminate theme flicker upon page refresh.
 - [x] **1-Click Theme Switcher & Hotkeys**: Integrated Theme Selector card grid in the **Calibration & Glow** pane (`#pane-glow`), quick header button (`🎨 THEME`), and **`Alt + T`** hotkey.
 - [x] **CSS Variable System**: Complete root tokens (`--hud-bg`, `--hud-accent`, `--hud-border`, `--hud-shadow`, `--hud-radius`, `--hud-slider-thumb`) controlling every panel component dynamically.

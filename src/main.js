@@ -436,9 +436,10 @@ async function init() {
     const themeCards = document.querySelectorAll('.theme-card[data-theme]');
     const themeActiveBadge = document.getElementById('theme-active-badge');
     const btnThemeCycle = document.getElementById('btn-theme-cycle');
-    const themesList = ['default', 'cyberpunk', 'obsidian', 'titanium', 'analog'];
+    const themesList = ['default', 'hardware', 'cyberpunk', 'obsidian', 'titanium', 'analog'];
     const themeDisplayNames = {
         'default': 'CYBER GLASS',
+        'hardware': 'STUDIO RACK PRO',
         'cyberpunk': 'CYBERPUNK MATRIX',
         'obsidian': 'OBSIDIAN STEALTH',
         'titanium': 'PIONEER PRO',

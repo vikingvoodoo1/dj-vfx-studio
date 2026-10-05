@@ -7,7 +7,7 @@
     <title>DJ VFX Studio - Nightclub Visual Engine, Categorized FX Bank & Branding</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800;900&family=JetBrains+Mono:wght@400;600;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <script>
         // Instant Zero-FOUC Clean Mode & Dynamic Theme Detector
         (function() {
@@ -240,6 +240,192 @@
             --hud-fx-active-border: #ffaa00;
             --hud-fx-active-glow: 0 0 15px rgba(255, 170, 0, 0.5);
             --hud-icon-filter: drop-shadow(0 0 5px rgba(255, 170, 0, 0.75));
+        }
+
+        /* 5. FLAGSHIP THEME: STUDIO RACK HARDWARE SKEUOMORPHISM (UNIVERSAL AUDIO / ANALOG CONSOLE) */
+        body.theme-hardware, html.theme-hardware {
+            --hud-font: 'JetBrains Mono', 'Share Tech Mono', monospace;
+            --hud-mono-font: 'JetBrains Mono', 'Share Tech Mono', monospace;
+            --hud-bg: linear-gradient(180deg, #24262e 0%, #1a1b21 25%, #141519 65%, #0f1013 100%), repeating-linear-gradient(90deg, rgba(255,255,255,0.012) 0px, rgba(255,255,255,0.012) 1px, transparent 1px, transparent 3px);
+            --hud-backdrop: none;
+            --hud-border: 2px solid #363945;
+            --hud-border-dim: #252732;
+            --hud-shadow: 0 28px 75px rgba(0, 0, 0, 0.98), 
+                          inset 1px 1px 0 rgba(255, 255, 255, 0.2), 
+                          inset -1px -1px 0 rgba(0, 0, 0, 0.9), 
+                          0 0 0 1px #0a0b0e,
+                          inset 0 0 20px rgba(0, 0, 0, 0.7);
+            --hud-radius: 6px;
+            --hud-accent: #ffaa00;
+            --hud-accent-glow: 0 0 12px rgba(255, 170, 0, 0.7), 0 0 2px #ffffff;
+            --hud-accent-sec: #10b981;
+            --hud-text: #e2e4ea;
+            --hud-text-dim: #8c909e;
+            --hud-card-bg: linear-gradient(180deg, #1c1d23 0%, #131418 100%);
+            --hud-card-border: #2c2e3a;
+            --hud-sidebar-bg: linear-gradient(180deg, #181920 0%, #101115 100%);
+            --hud-sidebar-border: #262833;
+            --hud-slider-thumb: #ffaa00;
+            --hud-slider-glow: 0 0 10px rgba(255, 170, 0, 0.8);
+            --hud-tab-active-bg: linear-gradient(180deg, #111216 0%, #1c1d24 100%);
+            --hud-tab-active-border: #ffaa00;
+            --hud-badge-bg: linear-gradient(180deg, #2b1f0a 0%, #160f04 100%);
+            --hud-badge-border: #ffaa00;
+            --hud-badge-color: #ffb822;
+            --hud-btn-bg: linear-gradient(180deg, #30333e 0%, #20222a 50%, #181920 100%);
+            --hud-btn-border: #404454;
+            --hud-btn-color: #e5e7ec;
+            --hud-btn-hover-bg: linear-gradient(180deg, #3a3e4c 0%, #272a34 50%, #1d1f27 100%);
+            --hud-fx-active-bg: linear-gradient(180deg, #111216 0%, #1c1912 100%);
+            --hud-fx-active-border: #ffaa00;
+            --hud-fx-active-glow: 0 0 14px rgba(255, 170, 0, 0.6);
+            --hud-icon-filter: drop-shadow(0 0 3px rgba(255, 170, 0, 0.5));
+        }
+
+        /* Hardware Skeuomorphism Structural Overrides */
+        body.theme-hardware #hud,
+        body.theme-hardware #fx-bank-panel {
+            background: linear-gradient(180deg, #262830 0%, #1b1c22 15%, #14151a 50%, #0f1013 100%), repeating-linear-gradient(90deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 4px) !important;
+            border: 2px solid #363945 !important;
+            border-radius: 6px !important;
+            box-shadow: 0 30px 85px rgba(0,0,0,0.98), inset 1px 1px 0 rgba(255,255,255,0.22), inset -1px -1px 0 rgba(0,0,0,0.9), inset 0 0 20px rgba(0,0,0,0.8) !important;
+            position: relative;
+        }
+
+        /* Rack Ear Bolt Screws Styling */
+        body.theme-hardware #hud::before,
+        body.theme-hardware #hud::after {
+            content: '⨁';
+            position: absolute;
+            top: 4px;
+            font-size: 8px;
+            color: #4a4e5c;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.15), 0 -1px 0 rgba(0,0,0,0.9);
+            z-index: 10;
+            pointer-events: none;
+        }
+        body.theme-hardware #hud::before { left: 6px; }
+        body.theme-hardware #hud::after { right: 6px; }
+
+        /* Hardware Tactile Buttons (Sharp 3D Depth & Raised Physical Look) */
+        body.theme-hardware .btn-mini,
+        body.theme-hardware button:not(.activity-tab):not(.card-delete-btn),
+        body.theme-hardware .preset-btn,
+        body.theme-hardware .cat-tab,
+        body.theme-hardware .logo-power-btn,
+        body.theme-hardware .station-card,
+        body.theme-hardware .dj-card,
+        body.theme-hardware .theme-card,
+        body.theme-hardware .mode-pill {
+            background: linear-gradient(180deg, #323542 0%, #22242d 50%, #181921 100%) !important;
+            border: 1px solid #404454 !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.65), 0 1px 2px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.2), inset 0 -1px 0 rgba(0,0,0,0.6) !important;
+            border-radius: 4px !important;
+            color: #d8dbe2 !important;
+            font-family: 'JetBrains Mono', 'Share Tech Mono', monospace !important;
+            text-shadow: 0 -1px 0 rgba(0,0,0,0.95);
+            font-weight: 700 !important;
+            transition: transform 0.08s ease, box-shadow 0.08s ease, background 0.15s ease !important;
+        }
+
+        body.theme-hardware .btn-mini:hover,
+        body.theme-hardware button:not(.activity-tab):not(.card-delete-btn):hover,
+        body.theme-hardware .preset-btn:hover,
+        body.theme-hardware .cat-tab:hover,
+        body.theme-hardware .logo-power-btn:hover,
+        body.theme-hardware .station-card:hover,
+        body.theme-hardware .dj-card:hover,
+        body.theme-hardware .theme-card:hover,
+        body.theme-hardware .mode-pill:hover {
+            background: linear-gradient(180deg, #3c404e 0%, #282b35 50%, #1d1f27 100%) !important;
+            border-color: #505568 !important;
+            color: #ffffff !important;
+            box-shadow: 0 5px 8px rgba(0,0,0,0.7), 0 1px 2px rgba(0,0,0,0.9), inset 0 1px 0 rgba(255,255,255,0.3) !important;
+        }
+
+        /* Tactile Depressed / Active State (Inverted Inset Shadow) */
+        body.theme-hardware .btn-mini:active,
+        body.theme-hardware button:not(.activity-tab):not(.card-delete-btn):active,
+        body.theme-hardware .preset-btn:active,
+        body.theme-hardware .preset-btn.active,
+        body.theme-hardware .cat-tab.active,
+        body.theme-hardware .mode-pill.active,
+        body.theme-hardware .station-card.active,
+        body.theme-hardware .dj-card.active,
+        body.theme-hardware .theme-card.active,
+        body.theme-hardware .logo-power-btn.active {
+            background: linear-gradient(180deg, #0e0f13 0%, #181920 100%) !important;
+            border-color: #ffaa00 !important;
+            box-shadow: inset 0 3px 6px rgba(0,0,0,0.9), inset 0 1px 2px rgba(0,0,0,0.95), 0 1px 0 rgba(255,255,255,0.1), inset 0 0 12px rgba(255,170,0,0.35) !important;
+            color: #ffaa00 !important;
+            text-shadow: 0 0 6px rgba(255,170,0,0.75) !important;
+            transform: translateY(1.5px) !important;
+        }
+
+        /* Mixing Console Channel Faders & Sliders */
+        body.theme-hardware input[type=range] {
+            height: 8px !important;
+            background: linear-gradient(180deg, #09090c 0%, #16171d 100%) !important;
+            border: 1px solid #282a34 !important;
+            border-radius: 4px !important;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.95), 0 1px 0 rgba(255,255,255,0.1) !important;
+            outline: none !important;
+        }
+
+        body.theme-hardware input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none !important;
+            width: 14px !important;
+            height: 24px !important;
+            border-radius: 3px !important;
+            background: linear-gradient(180deg, #6c7182 0%, #404452 40%, #2a2d37 50%, #1c1d24 100%) !important;
+            border: 1px solid #525768 !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.85), inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -1px 0 rgba(0,0,0,0.8), 0 0 0 1px #111216 !important;
+            cursor: ew-resize !important;
+            position: relative;
+        }
+
+        /* Debossed Screen-Printed Text Labels on Hardware Chassis */
+        body.theme-hardware .hud-label,
+        body.theme-hardware .group-title,
+        body.theme-hardware .pane-section-title,
+        body.theme-hardware .slider-header,
+        body.theme-hardware .hud-build-info {
+            font-family: 'JetBrains Mono', 'Share Tech Mono', monospace !important;
+            text-transform: uppercase !important;
+            color: #9297a6 !important;
+            letter-spacing: 0.8px !important;
+            text-shadow: 0 1px 0 rgba(255,255,255,0.08), 0 -1px 0 rgba(0,0,0,0.95) !important;
+        }
+
+        body.theme-hardware .pane-section-title {
+            border-bottom: 1px solid #2b2e3a !important;
+            color: #ffaa00 !important;
+            text-shadow: 0 0 8px rgba(255,170,0,0.35), 0 -1px 0 rgba(0,0,0,0.9) !important;
+        }
+
+        /* Analog LED Telemetry Readouts */
+        body.theme-hardware .bpm-display {
+            color: #ffaa00 !important;
+            text-shadow: 0 0 16px rgba(255, 170, 0, 0.85), 0 0 4px #ffe066 !important;
+            font-family: 'JetBrains Mono', monospace !important;
+            font-weight: 800 !important;
+        }
+
+        body.theme-hardware .hud-badge {
+            background: linear-gradient(180deg, #2c1f0a 0%, #150f05 100%) !important;
+            border: 1px solid #ffaa00 !important;
+            color: #ffbb22 !important;
+            box-shadow: 0 0 8px rgba(255,170,0,0.45), inset 0 1px 0 rgba(255,255,255,0.15) !important;
+            border-radius: 4px !important;
+            font-family: 'JetBrains Mono', monospace !important;
+        }
+
+        body.theme-hardware .hud-select {
+            background: linear-gradient(180deg, #1c1d24 0%, #121318 100%) !important;
+            border: 1px solid #383c4a !important;
+            color: #ffaa00 !important;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 1px 0 rgba(255,255,255,0.08) !important;
+            border-radius: 4px !important;
         }
 
         /* Theme Selector Component */
@@ -2247,6 +2433,17 @@
                             <div class="theme-info">
                                 <span class="theme-name">Cyber Glass (Default)</span>
                                 <span class="theme-desc">Frosted glassmorphism & cyan neon</span>
+                            </div>
+                        </div>
+
+                        <!-- Theme 2: Studio Hardware Pro (Universal Audio Skeuomorphic) -->
+                        <div class="theme-card" data-theme="hardware" title="Universal Audio / Studio Console Hardware Skeuomorphism">
+                            <div class="theme-swatch-box" style="background:linear-gradient(135deg, #2a2d36, #121317); border:1px solid #4a4e5c; box-shadow:inset 0 1px 0 rgba(255,255,255,0.25);">
+                                <div class="theme-swatch-dot" style="background:#ffaa00; box-shadow:0 0 6px #ffaa00;"></div>
+                            </div>
+                            <div class="theme-info">
+                                <span class="theme-name">Studio Hardware Pro 🎛️</span>
+                                <span class="theme-desc">Analog console rack, milled faders & tactile 3D</span>
                             </div>
                         </div>
 

@@ -54,11 +54,12 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ## 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine
 
-Customize the look and feel of the control console with 5 curated themes:
+Customize the look and feel of the control console with 6 curated themes:
 
 | Theme | Aesthetic Highlights | Icon & Element Styling |
 | :--- | :--- | :--- |
 | **Cyber Glass (Default)** | Frosted glassmorphism (`rgba(8,9,20,0.92)`), cyan neon (`#00ffcc`), soft diffuse drop shadows | Smooth vector stroke icons with subtle cyan ambient glow |
+| **Studio Hardware Pro 🎛️** | Full Universal Audio / SSL hardware skeuomorphism, anodized dark brushed metallic chassis, 3D rack bolted bezel, milled mixing console faders, debossed engraved typography | Dual-stage physical 3D push buttons with mechanical inset press and analog warm amber/green LEDs |
 | **Cyberpunk Matrix** | Dark violet-obsidian chassis, high-voltage hot magenta (`#ff007f`), electric cyan (`#00ffff`), chamfered razor borders | Dual-tone chromatic laser glow icons with vibrant outer bloom |
 | **Obsidian Stealth** | Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents | Minimalist monochromatic geometric line icons with zero distraction |
 | **Titanium Pioneer Pro** | Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks | Recessed tactile hardware cue button keys with illuminated amber LEDs |
