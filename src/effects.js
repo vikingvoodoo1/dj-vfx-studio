@@ -4058,30 +4058,15 @@ export function createVFXScene(container) {
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         }
 
-        // Calculate Position Scale Factors
-        let scaleFactor = 1.0;
-        if (logoPosition === 'center') {
-            scaleFactor = 1.0;
-        } else if (logoPosition === 'top' || logoPosition === 'bottom' || logoPosition === 'left' || logoPosition === 'right' ||
-                   logoPosition === 'center-top' || logoPosition === 'top-center' || logoPosition === 'center-bottom' || logoPosition === 'bottom-center' ||
-                   logoPosition === 'top-quarter' || logoPosition === 'center-top-quarter' || logoPosition === 'center-bottom-quarter' || logoPosition === 'bottom-quarter') {
-            scaleFactor = 0.78;
-        } else {
-            // Corners: top-left, top-right, bottom-left, bottom-right
-            scaleFactor = 0.65;
-        }
+        // Base dimensions factoring in user-selected scale
+        const w = baseW;
+        const h = baseW / (logoAspectRatio || (16 / 9));
 
-        const w = baseW * scaleFactor;
-        const h = (baseW / logoAspectRatio) * scaleFactor;
-
-        // Dynamic Camera Frustum Boundary Math
-        const dist = Math.max(0.1, camera.position.z - baseZ);
+        // Dynamic Camera Frustum Boundary Math (at nominal camera z=16.0)
+        const camZ = 16.0;
+        const dist = Math.max(0.1, camZ - baseZ);
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
-
-        const marginRatio = (logoMode === 'overlay' || logoMode === 'hologram') ? 0.012 : 0.03;
-        const marginX = Math.max(0.04, visibleHalfW * marginRatio);
-        const marginY = Math.max(0.04, visibleHalfH * marginRatio);
 
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
@@ -4090,52 +4075,52 @@ export function createVFXScene(container) {
 
         switch (logoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posX = -visibleHalfW + halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW - marginX;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posX = visibleHalfW - halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posX = -visibleHalfW + halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW - marginX;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posX = visibleHalfW - halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'top':
             case 'center-top':
             case 'top-center':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom':
             case 'center-bottom':
             case 'bottom-center':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
+                posX = -visibleHalfW + halfLogoW;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW - marginX;
+                posX = visibleHalfW - halfLogoW;
                 posY = 0;
                 break;
             case 'top-quarter':
             case 'center-top-quarter':
                 posX = 0;
-                posY = visibleHalfH * 0.45;
+                posY = visibleHalfH * 0.5;
                 break;
             case 'bottom-quarter':
             case 'center-bottom-quarter':
                 posX = 0;
-                posY = -visibleHalfH * 0.45;
+                posY = -visibleHalfH * 0.5;
                 break;
             case 'center':
             default:
@@ -4147,7 +4132,7 @@ export function createVFXScene(container) {
         currentLogoPosX = posX;
         currentLogoPosY = posY;
         currentLogoBaseZ = baseZ;
-        currentLogoScaleFactor = scaleFactor;
+        currentLogoScaleFactor = 1.0;
 
         logoPivot.position.set(posX, posY, baseZ);
         logoPivot.quaternion.copy(camera.quaternion);
@@ -4336,28 +4321,15 @@ export function createVFXScene(container) {
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
         }
 
-        let scaleFactor = 1.0;
-        if (stationLogoPosition === 'center') {
-            scaleFactor = 1.0;
-        } else if (stationLogoPosition === 'top' || stationLogoPosition === 'top-center' || stationLogoPosition === 'center-top' ||
-                   stationLogoPosition === 'bottom' || stationLogoPosition === 'bottom-center' || stationLogoPosition === 'center-bottom') {
-            scaleFactor = 0.75;
-        } else {
-            // Corners & sides
-            scaleFactor = 0.65;
-        }
+        // Base dimensions factoring in user-selected scale
+        const w = baseW;
+        const h = baseW / (stationLogoAspectRatio || 1.0);
 
-        const w = baseW * scaleFactor;
-        const h = (baseW / stationLogoAspectRatio) * scaleFactor;
-
-        // Dynamic Camera Frustum Boundary Math
-        const dist = Math.max(0.1, camera.position.z - baseZ);
+        // Dynamic Camera Frustum Boundary Math (at nominal camera z=16.0)
+        const camZ = 16.0;
+        const dist = Math.max(0.1, camZ - baseZ);
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
-
-        const marginRatio = (stationLogoMode === 'overlay' || stationLogoMode === 'hologram') ? 0.012 : 0.03;
-        const marginX = Math.max(0.04, visibleHalfW * marginRatio);
-        const marginY = Math.max(0.04, visibleHalfH * marginRatio);
 
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
@@ -4366,41 +4338,41 @@ export function createVFXScene(container) {
 
         switch (stationLogoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posX = -visibleHalfW + halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW - marginX;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posX = visibleHalfW - halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posX = -visibleHalfW + halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW - marginX;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posX = visibleHalfW - halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'top':
             case 'top-center':
             case 'center-top':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH - marginY;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom':
             case 'bottom-center':
             case 'center-bottom':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH + marginY;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW + marginX;
+                posX = -visibleHalfW + halfLogoW;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW - marginX;
+                posX = visibleHalfW - halfLogoW;
                 posY = 0;
                 break;
             case 'center':
@@ -4413,7 +4385,7 @@ export function createVFXScene(container) {
         currentStationLogoPosX = posX;
         currentStationLogoPosY = posY;
         currentStationLogoBaseZ = baseZ;
-        currentStationLogoScaleFactor = scaleFactor;
+        currentStationLogoScaleFactor = 1.0;
 
         stationLogoPivot.position.set(posX, posY, baseZ);
         stationLogoPivot.quaternion.copy(camera.quaternion);
