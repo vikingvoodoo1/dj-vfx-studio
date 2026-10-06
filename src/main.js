@@ -142,6 +142,18 @@ async function init() {
     const btnShazamToManual = document.getElementById('btn-shazam-to-manual');
     const btnShazamDiscard = document.getElementById('btn-shazam-discard');
 
+    // Deck Shazam Elements in Live Performance Deck
+    const shazamDeckCandidateCard = document.getElementById('shazam-deck-candidate-card');
+    const shazamDeckMatchArt = document.getElementById('shazam-deck-match-art');
+    const shazamDeckMatchArtFallback = document.getElementById('shazam-deck-match-art-fallback');
+    const shazamDeckMatchTitle = document.getElementById('shazam-deck-match-title');
+    const shazamDeckMatchArtist = document.getElementById('shazam-deck-match-artist');
+    const shazamDeckMatchGenre = document.getElementById('shazam-deck-match-genre');
+    const shazamDeckCountdownBar = document.getElementById('shazam-deck-countdown-bar');
+    const shazamDeckCountdownText = document.getElementById('shazam-deck-countdown-text');
+    const btnDeckShazamPublish = document.getElementById('btn-deck-shazam-publish');
+    const btnDeckShazamDiscard = document.getElementById('btn-deck-shazam-discard');
+
     let stagedShazamTrack = null;
     let isShazaming = false;
     let shazamCountdownTimer = null;
@@ -1004,6 +1016,47 @@ async function init() {
         }
     }
 
+    function handleAcceptShazamTrack() {
+        clearShazamCountdown();
+        if (!stagedShazamTrack) return;
+        const currentTrack = {
+            title: stagedShazamTrack.title,
+            artist: stagedShazamTrack.artist,
+            coverart: stagedShazamTrack.coverart || '',
+            deck: lastDisplayedTrackDeck || 1,
+            bpm: Number(bpmVal?.textContent) || 126.0
+        };
+        showTrackBanner(currentTrack, { force: true, immediate: true, fromShazamAcceptance: true, duration: trackDurationSec });
+        showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
+
+        broadcastSync({
+            type: 'pop_track_banner_now',
+            trackData: currentTrack,
+            duration: trackDurationSec
+        });
+
+        if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+        if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'none';
+        if (shazamEngineBadge) {
+            shazamEngineBadge.textContent = 'PUBLISHED';
+            shazamEngineBadge.style.color = '#00ffcc';
+            shazamEngineBadge.style.borderColor = '#00ffcc';
+        }
+        stagedShazamTrack = null;
+    }
+
+    function handleDeclineShazamTrack() {
+        clearShazamCountdown();
+        stagedShazamTrack = null;
+        if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+        if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'none';
+        if (shazamEngineBadge) {
+            shazamEngineBadge.textContent = 'READY';
+            shazamEngineBadge.style.color = '#00e1ff';
+            shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
+        }
+    }
+
     function startShazamAcceptanceCountdown(durationSec = 30) {
         clearShazamCountdown();
         const startTime = Date.now();
@@ -1011,6 +1064,8 @@ async function init() {
 
         if (shazamCountdownBar) shazamCountdownBar.style.width = '100%';
         if (shazamCountdownText) shazamCountdownText.textContent = `⏳ AUTO-DECLINE IN ${durationSec}s`;
+        if (shazamDeckCountdownBar) shazamDeckCountdownBar.style.width = '100%';
+        if (shazamDeckCountdownText) shazamDeckCountdownText.textContent = `⏳ AUTO-DECLINE IN ${durationSec}s`;
 
         shazamCountdownTimer = setInterval(() => {
             const elapsed = Date.now() - startTime;
@@ -1020,17 +1075,12 @@ async function init() {
 
             if (shazamCountdownBar) shazamCountdownBar.style.width = `${pct.toFixed(1)}%`;
             if (shazamCountdownText) shazamCountdownText.textContent = `⏳ AUTO-DECLINE IN ${secRemaining}s`;
+            if (shazamDeckCountdownBar) shazamDeckCountdownBar.style.width = `${pct.toFixed(1)}%`;
+            if (shazamDeckCountdownText) shazamDeckCountdownText.textContent = `⏳ AUTO-DECLINE IN ${secRemaining}s`;
 
             if (remaining <= 0) {
-                clearShazamCountdown();
                 // 30 seconds elapsed without accept: auto-decline and show nothing on stream
-                stagedShazamTrack = null;
-                if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
-                if (shazamEngineBadge) {
-                    shazamEngineBadge.textContent = 'READY';
-                    shazamEngineBadge.style.color = '#00e1ff';
-                    shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
-                }
+                handleDeclineShazamTrack();
             }
         }, 100);
     }
@@ -1052,6 +1102,7 @@ async function init() {
         }
         if (shazamRadarBox) shazamRadarBox.style.display = 'block';
         if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+        if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'none';
         if (shazamEngineBadge) {
             shazamEngineBadge.textContent = 'LISTENING';
             shazamEngineBadge.style.color = '#00e1ff';
@@ -1121,29 +1172,38 @@ async function init() {
                 if (shazamMatchArtist) shazamMatchArtist.textContent = stagedShazamTrack.artist;
                 if (shazamMatchGenre) shazamMatchGenre.textContent = stagedShazamTrack.genre;
 
-                if (stagedShazamTrack.coverart && shazamMatchArt) {
-                    shazamMatchArt.src = stagedShazamTrack.coverart;
-                    shazamMatchArt.style.display = 'block';
+                if (shazamDeckMatchTitle) shazamDeckMatchTitle.textContent = stagedShazamTrack.title;
+                if (shazamDeckMatchArtist) shazamDeckMatchArtist.textContent = stagedShazamTrack.artist;
+                if (shazamDeckMatchGenre) shazamDeckMatchGenre.textContent = stagedShazamTrack.genre;
+
+                if (stagedShazamTrack.coverart) {
+                    if (shazamMatchArt) { shazamMatchArt.src = stagedShazamTrack.coverart; shazamMatchArt.style.display = 'block'; }
                     if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'none';
+                    if (shazamDeckMatchArt) { shazamDeckMatchArt.src = stagedShazamTrack.coverart; shazamDeckMatchArt.style.display = 'block'; }
+                    if (shazamDeckMatchArtFallback) shazamDeckMatchArtFallback.style.display = 'none';
                 } else {
                     if (shazamMatchArt) shazamMatchArt.style.display = 'none';
                     if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'block';
+                    if (shazamDeckMatchArt) shazamDeckMatchArt.style.display = 'none';
+                    if (shazamDeckMatchArtFallback) shazamDeckMatchArtFallback.style.display = 'block';
                 }
 
                 if (shazamRadarBox) shazamRadarBox.style.display = 'none';
                 if (shazamCandidateCard) shazamCandidateCard.style.display = 'block';
+                if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'block';
                 if (shazamEngineBadge) {
                     shazamEngineBadge.textContent = 'CONFIRM TRACK';
                     shazamEngineBadge.style.color = '#00ffcc';
                     shazamEngineBadge.style.borderColor = '#00ffcc';
                 }
 
-                // Start 30-second acceptance countdown bar in performance deck
+                // Start 30-second acceptance countdown bar in performance deck and now playing pane
                 startShazamAcceptanceCountdown(30);
             } else {
                 // If Shazam cannot match and there is no deck info: quietly reset without any popup!
                 if (shazamRadarBox) shazamRadarBox.style.display = 'none';
                 if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+                if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'none';
                 if (shazamEngineBadge) {
                     shazamEngineBadge.textContent = 'READY';
                     shazamEngineBadge.style.color = '#00e1ff';
@@ -1154,6 +1214,7 @@ async function init() {
             console.warn('[Shazam Notice]', err.message);
             if (shazamRadarBox) shazamRadarBox.style.display = 'none';
             if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+            if (shazamDeckCandidateCard) shazamDeckCandidateCard.style.display = 'none';
             if (shazamEngineBadge) {
                 shazamEngineBadge.textContent = 'READY';
                 shazamEngineBadge.style.color = '#00e1ff';
@@ -1175,35 +1236,12 @@ async function init() {
         });
     }
 
-    // Accept Track: Publishes verified match to stream overlay
+    // Accept Track: Publishes verified match to stream overlay (from either Live Performance Deck or Shazam tab)
     if (btnShazamPublish) {
-        btnShazamPublish.addEventListener('click', () => {
-            clearShazamCountdown();
-            if (!stagedShazamTrack) return;
-            const currentTrack = {
-                title: stagedShazamTrack.title,
-                artist: stagedShazamTrack.artist,
-                coverart: stagedShazamTrack.coverart || '',
-                deck: lastDisplayedTrackDeck || 1,
-                bpm: Number(bpmVal?.textContent) || 126.0
-            };
-            showTrackBanner(currentTrack, { force: true, immediate: true, fromShazamAcceptance: true, duration: trackDurationSec });
-            showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
-
-            broadcastSync({
-                type: 'pop_track_banner_now',
-                trackData: currentTrack,
-                duration: trackDurationSec
-            });
-
-            if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
-            if (shazamEngineBadge) {
-                shazamEngineBadge.textContent = 'PUBLISHED';
-                shazamEngineBadge.style.color = '#00ffcc';
-                shazamEngineBadge.style.borderColor = '#00ffcc';
-            }
-            stagedShazamTrack = null;
-        });
+        btnShazamPublish.addEventListener('click', handleAcceptShazamTrack);
+    }
+    if (btnDeckShazamPublish) {
+        btnDeckShazamPublish.addEventListener('click', handleAcceptShazamTrack);
     }
 
     // Edit before publish (copies into manual input fields)
@@ -1217,18 +1255,12 @@ async function init() {
         });
     }
 
-    // Decline / Dismiss candidate match (nothing is published to stream)
+    // Decline / Dismiss candidate match (from either Live Performance Deck or Shazam tab)
     if (btnShazamDiscard) {
-        btnShazamDiscard.addEventListener('click', () => {
-            clearShazamCountdown();
-            stagedShazamTrack = null;
-            if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
-            if (shazamEngineBadge) {
-                shazamEngineBadge.textContent = 'READY';
-                shazamEngineBadge.style.color = '#00e1ff';
-                shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
-            }
-        });
+        btnShazamDiscard.addEventListener('click', handleDeclineShazamTrack);
+    }
+    if (btnDeckShazamDiscard) {
+        btnDeckShazamDiscard.addEventListener('click', handleDeclineShazamTrack);
     }
 
     if (btnPopTrackBanner) {
