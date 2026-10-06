@@ -200,8 +200,8 @@ async function init() {
     // IndexedDB Media Storage Manager (Persistent Storage for Uploaded Media)
     // =========================================================================
     const MediaDB = {
-        dbName: 'DJ_VFX_MEDIA_DB_V1',
-        dbVersion: 1,
+        dbName: 'DJ_VFX_MEDIA_DB_V2',
+        dbVersion: 2,
         _db: null,
 
         async open() {
@@ -215,6 +215,9 @@ async function init() {
                     }
                     if (!db.objectStoreNames.contains('station_logos')) {
                         db.createObjectStore('station_logos', { keyPath: 'id' });
+                    }
+                    if (!db.objectStoreNames.contains('flyers')) {
+                        db.createObjectStore('flyers', { keyPath: 'id' });
                     }
                 };
                 req.onsuccess = () => {
@@ -263,14 +266,17 @@ async function init() {
     const btnResetAll = document.getElementById('btn-reset-all');
     const logoBadge = document.getElementById('logo-badge');
     const stationLogoBadge = document.getElementById('station-logo-badge');
+    const flyerBadge = document.getElementById('flyer-badge');
     const btnToggleDjLogoTop = document.getElementById('btn-toggle-dj-logo-top');
     const btnToggleStationLogoTop = document.getElementById('btn-toggle-station-logo-top');
     const djPowerStatusText = document.getElementById('dj-power-status-text');
     const stationPowerStatusText = document.getElementById('station-power-status-text');
     const subtabBtnDj = document.getElementById('subtab-btn-dj');
     const subtabBtnStation = document.getElementById('subtab-btn-station');
+    const subtabBtnFlyer = document.getElementById('subtab-btn-flyer');
     const subtabContentDj = document.getElementById('subtab-content-dj');
     const subtabContentStation = document.getElementById('subtab-content-station');
+    const subtabContentFlyer = document.getElementById('subtab-content-flyer');
 
     // DJ Logo Layer DOM References & State
     const djMediaPreviewVideo = document.getElementById('dj-media-preview-video');
@@ -344,6 +350,74 @@ async function init() {
     let currentStationLogoTitle = '4TM Radio';
     let isCurrentStationVideo = false;
 
+    // Event Flyer Layer DOM References & State
+    const flyerMediaPreviewImg = document.getElementById('flyer-media-preview-img');
+    const flyerMediaPreviewVideo = document.getElementById('flyer-media-preview-video');
+    const flyerLogoActiveName = document.getElementById('flyer-logo-active-name');
+    const flyerMediaPreviewType = document.getElementById('flyer-media-preview-type');
+    const btnUploadFlyer = document.getElementById('btn-upload-flyer');
+    const fileFlyer = document.getElementById('file-flyer');
+    const flyerLogosContainer = document.getElementById('flyer-logos-container');
+    const flyerModePills = document.querySelectorAll('#flyer-mode-pills .mode-pill[data-fl-mode]');
+    const flyerBlendPills = document.querySelectorAll('#flyer-blend-pills .mode-pill[data-fl-blend]');
+    const flyerPosPills = document.querySelectorAll('#flyer-pos-pills .mode-pill[data-fl-pos]');
+    const flyerSpinPills = document.querySelectorAll('#flyer-spin-pills .mode-pill[data-fl-spin]');
+    const btnResetFlyerDefault = document.getElementById('btn-reset-flyer-default');
+    const sliderFlyerSpinSpeed = document.getElementById('slider-flyer-spin-speed');
+    const flyerSpinSpeedVal = document.getElementById('flyer-spin-speed-val');
+    const sliderFlyerScale = document.getElementById('slider-flyer-scale');
+    const flyerScaleVal = document.getElementById('flyer-scale-val');
+    const sliderFlyerEdgeMargin = document.getElementById('slider-flyer-edge-margin');
+    const flyerEdgeMarginVal = document.getElementById('flyer-edge-margin-val');
+    const sliderFlyerOffsetY = document.getElementById('slider-flyer-offset-y');
+    const flyerOffsetYVal = document.getElementById('flyer-offset-y-val');
+    const sliderFlyerOffsetX = document.getElementById('slider-flyer-offset-x');
+    const flyerOffsetXVal = document.getElementById('flyer-offset-x-val');
+    const sliderFlyerPulse = document.getElementById('slider-flyer-pulse');
+    const flyerPulseVal = document.getElementById('flyer-pulse-val');
+    const sliderFlyerContrast = document.getElementById('slider-flyer-contrast');
+    const flyerContrastVal = document.getElementById('flyer-contrast-val');
+    const sliderFlyerBright = document.getElementById('slider-flyer-bright');
+    const flyerBrightVal = document.getElementById('flyer-bright-val');
+    const checkFlyerShield = document.getElementById('check-flyer-shield');
+
+    let isFlyerActive = false;
+    let currentFlyerUrl = '/images/flyers/neon_odyssey_flyer.jpg';
+    let currentFlyerTitle = 'Neon Odyssey Live';
+    let isCurrentFlyerVideo = false;
+
+    // Layer Automation & Pop-Up Scheduler Elements
+    const logoSchedModePills = document.querySelectorAll('#logo-sched-mode-pills .mode-pill[data-sched-mode]');
+    const logoSchedStatusBadge = document.getElementById('logo-sched-status-badge');
+    const selectLogoFreq = document.getElementById('select-logo-freq');
+    const selectLogoDur = document.getElementById('select-logo-dur');
+    const selectLogoTrans = document.getElementById('select-logo-trans');
+    const btnPopLogoNow = document.getElementById('btn-pop-logo-now');
+    const btnPopOffLogoNow = document.getElementById('btn-pop-off-logo-now');
+
+    const stationSchedModePills = document.querySelectorAll('#station-sched-mode-pills .mode-pill[data-sched-mode]');
+    const stationSchedStatusBadge = document.getElementById('station-sched-status-badge');
+    const selectStationFreq = document.getElementById('select-station-freq');
+    const selectStationDur = document.getElementById('select-station-dur');
+    const selectStationTrans = document.getElementById('select-station-trans');
+    const btnPopStationNow = document.getElementById('btn-pop-station-now');
+    const btnPopOffStationNow = document.getElementById('btn-pop-off-station-now');
+
+    const flyerSchedModePills = document.querySelectorAll('#flyer-sched-mode-pills .mode-pill[data-sched-mode]');
+    const flyerSchedStatusBadge = document.getElementById('flyer-sched-status-badge');
+    const selectFlyerFreq = document.getElementById('select-flyer-freq');
+    const selectFlyerDur = document.getElementById('select-flyer-dur');
+    const selectFlyerTrans = document.getElementById('select-flyer-trans');
+    const btnPopFlyerNow = document.getElementById('btn-pop-flyer-now');
+    const btnPopOffFlyerNow = document.getElementById('btn-pop-off-flyer-now');
+
+    let logoScheduleMode = 'always';
+    let logoIntervalTimer = null;
+    let stationScheduleMode = 'always';
+    let stationIntervalTimer = null;
+    let flyerScheduleMode = 'always';
+    let flyerIntervalTimer = null;
+
     // FX Category & Presets Elements
     const catTabs = document.querySelectorAll('.cat-tab');
     const fxButtons = document.querySelectorAll('.fx-btn');
@@ -360,6 +434,10 @@ async function init() {
     // Load Default Station Logo (4TM Radio)
     vfx.loadStationLogoMedia(currentStationLogoUrl, false);
     vfx.setStationLogoVisible(false);
+
+    // Load Default Event Flyer
+    vfx.loadFlyerMedia(currentFlyerUrl, false);
+    vfx.setFlyerVisible(false);
 
     let audioProcessor = null;
     let isLogoActive = true;
@@ -1412,6 +1490,77 @@ async function init() {
         } else if (msg.type === 'set_station_logo_shield') {
             if (checkStationShield) checkStationShield.checked = msg.active;
             vfx.setStationLogoShieldVisible(msg.active);
+        } else if (msg.type === 'set_flyer_vis') {
+            updateFlyerVisibility(msg.vis, false);
+        } else if (msg.type === 'set_flyer_url') {
+            selectFlyer(msg.url, msg.title, msg.isVideo, false);
+        } else if (msg.type === 'set_flyer_mode') {
+            flyerModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-mode') === msg.mode));
+            vfx.setFlyerMode(msg.mode);
+        } else if (msg.type === 'set_flyer_blend') {
+            flyerBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-blend') === String(msg.blend)));
+            vfx.setFlyerBlendMode(msg.blend);
+        } else if (msg.type === 'set_flyer_pos') {
+            flyerPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-pos') === msg.pos));
+            vfx.setFlyerPosition(msg.pos);
+        } else if (msg.type === 'set_flyer_spin') {
+            flyerSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-spin') === msg.spin));
+            vfx.setFlyerSpinMode(msg.spin);
+        } else if (msg.type === 'set_flyer_spin_speed') {
+            if (sliderFlyerSpinSpeed) sliderFlyerSpinSpeed.value = msg.speed;
+            if (flyerSpinSpeedVal) flyerSpinSpeedVal.textContent = `${Number(msg.speed).toFixed(1)}x`;
+            vfx.setFlyerSpinSpeed(msg.speed);
+        } else if (msg.type === 'set_flyer_scale') {
+            if (sliderFlyerScale) sliderFlyerScale.value = msg.val;
+            if (flyerScaleVal) flyerScaleVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setFlyerScale(msg.val);
+        } else if (msg.type === 'set_flyer_edge_margin') {
+            if (sliderFlyerEdgeMargin) sliderFlyerEdgeMargin.value = msg.val;
+            if (flyerEdgeMarginVal) flyerEdgeMarginVal.textContent = `${msg.val}%`;
+            vfx.setFlyerEdgeMargin(msg.val / 100);
+        } else if (msg.type === 'set_flyer_offset_y') {
+            if (sliderFlyerOffsetY) sliderFlyerOffsetY.value = msg.val;
+            if (flyerOffsetYVal) flyerOffsetYVal.textContent = `${msg.val}%`;
+            vfx.setFlyerOffsetY(msg.val / 100);
+        } else if (msg.type === 'set_flyer_offset_x') {
+            if (sliderFlyerOffsetX) sliderFlyerOffsetX.value = msg.val;
+            if (flyerOffsetXVal) flyerOffsetXVal.textContent = `${msg.val}%`;
+            vfx.setFlyerOffsetX(msg.val / 100);
+        } else if (msg.type === 'set_flyer_pulse') {
+            if (sliderFlyerPulse) sliderFlyerPulse.value = msg.val;
+            if (flyerPulseVal) flyerPulseVal.textContent = `${msg.val}%`;
+            vfx.setFlyerBassPulse(msg.val / 100);
+        } else if (msg.type === 'set_flyer_contrast') {
+            if (sliderFlyerContrast) sliderFlyerContrast.value = msg.val;
+            if (flyerContrastVal) flyerContrastVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setFlyerContrast(msg.val);
+        } else if (msg.type === 'set_flyer_bright') {
+            if (sliderFlyerBright) sliderFlyerBright.value = msg.val;
+            if (flyerBrightVal) flyerBrightVal.textContent = `${Number(msg.val).toFixed(2)}x`;
+            vfx.setFlyerBrightness(msg.val);
+        } else if (msg.type === 'set_flyer_shield') {
+            if (checkFlyerShield) checkFlyerShield.checked = msg.active;
+            vfx.setFlyerShieldVisible(msg.active);
+        } else if (msg.type === 'set_layer_transition') {
+            if (msg.layer === 'logo') {
+                if (selectLogoTrans) selectLogoTrans.value = msg.effect;
+                vfx.setLogoTransitionEffect(msg.effect);
+            } else if (msg.layer === 'station') {
+                if (selectStationTrans) selectStationTrans.value = msg.effect;
+                vfx.setStationLogoTransitionEffect(msg.effect);
+            } else if (msg.layer === 'flyer') {
+                if (selectFlyerTrans) selectFlyerTrans.value = msg.effect;
+                vfx.setFlyerTransitionEffect(msg.effect);
+            }
+        } else if (msg.type === 'pop_layer_now') {
+            const dur = Number(msg.duration) || 15;
+            if (msg.layer === 'logo') vfx.popLogo(dur);
+            else if (msg.layer === 'station') vfx.popStationLogo(dur);
+            else if (msg.layer === 'flyer') vfx.popFlyer(dur);
+        } else if (msg.type === 'pop_layer_off') {
+            if (msg.layer === 'logo') vfx.setLogoVisible(false);
+            else if (msg.layer === 'station') vfx.setStationLogoVisible(false);
+            else if (msg.layer === 'flyer') vfx.setFlyerVisible(false);
         } else if (msg.type === 'request_state') {
             // Broadcast full current state snapshot (from master controller or clean display)
             if (!isOBSMode) {
@@ -1435,7 +1584,8 @@ async function init() {
                 if (sliderLogoContrast) broadcastSync({ type: 'set_logo_contrast', val: parseFloat(sliderLogoContrast.value) || 1.35 });
                 if (sliderLogoBright) broadcastSync({ type: 'set_logo_bright', val: parseFloat(sliderLogoBright.value) || 1.15 });
                 if (checkLogoShield) broadcastSync({ type: 'set_logo_shield', active: checkLogoShield.checked });
-                
+                if (selectLogoTrans) broadcastSync({ type: 'set_layer_transition', layer: 'logo', effect: selectLogoTrans.value });
+
                 // Station Logo Sync Snapshot
                 broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
                 broadcastSync({ type: 'set_station_logo_url', url: currentStationLogoUrl, title: currentStationLogoTitle, isVideo: isCurrentStationVideo });
@@ -1454,6 +1604,27 @@ async function init() {
                 if (sliderStationContrast) broadcastSync({ type: 'set_station_logo_contrast', val: parseFloat(sliderStationContrast.value) || 1.25 });
                 if (sliderStationBright) broadcastSync({ type: 'set_station_logo_bright', val: parseFloat(sliderStationBright.value) || 1.05 });
                 if (checkStationShield) broadcastSync({ type: 'set_station_logo_shield', active: checkStationShield.checked });
+                if (selectStationTrans) broadcastSync({ type: 'set_layer_transition', layer: 'station', effect: selectStationTrans.value });
+
+                // Event Flyer Sync Snapshot
+                broadcastSync({ type: 'set_flyer_vis', vis: isFlyerActive });
+                broadcastSync({ type: 'set_flyer_url', url: currentFlyerUrl, title: currentFlyerTitle, isVideo: isCurrentFlyerVideo });
+                const activeFlMode = document.querySelector('#flyer-mode-pills .mode-pill.active')?.getAttribute('data-fl-mode') || 'overlay';
+                broadcastSync({ type: 'set_flyer_mode', mode: activeFlMode });
+                const activeFlBlend = document.querySelector('#flyer-blend-pills .mode-pill.active')?.getAttribute('data-fl-blend') || '0';
+                broadcastSync({ type: 'set_flyer_blend', blend: activeFlBlend });
+                const activeFlPos = document.querySelector('#flyer-pos-pills .mode-pill.active')?.getAttribute('data-fl-pos') || 'center';
+                broadcastSync({ type: 'set_flyer_pos', pos: activeFlPos });
+                const activeFlSpin = document.querySelector('#flyer-spin-pills .mode-pill.active')?.getAttribute('data-fl-spin') || 'off';
+                broadcastSync({ type: 'set_flyer_spin', spin: activeFlSpin });
+                if (sliderFlyerSpinSpeed) broadcastSync({ type: 'set_flyer_spin_speed', speed: parseFloat(sliderFlyerSpinSpeed.value) || 1.0 });
+                if (sliderFlyerScale) broadcastSync({ type: 'set_flyer_scale', val: parseFloat(sliderFlyerScale.value) || 1.0 });
+                if (sliderFlyerEdgeMargin) broadcastSync({ type: 'set_flyer_edge_margin', val: parseFloat(sliderFlyerEdgeMargin.value) || 4 });
+                if (sliderFlyerPulse) broadcastSync({ type: 'set_flyer_pulse', val: parseFloat(sliderFlyerPulse.value) || 20 });
+                if (sliderFlyerContrast) broadcastSync({ type: 'set_flyer_contrast', val: parseFloat(sliderFlyerContrast.value) || 1.15 });
+                if (sliderFlyerBright) broadcastSync({ type: 'set_flyer_bright', val: parseFloat(sliderFlyerBright.value) || 1.0 });
+                if (checkFlyerShield) broadcastSync({ type: 'set_flyer_shield', active: checkFlyerShield.checked });
+                if (selectFlyerTrans) broadcastSync({ type: 'set_layer_transition', layer: 'flyer', effect: selectFlyerTrans.value });
 
                 if (sliderGain) broadcastSync({ type: 'set_gain', val: parseFloat(sliderGain.value) || 1.0 });
                 if (sliderSens) broadcastSync({ type: 'set_sens', val: parseFloat(sliderSens.value) || 1.0 });
@@ -1645,10 +1816,11 @@ async function init() {
     if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
     if (btnToggleDjLogoTop) btnToggleDjLogoTop.addEventListener('click', toggleLogo);
 
-    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo)
+    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo vs Event Flyer)
     function switchLogosSubtab(subtabId) {
         if (subtabBtnDj) subtabBtnDj.classList.toggle('active', subtabId === 'dj');
         if (subtabBtnStation) subtabBtnStation.classList.toggle('active', subtabId === 'station');
+        if (subtabBtnFlyer) subtabBtnFlyer.classList.toggle('active', subtabId === 'flyer');
         if (subtabContentDj) {
             subtabContentDj.classList.toggle('active', subtabId === 'dj');
             subtabContentDj.style.display = subtabId === 'dj' ? 'block' : 'none';
@@ -1657,11 +1829,16 @@ async function init() {
             subtabContentStation.classList.toggle('active', subtabId === 'station');
             subtabContentStation.style.display = subtabId === 'station' ? 'block' : 'none';
         }
+        if (subtabContentFlyer) {
+            subtabContentFlyer.classList.toggle('active', subtabId === 'flyer');
+            subtabContentFlyer.style.display = subtabId === 'flyer' ? 'block' : 'none';
+        }
         syncMediaFolders().catch(() => {});
     }
 
     if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
     if (subtabBtnStation) subtabBtnStation.addEventListener('click', () => switchLogosSubtab('station'));
+    if (subtabBtnFlyer) subtabBtnFlyer.addEventListener('click', () => switchLogosSubtab('flyer'));
 
     // DJ Media Selector & Live Preview Monitor
     function selectDjLogo(url, title, isVideo = true, broadcast = true) {
@@ -2310,6 +2487,514 @@ async function init() {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // 3c. Event Flyer & Promo Graphics Layer Controls
+    // -------------------------------------------------------------------------
+    function updateFlyerVisibility(active, broadcast = true) {
+        isFlyerActive = !!active;
+        vfx.setFlyerVisible(isFlyerActive);
+        if (flyerBadge) {
+            flyerBadge.textContent = isFlyerActive ? 'FLYER: ON' : 'FLYER: OFF';
+            flyerBadge.style.color = isFlyerActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
+            flyerBadge.style.borderColor = isFlyerActive ? 'rgba(0,255,204,0.4)' : 'rgba(255,255,255,0.15)';
+        }
+        const tabLogo = document.querySelector('.activity-tab[data-tab="branding"], .activity-tab[data-tab="logo"]');
+        if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive || isFlyerActive);
+        if (broadcast) {
+            broadcastSync({ type: 'set_flyer_vis', vis: isFlyerActive });
+        }
+    }
+
+    function toggleFlyer() {
+        updateFlyerVisibility(!isFlyerActive, true);
+    }
+
+    if (flyerBadge) flyerBadge.addEventListener('click', toggleFlyer);
+
+    function selectFlyer(url, title, isVideo = false, broadcast = true) {
+        currentFlyerUrl = url;
+        currentFlyerTitle = title || 'Event Flyer';
+        isCurrentFlyerVideo = !!isVideo;
+
+        vfx.loadFlyerMedia(url, isVideo);
+
+        // Update Live Preview Monitor
+        if (flyerLogoActiveName) flyerLogoActiveName.textContent = currentFlyerTitle;
+        if (flyerMediaPreviewType) flyerMediaPreviewType.textContent = isVideo ? '🎬 VIDEO' : '🖼️ POSTER / FLYER';
+
+        if (isVideo) {
+            if (flyerMediaPreviewImg) flyerMediaPreviewImg.style.display = 'none';
+            if (flyerMediaPreviewVideo) {
+                flyerMediaPreviewVideo.style.display = 'block';
+                flyerMediaPreviewVideo.src = url;
+                flyerMediaPreviewVideo.play().catch(() => {});
+            }
+        } else {
+            if (flyerMediaPreviewVideo) {
+                flyerMediaPreviewVideo.style.display = 'none';
+                flyerMediaPreviewVideo.pause();
+            }
+            if (flyerMediaPreviewImg) {
+                flyerMediaPreviewImg.style.display = 'block';
+                flyerMediaPreviewImg.src = url;
+            }
+        }
+
+        const cards = document.querySelectorAll('.flyer-card');
+        cards.forEach(card => {
+            const cardUrl = card.getAttribute('data-flyer-url');
+            card.classList.toggle('active', cardUrl === url);
+        });
+
+        try {
+            localStorage.setItem('dj_vfx_active_flyer', JSON.stringify({ url, title: currentFlyerTitle, isVideo: isCurrentFlyerVideo }));
+        } catch (e) {}
+
+        if (broadcast) {
+            broadcastSync({
+                type: 'set_flyer_url',
+                url,
+                title: currentFlyerTitle,
+                isVideo: isCurrentFlyerVideo
+            });
+        }
+    }
+
+    function wireFlyerCardClick(card) {
+        card.addEventListener('click', () => {
+            const url = card.getAttribute('data-flyer-url');
+            const title = card.getAttribute('data-flyer-title');
+            const isVideo = card.getAttribute('data-flyer-type') === 'video';
+            selectFlyer(url, title, isVideo, true);
+        });
+    }
+
+    document.querySelectorAll('.flyer-card').forEach(wireFlyerCardClick);
+
+    // Initial flyer card active highlight
+    const firstFlyerCard = document.querySelector('.flyer-card');
+    if (firstFlyerCard) {
+        firstFlyerCard.classList.add('active');
+        if (flyerLogoActiveName) flyerLogoActiveName.textContent = firstFlyerCard.getAttribute('data-flyer-title') || 'Neon Odyssey Live';
+    }
+
+    // Flyer Reset to Default
+    if (btnResetFlyerDefault) {
+        btnResetFlyerDefault.addEventListener('click', () => {
+            selectFlyer('/images/flyers/neon_odyssey_flyer.jpg', 'Neon Odyssey Live', false, true);
+            showToast('↺ Restored Default Neon Odyssey Flyer');
+        });
+    }
+
+    // 1. Mode pills (Display Layer)
+    flyerModePills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const mode = pill.getAttribute('data-fl-mode');
+            flyerModePills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setFlyerMode(mode);
+            broadcastSync({ type: 'set_flyer_mode', mode });
+        });
+    });
+
+    // 2. Blend pills (Blend & Cutout)
+    flyerBlendPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const blend = parseInt(pill.getAttribute('data-fl-blend'), 10);
+            flyerBlendPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setFlyerBlendMode(blend);
+            broadcastSync({ type: 'set_flyer_blend', blend });
+        });
+    });
+
+    // 3. Position pills (9-Way Directional D-Pad)
+    flyerPosPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const pos = pill.getAttribute('data-fl-pos');
+            flyerPosPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setFlyerPosition(pos);
+            try { localStorage.setItem('dj_vfx_flyer_pos', pos); } catch (e) {}
+            broadcastSync({ type: 'set_flyer_pos', pos });
+        });
+    });
+
+    // 4. Spin pills (3D Rotation & Spin)
+    flyerSpinPills.forEach(pill => {
+        pill.addEventListener('click', () => {
+            const spin = pill.getAttribute('data-fl-spin');
+            flyerSpinPills.forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            vfx.setFlyerSpinMode(spin);
+            try { localStorage.setItem('dj_vfx_flyer_spin', spin); } catch (e) {}
+            broadcastSync({ type: 'set_flyer_spin', spin });
+        });
+    });
+
+    // Sliders
+    if (sliderFlyerSpinSpeed) {
+        sliderFlyerSpinSpeed.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (flyerSpinSpeedVal) flyerSpinSpeedVal.textContent = `${val.toFixed(1)}x`;
+            vfx.setFlyerSpinSpeed(val);
+            try { localStorage.setItem('dj_vfx_flyer_spin_speed', String(val)); } catch (e) {}
+            broadcastSync({ type: 'set_flyer_spin_speed', speed: val });
+        });
+    }
+
+    if (sliderFlyerScale) {
+        sliderFlyerScale.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (flyerScaleVal) flyerScaleVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setFlyerScale(val);
+            broadcastSync({ type: 'set_flyer_scale', val });
+        });
+    }
+
+    if (sliderFlyerEdgeMargin) {
+        sliderFlyerEdgeMargin.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (flyerEdgeMarginVal) flyerEdgeMarginVal.textContent = `${val}%`;
+            vfx.setFlyerEdgeMargin(val / 100);
+            broadcastSync({ type: 'set_flyer_edge_margin', val });
+        });
+    }
+
+    if (sliderFlyerOffsetY) {
+        sliderFlyerOffsetY.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (flyerOffsetYVal) flyerOffsetYVal.textContent = `${val}%`;
+            vfx.setFlyerOffsetY(val / 100);
+            broadcastSync({ type: 'set_flyer_offset_y', val });
+        });
+    }
+
+    if (sliderFlyerOffsetX) {
+        sliderFlyerOffsetX.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (flyerOffsetXVal) flyerOffsetXVal.textContent = `${val}%`;
+            vfx.setFlyerOffsetX(val / 100);
+            broadcastSync({ type: 'set_flyer_offset_x', val });
+        });
+    }
+
+    if (sliderFlyerPulse) {
+        sliderFlyerPulse.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (flyerPulseVal) flyerPulseVal.textContent = `${val}%`;
+            vfx.setFlyerBassPulse(val / 100);
+            broadcastSync({ type: 'set_flyer_pulse', val });
+        });
+    }
+
+    if (sliderFlyerContrast) {
+        sliderFlyerContrast.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (flyerContrastVal) flyerContrastVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setFlyerContrast(val);
+            broadcastSync({ type: 'set_flyer_contrast', val });
+        });
+    }
+
+    if (sliderFlyerBright) {
+        sliderFlyerBright.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            if (flyerBrightVal) flyerBrightVal.textContent = `${val.toFixed(2)}x`;
+            vfx.setFlyerBrightness(val);
+            broadcastSync({ type: 'set_flyer_bright', val });
+        });
+    }
+
+    if (checkFlyerShield) {
+        checkFlyerShield.addEventListener('change', (e) => {
+            vfx.setFlyerShieldVisible(e.target.checked);
+            broadcastSync({ type: 'set_flyer_shield', active: e.target.checked });
+        });
+    }
+
+    // Upload Flyer Media (PNG, JPG, WebP, MP4)
+    if (btnUploadFlyer && fileFlyer) {
+        btnUploadFlyer.addEventListener('click', () => fileFlyer.click());
+
+        fileFlyer.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
+            const cleanTitle = file.name.replace(/\.[^/.]+$/, '');
+            const reader = new FileReader();
+
+            reader.onload = async (event) => {
+                const dataUrl = event.target.result;
+                const item = {
+                    id: 'flyer_' + Date.now() + '_' + Math.random().toString(36).substr(2, 6),
+                    title: cleanTitle,
+                    filename: file.name,
+                    type: file.type || (isVideo ? 'video/mp4' : 'image/jpeg'),
+                    isVideo,
+                    dataUrl,
+                    timestamp: Date.now()
+                };
+                try {
+                    await MediaDB.save('flyers', item);
+                } catch (err) {
+                    console.warn('MediaDB save failed for flyer:', err);
+                }
+                addFlyerCard(dataUrl, cleanTitle, isVideo, true, item.id);
+                showToast(`🖼️ Stored & Loaded Event Flyer: ${cleanTitle}`);
+            };
+
+            reader.readAsDataURL(file);
+        });
+    }
+
+    function addFlyerCard(url, title, isVideo = false, selectImmediately = true, id = null, subLabel = null) {
+        if (!flyerLogosContainer) return;
+
+        const existing = flyerLogosContainer.querySelector(`.flyer-card[data-flyer-url="${CSS.escape(url)}"]`);
+        if (existing) {
+            if (selectImmediately) selectFlyer(url, title, isVideo, true);
+            return;
+        }
+
+        const card = document.createElement('div');
+        card.className = 'flyer-card';
+        card.setAttribute('data-flyer-url', url);
+        card.setAttribute('data-flyer-title', title);
+        card.setAttribute('data-flyer-type', isVideo ? 'video' : 'img');
+        if (id) card.setAttribute('data-storage-id', id);
+
+        const thumb = document.createElement(isVideo ? 'video' : 'img');
+        thumb.className = 'flyer-card-thumb';
+        thumb.src = url;
+        if (isVideo) {
+            thumb.muted = true;
+            thumb.playsInline = true;
+            thumb.autoplay = true;
+            thumb.loop = true;
+        }
+
+        const info = document.createElement('div');
+        info.className = 'flyer-card-info';
+
+        const titleSpan = document.createElement('span');
+        titleSpan.className = 'flyer-card-title';
+        titleSpan.textContent = title;
+
+        const subSpan = document.createElement('span');
+        subSpan.className = 'flyer-card-sub';
+        subSpan.textContent = subLabel || (id ? (isVideo ? 'Custom Video Promo' : 'Custom Poster') : (isVideo ? 'Video' : 'Promo Poster'));
+
+        info.appendChild(titleSpan);
+        info.appendChild(subSpan);
+        card.appendChild(thumb);
+        card.appendChild(info);
+
+        if (id) {
+            const delBtn = document.createElement('button');
+            delBtn.className = 'card-delete-btn';
+            delBtn.textContent = '✕';
+            delBtn.title = 'Delete saved flyer';
+            delBtn.addEventListener('click', async (e) => {
+                e.stopPropagation();
+                await MediaDB.delete('flyers', id);
+                card.remove();
+                showToast(`🗑️ Removed ${title}`);
+                if (currentFlyerUrl === url) {
+                    selectFlyer('/images/flyers/neon_odyssey_flyer.jpg', 'Neon Odyssey Live', false, true);
+                }
+            });
+            card.appendChild(delBtn);
+        }
+
+        flyerLogosContainer.appendChild(card);
+        wireFlyerCardClick(card);
+
+        if (selectImmediately) {
+            selectFlyer(url, title, isVideo, true);
+        }
+    }
+
+    // =========================================================================
+    // 3d. Multi-Layer Automation & Pop-Up Scheduler Engine
+    // =========================================================================
+    function setupLayerScheduler(config) {
+        const {
+            layerKey,
+            pills,
+            statusBadge,
+            freqSelect,
+            durSelect,
+            transSelect,
+            btnPopNow,
+            btnPopOff,
+            getTimer,
+            setTimer,
+            popFn,
+            popOffFn,
+            setTransFn,
+            setVisFn,
+            getIsActiveFn
+        } = config;
+
+        function updateScheduleMode(mode, broadcast = true) {
+            pills.forEach(p => p.classList.toggle('active', p.getAttribute('data-sched-mode') === mode));
+
+            // Clear running interval timer
+            let t = getTimer();
+            if (t) {
+                clearInterval(t);
+                setTimer(null);
+            }
+
+            const freqSec = parseInt(freqSelect?.value || '120', 10);
+            const durSec = parseInt(durSelect?.value || '15', 10);
+            const trans = transSelect?.value || 'smooth_fade';
+            setTransFn(trans);
+
+            if (mode === 'popup') {
+                if (statusBadge) {
+                    const freqMin = Math.round((freqSec / 60) * 10) / 10;
+                    statusBadge.textContent = `⏱️ Pop-Up (${freqSec < 60 ? freqSec + 's' : freqMin + 'm'} interval / ${durSec}s show)`;
+                    statusBadge.style.color = '#00ffcc';
+                }
+                // When switching to pop-up mode, start hidden and schedule interval
+                setVisFn(false, true);
+                const timerId = setInterval(() => {
+                    popFn(durSec);
+                }, freqSec * 1000);
+                setTimer(timerId);
+                // Initial pop on enabling pop-up mode
+                popFn(durSec);
+                showToast(`⏱️ ${layerKey.toUpperCase()} Pop-Up Scheduled every ${freqSec < 60 ? freqSec + 's' : Math.round(freqSec / 60) + 'm'}`);
+            } else {
+                if (statusBadge) {
+                    statusBadge.textContent = '🟢 Continuous Visible';
+                    statusBadge.style.color = 'rgba(255,255,255,0.7)';
+                }
+                setVisFn(getIsActiveFn(), false);
+            }
+
+            if (broadcast) {
+                broadcastSync({
+                    type: 'set_layer_schedule',
+                    layer: layerKey,
+                    mode,
+                    freq: freqSec,
+                    dur: durSec,
+                    trans
+                });
+            }
+        }
+
+        pills.forEach(pill => {
+            pill.addEventListener('click', () => {
+                const mode = pill.getAttribute('data-sched-mode');
+                updateScheduleMode(mode, true);
+            });
+        });
+
+        if (freqSelect) {
+            freqSelect.addEventListener('change', () => {
+                const currentMode = Array.from(pills).find(p => p.classList.contains('active'))?.getAttribute('data-sched-mode') || 'always';
+                if (currentMode === 'popup') updateScheduleMode('popup', true);
+            });
+        }
+
+        if (durSelect) {
+            durSelect.addEventListener('change', () => {
+                const currentMode = Array.from(pills).find(p => p.classList.contains('active'))?.getAttribute('data-sched-mode') || 'always';
+                if (currentMode === 'popup') updateScheduleMode('popup', true);
+            });
+        }
+
+        if (transSelect) {
+            transSelect.addEventListener('change', (e) => {
+                setTransFn(e.target.value);
+                broadcastSync({
+                    type: 'set_layer_transition',
+                    layer: layerKey,
+                    effect: e.target.value
+                });
+                showToast(`✨ ${layerKey.toUpperCase()} Transition: ${e.target.options[e.target.selectedIndex].text}`);
+            });
+        }
+
+        if (btnPopNow) {
+            btnPopNow.addEventListener('click', () => {
+                const durSec = parseInt(durSelect?.value || '15', 10);
+                popFn(durSec);
+                broadcastSync({ type: 'pop_layer_now', layer: layerKey, duration: durSec });
+                showToast(`⚡ Popped ${layerKey.toUpperCase()} for ${durSec}s`);
+            });
+        }
+
+        if (btnPopOff) {
+            btnPopOff.addEventListener('click', () => {
+                popOffFn();
+                broadcastSync({ type: 'pop_layer_off', layer: layerKey });
+                showToast(`⏹️ ${layerKey.toUpperCase()} Dismissed`);
+            });
+        }
+
+        return { updateScheduleMode };
+    }
+
+    const djScheduler = setupLayerScheduler({
+        layerKey: 'logo',
+        pills: logoSchedModePills,
+        statusBadge: logoSchedStatusBadge,
+        freqSelect: selectLogoFreq,
+        durSelect: selectLogoDur,
+        transSelect: selectLogoTrans,
+        btnPopNow: btnPopLogoNow,
+        btnPopOff: btnPopOffLogoNow,
+        getTimer: () => logoIntervalTimer,
+        setTimer: (t) => { logoIntervalTimer = t; },
+        popFn: (dur) => vfx.popLogo(dur),
+        popOffFn: () => vfx.setLogoVisible(false),
+        setTransFn: (eff) => vfx.setLogoTransitionEffect(eff),
+        setVisFn: (vis, imm) => vfx.setLogoVisible(vis, imm),
+        getIsActiveFn: () => isLogoActive
+    });
+
+    const stationScheduler = setupLayerScheduler({
+        layerKey: 'station',
+        pills: stationSchedModePills,
+        statusBadge: stationSchedStatusBadge,
+        freqSelect: selectStationFreq,
+        durSelect: selectStationDur,
+        transSelect: selectStationTrans,
+        btnPopNow: btnPopStationNow,
+        btnPopOff: btnPopOffStationNow,
+        getTimer: () => stationIntervalTimer,
+        setTimer: (t) => { stationIntervalTimer = t; },
+        popFn: (dur) => vfx.popStationLogo(dur),
+        popOffFn: () => vfx.setStationLogoVisible(false),
+        setTransFn: (eff) => vfx.setStationLogoTransitionEffect(eff),
+        setVisFn: (vis, imm) => vfx.setStationLogoVisible(vis, imm),
+        getIsActiveFn: () => isStationLogoActive
+    });
+
+    const flyerScheduler = setupLayerScheduler({
+        layerKey: 'flyer',
+        pills: flyerSchedModePills,
+        statusBadge: flyerSchedStatusBadge,
+        freqSelect: selectFlyerFreq,
+        durSelect: selectFlyerDur,
+        transSelect: selectFlyerTrans,
+        btnPopNow: btnPopFlyerNow,
+        btnPopOff: btnPopOffFlyerNow,
+        getTimer: () => flyerIntervalTimer,
+        setTimer: (t) => { flyerIntervalTimer = t; },
+        popFn: (dur) => vfx.popFlyer(dur),
+        popOffFn: () => vfx.setFlyerVisible(false),
+        setTransFn: (eff) => vfx.setFlyerTransitionEffect(eff),
+        setVisFn: (vis, imm) => vfx.setFlyerVisible(vis, imm),
+        getIsActiveFn: () => isFlyerActive
+    });
+
     // Fetch and Sync Media from Server Directories & IndexedDB
     async function syncMediaFolders() {
         try {
@@ -2324,6 +3009,11 @@ async function init() {
                 if (data.station_logos && Array.isArray(data.station_logos)) {
                     data.station_logos.forEach(item => {
                         addStationLogoCard(item.url, item.title, item.isVideo, false, null, item.sub || (item.isVideo ? 'Video' : 'Station Logo'));
+                    });
+                }
+                if (data.flyers && Array.isArray(data.flyers)) {
+                    data.flyers.forEach(item => {
+                        addFlyerCard(item.url, item.title, item.isVideo, false, null, item.sub || (item.isVideo ? 'Video' : 'Promo Flyer'));
                     });
                 }
             }
@@ -2350,7 +3040,13 @@ async function init() {
                 addStationLogoCard(item.dataUrl, item.title, item.isVideo, false, item.id);
             });
 
-            // 4. Restore active saved choices
+            // 4. Load Flyers from IndexedDB (custom uploads)
+            const storedFlyers = await MediaDB.getAll('flyers');
+            storedFlyers.forEach(item => {
+                addFlyerCard(item.dataUrl, item.title, item.isVideo, false, item.id);
+            });
+
+            // 5. Restore active saved choices
             const savedDj = localStorage.getItem('dj_vfx_active_dj_media');
             if (savedDj) {
                 try {
@@ -2367,6 +3063,14 @@ async function init() {
                 } catch (e) {}
             }
 
+            const savedFlyer = localStorage.getItem('dj_vfx_active_flyer');
+            if (savedFlyer) {
+                try {
+                    const parsed = JSON.parse(savedFlyer);
+                    selectFlyer(parsed.url, parsed.title, parsed.isVideo, false);
+                } catch (e) {}
+            }
+
             // Restore saved positions
             const savedLogoPos = localStorage.getItem('dj_vfx_logo_pos');
             if (savedLogoPos) {
@@ -2378,6 +3082,12 @@ async function init() {
             if (savedStationPos) {
                 stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === savedStationPos));
                 vfx.setStationLogoPosition(savedStationPos);
+            }
+
+            const savedFlyerPos = localStorage.getItem('dj_vfx_flyer_pos');
+            if (savedFlyerPos) {
+                flyerPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-pos') === savedFlyerPos));
+                vfx.setFlyerPosition(savedFlyerPos);
             }
         } catch (err) {
             console.warn('Failed to load libraries from IndexedDB:', err);
@@ -2552,6 +3262,52 @@ async function init() {
         if (checkStationShield) {
             checkStationShield.checked = true;
             vfx.setStationLogoShieldVisible(true);
+        }
+
+        // 4. Event Flyer Reset
+        updateFlyerVisibility(false, false);
+        selectFlyer('/images/flyers/neon_odyssey_flyer.jpg', 'Neon Odyssey Live', false, false);
+        flyerModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-mode') === 'overlay'));
+        vfx.setFlyerMode('overlay');
+        flyerBlendPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-blend') === '0'));
+        vfx.setFlyerBlendMode(0);
+        flyerPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-pos') === 'center'));
+        vfx.setFlyerPosition('center');
+        flyerSpinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-spin') === 'off'));
+        vfx.setFlyerSpinMode('off');
+        if (sliderFlyerSpinSpeed) {
+            sliderFlyerSpinSpeed.value = 1.0;
+            if (flyerSpinSpeedVal) flyerSpinSpeedVal.textContent = '1.0x';
+            vfx.setFlyerSpinSpeed(1.0);
+        }
+        if (sliderFlyerScale) {
+            sliderFlyerScale.value = 1.0;
+            if (flyerScaleVal) flyerScaleVal.textContent = '1.0x';
+            vfx.setFlyerScale(1.0);
+        }
+        if (sliderFlyerEdgeMargin) {
+            sliderFlyerEdgeMargin.value = 4;
+            if (flyerEdgeMarginVal) flyerEdgeMarginVal.textContent = '4%';
+            vfx.setFlyerEdgeMargin(0.04);
+        }
+        if (sliderFlyerPulse) {
+            sliderFlyerPulse.value = 20;
+            if (flyerPulseVal) flyerPulseVal.textContent = '20%';
+            vfx.setFlyerBassPulse(0.20);
+        }
+        if (sliderFlyerContrast) {
+            sliderFlyerContrast.value = 1.15;
+            if (flyerContrastVal) flyerContrastVal.textContent = '1.15x';
+            vfx.setFlyerContrast(1.15);
+        }
+        if (sliderFlyerBright) {
+            sliderFlyerBright.value = 1.0;
+            if (flyerBrightVal) flyerBrightVal.textContent = '1.0x';
+            vfx.setFlyerBrightness(1.0);
+        }
+        if (checkFlyerShield) {
+            checkFlyerShield.checked = true;
+            vfx.setFlyerShieldVisible(true);
         }
 
         if (broadcast) {
@@ -3350,6 +4106,10 @@ async function init() {
         // [S] to toggle Station Logo layer
         else if (e.key === 's' || e.key === 'S') {
             updateStationLogoVisibility(!isStationLogoActive, true);
+        }
+        // [Y] or Shift+[F] to toggle Event Flyer layer
+        else if (e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
+            toggleFlyer();
         }
         // [C] to toggle Clean Display Mode for Stage / 2nd Screen
         else if (e.key === 'c' || e.key === 'C') {

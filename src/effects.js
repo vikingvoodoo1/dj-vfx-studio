@@ -4506,9 +4506,15 @@ export function createVFXScene(container) {
         applyStationLogoPlacement();
     }
 
-    function setStationLogoVisible(visible) {
+    function setStationLogoVisible(visible, immediate = false) {
         stationLogoVisible = !!visible;
-        stationLogoGroup.visible = stationLogoVisible;
+        if (immediate) {
+            stationLogoTransition.state = visible ? 'visible' : 'hidden';
+            stationLogoTransition.progress = visible ? 1.0 : 0.0;
+            stationLogoGroup.visible = stationLogoVisible;
+        } else {
+            triggerLayerVisibility(stationLogoTransition, stationLogoVisible, stationLogoGroup);
+        }
     }
 
     function setStationLogoScale(val) {
@@ -4573,6 +4579,495 @@ export function createVFXScene(container) {
     function setStationLogoEdgeMargin(val) {
         stationLogoEdgeMargin = Math.max(0.0, Math.min(0.4, Number(val) || 0.04));
         applyStationLogoPlacement();
+    }
+
+    // =========================================================================
+    // EVENT FLYER & PROMO GRAPHIC OVERLAY LAYER
+    // =========================================================================
+    const flyerGroup = new THREE.Group();
+    flyerGroup.renderOrder = 10002;
+    flyerGroup.visible = false;
+    scene.add(flyerGroup);
+
+    let flyerVideoElement = null;
+    let flyerTexture = null;
+    let flyerMesh = null;
+    let flyerShieldMesh = null;
+    let flyerVisible = false;
+    let flyerMode = 'overlay'; // 'overlay', 'hologram', 'backdrop'
+    let flyerPosition = 'bottom-right'; // 9-grid position
+    let flyerBaseOpacity = 1.0;
+    let flyerBaseScale = 1.0;
+    let flyerBassPulseAmount = 0.2;
+    let flyerAspectRatio = 0.75; // 3:4 default flyer aspect ratio
+    let flyerContrast = 1.2;
+    let flyerBrightness = 1.05;
+    let isFlyerShieldActive = true;
+    let flyerSpinMode = 'off'; // 'off', 'center', 'orbit', 'freeroam'
+    let flyerSpinSpeed = 1.0;
+    let flyerSpinAngle = 0.0;
+    let currentFlyerPosX = 2.2;
+    let currentFlyerPosY = -1.2;
+    let currentFlyerBaseZ = 12.0;
+    let currentFlyerScaleFactor = 0.75;
+
+    // Dark Contrast Shield for Flyer
+    const flyerShieldCanvas = document.createElement('canvas');
+    flyerShieldCanvas.width = 256;
+    flyerShieldCanvas.height = 256;
+    const flSCtx = flyerShieldCanvas.getContext('2d');
+    const flSGrad = flSCtx.createRadialGradient(128, 128, 20, 128, 128, 128);
+    flSGrad.addColorStop(0, 'rgba(2, 2, 8, 0.88)');
+    flSGrad.addColorStop(0.65, 'rgba(2, 2, 8, 0.55)');
+    flSGrad.addColorStop(1, 'rgba(2, 2, 8, 0.0)');
+    flSCtx.fillStyle = flSGrad;
+    flSCtx.fillRect(0, 0, 256, 256);
+
+    const flyerShieldTexture = new THREE.CanvasTexture(flyerShieldCanvas);
+    const flyerShieldMat = new THREE.MeshBasicMaterial({
+        map: flyerShieldTexture,
+        transparent: true,
+        opacity: 0.85,
+        depthTest: false,
+        depthWrite: false,
+        fog: false
+    });
+    flyerShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), flyerShieldMat);
+    flyerShieldMesh.renderOrder = 9999;
+
+    const flyerGeo = new THREE.PlaneGeometry(16, 16);
+    const flyerShaderMat = new THREE.ShaderMaterial({
+        uniforms: {
+            map: { value: null },
+            uOpacity: { value: flyerBaseOpacity },
+            uContrast: { value: flyerContrast },
+            uBrightness: { value: flyerBrightness },
+            uLumaCutoff: { value: 0.05 },
+            uLumaSmooth: { value: 0.05 },
+            uBlendMode: { value: 2 } // Direct (2) default
+        },
+        vertexShader: HighClarityLogoShader.vertexShader,
+        fragmentShader: HighClarityLogoShader.fragmentShader,
+        transparent: true,
+        depthTest: false,
+        depthWrite: false,
+        fog: false,
+        side: THREE.DoubleSide
+    });
+
+    flyerMesh = new THREE.Mesh(flyerGeo, flyerShaderMat);
+    flyerMesh.renderOrder = 10003;
+
+    const flyerPivot = new THREE.Group();
+    flyerGroup.add(flyerPivot);
+    flyerPivot.add(flyerShieldMesh);
+    flyerPivot.add(flyerMesh);
+
+    let flyerOffsetY = 0.0;
+    let flyerOffsetX = 0.0;
+    let flyerEdgeMargin = 0.04;
+
+    function applyFlyerPlacement() {
+        if (!flyerMesh) return;
+
+        let baseZ = 12.0;
+        let baseW = 4.8 * flyerBaseScale;
+
+        if (flyerMode === 'backdrop') {
+            baseZ = -20;
+            baseW = 45 * flyerBaseScale;
+            flyerShaderMat.blending = THREE.AdditiveBlending;
+            if (flyerShieldMesh) flyerShieldMesh.visible = false;
+        } else if (flyerMode === 'hologram') {
+            baseZ = 6.9;
+            baseW = (flyerPosition === 'center' ? 7.5 : 4.8) * flyerBaseScale;
+            flyerShaderMat.blending = THREE.NormalBlending;
+            if (flyerShieldMesh) flyerShieldMesh.visible = isFlyerShieldActive;
+        } else {
+            baseZ = 12.0;
+            baseW = 4.8 * flyerBaseScale;
+            flyerShaderMat.blending = THREE.NormalBlending;
+            if (flyerShieldMesh) flyerShieldMesh.visible = isFlyerShieldActive;
+        }
+
+        const w = baseW;
+        const h = baseW / (flyerAspectRatio || 0.75);
+
+        const vFovRad = (camera.fov * Math.PI) / 180;
+        const dist = Math.abs(camera.position.z - baseZ);
+        const visibleHalfHeight = Math.tan(vFovRad / 2) * dist;
+        const visibleHalfWidth = visibleHalfHeight * camera.aspect;
+
+        const maxAllowedHalfW = visibleHalfWidth * 0.94;
+        const maxAllowedHalfH = visibleHalfHeight * 0.94;
+        const halfW = w / 2;
+        const halfH = h / 2;
+
+        let scaleFactor = 1.0;
+        if (halfW > maxAllowedHalfW || halfH > maxAllowedHalfH) {
+            scaleFactor = Math.min(maxAllowedHalfW / halfW, maxAllowedHalfH / halfH);
+        }
+
+        const effectiveHalfW = halfW * scaleFactor;
+        const effectiveHalfH = halfH * scaleFactor;
+
+        const marginX = visibleHalfWidth * flyerEdgeMargin;
+        const marginY = visibleHalfHeight * flyerEdgeMargin;
+
+        const targetRight = visibleHalfWidth - marginX - effectiveHalfW;
+        const targetLeft = -visibleHalfWidth + marginX + effectiveHalfW;
+        const targetTop = visibleHalfHeight - marginY - effectiveHalfH;
+        const targetBottom = -visibleHalfHeight + marginY + effectiveHalfH;
+
+        let posX = 0.0;
+        let posY = 0.0;
+
+        switch (flyerPosition) {
+            case 'top-left': posX = targetLeft; posY = targetTop; break;
+            case 'top': case 'top-center': posX = 0.0; posY = targetTop; break;
+            case 'top-right': posX = targetRight; posY = targetTop; break;
+            case 'left': case 'center-left': posX = targetLeft; posY = 0.0; break;
+            case 'center': posX = 0.0; posY = 0.0; break;
+            case 'right': case 'center-right': posX = targetRight; posY = 0.0; break;
+            case 'bottom-left': posX = targetLeft; posY = targetBottom; break;
+            case 'bottom': case 'bottom-center': posX = 0.0; posY = targetBottom; break;
+            case 'bottom-right': default: posX = targetRight; posY = targetBottom; break;
+        }
+
+        posX += flyerOffsetX * (visibleHalfWidth * 0.5);
+        posY += flyerOffsetY * (visibleHalfHeight * 0.5);
+
+        flyerPivot.position.set(posX, posY, baseZ);
+        flyerPivot.quaternion.copy(camera.quaternion);
+
+        currentFlyerPosX = posX;
+        currentFlyerPosY = posY;
+        currentFlyerBaseZ = baseZ;
+        currentFlyerScaleFactor = scaleFactor;
+
+        flyerMesh.position.set(0, 0, 0);
+        flyerMesh.scale.set((w * scaleFactor) / 16, (h * scaleFactor) / 16, 1);
+        flyerMesh.rotation.order = 'YXZ';
+        flyerMesh.rotation.set(0, 0, 0);
+
+        if (flyerShieldMesh && flyerMode !== 'backdrop') {
+            flyerShieldMesh.position.set(0, 0, -0.2);
+            flyerShieldMesh.rotation.set(0, 0, 0);
+            flyerShieldMesh.scale.set(((w * scaleFactor) * 1.35) / 16, ((h * scaleFactor) * 1.4) / 16, 1);
+        }
+    }
+
+    applyFlyerPlacement();
+
+    function loadFlyerMedia(sourceUrl, isVideo = false) {
+        try {
+            if (flyerVideoElement) {
+                flyerVideoElement.pause();
+                flyerVideoElement.removeAttribute('src');
+                flyerVideoElement.load();
+                flyerVideoElement = null;
+            }
+
+            if (isVideo) {
+                const video = document.createElement('video');
+                video.src = encodeURI(sourceUrl);
+                video.crossOrigin = 'anonymous';
+                video.loop = true;
+                video.muted = true;
+                video.playsInline = true;
+                video.setAttribute('playsinline', '');
+                video.setAttribute('webkit-playsinline', '');
+                video.autoplay = true;
+
+                const updateAspect = () => {
+                    flyerAspectRatio = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : (3 / 4);
+                    applyFlyerPlacement();
+                };
+                video.addEventListener('loadedmetadata', updateAspect);
+                if (video.readyState >= 1) updateAspect();
+
+                flyerVideoElement = video;
+                video.play().catch(() => {});
+
+                flyerTexture = new THREE.VideoTexture(video);
+                flyerTexture.minFilter = THREE.LinearFilter;
+                flyerTexture.magFilter = THREE.LinearFilter;
+                flyerTexture.colorSpace = THREE.SRGBColorSpace;
+
+                flyerShaderMat.uniforms.map.value = flyerTexture;
+                flyerShaderMat.needsUpdate = true;
+                applyFlyerPlacement();
+            } else {
+                const loader = new THREE.TextureLoader();
+                loader.load(encodeURI(sourceUrl), (tex) => {
+                    flyerTexture = tex;
+                    flyerTexture.minFilter = THREE.LinearFilter;
+                    flyerTexture.magFilter = THREE.LinearFilter;
+                    flyerTexture.colorSpace = THREE.SRGBColorSpace;
+
+                    if (tex.image && tex.image.width && tex.image.height) {
+                        flyerAspectRatio = tex.image.width / tex.image.height;
+                    } else {
+                        flyerAspectRatio = 0.75;
+                    }
+
+                    flyerShaderMat.uniforms.map.value = flyerTexture;
+                    flyerShaderMat.needsUpdate = true;
+                    applyFlyerPlacement();
+                }, undefined, (err) => {
+                    console.error('[Flyer] Texture load error:', err);
+                });
+            }
+        } catch (err) {
+            console.error('[Flyer] Error loading media:', err);
+        }
+    }
+
+    function playFlyerVideo() {
+        if (flyerVideoElement && flyerVideoElement.paused) {
+            flyerVideoElement.play().catch(() => {});
+        }
+    }
+
+    // =========================================================================
+    // UNIFIED TRANSITION & SCHEDULER CONTROLLER (DJ LOGO, STATION, FLYER)
+    // =========================================================================
+    const logoTransition = { state: 'visible', progress: 1.0, effect: 'smooth_fade', duration: 0.7 };
+    const stationLogoTransition = { state: 'hidden', progress: 0.0, effect: 'smooth_fade', duration: 0.7 };
+    const flyerTransition = { state: 'hidden', progress: 0.0, effect: 'smooth_fade', duration: 0.7 };
+
+    let logoPopTimer = null;
+    let stationLogoPopTimer = null;
+    let flyerPopTimer = null;
+
+    function triggerLayerVisibility(trans, targetVisible, groupObj) {
+        if (targetVisible) {
+            if (trans.effect === 'instant' || trans.duration <= 0) {
+                trans.state = 'visible';
+                trans.progress = 1.0;
+                groupObj.visible = true;
+            } else {
+                trans.state = 'entering';
+                groupObj.visible = true;
+            }
+        } else {
+            if (trans.effect === 'instant' || trans.duration <= 0) {
+                trans.state = 'hidden';
+                trans.progress = 0.0;
+                groupObj.visible = false;
+            } else {
+                trans.state = 'exiting';
+            }
+        }
+    }
+
+    function updateTransitionState(trans, groupObj, delta) {
+        if (trans.state === 'entering') {
+            const dur = trans.duration || 0.7;
+            trans.progress = Math.min(1.0, trans.progress + delta / dur);
+            if (trans.progress >= 1.0) {
+                trans.state = 'visible';
+                trans.progress = 1.0;
+            }
+        } else if (trans.state === 'exiting') {
+            const dur = trans.duration || 0.7;
+            trans.progress = Math.max(0.0, trans.progress - delta / dur);
+            if (trans.progress <= 0.0) {
+                trans.state = 'hidden';
+                trans.progress = 0.0;
+                groupObj.visible = false;
+            }
+        }
+    }
+
+    function computeTransitionTransforms(trans) {
+        const p = Math.max(0, Math.min(1, trans.progress));
+        if (trans.state === 'visible') {
+            return { opacity: 1.0, scale: 1.0, offX: 0, offY: 0, rotX: 0, rotY: 0, rotZ: 0 };
+        }
+        if (trans.state === 'hidden') {
+            return { opacity: 0.0, scale: 0.0, offX: 0, offY: 0, rotX: 0, rotY: 0, rotZ: 0 };
+        }
+
+        const effect = trans.effect || 'smooth_fade';
+        const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3);
+        const easedP = easeOutCubic(p);
+
+        let opacity = easedP;
+        let scale = 1.0;
+        let offX = 0;
+        let offY = 0;
+        let rotX = 0;
+        let rotY = 0;
+        let rotZ = 0;
+
+        switch (effect) {
+            case 'zoom_pop':
+                scale = p < 0.75 ? (p / 0.75) * 1.15 : 1.15 - ((p - 0.75) / 0.25) * 0.15;
+                opacity = Math.min(1.0, p * 2.5);
+                break;
+            case 'slide_top':
+                offY = (1.0 - easedP) * 10.0;
+                opacity = Math.min(1.0, p * 2.0);
+                break;
+            case 'slide_bottom':
+                offY = -(1.0 - easedP) * 10.0;
+                opacity = Math.min(1.0, p * 2.0);
+                break;
+            case 'slide_left':
+                offX = -(1.0 - easedP) * 14.0;
+                opacity = Math.min(1.0, p * 2.0);
+                break;
+            case 'slide_right':
+                offX = (1.0 - easedP) * 14.0;
+                opacity = Math.min(1.0, p * 2.0);
+                break;
+            case 'neon_strobe':
+                const str = (Math.sin(p * Math.PI * 8.0) > 0.1) ? 1.0 : 0.08;
+                opacity = p > 0.85 ? 1.0 : str * (0.3 + p * 0.7);
+                scale = 0.95 + p * 0.05;
+                break;
+            case 'cyber_glitch':
+                offX = (Math.random() - 0.5) * (1.0 - p) * 3.0;
+                offY = (Math.random() - 0.5) * (1.0 - p) * 1.5;
+                opacity = p > 0.3 ? (Math.random() > 0.15 ? p : 0.2) : p;
+                break;
+            case 'spin_vortex':
+                rotZ = (1.0 - easedP) * Math.PI * 4.0;
+                scale = Math.max(0.01, easedP);
+                opacity = p;
+                break;
+            case 'flip_card':
+                rotY = (1.0 - easedP) * (Math.PI / 2);
+                opacity = Math.min(1.0, p * 1.8);
+                scale = 0.9 + p * 0.1;
+                break;
+            case 'smooth_fade':
+            default:
+                opacity = easedP;
+                scale = 1.0;
+                break;
+        }
+
+        return { opacity, scale, offX, offY, rotX, rotY, rotZ };
+    }
+
+    // Setters for Transition Effects & Scheduled Pops
+    function setLogoTransitionEffect(effect) { logoTransition.effect = effect || 'smooth_fade'; }
+    function setStationLogoTransitionEffect(effect) { stationLogoTransition.effect = effect || 'smooth_fade'; }
+    function setFlyerTransitionEffect(effect) { flyerTransition.effect = effect || 'smooth_fade'; }
+
+    function popLogo(durationSec = 15) {
+        if (logoPopTimer) clearTimeout(logoPopTimer);
+        setLogoVisible(true);
+        if (durationSec > 0) {
+            logoPopTimer = setTimeout(() => {
+                setLogoVisible(false);
+                logoPopTimer = null;
+            }, durationSec * 1000);
+        }
+    }
+
+    function popStationLogo(durationSec = 15) {
+        if (stationLogoPopTimer) clearTimeout(stationLogoPopTimer);
+        setStationLogoVisible(true);
+        if (durationSec > 0) {
+            stationLogoPopTimer = setTimeout(() => {
+                setStationLogoVisible(false);
+                stationLogoPopTimer = null;
+            }, durationSec * 1000);
+        }
+    }
+
+    function popFlyer(durationSec = 15) {
+        if (flyerPopTimer) clearTimeout(flyerPopTimer);
+        setFlyerVisible(true);
+        if (durationSec > 0) {
+            flyerPopTimer = setTimeout(() => {
+                setFlyerVisible(false);
+                flyerPopTimer = null;
+            }, durationSec * 1000);
+        }
+    }
+
+    function setFlyerPosition(pos) {
+        flyerPosition = pos;
+        applyFlyerPlacement();
+    }
+
+    function setFlyerVisible(visible, immediate = false) {
+        flyerVisible = !!visible;
+        if (immediate) {
+            flyerTransition.state = visible ? 'visible' : 'hidden';
+            flyerTransition.progress = visible ? 1.0 : 0.0;
+            flyerGroup.visible = flyerVisible;
+        } else {
+            triggerLayerVisibility(flyerTransition, flyerVisible, flyerGroup);
+        }
+    }
+
+    function setFlyerScale(val) {
+        flyerBaseScale = Math.max(0.1, Math.min(5.0, Number(val) || 1.0));
+        applyFlyerPlacement();
+    }
+
+    function setFlyerMode(mode) {
+        flyerMode = mode;
+        applyFlyerPlacement();
+    }
+
+    function setFlyerBassPulse(val) {
+        flyerBassPulseAmount = Math.max(0, Math.min(1.0, Number(val) || 0));
+    }
+
+    function setFlyerContrast(val) {
+        flyerContrast = Math.max(0.5, Math.min(3.0, Number(val) || 1.0));
+        flyerShaderMat.uniforms.uContrast.value = flyerContrast;
+    }
+
+    function setFlyerBrightness(val) {
+        flyerBrightness = Math.max(0.5, Math.min(3.0, Number(val) || 1.0));
+        flyerShaderMat.uniforms.uBrightness.value = flyerBrightness;
+    }
+
+    function setFlyerBlendMode(modeIdx) {
+        flyerShaderMat.uniforms.uBlendMode.value = parseInt(modeIdx, 10) || 0;
+    }
+
+    function setFlyerShieldVisible(visible) {
+        isFlyerShieldActive = !!visible;
+        if (flyerShieldMesh && flyerMode !== 'backdrop') {
+            flyerShieldMesh.visible = isFlyerShieldActive;
+        }
+    }
+
+    function setFlyerSpinMode(mode) {
+        if (mode === 'center' || mode === 'orbit' || mode === 'freeroam' || mode === 'free_roam') {
+            flyerSpinMode = (mode === 'free_roam') ? 'freeroam' : mode;
+        } else if (mode === 'on' || mode === true) {
+            flyerSpinMode = 'center';
+        } else {
+            flyerSpinMode = 'off';
+        }
+    }
+
+    function setFlyerSpinSpeed(speed) {
+        flyerSpinSpeed = typeof speed === 'number' ? speed : 1.0;
+    }
+
+    function setFlyerOffsetY(val) {
+        flyerOffsetY = Number(val) || 0.0;
+        applyFlyerPlacement();
+    }
+
+    function setFlyerOffsetX(val) {
+        flyerOffsetX = Number(val) || 0.0;
+        applyFlyerPlacement();
+    }
+
+    function setFlyerEdgeMargin(val) {
+        flyerEdgeMargin = Math.max(0.0, Math.min(0.4, Number(val) || 0.04));
+        applyFlyerPlacement();
     }
 
     // =========================================================================
@@ -6553,9 +7048,15 @@ export function createVFXScene(container) {
     }
 
     // Logo Control API
-    function setLogoVisible(visible) {
+    function setLogoVisible(visible, immediate = false) {
         logoVisible = !!visible;
-        logoGroup.visible = logoVisible;
+        if (immediate) {
+            logoTransition.state = visible ? 'visible' : 'hidden';
+            logoTransition.progress = visible ? 1.0 : 0.0;
+            logoGroup.visible = logoVisible;
+        } else {
+            triggerLayerVisibility(logoTransition, logoVisible, logoGroup);
+        }
     }
 
     function setLogoOpacity(val) {
@@ -6670,42 +7171,51 @@ export function createVFXScene(container) {
         const bps = currentBPM / 60.0;
         const speed = bps * delta;
 
+        // Update Layer Transitions
+        updateTransitionState(logoTransition, logoGroup, delta);
+        updateTransitionState(stationLogoTransition, stationLogoGroup, delta);
+        updateTransitionState(flyerTransition, flyerGroup, delta);
+
         // 1. Animate Logo Layer
-        if (logoVisible && logoMesh) {
+        if (logoGroup.visible && logoMesh) {
+            const trans = computeTransitionTransforms(logoTransition);
+            logoShaderMat.uniforms.uOpacity.value = logoBaseOpacity * trans.opacity;
+
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
             const wTarget = (logoMode === 'backdrop' ? 45 : (logoMode === 'overlay' ? 4.8 : (logoPosition === 'center' ? 7.5 : 4.8))) * logoBaseScale * currentLogoScaleFactor;
-            const wBase = wTarget * (1.0 + logoPulse * 0.25);
+            const wBase = wTarget * (1.0 + logoPulse * 0.25) * trans.scale;
             const hBase = (wBase / (logoAspectRatio || 1.0));
 
             // Shield stays stationary flat directly behind the logo
             if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
                 logoShieldMesh.position.set(0, 0, -0.2);
                 logoShieldMesh.rotation.set(0, 0, 0);
+                logoShieldMat.opacity = 0.8 * trans.opacity;
             }
 
             // Mode-specific Horizontal / 3D / Free Roam Rotation Logic
             if (logoSpinMode === 'center') {
-                // Mode 1: Pure Horizontal Center Spin (Symmetrical flat horizontal rotation on center point everywhere)
-                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                // Mode 1: Pure Horizontal Center Spin
+                logoPivot.position.set(currentLogoPosX + trans.offX, currentLogoPosY + trans.offY, currentLogoBaseZ);
                 logoPivot.quaternion.copy(camera.quaternion);
 
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 const cosSpin = Math.cos(logoSpinAngle);
                 logoMesh.scale.set((wBase / 16) * cosSpin, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
-                logoMesh.rotation.set(0, 0, 0);
+                logoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
             } else if (logoSpinMode === 'orbit') {
                 // Mode 2: 3D Perspective Depth Offset Orbit Spin
-                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                logoPivot.position.set(currentLogoPosX + trans.offX, currentLogoPosY + trans.offY, currentLogoBaseZ);
                 logoPivot.quaternion.copy(camera.quaternion);
 
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 logoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 logoMesh.rotation.order = 'YXZ';
-                logoMesh.rotation.y = logoSpinAngle;
-                logoMesh.rotation.x = 0;
-                logoMesh.rotation.z = 0;
+                logoMesh.rotation.y = logoSpinAngle + trans.rotY;
+                logoMesh.rotation.x = trans.rotX;
+                logoMesh.rotation.z = trans.rotZ;
             } else if (logoSpinMode === 'freeroam') {
                 // Mode 3: Free Roam & 3D Drift across the entire display
                 logoSpinAngle += delta * logoSpinSpeed * 1.5;
@@ -6714,8 +7224,8 @@ export function createVFXScene(container) {
                 const boundX = logoMode === 'backdrop' ? 14.0 : (logoMode === 'overlay' ? 2.2 : 5.8);
                 const boundY = logoMode === 'backdrop' ? 8.0 : (logoMode === 'overlay' ? 1.2 : 3.4);
 
-                const freeX = Math.sin(roamTime * 1.1) * boundX + Math.sin(roamTime * 2.3) * (boundX * 0.2);
-                const freeY = Math.cos(roamTime * 0.9) * boundY + Math.cos(roamTime * 1.8) * (boundY * 0.15);
+                const freeX = Math.sin(roamTime * 1.1) * boundX + Math.sin(roamTime * 2.3) * (boundX * 0.2) + trans.offX;
+                const freeY = Math.cos(roamTime * 0.9) * boundY + Math.cos(roamTime * 1.8) * (boundY * 0.15) + trans.offY;
                 const freeZ = currentLogoBaseZ + Math.sin(roamTime * 0.7) * 1.0;
 
                 logoPivot.position.set(freeX, freeY, freeZ);
@@ -6724,12 +7234,12 @@ export function createVFXScene(container) {
                 logoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 logoMesh.rotation.order = 'YXZ';
-                logoMesh.rotation.y = logoSpinAngle;
-                logoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2;
-                logoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15;
+                logoMesh.rotation.y = logoSpinAngle + trans.rotY;
+                logoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2 + trans.rotX;
+                logoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15 + trans.rotZ;
             } else {
                 // Mode 4: Static (Smooth recovery to front-facing)
-                logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
+                logoPivot.position.set(currentLogoPosX + trans.offX, currentLogoPosY + trans.offY, currentLogoBaseZ);
                 logoPivot.quaternion.copy(camera.quaternion);
 
                 logoMesh.scale.set(wBase / 16, hBase / 16, 1);
@@ -6739,48 +7249,52 @@ export function createVFXScene(container) {
                     logoMesh.rotation.x = THREE.MathUtils.lerp(logoMesh.rotation.x, 0, delta * 8.0);
                     logoMesh.rotation.z = THREE.MathUtils.lerp(logoMesh.rotation.z, 0, delta * 8.0);
                     if (Math.abs(logoMesh.rotation.y) < 0.001) {
-                        logoMesh.rotation.set(0, 0, 0);
+                        logoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
                         logoSpinAngle = 0;
                     }
                 } else {
-                    logoMesh.rotation.set(0, 0, 0);
+                    logoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
                     logoSpinAngle = 0;
                 }
             }
         }
 
         // 1b. Animate Station Logo Layer
-        if (stationLogoVisible && stationLogoMesh) {
+        if (stationLogoGroup.visible && stationLogoMesh) {
+            const trans = computeTransitionTransforms(stationLogoTransition);
+            stationLogoShaderMat.uniforms.uOpacity.value = stationLogoBaseOpacity * trans.opacity;
+
             const stPulse = (bassPop * stationLogoBassPulseAmount * 0.25) + (transient * stationLogoBassPulseAmount * 0.2);
             const stTarget = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 4.8 : (stationLogoPosition === 'center' ? 7.5 : 4.8))) * stationLogoBaseScale * currentStationLogoScaleFactor;
-            const wBase = stTarget * (1.0 + stPulse * 0.25);
+            const wBase = stTarget * (1.0 + stPulse * 0.25) * trans.scale;
             const hBase = (wBase / (stationLogoAspectRatio || 1.0));
 
             if (stationLogoShieldMesh && isStationShieldActive && stationLogoMode !== 'backdrop') {
                 stationLogoShieldMesh.position.set(0, 0, -0.2);
                 stationLogoShieldMesh.rotation.set(0, 0, 0);
+                stationShieldMat.opacity = 0.8 * trans.opacity;
             }
 
             if (stationLogoSpinMode === 'center') {
-                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.position.set(currentStationLogoPosX + trans.offX, currentStationLogoPosY + trans.offY, currentStationLogoBaseZ);
                 stationLogoPivot.quaternion.copy(camera.quaternion);
 
                 stationLogoSpinAngle += delta * stationLogoSpinSpeed * 2.5;
                 const cosSpin = Math.cos(stationLogoSpinAngle);
                 stationLogoMesh.scale.set((wBase / 16) * cosSpin, hBase / 16, 1);
                 stationLogoMesh.position.set(0, 0, 0);
-                stationLogoMesh.rotation.set(0, 0, 0);
+                stationLogoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
             } else if (stationLogoSpinMode === 'orbit') {
-                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.position.set(currentStationLogoPosX + trans.offX, currentStationLogoPosY + trans.offY, currentStationLogoBaseZ);
                 stationLogoPivot.quaternion.copy(camera.quaternion);
 
                 stationLogoSpinAngle += delta * stationLogoSpinSpeed * 2.5;
                 stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 stationLogoMesh.position.set(0, 0, 0);
                 stationLogoMesh.rotation.order = 'YXZ';
-                stationLogoMesh.rotation.y = stationLogoSpinAngle;
-                stationLogoMesh.rotation.x = 0;
-                stationLogoMesh.rotation.z = 0;
+                stationLogoMesh.rotation.y = stationLogoSpinAngle + trans.rotY;
+                stationLogoMesh.rotation.x = trans.rotX;
+                stationLogoMesh.rotation.z = trans.rotZ;
             } else if (stationLogoSpinMode === 'freeroam') {
                 stationLogoSpinAngle += delta * stationLogoSpinSpeed * 1.5;
                 const roamTime = elapsedTime * stationLogoSpinSpeed * 0.45;
@@ -6788,8 +7302,8 @@ export function createVFXScene(container) {
                 const boundX = stationLogoMode === 'backdrop' ? 14.0 : (stationLogoMode === 'overlay' ? 2.2 : 5.8);
                 const boundY = stationLogoMode === 'backdrop' ? 8.0 : (stationLogoMode === 'overlay' ? 1.2 : 3.4);
 
-                const freeX = Math.sin(roamTime * 1.1 + 1.5) * boundX;
-                const freeY = Math.cos(roamTime * 0.9 + 1.0) * boundY;
+                const freeX = Math.sin(roamTime * 1.1 + 1.5) * boundX + trans.offX;
+                const freeY = Math.cos(roamTime * 0.9 + 1.0) * boundY + trans.offY;
                 const freeZ = currentStationLogoBaseZ + Math.sin(roamTime * 0.7) * 1.0;
 
                 stationLogoPivot.position.set(freeX, freeY, freeZ);
@@ -6798,11 +7312,11 @@ export function createVFXScene(container) {
                 stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 stationLogoMesh.position.set(0, 0, 0);
                 stationLogoMesh.rotation.order = 'YXZ';
-                stationLogoMesh.rotation.y = stationLogoSpinAngle;
-                stationLogoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2;
-                stationLogoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15;
+                stationLogoMesh.rotation.y = stationLogoSpinAngle + trans.rotY;
+                stationLogoMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2 + trans.rotX;
+                stationLogoMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15 + trans.rotZ;
             } else {
-                stationLogoPivot.position.set(currentStationLogoPosX, currentStationLogoPosY, currentStationLogoBaseZ);
+                stationLogoPivot.position.set(currentStationLogoPosX + trans.offX, currentStationLogoPosY + trans.offY, currentStationLogoBaseZ);
                 stationLogoPivot.quaternion.copy(camera.quaternion);
 
                 stationLogoMesh.scale.set(wBase / 16, hBase / 16, 1);
@@ -6812,13 +7326,79 @@ export function createVFXScene(container) {
                     stationLogoMesh.rotation.x = THREE.MathUtils.lerp(stationLogoMesh.rotation.x, 0, delta * 8.0);
                     stationLogoMesh.rotation.z = THREE.MathUtils.lerp(stationLogoMesh.rotation.z, 0, delta * 8.0);
                     if (Math.abs(stationLogoMesh.rotation.y) < 0.001) {
-                        stationLogoMesh.rotation.set(0, 0, 0);
+                        stationLogoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
                         stationLogoSpinAngle = 0;
                     }
                 } else {
-                    stationLogoMesh.rotation.set(0, 0, 0);
+                    stationLogoMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
                     stationLogoSpinAngle = 0;
                 }
+            }
+        }
+
+        // 1c. Animate Event Flyer Layer
+        if (flyerGroup.visible && flyerMesh) {
+            const trans = computeTransitionTransforms(flyerTransition);
+            flyerShaderMat.uniforms.uOpacity.value = flyerBaseOpacity * trans.opacity;
+
+            const flPulse = (bassPop * flyerBassPulseAmount * 0.25) + (transient * flyerBassPulseAmount * 0.2);
+            const flTarget = (flyerMode === 'backdrop' ? 45 : (flyerMode === 'overlay' ? 4.8 : (flyerPosition === 'center' ? 7.5 : 4.8))) * flyerBaseScale * currentFlyerScaleFactor;
+            const wBase = flTarget * (1.0 + flPulse * 0.25) * trans.scale;
+            const hBase = (wBase / (flyerAspectRatio || 0.75));
+
+            if (flyerShieldMesh && isFlyerShieldActive && flyerMode !== 'backdrop') {
+                flyerShieldMesh.position.set(0, 0, -0.2);
+                flyerShieldMesh.rotation.set(0, 0, 0);
+                flyerShieldMat.opacity = 0.85 * trans.opacity;
+            }
+
+            if (flyerSpinMode === 'center') {
+                flyerPivot.position.set(currentFlyerPosX + trans.offX, currentFlyerPosY + trans.offY, currentFlyerBaseZ);
+                flyerPivot.quaternion.copy(camera.quaternion);
+
+                flyerSpinAngle += delta * flyerSpinSpeed * 2.5;
+                const cosSpin = Math.cos(flyerSpinAngle);
+                flyerMesh.scale.set((wBase / 16) * cosSpin, hBase / 16, 1);
+                flyerMesh.position.set(0, 0, 0);
+                flyerMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
+            } else if (flyerSpinMode === 'orbit') {
+                flyerPivot.position.set(currentFlyerPosX + trans.offX, currentFlyerPosY + trans.offY, currentFlyerBaseZ);
+                flyerPivot.quaternion.copy(camera.quaternion);
+
+                flyerSpinAngle += delta * flyerSpinSpeed * 2.5;
+                flyerMesh.scale.set(wBase / 16, hBase / 16, 1);
+                flyerMesh.position.set(0, 0, 0);
+                flyerMesh.rotation.order = 'YXZ';
+                flyerMesh.rotation.y = flyerSpinAngle + trans.rotY;
+                flyerMesh.rotation.x = trans.rotX;
+                flyerMesh.rotation.z = trans.rotZ;
+            } else if (flyerSpinMode === 'freeroam') {
+                flyerSpinAngle += delta * flyerSpinSpeed * 1.5;
+                const roamTime = elapsedTime * flyerSpinSpeed * 0.45;
+
+                const boundX = flyerMode === 'backdrop' ? 14.0 : (flyerMode === 'overlay' ? 2.2 : 5.8);
+                const boundY = flyerMode === 'backdrop' ? 8.0 : (flyerMode === 'overlay' ? 1.2 : 3.4);
+
+                const freeX = Math.sin(roamTime * 1.1 + 3.0) * boundX + trans.offX;
+                const freeY = Math.cos(roamTime * 0.9 + 2.0) * boundY + trans.offY;
+                const freeZ = currentFlyerBaseZ + Math.sin(roamTime * 0.7) * 1.0;
+
+                flyerPivot.position.set(freeX, freeY, freeZ);
+                flyerPivot.quaternion.copy(camera.quaternion);
+
+                flyerMesh.scale.set(wBase / 16, hBase / 16, 1);
+                flyerMesh.position.set(0, 0, 0);
+                flyerMesh.rotation.order = 'YXZ';
+                flyerMesh.rotation.y = flyerSpinAngle + trans.rotY;
+                flyerMesh.rotation.x = Math.sin(roamTime * 1.4) * 0.2 + trans.rotX;
+                flyerMesh.rotation.z = Math.cos(roamTime * 1.1) * 0.15 + trans.rotZ;
+            } else {
+                flyerPivot.position.set(currentFlyerPosX + trans.offX, currentFlyerPosY + trans.offY, currentFlyerBaseZ);
+                flyerPivot.quaternion.copy(camera.quaternion);
+
+                flyerMesh.scale.set(wBase / 16, hBase / 16, 1);
+                flyerMesh.position.set(0, 0, 0);
+                flyerMesh.rotation.set(trans.rotX, trans.rotY, trans.rotZ);
             }
         }
 
@@ -7918,10 +8498,30 @@ export function createVFXScene(container) {
         setStationLogoBassPulse,
         setStationLogoContrast,
         setStationLogoBrightness,
-        setStationLogoBlendMode,
-        setStationLogoShieldVisible,
-        setStationLogoSpinMode,
-        setStationLogoSpinSpeed,
+        // Layer Transition & Pop Setters
+        setLogoTransitionEffect,
+        setStationLogoTransitionEffect,
+        setFlyerTransitionEffect,
+        popLogo,
+        popStationLogo,
+        popFlyer,
+        // Event Flyer Layer Exports
+        loadFlyerMedia,
+        playFlyerVideo,
+        setFlyerVisible,
+        setFlyerScale,
+        setFlyerMode,
+        setFlyerPosition,
+        setFlyerOffsetY,
+        setFlyerOffsetX,
+        setFlyerEdgeMargin,
+        setFlyerBassPulse,
+        setFlyerContrast,
+        setFlyerBrightness,
+        setFlyerBlendMode,
+        setFlyerShieldVisible,
+        setFlyerSpinMode,
+        setFlyerSpinSpeed,
         setDeckData: (data) => {
             if (!data) return;
             const targetDeck = (data.deck === 2) ? 2 : 1;
@@ -7944,6 +8544,7 @@ export function createVFXScene(container) {
         updateLogoPlacements: () => {
             applyLogoPlacement();
             applyStationLogoPlacement();
+            applyFlyerPlacement();
         },
         getCurrentScenePalette: () => {
             if (currentFXIndex === 18 || currentFXIndex === 20) {

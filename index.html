@@ -2530,10 +2530,11 @@
             <!-- ========================================================================= -->
             <div class="ide-tab-pane" id="pane-branding">
                 <div class="pane-section-title">
-                    <span>⚡ DJ & Station Branding</span>
+                    <span>⚡ DJ, Station & Promo Branding</span>
                     <div style="display:flex; gap:4px;">
                         <span id="logo-badge" class="hud-badge" style="cursor:pointer;" title="Toggle DJ Logo Layer [L]">DJ: ON</span>
                         <span id="station-logo-badge" class="hud-badge" style="cursor:pointer; color:rgba(255,255,255,0.4); border-color:#323542;" title="Toggle Station Logo Layer [S]">STATION: OFF</span>
+                        <span id="flyer-badge" class="hud-badge" style="cursor:pointer; color:rgba(255,255,255,0.4); border-color:#323542;" title="Toggle Event Flyer Layer [F]">FLYER: OFF</span>
                     </div>
                 </div>
 
@@ -2546,6 +2547,10 @@
                     <button class="logos-nav-tab" id="subtab-btn-station" data-subtab="station" title="Switch to Radio & Station Watermark Layer">
                         <span class="tab-led"></span>
                         <span>📡 STATION LOGO</span>
+                    </button>
+                    <button class="logos-nav-tab" id="subtab-btn-flyer" data-subtab="flyer" title="Switch to Event Flyer & Promo Graphic Layer">
+                        <span class="tab-led"></span>
+                        <span>🖼️ EVENT FLYER</span>
                     </button>
                 </div>
 
@@ -2582,6 +2587,73 @@
                                 <span class="dj-card-title">JK McLaren Shock</span>
                                 <span class="dj-card-sub">Default Video</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- AUTOMATION & POP-UP SCHEDULE -->
+                    <div class="hud-section" style="background:#0e121a; border:1px solid #1c324a; border-radius:6px; padding:8px 10px; margin-top:8px; margin-bottom:8px;">
+                        <div class="hud-row" style="margin-bottom:6px; align-items:center;">
+                            <span class="hud-label" style="color:#00aaff; font-weight:800;">⏱️ AUTOMATION & POP-UP SCHEDULE</span>
+                            <span class="hud-badge" id="logo-sched-status-badge" style="font-size:7.5px;">ALWAYS ON</span>
+                        </div>
+
+                        <!-- Schedule Mode Pills -->
+                        <div class="mode-pills" id="logo-sched-mode-pills" style="margin-bottom:6px;">
+                            <button class="mode-pill active" data-sched-mode="always" title="Always visible when layer is turned on">Always Visible</button>
+                            <button class="mode-pill" data-sched-mode="interval" title="Pops up periodically on a scheduled frequency timer">Periodic Pop-Up</button>
+                        </div>
+
+                        <!-- Frequency & Duration Dropdowns -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW OFTEN (FREQ):</div>
+                                <select id="select-logo-freq" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="30">Every 30s</option>
+                                    <option value="60">Every 1 min</option>
+                                    <option value="120" selected>Every 2 mins</option>
+                                    <option value="180">Every 3 mins</option>
+                                    <option value="300">Every 5 mins</option>
+                                    <option value="600">Every 10 mins</option>
+                                    <option value="900">Every 15 mins</option>
+                                    <option value="1800">Every 30 mins</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW LONG (STAY):</div>
+                                <select id="select-logo-dur" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="5">Stay 5s</option>
+                                    <option value="10">Stay 10s</option>
+                                    <option value="15" selected>Stay 15s</option>
+                                    <option value="20">Stay 20s</option>
+                                    <option value="30">Stay 30s</option>
+                                    <option value="45">Stay 45s</option>
+                                    <option value="60">Stay 60s</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Transition Effect Dropdown -->
+                        <div style="margin-bottom:6px;">
+                            <div class="hud-label" style="font-size:8px; margin-bottom:2px;">TRANSITION & REVEAL EFFECT:</div>
+                            <select id="select-logo-trans" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                <option value="smooth_fade" selected>✨ Smooth Exponential Fade</option>
+                                <option value="zoom_pop">🎯 Scale Zoom & Spring Pop</option>
+                                <option value="slide_top">⬇️ Slide Down from Top</option>
+                                <option value="slide_bottom">⬆️ Slide Up from Bottom</option>
+                                <option value="slide_left">➡️ Slide In from Left</option>
+                                <option value="slide_right">⬅️ Slide In from Right</option>
+                                <option value="neon_strobe">⚡ Neon Strobe Multi-Burst</option>
+                                <option value="cyber_glitch">👾 Cyber Hologram Glitch</option>
+                                <option value="spin_vortex">🌀 3D Spin & Zoom Vortex</option>
+                                <option value="flip_card">🃏 3D Perspective Flip Card</option>
+                                <option value="instant">⚡ Instant Cut</option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Quick Action Buttons -->
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-mini" id="btn-pop-logo-now" style="flex:1; font-size:9.5px; font-weight:800; padding:5px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#fff; cursor:pointer;" title="Manually pop DJ logo now with chosen transition and duration">⚡ POP NOW</button>
+                            <button class="btn-mini" id="btn-pop-off-logo-now" style="font-size:9px; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;" title="Dismiss DJ logo now">⏹️ POP OFF</button>
                         </div>
                     </div>
 
@@ -2778,6 +2850,73 @@
                         </div>
                     </div>
 
+                    <!-- AUTOMATION & POP-UP SCHEDULE -->
+                    <div class="hud-section" style="background:#0e121a; border:1px solid #1c324a; border-radius:6px; padding:8px 10px; margin-top:8px; margin-bottom:8px;">
+                        <div class="hud-row" style="margin-bottom:6px; align-items:center;">
+                            <span class="hud-label" style="color:#00aaff; font-weight:800;">⏱️ AUTOMATION & POP-UP SCHEDULE</span>
+                            <span class="hud-badge" id="station-sched-status-badge" style="font-size:7.5px;">ALWAYS ON</span>
+                        </div>
+
+                        <!-- Schedule Mode Pills -->
+                        <div class="mode-pills" id="station-sched-mode-pills" style="margin-bottom:6px;">
+                            <button class="mode-pill active" data-sched-mode="always" title="Always visible when layer is turned on">Always Visible</button>
+                            <button class="mode-pill" data-sched-mode="interval" title="Pops up periodically on a scheduled frequency timer">Periodic Pop-Up</button>
+                        </div>
+
+                        <!-- Frequency & Duration Dropdowns -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW OFTEN (FREQ):</div>
+                                <select id="select-station-freq" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="30">Every 30s</option>
+                                    <option value="60">Every 1 min</option>
+                                    <option value="120">Every 2 mins</option>
+                                    <option value="180">Every 3 mins</option>
+                                    <option value="300" selected>Every 5 mins</option>
+                                    <option value="600">Every 10 mins</option>
+                                    <option value="900">Every 15 mins</option>
+                                    <option value="1800">Every 30 mins</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW LONG (STAY):</div>
+                                <select id="select-station-dur" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="5">Stay 5s</option>
+                                    <option value="10">Stay 10s</option>
+                                    <option value="15">Stay 15s</option>
+                                    <option value="20" selected>Stay 20s</option>
+                                    <option value="30">Stay 30s</option>
+                                    <option value="45">Stay 45s</option>
+                                    <option value="60">Stay 60s</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Transition Effect Dropdown -->
+                        <div style="margin-bottom:6px;">
+                            <div class="hud-label" style="font-size:8px; margin-bottom:2px;">TRANSITION & REVEAL EFFECT:</div>
+                            <select id="select-station-trans" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                <option value="smooth_fade" selected>✨ Smooth Exponential Fade</option>
+                                <option value="zoom_pop">🎯 Scale Zoom & Spring Pop</option>
+                                <option value="slide_top">⬇️ Slide Down from Top</option>
+                                <option value="slide_bottom">⬆️ Slide Up from Bottom</option>
+                                <option value="slide_left">➡️ Slide In from Left</option>
+                                <option value="slide_right">⬅️ Slide In from Right</option>
+                                <option value="neon_strobe">⚡ Neon Strobe Multi-Burst</option>
+                                <option value="cyber_glitch">👾 Cyber Hologram Glitch</option>
+                                <option value="spin_vortex">🌀 3D Spin & Zoom Vortex</option>
+                                <option value="flip_card">🃏 3D Perspective Flip Card</option>
+                                <option value="instant">⚡ Instant Cut</option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Quick Action Buttons -->
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-mini" id="btn-pop-station-now" style="flex:1; font-size:9.5px; font-weight:800; padding:5px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#fff; cursor:pointer;" title="Manually pop station logo now with chosen transition and duration">⚡ POP NOW</button>
+                            <button class="btn-mini" id="btn-pop-off-station-now" style="font-size:9px; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;" title="Dismiss station logo now">⏹️ POP OFF</button>
+                        </div>
+                    </div>
+
                     <!-- 1. Display Layer Mode -->
                     <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DISPLAY LAYER MODE:</div>
                     <div class="mode-pills" id="station-mode-pills" style="margin-bottom:6px;">
@@ -2886,6 +3025,221 @@
                         <span class="hud-label">CONTRAST SHIELD</span>
                         <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#ffaa00;">
                             <input type="checkbox" id="check-station-shield" checked style="accent-color:#ffaa00; cursor:pointer;"> Active
+                        </label>
+                    </div>
+                </div>
+
+                <!-- SUB-SECTION 3: EVENT FLYER & PROMO OVERLAY CONTROLS -->
+                <div id="subtab-content-flyer" class="subtab-content" style="display:none;">
+                    <!-- Active Flyer Preview Monitor -->
+                    <div class="media-preview-card">
+                        <div class="media-preview-thumb-box" style="width:48px; height:64px; min-width:48px;">
+                            <img id="flyer-media-preview-img" src="/images/flyers/neon_odyssey_flyer.jpg" alt="Event Flyer Preview" style="object-fit:cover;">
+                            <video id="flyer-media-preview-video" style="display:none;" autoplay loop muted playsinline></video>
+                        </div>
+                        <div class="media-preview-meta">
+                            <span class="media-preview-name" id="flyer-logo-active-name">Neon Odyssey Live</span>
+                            <div class="media-preview-badges">
+                                <span class="media-badge-tag" id="flyer-media-preview-type">🖼️ PROMO FLYER</span>
+                                <span class="media-badge-tag" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:rgba(0,255,136,0.3);">● OVERLAY</span>
+                            </div>
+                        </div>
+                        <button class="btn-mini" id="btn-reset-flyer-default" style="font-size:9px; padding:3px 6px;" title="Reset to Default Neon Odyssey Flyer">↺ Reset</button>
+                    </div>
+
+                    <!-- Flyer Media Selector Grid -->
+                    <div class="hud-row" style="margin-bottom:4px; align-items:center;">
+                        <span class="hud-label">SELECT EVENT FLYER / PROMO</span>
+                        <button class="btn-mini" id="btn-upload-flyer" style="font-size:9.5px; font-weight:700; padding:3px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;" title="Upload custom flyer or promo video (PNG, JPG, SVG, MP4, WebM)">📁 + ADD FLYER</button>
+                        <input type="file" id="file-flyer" accept="image/*,video/mp4,video/webm" style="display:none;">
+                    </div>
+
+                    <div class="station-card-grid" id="flyer-logos-container">
+                        <!-- Default Neon Odyssey Flyer -->
+                        <div class="station-card active" data-flyer-url="/images/flyers/neon_odyssey_flyer.jpg" data-flyer-title="Neon Odyssey Live" data-flyer-type="img">
+                            <img class="station-card-thumb" src="/images/flyers/neon_odyssey_flyer.jpg" alt="Neon Odyssey Live">
+                            <div class="station-card-info">
+                                <span class="station-card-title">Neon Odyssey</span>
+                                <span class="station-card-sub">Event Poster</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AUTOMATION & POP-UP SCHEDULE -->
+                    <div class="hud-section" style="background:#0e121a; border:1px solid #1c324a; border-radius:6px; padding:8px 10px; margin-top:8px; margin-bottom:8px;">
+                        <div class="hud-row" style="margin-bottom:6px; align-items:center;">
+                            <span class="hud-label" style="color:#00aaff; font-weight:800;">⏱️ AUTOMATION & POP-UP SCHEDULE</span>
+                            <span class="hud-badge" id="flyer-sched-status-badge" style="font-size:7.5px;">ALWAYS ON</span>
+                        </div>
+
+                        <!-- Schedule Mode Pills -->
+                        <div class="mode-pills" id="flyer-sched-mode-pills" style="margin-bottom:6px;">
+                            <button class="mode-pill active" data-sched-mode="always" title="Always visible when layer is turned on">Always Visible</button>
+                            <button class="mode-pill" data-sched-mode="interval" title="Pops up periodically on a scheduled frequency timer">Periodic Pop-Up</button>
+                        </div>
+
+                        <!-- Frequency & Duration Dropdowns -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:6px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW OFTEN (FREQ):</div>
+                                <select id="select-flyer-freq" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="30">Every 30s</option>
+                                    <option value="60">Every 1 min</option>
+                                    <option value="120">Every 2 mins</option>
+                                    <option value="180">Every 3 mins</option>
+                                    <option value="300" selected>Every 5 mins</option>
+                                    <option value="600">Every 10 mins</option>
+                                    <option value="900">Every 15 mins</option>
+                                    <option value="1800">Every 30 mins</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:2px;">HOW LONG (STAY):</div>
+                                <select id="select-flyer-dur" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="5">Stay 5s</option>
+                                    <option value="10">Stay 10s</option>
+                                    <option value="15" selected>Stay 15s</option>
+                                    <option value="20">Stay 20s</option>
+                                    <option value="30">Stay 30s</option>
+                                    <option value="45">Stay 45s</option>
+                                    <option value="60">Stay 60s</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Transition Effect Dropdown -->
+                        <div style="margin-bottom:6px;">
+                            <div class="hud-label" style="font-size:8px; margin-bottom:2px;">TRANSITION & REVEAL EFFECT:</div>
+                            <select id="select-flyer-trans" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                <option value="smooth_fade" selected>✨ Smooth Exponential Fade</option>
+                                <option value="zoom_pop">🎯 Scale Zoom & Spring Pop</option>
+                                <option value="slide_top">⬇️ Slide Down from Top</option>
+                                <option value="slide_bottom">⬆️ Slide Up from Bottom</option>
+                                <option value="slide_left">➡️ Slide In from Left</option>
+                                <option value="slide_right">⬅️ Slide In from Right</option>
+                                <option value="neon_strobe">⚡ Neon Strobe Multi-Burst</option>
+                                <option value="cyber_glitch">👾 Cyber Hologram Glitch</option>
+                                <option value="spin_vortex">🌀 3D Spin & Zoom Vortex</option>
+                                <option value="flip_card">🃏 3D Perspective Flip Card</option>
+                                <option value="instant">⚡ Instant Cut</option>
+                            </select>
+                        </div>
+
+                        <!-- Manual Quick Action Buttons -->
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-mini" id="btn-pop-flyer-now" style="flex:1; font-size:9.5px; font-weight:800; padding:5px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#fff; cursor:pointer;" title="Manually pop event flyer now with chosen transition and duration">⚡ POP NOW</button>
+                            <button class="btn-mini" id="btn-pop-off-flyer-now" style="font-size:9px; padding:5px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;" title="Dismiss event flyer now">⏹️ POP OFF</button>
+                        </div>
+                    </div>
+
+                    <!-- 1. Display Layer Mode -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DISPLAY LAYER MODE:</div>
+                    <div class="mode-pills" id="flyer-mode-pills" style="margin-bottom:6px;">
+                        <button class="mode-pill" data-fl-mode="hologram" title="Floating 3D Hologram in stage space">3D Front</button>
+                        <button class="mode-pill" data-fl-mode="backdrop" title="Gigantic Stadium Backdrop Wall">Backdrop</button>
+                        <button class="mode-pill active" data-fl-mode="overlay" title="Crisp overlay promo in front of 3D scene">Overlay</button>
+                    </div>
+
+                    <!-- 2. Blend & Cutout -->
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">BLEND & CUTOUT:</div>
+                    <div class="mode-pills" id="flyer-blend-pills" style="margin-bottom:6px;">
+                        <button class="mode-pill" data-fl-blend="0" title="Knocks out black background">Crisp Cutout</button>
+                        <button class="mode-pill" data-fl-blend="1" title="Additive neon glow hologram">Holo Glow</button>
+                        <button class="mode-pill active" data-fl-blend="2" title="Direct solid render with full colors & alpha">Direct Solid</button>
+                    </div>
+
+                    <!-- 3. 9-Way Directional Position (3x3 D-Pad) -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">DIRECTIONAL POSITION:</div>
+                    <div class="mode-pills" id="flyer-pos-pills" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:3px; margin-bottom:6px;">
+                        <button class="mode-pill" data-fl-pos="top-left" title="Top Left">↖ TOP-L</button>
+                        <button class="mode-pill" data-fl-pos="top" title="Top Center">⬆ TOP</button>
+                        <button class="mode-pill" data-fl-pos="top-right" title="Top Right">↗ TOP-R</button>
+                        <button class="mode-pill" data-fl-pos="left" title="Left Center">⬅ LEFT</button>
+                        <button class="mode-pill" data-fl-pos="center" title="Screen Center">⏺ CENTER</button>
+                        <button class="mode-pill" data-fl-pos="right" title="Right Center">➡ RIGHT</button>
+                        <button class="mode-pill" data-fl-pos="bottom-left" title="Bottom Left">↙ BOT-L</button>
+                        <button class="mode-pill" data-fl-pos="bottom" title="Bottom Center">⬇ BOTTOM</button>
+                        <button class="mode-pill active" data-fl-pos="bottom-right" title="Bottom Right (Event Corner)">↘ BOT-R</button>
+                    </div>
+
+                    <!-- 4. 3D Rotation & Spin (2x2 Grid) -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">3D ROTATION & SPIN:</div>
+                    <div class="mode-pills" id="flyer-spin-pills" style="margin-top:2px; margin-bottom:6px; display:grid; grid-template-columns:repeat(2, 1fr); gap:3px;">
+                        <button class="mode-pill active" data-fl-spin="off" title="Static facing camera">STATIC</button>
+                        <button class="mode-pill" data-fl-spin="center" title="Pure horizontal spin on local center point">CENTER SPIN</button>
+                        <button class="mode-pill" data-fl-spin="orbit" title="3D perspective depth offset orbit">3D ORBIT</button>
+                        <button class="mode-pill" data-fl-spin="freeroam" title="Drift and rotate freely across the entire screen">FREE ROAM</button>
+                    </div>
+
+                    <!-- 5. Sliders -->
+                    <div class="slider-row" id="row-flyer-spin-speed">
+                        <div class="slider-header">
+                            <span>SPIN / ROAM SPEED</span>
+                            <span class="val" id="flyer-spin-speed-val">1.0x</span>
+                        </div>
+                        <input type="range" id="slider-flyer-spin-speed" min="0.1" max="5.0" step="0.1" value="1.0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>SIZE SCALE</span>
+                            <span class="val" id="flyer-scale-val">1.00x</span>
+                        </div>
+                        <input type="range" id="slider-flyer-scale" min="0.2" max="3.0" step="0.05" value="1.0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>CORNER / EDGE MARGIN</span>
+                            <span class="val" id="flyer-edge-margin-val">4%</span>
+                        </div>
+                        <input type="range" id="slider-flyer-edge-margin" min="0" max="25" step="1" value="4">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>VERTICAL NUDGE (Y-POS)</span>
+                            <span class="val" id="flyer-offset-y-val">0%</span>
+                        </div>
+                        <input type="range" id="slider-flyer-offset-y" min="-100" max="100" step="1" value="0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>HORIZONTAL NUDGE (X-POS)</span>
+                            <span class="val" id="flyer-offset-x-val">0%</span>
+                        </div>
+                        <input type="range" id="slider-flyer-offset-x" min="-100" max="100" step="1" value="0">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BASS PULSE IMPACT</span>
+                            <span class="val" id="flyer-pulse-val">20%</span>
+                        </div>
+                        <input type="range" id="slider-flyer-pulse" min="0" max="150" step="5" value="20">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>CONTRAST BOOSTER</span>
+                            <span class="val" id="flyer-contrast-val">1.20x</span>
+                        </div>
+                        <input type="range" id="slider-flyer-contrast" min="0.5" max="2.5" step="0.05" value="1.20">
+                    </div>
+
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>BRIGHTNESS / CLARITY</span>
+                            <span class="val" id="flyer-bright-val">1.05x</span>
+                        </div>
+                        <input type="range" id="slider-flyer-bright" min="0.5" max="2.0" step="0.05" value="1.05">
+                    </div>
+
+                    <div class="hud-row" style="margin-top:6px;">
+                        <span class="hud-label">CONTRAST SHIELD</span>
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:4px; font-size:10px; color:#ffaa00;">
+                            <input type="checkbox" id="check-flyer-shield" checked style="accent-color:#ffaa00; cursor:pointer;"> Active
                         </label>
                     </div>
                 </div>

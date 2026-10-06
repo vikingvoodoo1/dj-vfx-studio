@@ -135,9 +135,17 @@ function apiHandlerPlugin() {
                         if (!stationMap.has(item.url)) stationMap.set(item.url, item);
                     });
 
+                    // Scan Event Flyers & Promo Graphics (public/images/flyers and images/flyers)
+                    const flyerMap = new Map();
+                    scanFolder('public/images/flyers', '/images/flyers').forEach(item => flyerMap.set(item.url, item));
+                    scanFolder('images/flyers', '/images/flyers').forEach(item => {
+                        if (!flyerMap.has(item.url)) flyerMap.set(item.url, item);
+                    });
+
                     const data = {
                         dj_logos: Array.from(djMap.values()),
-                        station_logos: Array.from(stationMap.values())
+                        station_logos: Array.from(stationMap.values()),
+                        flyers: Array.from(flyerMap.values())
                     };
 
                     res.setHeader('Content-Type', 'application/json');
