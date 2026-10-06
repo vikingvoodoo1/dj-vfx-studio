@@ -7895,6 +7895,33 @@ export function createVFXScene(container) {
     pRightHitFlare.renderOrder = 23;
     gPumpkinDiscoBall.add(pRightHitFlare);
 
+    // Convergence Super-Bright Specular Reflection Flare (Ignites when both lights meet on the pumpkin surface)
+    const pMeetFlare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: starburstTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false
+    }));
+    pMeetFlare.scale.set(1.0, 1.0, 1.0);
+    pMeetFlare.renderOrder = 24;
+    pMeetFlare.visible = false;
+    gPumpkinDiscoBall.add(pMeetFlare);
+
+    const pMeetAnamorphicFlare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: anamorphicFlareTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false
+    }));
+    pMeetAnamorphicFlare.scale.set(6.0, 1.8, 1.0);
+    pMeetAnamorphicFlare.renderOrder = 25;
+    pMeetAnamorphicFlare.visible = false;
+    gPumpkinDiscoBall.add(pMeetAnamorphicFlare);
+
     // Front Key Light & Center Pumpkin Core Glow
     const pKeyLight = new THREE.DirectionalLight(0xffffff, 2.2);
     pKeyLight.position.set(0.0, 3.0, 9.0);
@@ -9610,6 +9637,13 @@ export function createVFXScene(container) {
             const rightGlare = Math.pow(rightHit, 1.6);
             const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
 
+            // Dual-Beam Convergence on Pumpkin Surface (When both lights meet at the same spot)
+            const meetDist = targetLeftPos.distanceTo(targetRightPos);
+            const meetProximity = Math.max(0.0, 1.0 - (meetDist / 3.0));
+            const bothHit = Math.min(leftHit, rightHit);
+            // Convergence comes on strong (power curve) and fades out smoothly as lights move off
+            const convergencePower = Math.pow(meetProximity, 1.5) * Math.min(1.0, bothHit * 1.6);
+
             // Light Glimpse: When a beam newly hits the pumpkin, trigger a brief halo glimpse that backs off quickly
             const isHittingL = (leftHit > 0.28);
             const isHittingR = (rightHit > 0.28);
@@ -9651,8 +9685,8 @@ export function createVFXScene(container) {
             const avgPulse = (pulseMultiL + pulseMultiR) * 0.5;
 
             // Beams power - atmospheric concert plumes (no blowout)
-            const beamLeftPower = Math.max(0.12, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90) * pulseMultiL);
-            const beamRightPower = Math.max(0.12, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90) * pulseMultiR);
+            const beamLeftPower = Math.max(0.12, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * pulseMultiL);
+            const beamRightPower = Math.max(0.12, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * pulseMultiR);
 
             // Update Fixture Lens & Status LED Colors and Intensity with Musical Beat Pulse
             pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(0.20 + pulseMultiL * 0.70);
@@ -9669,11 +9703,11 @@ export function createVFXScene(container) {
             pumpkinUniforms.uSpot2Pos.value.copy(targetRightPos);
             pumpkinUniforms.uSpot1Color.value.copy(leftColor);
             pumpkinUniforms.uSpot2Color.value.copy(rightColor);
-            pumpkinUniforms.uSpot1Intensity.value = pulseMultiL * (0.65 + leftHit * 0.45);
-            pumpkinUniforms.uSpot2Intensity.value = pulseMultiR * (0.65 + rightHit * 0.45);
+            pumpkinUniforms.uSpot1Intensity.value = pulseMultiL * (0.65 + leftHit * 0.45 + convergencePower * 0.85);
+            pumpkinUniforms.uSpot2Intensity.value = pulseMultiR * (0.65 + rightHit * 0.45 + convergencePower * 0.85);
             pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
             pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
-            pumpkinUniforms.uFlash.value = Math.max(pumpkinDeadOnFlashPulse, pumpkin8BarFlashPulse);
+            pumpkinUniforms.uFlash.value = Math.max(pumpkinDeadOnFlashPulse, pumpkin8BarFlashPulse, convergencePower * 1.5);
             pumpkinUniforms.uTime.value = elapsedTime;
             pumpkinUniforms.uTreble.value = treblePop;
             pumpkinUniforms.uBassPunch.value = pumpkinKickThump;
@@ -9688,10 +9722,10 @@ export function createVFXScene(container) {
 
             // Spotlights dip down between pulses to create dramatic stage lighting shadows
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = Math.max(0.15, (0.50 + leftHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + pumpkinKickThump * 1.8) * pulseMultiL);
+            pBottomLeftSpot.intensity = Math.max(0.15, (0.50 + leftHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + convergencePower * 3.0 + pumpkinKickThump * 1.8) * pulseMultiL);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = Math.max(0.15, (0.50 + rightHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + pumpkinKickThump * 1.8) * pulseMultiR);
+            pBottomRightSpot.intensity = Math.max(0.15, (0.50 + rightHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + convergencePower * 3.0 + pumpkinKickThump * 1.8) * pulseMultiR);
 
             // Volumetric shaded incoming god rays uniforms with high-contrast beat pulsing and uHit modulation
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
@@ -9722,37 +9756,62 @@ export function createVFXScene(container) {
             pRightCoreBeamMat.uniforms.uTreble.value = treblePop;
             pRightCoreBeamMat.uniforms.uHit.value = rightHit;
 
+            // Convergence Super-Bright Reflection Flare (Comes on strong when lights meet, fades as they move off)
+            if (convergencePower > 0.01) {
+                const midHitPos = targetLeftPos.clone().lerp(targetRightPos, 0.5);
+                midHitPos.z += 0.12; // Float right on front mirror facets
+
+                const meetColor = new THREE.Color().lerpColors(leftColor, rightColor, 0.5).lerp(new THREE.Color(0xffffff), 0.70);
+
+                pMeetFlare.position.copy(midHitPos);
+                pMeetFlare.material.color.copy(meetColor);
+                pMeetFlare.material.opacity = Math.min(0.95, convergencePower * 1.35 * (0.6 + avgPulse * 0.4));
+                const meetScale = (1.6 + convergencePower * 4.2 + treblePop * 0.8) * (0.85 + pulseMultiL * 0.15);
+                pMeetFlare.scale.set(meetScale, meetScale, 1.0);
+                pMeetFlare.visible = true;
+
+                pMeetAnamorphicFlare.position.copy(midHitPos);
+                pMeetAnamorphicFlare.material.color.copy(meetColor);
+                pMeetAnamorphicFlare.material.opacity = Math.min(0.90, Math.pow(convergencePower, 1.4) * 1.3);
+                pMeetAnamorphicFlare.scale.set(meetScale * 2.8, meetScale * 0.75, 1.0);
+                pMeetAnamorphicFlare.visible = true;
+            } else {
+                pMeetFlare.visible = false;
+                pMeetAnamorphicFlare.visible = false;
+            }
+
             // Front surface delicate sparkle glints on mirror facets (smoothly zeroed out when off pumpkin)
             pLeftHitFlare.position.copy(targetLeftPos);
             pLeftHitFlare.material.color.copy(leftColor);
-            pLeftHitFlare.material.opacity = Math.min(0.55, (0.15 * leftHit + treblePop * 0.15 * leftHit) * (0.4 + pulseMultiL * 0.6));
-            const flareScaleL = (1.1 + leftHit * 0.8 + treblePop * 0.6 + pumpkinDeadOnFlashPulse * 1.0 + pumpkin8BarFlashPulse * 1.2) * (0.8 + pulseMultiL * 0.2);
+            pLeftHitFlare.material.opacity = Math.min(0.85, (0.15 * leftHit + treblePop * 0.15 * leftHit + convergencePower * 0.40) * (0.4 + pulseMultiL * 0.6));
+            const flareScaleL = (1.1 + leftHit * 0.8 + treblePop * 0.6 + convergencePower * 1.5 + pumpkinDeadOnFlashPulse * 1.0 + pumpkin8BarFlashPulse * 1.2) * (0.8 + pulseMultiL * 0.2);
             pLeftHitFlare.scale.set(flareScaleL * leftHit, flareScaleL * leftHit, 1.0);
 
             pRightHitFlare.position.copy(targetRightPos);
             pRightHitFlare.material.color.copy(rightColor);
-            pRightHitFlare.material.opacity = Math.min(0.55, (0.15 * rightHit + treblePop * 0.15 * rightHit) * (0.4 + pulseMultiR * 0.6));
-            const flareScaleR = (1.1 + rightHit * 0.8 + treblePop * 0.6 + pumpkinDeadOnFlashPulse * 1.0 + pumpkin8BarFlashPulse * 1.2) * (0.8 + pulseMultiR * 0.2);
+            pRightHitFlare.material.opacity = Math.min(0.85, (0.15 * rightHit + treblePop * 0.15 * rightHit + convergencePower * 0.40) * (0.4 + pulseMultiR * 0.6));
+            const flareScaleR = (1.1 + rightHit * 0.8 + treblePop * 0.6 + convergencePower * 1.5 + pumpkinDeadOnFlashPulse * 1.0 + pumpkin8BarFlashPulse * 1.2) * (0.8 + pulseMultiR * 0.2);
             pRightHitFlare.scale.set(flareScaleR * rightHit, flareScaleR * rightHit, 1.0);
 
-            // Front Key Light & Pumpkin Flame (internal flame reacts powerfully to bass kicks)
+            // Front Key Light & Pumpkin Flame (internal flame reacts powerfully to bass kicks and convergence)
             pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.45));
-            pKeyLight.intensity = (0.60 + totalGlareScore * 1.5 + pumpkinDeadOnFlashPulse * 2.0 + pumpkin8BarFlashPulse * 3.0 + pumpkinKickThump * 1.5) * (0.45 + avgPulse * 0.55);
+            pKeyLight.intensity = (0.60 + totalGlareScore * 1.5 + convergencePower * 3.5 + pumpkinDeadOnFlashPulse * 2.0 + pumpkin8BarFlashPulse * 3.0 + pumpkinKickThump * 1.5) * (0.45 + avgPulse * 0.55);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (0.90 + totalGlareScore * 1.5 + pumpkinDeadOnFlashPulse * 2.5 + pumpkin8BarFlashPulse * 3.5 + pumpkinKickThump * 4.0) * (0.45 + avgPulse * 0.55);
+            pumpkinFlameLight.intensity = (0.90 + totalGlareScore * 1.5 + convergencePower * 4.0 + pumpkinDeadOnFlashPulse * 2.5 + pumpkin8BarFlashPulse * 3.5 + pumpkinKickThump * 4.0) * (0.45 + avgPulse * 0.55);
 
-            // 6. Halo flash around pumpkin: Reflection flash + 8-bar phrase drop flash + Light strike glimpse!
+            // 6. Halo flash around pumpkin: Reflection flash + 8-bar drop flash + Light strike glimpse + Dual convergence!
             const totalHaloFlash = Math.max(
                 pumpkinDeadOnFlashPulse * 1.0,
                 pumpkin8BarFlashPulse * 1.25,
-                pumpkinGlimpsePulse * 0.60
+                pumpkinGlimpsePulse * 0.60,
+                convergencePower * 1.15
             );
 
             if (totalHaloFlash > 0.005) {
                 pumpkinHaloMesh.visible = true;
-                // Brilliant white strobe on 8-bar drops and direct reflection; rich theme tint for beam glimpses
-                const haloTint = (pumpkin8BarFlashPulse > 0.25 || pumpkinDeadOnFlashPulse > 0.35)
+                // Brilliant white strobe on convergence, 8-bar drops and direct reflection; rich theme tint for beam glimpses
+                const haloTint = (pumpkin8BarFlashPulse > 0.25 || pumpkinDeadOnFlashPulse > 0.35 || convergencePower > 0.35)
                     ? new THREE.Color(0xffffff)
                     : pumpkinThemeCol;
                 pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
