@@ -4000,11 +4000,11 @@ export function createVFXScene(container) {
         depthWrite: false,
         fog: false
     });
-    logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(18, 11), shieldMat);
+    logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), shieldMat);
     logoShieldMesh.renderOrder = 9998;
 
     // Logo Mesh with High-Clarity Shader (Renders in front of all 3D scene objects)
-    const logoGeo = new THREE.PlaneGeometry(16, 9);
+    const logoGeo = new THREE.PlaneGeometry(16, 16);
     const logoShaderMat = new THREE.ShaderMaterial({
         uniforms: {
             map: { value: null },
@@ -4041,30 +4041,30 @@ export function createVFXScene(container) {
     function applyLogoPlacement() {
         if (!logoMesh) return;
 
-        let baseZ = 6.8;
-        let baseW = 8.8 * logoBaseScale;
+        let baseZ = 12.0;
+        let baseW = 5.0 * logoBaseScale;
 
         if (logoMode === 'backdrop') {
-            baseZ = -22;
-            baseW = 58 * logoBaseScale;
+            baseZ = -20;
+            baseW = 45 * logoBaseScale;
             logoShaderMat.blending = THREE.AdditiveBlending;
             if (logoShieldMesh) logoShieldMesh.visible = false;
-        } else if (logoMode === 'overlay') {
-            baseZ = 12.0;
-            baseW = 5.5 * logoBaseScale;
+        } else if (logoMode === 'hologram') {
+            baseZ = 6.9;
+            baseW = 7.5 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         } else {
-            // Hologram (3D Front) - Guaranteed in front of disco ball (Z=5.2) and visualizers
-            baseZ = 6.8;
-            baseW = 8.8 * logoBaseScale;
+            // Default: Overlay / Watermark
+            baseZ = 12.0;
+            baseW = 5.0 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         }
 
         // Base dimensions factoring in user-selected scale
         const w = baseW;
-        const h = baseW / (logoAspectRatio || (16 / 9));
+        const h = baseW / (logoAspectRatio || 1.0);
 
         // Dynamic Camera Frustum Boundary Math (at nominal camera z=16.0)
         const camZ = 16.0;
@@ -4149,14 +4149,14 @@ export function createVFXScene(container) {
         logoPivot.quaternion.copy(camera.quaternion);
 
         logoMesh.position.set(0, 0, 0);
-        logoMesh.scale.set(w / 16, h / 9, 1);
+        logoMesh.scale.set(w / 16, h / 16, 1);
         logoMesh.rotation.order = 'YXZ';
         logoMesh.rotation.set(0, 0, 0);
 
         if (logoShieldMesh && logoMode !== 'backdrop') {
-            logoShieldMesh.position.set(0, 0, -0.25);
+            logoShieldMesh.position.set(0, 0, -0.2);
             logoShieldMesh.rotation.set(0, 0, 0);
-            logoShieldMesh.scale.set((w * 1.35) / 18, (h * 1.4) / 11, 1);
+            logoShieldMesh.scale.set((w * 1.35) / 16, (h * 1.4) / 16, 1);
         }
     }
 
@@ -4176,7 +4176,7 @@ export function createVFXScene(container) {
 
             if (isVideo) {
                 const video = document.createElement('video');
-                video.src = sourceUrl;
+                video.src = encodeURI(sourceUrl);
                 video.crossOrigin = 'anonymous';
                 video.loop = true;
                 video.muted = true;
@@ -4185,34 +4185,43 @@ export function createVFXScene(container) {
                 video.setAttribute('webkit-playsinline', '');
                 video.autoplay = true;
 
-                video.addEventListener('loadedmetadata', () => {
-                    if (video.videoWidth && video.videoHeight) {
-                        logoAspectRatio = video.videoWidth / video.videoHeight;
-                        applyLogoPlacement();
-                    }
-                });
+                const updateAspect = () => {
+                    logoAspectRatio = (video.videoWidth && video.videoHeight) ? video.videoWidth / video.videoHeight : (16 / 9);
+                    applyLogoPlacement();
+                };
+                video.addEventListener('loadedmetadata', updateAspect);
+                if (video.readyState >= 1) updateAspect();
 
-                video.play().catch(() => {});
                 logoVideoElement = video;
+                video.play().catch(() => {});
+
                 logoTexture = new THREE.VideoTexture(video);
                 logoTexture.minFilter = THREE.LinearFilter;
                 logoTexture.magFilter = THREE.LinearFilter;
-                logoTexture.generateMipmaps = false;
+                logoTexture.colorSpace = THREE.SRGBColorSpace;
 
                 logoShaderMat.uniforms.map.value = logoTexture;
                 logoShaderMat.needsUpdate = true;
+                applyLogoPlacement();
             } else {
-                const textureLoader = new THREE.TextureLoader();
-                textureLoader.load(sourceUrl, (tex) => {
+                const loader = new THREE.TextureLoader();
+                loader.load(encodeURI(sourceUrl), (tex) => {
                     logoTexture = tex;
                     logoTexture.minFilter = THREE.LinearFilter;
                     logoTexture.magFilter = THREE.LinearFilter;
+                    logoTexture.colorSpace = THREE.SRGBColorSpace;
+
                     if (tex.image && tex.image.width && tex.image.height) {
                         logoAspectRatio = tex.image.width / tex.image.height;
-                        applyLogoPlacement();
+                    } else {
+                        logoAspectRatio = 1.0;
                     }
+
                     logoShaderMat.uniforms.map.value = logoTexture;
                     logoShaderMat.needsUpdate = true;
+                    applyLogoPlacement();
+                }, undefined, (err) => {
+                    console.error("[Logo] Texture load error:", err);
                 });
             }
         } catch (err) {
@@ -6664,12 +6673,12 @@ export function createVFXScene(container) {
         // 1. Animate Logo Layer
         if (logoVisible && logoMesh) {
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
-            const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 5.5 : 8.8)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
-            const hBase = (wBase / logoAspectRatio);
+            const wBase = (logoMode === 'backdrop' ? 45 : (logoMode === 'overlay' ? 5.0 : 7.5)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
+            const hBase = (wBase / (logoAspectRatio || 1.0));
 
             // Shield stays stationary flat directly behind the logo
             if (logoShieldMesh && isShieldActive && logoMode !== 'backdrop') {
-                logoShieldMesh.position.set(0, 0, -0.25);
+                logoShieldMesh.position.set(0, 0, -0.2);
                 logoShieldMesh.rotation.set(0, 0, 0);
             }
 
@@ -6681,7 +6690,7 @@ export function createVFXScene(container) {
 
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
                 const cosSpin = Math.cos(logoSpinAngle);
-                logoMesh.scale.set((wBase / 16) * cosSpin, hBase / 9, 1);
+                logoMesh.scale.set((wBase / 16) * cosSpin, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 logoMesh.rotation.set(0, 0, 0);
             } else if (logoSpinMode === 'orbit') {
@@ -6690,7 +6699,7 @@ export function createVFXScene(container) {
                 logoPivot.quaternion.copy(camera.quaternion);
 
                 logoSpinAngle += delta * logoSpinSpeed * 2.5;
-                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 logoMesh.rotation.order = 'YXZ';
                 logoMesh.rotation.y = logoSpinAngle;
@@ -6711,7 +6720,7 @@ export function createVFXScene(container) {
                 logoPivot.position.set(freeX, freeY, freeZ);
                 logoPivot.quaternion.copy(camera.quaternion);
 
-                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 logoMesh.rotation.order = 'YXZ';
                 logoMesh.rotation.y = logoSpinAngle;
@@ -6722,7 +6731,7 @@ export function createVFXScene(container) {
                 logoPivot.position.set(currentLogoPosX, currentLogoPosY, currentLogoBaseZ);
                 logoPivot.quaternion.copy(camera.quaternion);
 
-                logoMesh.scale.set(wBase / 16, hBase / 9, 1);
+                logoMesh.scale.set(wBase / 16, hBase / 16, 1);
                 logoMesh.position.set(0, 0, 0);
                 if (Math.abs(logoMesh.rotation.y) > 0.001 || Math.abs(logoMesh.rotation.x) > 0.001 || Math.abs(logoMesh.rotation.z) > 0.001) {
                     logoMesh.rotation.y = THREE.MathUtils.lerp(logoMesh.rotation.y, 0, delta * 8.0);
