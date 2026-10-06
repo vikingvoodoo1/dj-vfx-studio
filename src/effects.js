@@ -4041,7 +4041,7 @@ export function createVFXScene(container) {
         if (!logoMesh) return;
 
         let baseZ = 6.8;
-        let baseW = 13.5 * logoBaseScale;
+        let baseW = 8.8 * logoBaseScale;
 
         if (logoMode === 'backdrop') {
             baseZ = -22;
@@ -4050,13 +4050,13 @@ export function createVFXScene(container) {
             if (logoShieldMesh) logoShieldMesh.visible = false;
         } else if (logoMode === 'overlay') {
             baseZ = 12.0;
-            baseW = 6.5 * logoBaseScale;
+            baseW = 5.5 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         } else {
             // Hologram (3D Front) - Guaranteed in front of disco ball (Z=5.2) and visualizers
             baseZ = 6.8;
-            baseW = 13.5 * logoBaseScale;
+            baseW = 8.8 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         }
@@ -4071,45 +4071,48 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
+        const halfLogoW = w * 0.5;
+        const halfLogoH = h * 0.5;
+
         let posX = 0, posY = 0;
 
         switch (logoPosition) {
             case 'top-left':
-                posX = -visibleHalfW * 0.65;
-                posY = visibleHalfH * 0.72;
+                posX = -visibleHalfW + halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'top-right':
-                posX = visibleHalfW * 0.65;
-                posY = visibleHalfH * 0.72;
+                posX = visibleHalfW - halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW * 0.65;
-                posY = -visibleHalfH * 0.72;
+                posX = -visibleHalfW + halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW * 0.65;
-                posY = -visibleHalfH * 0.72;
+                posX = visibleHalfW - halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'top':
             case 'center-top':
             case 'top-center':
                 posX = 0;
-                posY = visibleHalfH * 0.72;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom':
             case 'center-bottom':
             case 'bottom-center':
                 posX = 0;
-                posY = -visibleHalfH * 0.72;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW * 0.65;
+                posX = -visibleHalfW + halfLogoW;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW * 0.65;
+                posX = visibleHalfW - halfLogoW;
                 posY = 0;
                 break;
             case 'top-quarter':
@@ -4130,8 +4133,8 @@ export function createVFXScene(container) {
         }
 
         // Apply fine-tune user offsets (relative to screen bounds)
-        posX += logoOffsetX * visibleHalfW;
-        posY += logoOffsetY * visibleHalfH;
+        posX += logoOffsetX * visibleHalfW * 0.5;
+        posY += logoOffsetY * visibleHalfH * 0.5;
 
         currentLogoPosX = posX;
         currentLogoPosY = posY;
@@ -4308,7 +4311,7 @@ export function createVFXScene(container) {
         if (!stationLogoMesh) return;
 
         let baseZ = 12.0;
-        let baseW = 5.5 * stationLogoBaseScale;
+        let baseW = 5.0 * stationLogoBaseScale;
 
         if (stationLogoMode === 'backdrop') {
             baseZ = -20;
@@ -4317,13 +4320,13 @@ export function createVFXScene(container) {
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = false;
         } else if (stationLogoMode === 'hologram') {
             baseZ = 6.9;
-            baseW = 11.5 * stationLogoBaseScale;
+            baseW = 7.5 * stationLogoBaseScale;
             stationLogoShaderMat.blending = THREE.NormalBlending;
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
         } else {
             // Default: Overlay / Broadcast watermark
             baseZ = 12.0;
-            baseW = 5.5 * stationLogoBaseScale;
+            baseW = 5.0 * stationLogoBaseScale;
             stationLogoShaderMat.blending = THREE.NormalBlending;
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
         }
@@ -4338,45 +4341,48 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
+        const halfLogoW = w * 0.5;
+        const halfLogoH = h * 0.5;
+
         let posX = 0, posY = 0;
 
         switch (stationLogoPosition) {
             case 'top-left':
-                posX = -visibleHalfW * 0.70;
-                posY = visibleHalfH * 0.72;
+                posX = -visibleHalfW + halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'top-right':
-                posX = visibleHalfW * 0.70;
-                posY = visibleHalfH * 0.72;
+                posX = visibleHalfW - halfLogoW;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW * 0.70;
-                posY = -visibleHalfH * 0.72;
+                posX = -visibleHalfW + halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW * 0.70;
-                posY = -visibleHalfH * 0.72;
+                posX = visibleHalfW - halfLogoW;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'top':
             case 'top-center':
             case 'center-top':
                 posX = 0;
-                posY = visibleHalfH * 0.72;
+                posY = visibleHalfH - halfLogoH;
                 break;
             case 'bottom':
             case 'bottom-center':
             case 'center-bottom':
                 posX = 0;
-                posY = -visibleHalfH * 0.72;
+                posY = -visibleHalfH + halfLogoH;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW * 0.70;
+                posX = -visibleHalfW + halfLogoW;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW * 0.70;
+                posX = visibleHalfW - halfLogoW;
                 posY = 0;
                 break;
             case 'center':
@@ -4387,8 +4393,8 @@ export function createVFXScene(container) {
         }
 
         // Apply fine-tune user offsets (relative to screen bounds)
-        posX += stationLogoOffsetX * visibleHalfW;
-        posY += stationLogoOffsetY * visibleHalfH;
+        posX += stationLogoOffsetX * visibleHalfW * 0.5;
+        posY += stationLogoOffsetY * visibleHalfH * 0.5;
 
         currentStationLogoPosX = posX;
         currentStationLogoPosY = posY;
@@ -6640,7 +6646,7 @@ export function createVFXScene(container) {
         // 1. Animate Logo Layer
         if (logoVisible && logoMesh) {
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
-            const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 6.5 : 13.5)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
+            const wBase = (logoMode === 'backdrop' ? 58 : (logoMode === 'overlay' ? 5.5 : 8.8)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
             const hBase = (wBase / logoAspectRatio);
 
             // Shield stays stationary flat directly behind the logo
@@ -6718,7 +6724,7 @@ export function createVFXScene(container) {
         // 1b. Animate Station Logo Layer
         if (stationLogoVisible && stationLogoMesh) {
             const stPulse = (bassPop * stationLogoBassPulseAmount * 0.25) + (transient * stationLogoBassPulseAmount * 0.2);
-            const wBase = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 5.5 : 11.5)) * stationLogoBaseScale * currentStationLogoScaleFactor * (1.0 + stPulse * 0.25);
+            const wBase = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 5.0 : 7.5)) * stationLogoBaseScale * currentStationLogoScaleFactor * (1.0 + stPulse * 0.25);
             const hBase = (wBase / stationLogoAspectRatio);
 
             if (stationLogoShieldMesh && isStationShieldActive && stationLogoMode !== 'backdrop') {
