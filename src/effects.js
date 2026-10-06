@@ -7369,23 +7369,29 @@ export function createVFXScene(container) {
     pumpkinChainGroup.add(ceilingMountMesh);
     gPumpkinDiscoBall.add(pumpkinChainGroup);
 
-    // 4. Two Primary Incoming Light Sources: Top Left & Top Right (Shades of White / Pink / Purple)
-    const pTopLeftPos = new THREE.Vector3(-18.0, 16.0, 10.0);
-    const pTopRightPos = new THREE.Vector3(18.0, 16.0, 10.0);
-    const pumpkinCenterPos = new THREE.Vector3(0, 0, 0);
+    // 4. Two Primary Incoming Light Sources: Top-Left & Top-Right (Shades of White / Pink / Purple)
+    const pTopLeftLight = new THREE.DirectionalLight(0xffffff, 2.6);
+    pTopLeftLight.position.set(-8.0, 10.0, 7.0);
+    pTopLeftLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pTopLeftLight);
 
-    const pTopLeftSpot = new THREE.SpotLight(0xffffff, 4.5, 65.0, Math.PI / 4.2, 0.5, 1.0);
-    pTopLeftSpot.position.copy(pTopLeftPos);
-    pTopLeftSpot.target = pumpkinPivot;
-    gPumpkinDiscoBall.add(pTopLeftSpot);
+    const pTopRightLight = new THREE.DirectionalLight(0xffffff, 2.6);
+    pTopRightLight.position.set(8.0, 10.0, 7.0);
+    pTopRightLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pTopRightLight);
 
-    const pTopRightSpot = new THREE.SpotLight(0xffffff, 4.5, 65.0, Math.PI / 4.2, 0.5, 1.0);
-    pTopRightSpot.position.copy(pTopRightPos);
-    pTopRightSpot.target = pumpkinPivot;
-    gPumpkinDiscoBall.add(pTopRightSpot);
+    const pKeyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    pKeyLight.position.set(0.0, 6.0, 8.0);
+    pKeyLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pKeyLight);
+
+    // Center internal pumpkin core glow
+    const pumpkinFlameLight = new THREE.PointLight(0xffffff, 2.5, 25.0, 1.2);
+    pumpkinFlameLight.position.set(0, 0, 0);
+    pumpkinPivot.add(pumpkinFlameLight);
 
     // Procedural Cross-Plane Flat Light Ribbon Blade Geometry (2 Intersecting Planar Sheets = Zero Roundness)
-    function createCrossPlaneRayGeometry(baseWidth = 0.55, tipWidth = 5.8, length = 42.0) {
+    function createCrossPlaneRayGeometry(baseWidth = 0.40, tipWidth = 4.8, length = 32.0) {
         const geo = new THREE.BufferGeometry();
         const halfBase = baseWidth * 0.5;
         const halfTip = tipWidth * 0.5;
@@ -7443,54 +7449,11 @@ export function createVFXScene(container) {
         return geo;
     }
 
-    // Volumetric Incoming God-Ray Beams streaming down from Top-Left and Top-Right onto the Pumpkin
-    function createIncomingBeamMesh(startPos, targetPos, baseWidth = 0.9, tipWidth = 6.4) {
-        const length = startPos.distanceTo(targetPos) * 1.15;
-        const geo = createCrossPlaneRayGeometry(baseWidth, tipWidth, length);
-        const mat = new THREE.ShaderMaterial({
-            uniforms: {
-                uColor: { value: new THREE.Color(0xffffff) },
-                uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: 1.0 },
-                uTime: { value: 0.0 },
-                uTimeSpeed: { value: 0.08 },
-                uNoiseScale: { value: 2.8 },
-                uPulse: { value: 0.0 },
-                uShimmer: { value: 0.4 },
-                uTreble: { value: 0.0 }
-            },
-            vertexShader: PumpkinVolumetricRaysShader.vertexShader,
-            fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
-
-        const mesh = new THREE.Mesh(geo, mat);
-        mesh.position.copy(startPos);
-        const dir = targetPos.clone().sub(startPos).normalize();
-        const upVec = new THREE.Vector3(0, -1, 0);
-        mesh.quaternion.setFromUnitVectors(upVec, dir);
-        return { mesh, mat };
-    }
-
-    const pTopLeftBeam = createIncomingBeamMesh(pTopLeftPos, pumpkinCenterPos, 0.9, 6.4);
-    gPumpkinDiscoBall.add(pTopLeftBeam.mesh);
-
-    const pTopRightBeam = createIncomingBeamMesh(pTopRightPos, pumpkinCenterPos, 0.9, 6.4);
-    gPumpkinDiscoBall.add(pTopRightBeam.mesh);
-
-    // Center internal pumpkin core glow
-    const pumpkinFlameLight = new THREE.PointLight(0xffffff, 2.2, 22.0, 1.2);
-    pumpkinFlameLight.position.set(0, 0, 0);
-    pumpkinPivot.add(pumpkinFlameLight);
-
     // 5. Outward Bouncing Reflection God Rays (12 Wide, Graceful Facet Reflection Blades)
     const pumpkinRaySystem = new THREE.Group();
     pumpkinPivot.add(pumpkinRaySystem); // Attached to pumpkinPivot so all reflection rays spin synchronously in 3D!
 
-    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.55, 5.8, 40.0);
+    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.35, 4.4, 30.0);
     const numPumpkinRays = 12;
     const pumpkinRayMeshes = [];
 
@@ -9127,24 +9090,19 @@ export function createVFXScene(container) {
             const gentleAudioGlow = (audio.smoothedBass || 0) * 0.08 + (audio.smoothedTreble || 0) * 0.06;
             const liveIntensity = gentleGodRayBreath + gentleAudioGlow;
 
-            // Update Top-Left & Top-Right Light Sources & Incoming Volumetric Beams
-            pTopLeftSpot.color.copy(leftColor);
-            pTopLeftSpot.intensity = 4.5 * liveIntensity;
-            pTopLeftBeam.mat.uniforms.uColor.value.copy(leftColor);
-            pTopLeftBeam.mat.uniforms.uIntensity.value = 1.05 * liveIntensity;
-            pTopLeftBeam.mat.uniforms.uTime.value = elapsedTime;
-            pTopLeftBeam.mat.uniforms.uPulse.value = gentleGodRayBreath;
+            // Update Top-Left & Top-Right Light Sources
+            pTopLeftLight.color.copy(leftColor);
+            pTopLeftLight.intensity = 2.6 * liveIntensity;
 
-            pTopRightSpot.color.copy(rightColor);
-            pTopRightSpot.intensity = 4.5 * liveIntensity;
-            pTopRightBeam.mat.uniforms.uColor.value.copy(rightColor);
-            pTopRightBeam.mat.uniforms.uIntensity.value = 1.05 * liveIntensity;
-            pTopRightBeam.mat.uniforms.uTime.value = elapsedTime;
-            pTopRightBeam.mat.uniforms.uPulse.value = gentleGodRayBreath;
+            pTopRightLight.color.copy(rightColor);
+            pTopRightLight.intensity = 2.6 * liveIntensity;
+
+            pKeyLight.color.copy(colPureWhite.clone().lerp(leftColor, 0.3));
+            pKeyLight.intensity = 2.2 * liveIntensity;
 
             // Internal pumpkin core glow
             pumpkinFlameLight.color.copy(leftColor.clone().lerp(rightColor, 0.5));
-            pumpkinFlameLight.intensity = 2.2 * liveIntensity;
+            pumpkinFlameLight.intensity = 2.5 * liveIntensity;
 
             // 4. Update Outward Bouncing Reflection God Rays (Shades of White & Pink/Purple)
             pumpkinRayMeshes.forEach((rObj, idx) => {
