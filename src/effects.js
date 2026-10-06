@@ -7291,7 +7291,7 @@ export function createVFXScene(container) {
     // -------------------------------------------------------------------------
     const gPumpkinDiscoBall = createFXGroup();
 
-    // Procedural Parametric 3D Lobed Pumpkin Geometry (10 Vertical Ribs + Balanced Height + Pole Depressions)
+    // Procedural Parametric 3D Lobed Pumpkin Geometry (Full spherical 5.2 radius with 10 vertical ribbed lobes)
     function createPumpkinDiscoGeometry(baseRadius = 5.2, widthSegments = 128, heightSegments = 64, numLobes = 10) {
         const geo = new THREE.SphereGeometry(baseRadius, widthSegments, heightSegments);
         const pos = geo.attributes.position;
@@ -7309,20 +7309,19 @@ export function createVFXScene(container) {
             const sinPhi = Math.sin(phi);
             const cosPhi = Math.cos(phi);
 
-            // Top stem and bottom base pole depressions (classic pumpkin dimples)
-            const poleDimple = 1.0 - 0.18 * Math.pow(Math.abs(cosPhi), 3.0);
+            // Subtle top stem and bottom pole depression (dimple)
+            const poleDimple = 1.0 - 0.06 * Math.pow(Math.abs(cosPhi), 2.0);
 
-            // 10 pronounced vertical ribbed lobes with smooth creases
+            // 10 vertical ribbed lobes
             const lobeWave = Math.cos(numLobes * theta);
-            const lobeHarmonic = Math.cos(numLobes * 2 * theta);
-            const lobeDepth = (0.13 * lobeWave - 0.02 * lobeHarmonic) * Math.pow(sinPhi, 0.75);
+            const lobeDepth = 0.075 * lobeWave * Math.pow(sinPhi, 0.85);
 
-            // Balanced, organic profile (shortened slightly from 1.25 to 1.05)
+            // Full spherical profile with sculpted pumpkin lobes (equal scale on X, Y, Z)
             const radialScale = (1.0 + lobeDepth) * poleDimple;
 
-            v.x = r * sinPhi * Math.sin(theta) * radialScale * 1.12;
-            v.z = r * sinPhi * Math.cos(theta) * radialScale * 1.12;
-            v.y = r * cosPhi * poleDimple * 1.05; // Balanced organic height
+            v.x = r * sinPhi * Math.sin(theta) * radialScale;
+            v.z = r * sinPhi * Math.cos(theta) * radialScale;
+            v.y = r * cosPhi * poleDimple;
 
             pos.setXYZ(i, v.x, v.y, v.z);
         }
@@ -7342,19 +7341,19 @@ export function createVFXScene(container) {
         const stemGroup = new THREE.Group();
 
         const curve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 4.40, 0),         // Stem base in the top dimple
-            new THREE.Vector3(0.08, 4.95, 0.06),   // Lower stalk
-            new THREE.Vector3(0.22, 5.50, 0.15),   // Mid stalk curving out
-            new THREE.Vector3(0.40, 5.95, 0.25),   // Upper stalk curve
-            new THREE.Vector3(0.50, 6.20, 0.30)    // Stalk tip
+            new THREE.Vector3(0, 4.88, 0),         // Stem base in the top dimple
+            new THREE.Vector3(0.08, 5.25, 0.06),   // Lower stalk
+            new THREE.Vector3(0.20, 5.60, 0.15),   // Mid stalk curving out
+            new THREE.Vector3(0.35, 5.95, 0.25),   // Upper stalk curve
+            new THREE.Vector3(0.45, 6.20, 0.30)    // Stalk tip
         ]);
 
-        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.33, 16, false);
+        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.30, 16, false);
         const stemPos = stemGeo.attributes.position;
         const v = new THREE.Vector3();
         for (let i = 0; i < stemPos.count; i++) {
             v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 4.40) / 1.80));
+            const t = Math.max(0, Math.min(1, (v.y - 4.88) / 1.32));
             const taper = 1.25 * (1.0 - t * 0.55);
             const angle = Math.atan2(v.x, v.z);
             const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
@@ -7901,7 +7900,7 @@ export function createVFXScene(container) {
     pumpkinFlameLight.position.set(0, 0, 0);
     pumpkinPivot.add(pumpkinFlameLight);
 
-    // 6. Ethereal Halo Glow / Corona Flare Mesh framing the pumpkin silhouette (never covers the pumpkin)
+    // 6. Ethereal Halo Glow / Corona Flare Mesh framing the pumpkin silhouette (only visible during reflection flash)
     const pumpkinHaloGeo = new THREE.PlaneGeometry(24.0, 24.0);
     const pumpkinHaloMat = new THREE.ShaderMaterial({
         uniforms: {
@@ -7923,18 +7922,21 @@ export function createVFXScene(container) {
             varying vec2 vUv;
 
             void main() {
-                float dist = length(vUv - 0.5) * 2.0; // 0 at center, 1 at outer boundary
-                // Circular corona ring that hugs the outer perimeter of the pumpkin (dist 0.38 -> 0.85)
-                // Center is transparent (dist < 0.38) so it frames the pumpkin rather than covering it!
-                float ring = smoothstep(0.36, 0.52, dist) * (1.0 - smoothstep(0.52, 0.95, dist));
+                if (uHaloIntensity <= 0.001) discard;
+                float dist = length(vUv - 0.5) * 2.0; // 0 at center, 1 at edge of plane
                 
-                // Subtle ray spikes pulsing around the corona ring
+                // Outer perimeter halo: completely transparent inside the pumpkin (dist < 0.40)
+                // Bright silhouette rim aura right along the outer edge (dist 0.43 to 0.50)
+                // Soft gradient falloff out to dist 0.82
+                float ring = smoothstep(0.40, 0.46, dist) * (1.0 - smoothstep(0.48, 0.82, dist));
+                
+                // Subtle ray spikes during the flash
                 float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
-                float rays = 0.80 + 0.20 * sin(angle * 12.0 + uTime * 2.0);
+                float rays = 0.85 + 0.15 * sin(angle * 16.0 + uTime * 3.0);
                 
                 float alpha = ring * rays * uHaloIntensity;
-                if (alpha < 0.001) discard;
-                gl_FragColor = vec4(uHaloColor * alpha * 1.5, clamp(alpha, 0.0, 1.0));
+                if (alpha < 0.005) discard;
+                gl_FragColor = vec4(uHaloColor * alpha * 1.8, clamp(alpha, 0.0, 1.0));
             }
         `,
         transparent: true,
@@ -7944,6 +7946,7 @@ export function createVFXScene(container) {
     });
     const pumpkinHaloMesh = new THREE.Mesh(pumpkinHaloGeo, pumpkinHaloMat);
     pumpkinHaloMesh.position.set(0, 0, -0.4); // Just behind the pumpkin
+    pumpkinHaloMesh.visible = false;
     pumpkinHaloMesh.renderOrder = 18;
     gPumpkinDiscoBall.add(pumpkinHaloMesh);
 
@@ -9514,40 +9517,36 @@ export function createVFXScene(container) {
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 4.2);
 
             // 2. Motorized Motor Spin (Y-axis) - Graceful disco spin
-            const spinVelocity = 0.15 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.25 + pumpkinKickThump * 0.15);
+            const spinVelocity = 0.15 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.20);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
             // Subtle natural pendulum sway
             pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.40) * 0.015;
             pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.35) * 0.012;
 
-            // 3. 💥 UNMISTAKABLE PHYSICAL BASS KICK BOUNCE (Oblate expansion + vertical recoil)
-            const kickScale = pumpkinKickThump * 0.24 + smoothedBass * 0.08;
-            pumpkinMesh.scale.set(
-                1.0 + kickScale * 1.2,  // Width X
-                1.0 - kickScale * 0.75, // Height Y (Speaker compression)
-                1.0 + kickScale * 1.2   // Depth Z
-            );
+            // 3. Size & Beat Reactivity: Strict UNIFORM scale, NO squashing or flattening!
+            const kickScale = pumpkinKickThump * 0.04 + smoothedBass * 0.02;
+            pumpkinMesh.scale.set(1.0 + kickScale, 1.0 + kickScale, 1.0 + kickScale);
             if (pumpkinStem) {
-                pumpkinStem.scale.set(1.0 + kickScale * 0.6, 1.0 - kickScale * 0.4, 1.0 + kickScale * 0.6);
+                pumpkinStem.scale.set(1.0 + kickScale, 1.0 + kickScale, 1.0 + kickScale);
             }
             // Vertical bounce on ceiling chain
-            pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.45;
+            pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.35;
 
-            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the pumpkin
+            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the pumpkin
             const tL = elapsedTime * 0.55;
             const txL = -1.0 + Math.sin(tL * 0.85) * 2.3; // -3.3 to +1.3
-            const tyL = Math.cos(tL * 0.65) * 2.3;       // -2.3 to +2.3 (spans balanced pumpkin height)
-            const rSqL = (txL * txL) / 1.15 + (tyL * tyL) / 1.25;
-            const tzL = Math.sqrt(Math.max(3.5, 23.0 - rSqL)); // Guaranteed FRONT convex facet (Z: +3.0 to +4.8)
+            const tyL = Math.cos(tL * 0.65) * 2.3;       // -2.3 to +2.3
+            const rSqL = (txL * txL) + (tyL * tyL);
+            const tzL = Math.sqrt(Math.max(4.0, 27.0 - rSqL)); // Front surface of sphere (radius 5.2)
             const targetLeftPos = new THREE.Vector3(txL, tyL, tzL);
             pLeftTargetObj.position.copy(targetLeftPos);
 
             const tR = elapsedTime * 0.55 + Math.PI * 0.72;
             const txR = 1.0 + Math.cos(tR * 0.82) * 2.3;  // -1.3 to +3.3
             const tyR = Math.sin(tR * 0.68) * 2.3;       // -2.3 to +2.3
-            const rSqR = (txR * txR) / 1.15 + (tyR * tyR) / 1.25;
-            const tzR = Math.sqrt(Math.max(3.5, 23.0 - rSqR)); // Guaranteed FRONT convex facet (Z: +3.0 to +4.8)
+            const rSqR = (txR * txR) + (tyR * tyR);
+            const tzR = Math.sqrt(Math.max(4.0, 27.0 - rSqR)); // Front surface of sphere (radius 5.2)
             const targetRightPos = new THREE.Vector3(txR, tyR, tzR);
             pRightTargetObj.position.copy(targetRightPos);
 
@@ -9581,7 +9580,7 @@ export function createVFXScene(container) {
             pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
-            // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
+            // Detect specular reflection directly towards the viewer/camera (front center sweet spot)
             const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
             const leftHit = Math.max(0.0, 1.0 - (leftDistFromCenter / 2.8));
             const rightDistFromCenter = Math.sqrt(txR * txR + tyR * tyR);
@@ -9592,16 +9591,16 @@ export function createVFXScene(container) {
             const rightGlare = Math.pow(rightHit, 1.6);
             const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
 
-            // Dead-on Hit Detection: When beam hits pumpkin dead-on, trigger halo flash!
-            const isDeadOn = (leftHit > 0.82 || rightHit > 0.82 || (leftHit > 0.68 && rightHit > 0.68));
-            if (isDeadOn && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 1.2)) {
+            // Specular reflection to viewer: when beam sweeps through the front center facing camera
+            const isReflectingToViewer = (leftDistFromCenter < 1.30 || rightDistFromCenter < 1.30);
+            if (isReflectingToViewer && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 0.8)) {
                 pumpkinLastFlashTime = elapsedTime;
                 pumpkinDeadOnFlashPulse = 1.0;
             }
-            pumpkinWasDeadOn = isDeadOn;
+            pumpkinWasDeadOn = isReflectingToViewer;
 
-            // Smooth halo flash decay (no full-screen flash)
-            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 3.5);
+            // Fast flash decay so the halo flare is a quick, crisp burst
+            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 4.8);
 
             // 5. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
             const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
@@ -9708,17 +9707,22 @@ export function createVFXScene(container) {
 
             // Front Key Light & Pumpkin Flame (internal flame reacts powerfully to bass kicks)
             pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.45));
-            pKeyLight.intensity = (0.45 + totalGlareScore * 2.2 + audioSurge * 1.2 + pumpkinDeadOnFlashPulse * 3.0 + pumpkinKickThump * 2.5) * (0.35 + avgPulse * 0.65);
+            pKeyLight.intensity = (0.55 + totalGlareScore * 1.5 + pumpkinDeadOnFlashPulse * 2.0) * (0.45 + avgPulse * 0.55);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (0.75 + totalGlareScore * 2.0 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.0 + pumpkinKickThump * 4.5) * (0.40 + avgPulse * 0.60);
+            pumpkinFlameLight.intensity = (0.85 + totalGlareScore * 1.5 + pumpkinDeadOnFlashPulse * 2.5 + pumpkinKickThump * 3.5) * (0.45 + avgPulse * 0.55);
 
-            // 6. Update Halo Glow Ring / Corona Flare around pumpkin silhouette (never covers the pumpkin face)
-            const haloTint = (pumpkinDeadOnFlashPulse > 0.25) ? new THREE.Color(0xffffff) : pumpkinThemeCol;
-            pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
-            pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
-            const haloIntensity = (pumpkinDeadOnFlashPulse * 2.8 + pumpkinKickThump * 1.4 + totalGlareScore * 0.9) * (0.35 + avgPulse * 0.65);
-            pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.max(0.0, Math.min(2.5, haloIntensity));
+            // 6. Halo flash around pumpkin ONLY when the specular reflection hits the viewer!
+            if (pumpkinDeadOnFlashPulse > 0.005) {
+                pumpkinHaloMesh.visible = true;
+                const haloTint = (pumpkinDeadOnFlashPulse > 0.35) ? new THREE.Color(0xffffff) : pumpkinThemeCol;
+                pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
+                pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
+                pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.pow(pumpkinDeadOnFlashPulse, 1.5) * 2.8;
+            } else {
+                pumpkinHaloMesh.visible = false;
+                pumpkinHaloMat.uniforms.uHaloIntensity.value = 0.0;
+            }
             pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
 
             // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
