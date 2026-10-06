@@ -327,39 +327,36 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Transverse Profile Across Wide Graceful Reflection Blade (Silky Soft Edges + Radiant Core)
+            // 1. Transverse Profile Across Beam Blade (Dense Incandescent Core + Brilliant Atmosphere)
             float span = sin(vUv.x * 3.14159265);
-            float softEdges = smoothstep(0.0, 0.45, span);
-            float hotSpine = pow(span, 3.0);
+            float softEdges = smoothstep(0.0, 0.42, span);
+            float hotCore = pow(span, 3.2);
+            float beamCross = softEdges * 0.60 + hotCore * 1.60;
 
-            // 2. Grazing Angle Soft Glow (Non-rounded flat blade lighting)
+            // 2. Grazing Angle Glow for Volumetric Depth
             float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
-            float viewGlow = 0.70 + 0.30 * (1.0 - viewFacing);
+            float viewGlow = 0.82 + 0.18 * (1.0 - viewFacing);
 
-            // 3. Longitudinal Attenuation along Beam (Bloom at Light Origin -> Feathered Tip)
+            // 3. Longitudinal Profile (Origin Lens Glow -> Solid Dense Column -> Surface Impact Bloom)
             float y = vUv.y;
-            float sourceGlow = exp(-y * 2.2) * 1.6;
-            float beamLengthFade = smoothstep(1.0, 0.20, y);
-            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.03, y);
+            float originGlow = exp(-y * 3.2) * 2.2;
+            float surfaceImpactGlow = exp(-(1.0 - y) * 3.8) * 1.8;
+            float bodyGlow = 0.95 + 0.12 * sin(y * 8.0 - uTime * 1.5);
+            float longProfile = (originGlow + surfaceImpactGlow + bodyGlow) * smoothstep(0.0, 0.02, y);
 
-            // 4. Facet Reflection Caustic Shimmer & Micro-Sparkle (Gentle, Slow Undulation)
-            float shimmerWave1 = sin(y * 12.0 - uTime * 1.2 + vUv.x * 6.0);
-            float shimmerWave2 = cos(y * 16.0 + uTime * 1.5 - vUv.x * 8.0);
-            float causticShimmer = 0.82 + 0.18 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 0.6);
+            // 4. Caustic Shimmer & Dust Sparkle Striations
+            float shimmerWave1 = sin(y * 14.0 - uTime * 1.4 + vUv.x * 7.0);
+            float shimmerWave2 = cos(y * 18.0 + uTime * 1.7 - vUv.x * 9.0);
+            float causticShimmer = 0.88 + 0.12 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 0.5);
 
-            // 5. Subtle Atmospheric Volumetric Smoke Haze Drift
-            float smoke = sin(vPositionWorld.x * 0.08 + vPositionWorld.y * 0.10 + uTime * 0.15) * 
-                          cos(vPositionWorld.z * 0.08 - uTime * 0.12);
-            float hazeDensity = 0.92 + 0.08 * smoke;
-
-            // 6. Total Alpha Composition (Super-blended, god-like reflection)
-            float baseAlpha = (softEdges * 0.75 + hotSpine * 0.90) * viewGlow * longProfile * causticShimmer * hazeDensity;
-            float alpha = baseAlpha * (0.65 + uPulse * 0.45 + uTreble * 0.20) * uIntensity * 0.75;
+            // 5. Total Alpha Composition (High-Powered Punchy Concert Moving-Head Beam)
+            float baseAlpha = beamCross * viewGlow * longProfile * causticShimmer;
+            float alpha = baseAlpha * (0.80 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
             if (alpha < 0.002) discard;
 
-            // 7. Luminous White / Shaded Pink / Royal Purple Color Gradient
-            float coreBlend = clamp(hotSpine * 0.85 + sourceGlow * 0.45 + uPulse * 0.30 + uTreble * 0.20, 0.0, 1.0);
-            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.4 + uTreble * 0.3);
+            // 6. Luminous White Core to Vivid Saturated Color
+            float coreBlend = clamp(hotCore * 1.15 + originGlow * 0.45 + surfaceImpactGlow * 0.45 + uPulse * 0.25, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7369,9 +7366,9 @@ export function createVFXScene(container) {
     pumpkinChainGroup.add(ceilingMountMesh);
     gPumpkinDiscoBall.add(pumpkinChainGroup);
 
-    // 4. Two Bottom-Mounted DJ Moving-Head Fixtures (Bottom-Left & Bottom-Right)
-    const pLeftFixturePos = new THREE.Vector3(-9.5, -8.0, 4.2);
-    const pRightFixturePos = new THREE.Vector3(9.5, -8.0, 4.2);
+    // 4. Two Bottom-Front DJ Moving-Head Fixtures (Bottom-Left & Bottom-Right)
+    const pLeftFixturePos = new THREE.Vector3(-8.8, -6.8, 5.8);
+    const pRightFixturePos = new THREE.Vector3(8.8, -6.8, 5.8);
 
     function createMovingHeadFixture(basePos) {
         const fixtureGroup = new THREE.Group();
@@ -7453,121 +7450,33 @@ export function createVFXScene(container) {
     const pRightFixture = createMovingHeadFixture(pRightFixturePos);
     gPumpkinDiscoBall.add(pRightFixture.fixtureGroup);
 
-    // Dynamic Target Tracking Dummies for Spotlights
+    // Dynamic Target Tracking Dummies on the FRONT of the pumpkin
     const pLeftTargetObj = new THREE.Object3D();
-    pLeftTargetObj.position.set(-1.0, 0.0, 0.0);
+    pLeftTargetObj.position.set(-1.2, 0.2, 2.5);
     gPumpkinDiscoBall.add(pLeftTargetObj);
 
     const pRightTargetObj = new THREE.Object3D();
-    pRightTargetObj.position.set(1.0, 0.0, 0.0);
+    pRightTargetObj.position.set(1.2, 0.2, 2.5);
     gPumpkinDiscoBall.add(pRightTargetObj);
 
-    // Directional Spotlights projecting from bottom fixtures onto pumpkin
-    const pBottomLeftSpot = new THREE.SpotLight(0xffffff, 4.0, 60.0, Math.PI / 5.2, 0.45, 1.2);
+    // High-Intensity Directional Spotlights projecting from bottom fixtures onto the front of the pumpkin
+    const pBottomLeftSpot = new THREE.SpotLight(0xffffff, 6.5, 50.0, Math.PI / 4.8, 0.35, 1.0);
     pBottomLeftSpot.position.copy(pLeftFixturePos).add(new THREE.Vector3(0, 1.0, 0));
     pBottomLeftSpot.target = pLeftTargetObj;
     gPumpkinDiscoBall.add(pBottomLeftSpot);
 
-    const pBottomRightSpot = new THREE.SpotLight(0xffffff, 4.0, 60.0, Math.PI / 5.2, 0.45, 1.2);
+    const pBottomRightSpot = new THREE.SpotLight(0xffffff, 6.5, 50.0, Math.PI / 4.8, 0.35, 1.0);
     pBottomRightSpot.position.copy(pRightFixturePos).add(new THREE.Vector3(0, 1.0, 0));
     pBottomRightSpot.target = pRightTargetObj;
     gPumpkinDiscoBall.add(pBottomRightSpot);
 
-    // Upward Volumetric Beams from Bottom Left & Right
-    const pLeftBeamGeo = createCrossPlaneRayGeometry(0.40, 4.4, 22.0);
-    const pLeftBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 1.0 },
-            uTime: { value: 0.0 },
-            uTimeSpeed: { value: 0.08 },
-            uNoiseScale: { value: 2.8 },
-            uPulse: { value: 0.0 },
-            uShimmer: { value: 0.4 },
-            uTreble: { value: 0.0 }
-        },
-        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
-        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pLeftBeamMesh = new THREE.Mesh(pLeftBeamGeo, pLeftBeamMat);
-    pLeftBeamMesh.position.copy(pLeftFixturePos).add(new THREE.Vector3(0, 0.9, 0));
-    gPumpkinDiscoBall.add(pLeftBeamMesh);
-
-    const pRightBeamGeo = createCrossPlaneRayGeometry(0.40, 4.4, 22.0);
-    const pRightBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 1.0 },
-            uTime: { value: 0.0 },
-            uTimeSpeed: { value: 0.08 },
-            uNoiseScale: { value: 2.8 },
-            uPulse: { value: 0.0 },
-            uShimmer: { value: 0.4 },
-            uTreble: { value: 0.0 }
-        },
-        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
-        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pRightBeamMesh = new THREE.Mesh(pRightBeamGeo, pRightBeamMat);
-    pRightBeamMesh.position.copy(pRightFixturePos).add(new THREE.Vector3(0, 0.9, 0));
-    gPumpkinDiscoBall.add(pRightBeamMesh);
-
-    // Front Key Light & Center Pumpkin Core Glow
-    const pKeyLight = new THREE.DirectionalLight(0xffffff, 2.0);
-    pKeyLight.position.set(0.0, 3.0, 9.0);
-    pKeyLight.target = pumpkinMesh;
-    gPumpkinDiscoBall.add(pKeyLight);
-
-    const pumpkinFlameLight = new THREE.PointLight(0xffffff, 2.5, 25.0, 1.2);
-    pumpkinFlameLight.position.set(0, 0, 0);
-    pumpkinPivot.add(pumpkinFlameLight);
-
-    // 5. Central Bright Glare & Starburst Billboard (Flares up when beam hits bang-on)
-    const pGlareGroup = new THREE.Group();
-    pGlareGroup.position.set(0, 0, 4.35); // Directly on front face toward viewer
-    pumpkinPivot.add(pGlareGroup);
-
-    const pGlareSpriteMat = new THREE.SpriteMaterial({
-        map: anamorphicFlareTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-    });
-    const pCenterGlareSprite = new THREE.Sprite(pGlareSpriteMat);
-    pCenterGlareSprite.scale.set(10.0, 4.5, 1.0);
-    pGlareGroup.add(pCenterGlareSprite);
-
-    const pStarburstSpriteMat = new THREE.SpriteMaterial({
-        map: starburstTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-    });
-    const pCenterStarburstSprite = new THREE.Sprite(pStarburstSpriteMat);
-    pCenterStarburstSprite.scale.set(7.0, 7.0, 1.0);
-    pGlareGroup.add(pCenterStarburstSprite);
-
     // Procedural Cross-Plane Flat Light Ribbon Blade Geometry (2 Intersecting Planar Sheets = Zero Roundness)
-    function createCrossPlaneRayGeometry(baseWidth = 0.40, tipWidth = 4.8, length = 32.0) {
+    function createCrossPlaneRayGeometry(baseWidth = 0.50, tipWidth = 3.6, length = 18.0) {
         const geo = new THREE.BufferGeometry();
         const halfBase = baseWidth * 0.5;
         const halfTip = tipWidth * 0.5;
 
-        // Origin at y=0 (mirror tile surface), extends down -Y to y=-length
+        // Origin at y=0 (lens), extends down -Y to y=-length (pumpkin front)
         const positions = new Float32Array([
             // Sheet 1: XY Plane
             -halfBase, 0, 0,
@@ -7583,34 +7492,18 @@ export function createVFXScene(container) {
         ]);
 
         const uvs = new Float32Array([
-            // Sheet 1
-            0.0, 0.0,
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0,
-
-            // Sheet 2
-            0.0, 0.0,
-            1.0, 0.0,
-            0.0, 1.0,
-            1.0, 1.0
+            0.0, 0.0,  1.0, 0.0,  0.0, 1.0,  1.0, 1.0,
+            0.0, 0.0,  1.0, 0.0,  0.0, 1.0,  1.0, 1.0
         ]);
 
         const normals = new Float32Array([
-            0, 0, 1,
-            0, 0, 1,
-            0, 0, 1,
-            0, 0, 1,
-
-            1, 0, 0,
-            1, 0, 0,
-            1, 0, 0,
-            1, 0, 0
+            0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
+            1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0
         ]);
 
         const indices = [
-            0, 2, 1,  1, 2, 3, // Sheet 1
-            4, 6, 5,  5, 6, 7  // Sheet 2
+            0, 2, 1,  1, 2, 3,
+            4, 6, 5,  5, 6, 7
         ];
 
         geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
@@ -7620,64 +7513,166 @@ export function createVFXScene(container) {
         return geo;
     }
 
-    // 5. Outward Bouncing Reflection God Rays (12 Wide, Graceful Facet Reflection Blades)
-    const pumpkinRaySystem = new THREE.Group();
-    pumpkinPivot.add(pumpkinRaySystem); // Attached to pumpkinPivot so all reflection rays spin synchronously in 3D!
+    // High-Intensity Volumetric Beams from Bottom Left & Right aiming at the front of the pumpkin
+    const pLeftBeamGeo = createCrossPlaneRayGeometry(0.55, 3.8, 17.5);
+    const pLeftBeamMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 2.8 },
+            uTime: { value: 0.0 },
+            uTimeSpeed: { value: 0.12 },
+            uNoiseScale: { value: 3.0 },
+            uPulse: { value: 0.0 },
+            uShimmer: { value: 0.5 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
+        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pLeftBeamMesh = new THREE.Mesh(pLeftBeamGeo, pLeftBeamMat);
+    pLeftBeamMesh.position.copy(pLeftFixturePos).add(new THREE.Vector3(0, 0.9, 0));
+    gPumpkinDiscoBall.add(pLeftBeamMesh);
 
-    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.35, 4.4, 30.0);
-    const numPumpkinRays = 12;
-    const pumpkinRayMeshes = [];
+    // Inner bright core beam (Left)
+    const pLeftCoreBeamGeo = createCrossPlaneRayGeometry(0.22, 1.4, 17.5);
+    const pLeftCoreBeamMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 3.5 },
+            uTime: { value: 0.0 },
+            uTimeSpeed: { value: 0.15 },
+            uNoiseScale: { value: 3.2 },
+            uPulse: { value: 0.0 },
+            uShimmer: { value: 0.6 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
+        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pLeftCoreBeamMesh = new THREE.Mesh(pLeftCoreBeamGeo, pLeftCoreBeamMat);
+    pLeftCoreBeamMesh.position.copy(pLeftFixturePos).add(new THREE.Vector3(0, 0.9, 0));
+    gPumpkinDiscoBall.add(pLeftCoreBeamMesh);
 
-    for (let r = 0; r < numPumpkinRays; r++) {
-        // Golden Ratio Fibonacci Sphere Distribution for uniform 360-degree spherical coverage
-        const phi = Math.acos(1.0 - 2.0 * (r + 0.5) / numPumpkinRays); // Polar angle: 0 (top) to PI (bottom)
-        const theta = Math.PI * (1.0 + Math.sqrt(5.0)) * r;             // Golden spiral azimuth
+    const pRightBeamGeo = createCrossPlaneRayGeometry(0.55, 3.8, 17.5);
+    const pRightBeamMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 2.8 },
+            uTime: { value: 0.0 },
+            uTimeSpeed: { value: 0.12 },
+            uNoiseScale: { value: 3.0 },
+            uPulse: { value: 0.0 },
+            uShimmer: { value: 0.5 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
+        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pRightBeamMesh = new THREE.Mesh(pRightBeamGeo, pRightBeamMat);
+    pRightBeamMesh.position.copy(pRightFixturePos).add(new THREE.Vector3(0, 0.9, 0));
+    gPumpkinDiscoBall.add(pRightBeamMesh);
 
-        // Direction vector radiating outward from pumpkin center
-        const dir = new THREE.Vector3(
-            Math.sin(phi) * Math.cos(theta),
-            Math.cos(phi),
-            Math.sin(phi) * Math.sin(theta)
-        ).normalize();
+    // Inner bright core beam (Right)
+    const pRightCoreBeamGeo = createCrossPlaneRayGeometry(0.22, 1.4, 17.5);
+    const pRightCoreBeamMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 3.5 },
+            uTime: { value: 0.0 },
+            uTimeSpeed: { value: 0.15 },
+            uNoiseScale: { value: 3.2 },
+            uPulse: { value: 0.0 },
+            uShimmer: { value: 0.6 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinVolumetricRaysShader.vertexShader,
+        fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pRightCoreBeamMesh = new THREE.Mesh(pRightCoreBeamGeo, pRightCoreBeamMat);
+    pRightCoreBeamMesh.position.copy(pRightFixturePos).add(new THREE.Vector3(0, 0.9, 0));
+    gPumpkinDiscoBall.add(pRightCoreBeamMesh);
 
-        const rayMat = new THREE.ShaderMaterial({
-            uniforms: {
-                uColor: { value: new THREE.Color(0xffffff) },
-                uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: 1.0 },
-                uTime: { value: 0.0 },
-                uTimeSpeed: { value: 0.08 },
-                uNoiseScale: { value: 2.8 },
-                uPulse: { value: 0.0 },
-                uShimmer: { value: 0.4 },
-                uTreble: { value: 0.0 }
-            },
-            vertexShader: PumpkinVolumetricRaysShader.vertexShader,
-            fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
-            transparent: true,
-            blending: THREE.AdditiveBlending,
-            side: THREE.DoubleSide,
-            depthWrite: false
-        });
+    // Front Surface Impact Hotspot Flares (Where beams land on the front of the pumpkin)
+    const pLeftHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: starburstTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+    }));
+    pLeftHitFlare.scale.set(4.5, 4.5, 1.0);
+    gPumpkinDiscoBall.add(pLeftHitFlare);
 
-        const rayMesh = new THREE.Mesh(pumpkinRayBladeGeo, rayMat);
-        
-        // Align ray blade pointing along 'dir'
-        const upVec = new THREE.Vector3(0, -1, 0);
-        rayMesh.quaternion.setFromUnitVectors(upVec, dir);
+    const pRightHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
+        map: starburstTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.85,
+        depthWrite: false
+    }));
+    pRightHitFlare.scale.set(4.5, 4.5, 1.0);
+    gPumpkinDiscoBall.add(pRightHitFlare);
 
-        // Position apex right on the pumpkin mirror surface (r ≈ 4.6)
-        rayMesh.position.copy(dir.clone().multiplyScalar(4.6));
+    // Front Key Light & Center Pumpkin Core Glow
+    const pKeyLight = new THREE.DirectionalLight(0xffffff, 2.2);
+    pKeyLight.position.set(0.0, 3.0, 9.0);
+    pKeyLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pKeyLight);
 
-        pumpkinRaySystem.add(rayMesh);
+    const pumpkinFlameLight = new THREE.PointLight(0xffffff, 2.5, 25.0, 1.2);
+    pumpkinFlameLight.position.set(0, 0, 0);
+    pumpkinPivot.add(pumpkinFlameLight);
 
-        pumpkinRayMeshes.push({
-            mesh: rayMesh,
-            mat: rayMat,
-            baseDir: dir.clone(),
-            phase: r * 0.40
-        });
-    }
+    // Central Bright Specular Glare & Starburst Billboard (Direct-hit reflection back to viewer in center)
+    const pGlareGroup = new THREE.Group();
+    pGlareGroup.position.set(0, 0, 4.35); // Directly on front face toward viewer
+    pumpkinPivot.add(pGlareGroup);
+
+    const pGlareSpriteMat = new THREE.SpriteMaterial({
+        map: anamorphicFlareTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false
+    });
+    const pCenterGlareSprite = new THREE.Sprite(pGlareSpriteMat);
+    pCenterGlareSprite.scale.set(12.0, 5.0, 1.0);
+    pGlareGroup.add(pCenterGlareSprite);
+
+    const pStarburstSpriteMat = new THREE.SpriteMaterial({
+        map: starburstTex,
+        color: 0xffffff,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false
+    });
+    const pCenterStarburstSprite = new THREE.Sprite(pStarburstSpriteMat);
+    pCenterStarburstSprite.scale.set(8.5, 8.5, 1.0);
+    pGlareGroup.add(pCenterStarburstSprite);
 
     // 7. 450 Floor & Room Mirror Reflection Sparkle Spots
     const pFloorSpotCount = 450;
@@ -9225,46 +9220,61 @@ export function createVFXScene(container) {
             const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.025 + (audio.isOnset ? 0.035 : 0.0);
             pumpkinMesh.scale.set(targetScale, targetScale, targetScale);
 
-            // 2. Dynamic Rotating Head Sweeping Targets (Bottom-Left & Bottom-Right DJ Moving Heads)
-            const tL = elapsedTime * 0.72;
-            const targetLeftPos = new THREE.Vector3(
-                -0.9 + Math.sin(tL * 0.95) * 3.4,
-                Math.cos(tL * 0.70) * 2.4,
-                Math.sin(tL * 0.55) * 1.8
-            );
+            // 2. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the pumpkin
+            const tL = elapsedTime * 0.65;
+            const txL = -1.2 + Math.sin(tL * 0.90) * 2.2; // -3.4 to +1.0
+            const tyL = Math.cos(tL * 0.68) * 2.0;       // -2.0 to +2.0
+            const rSqL = txL * txL + tyL * tyL;
+            const tzL = Math.sqrt(Math.max(4.0, 20.0 - rSqL * 0.7)); // Guaranteed FRONT convex facet (Z: +2.0 to +4.5)
+            const targetLeftPos = new THREE.Vector3(txL, tyL, tzL);
             pLeftTargetObj.position.copy(targetLeftPos);
 
-            const tR = elapsedTime * 0.72 + Math.PI * 0.75;
-            const targetRightPos = new THREE.Vector3(
-                0.9 + Math.cos(tR * 0.90) * 3.4,
-                Math.sin(tR * 0.75) * 2.4,
-                Math.cos(tR * 0.50) * 1.8
-            );
+            const tR = elapsedTime * 0.65 + Math.PI * 0.70;
+            const txR = 1.2 + Math.cos(tR * 0.88) * 2.2;  // -1.0 to +3.4
+            const tyR = Math.sin(tR * 0.72) * 2.0;       // -2.0 to +2.0
+            const rSqR = txR * txR + tyR * tyR;
+            const tzR = Math.sqrt(Math.max(4.0, 20.0 - rSqR * 0.7)); // Guaranteed FRONT convex facet (Z: +2.0 to +4.5)
+            const targetRightPos = new THREE.Vector3(txR, tyR, tzR);
             pRightTargetObj.position.copy(targetRightPos);
 
             // Update Rotating Moving-Head Fixture Orientations (Motorized Pan / Tilt tracking)
-            const leftFixtureDir = targetLeftPos.clone().sub(pLeftFixturePos).normalize();
+            const leftFixtureHeadPos = pLeftFixturePos.clone().add(new THREE.Vector3(0, 0.9, 0));
+            const leftFixtureDir = targetLeftPos.clone().sub(leftFixtureHeadPos);
+            const leftBeamDist = leftFixtureDir.length();
+            const leftFixtureDirNorm = leftFixtureDir.clone().normalize();
+
             pLeftFixture.headGroup.lookAt(targetLeftPos);
-            pLeftFixture.yokeGroup.rotation.y = Math.atan2(leftFixtureDir.x, leftFixtureDir.z);
+            pLeftFixture.yokeGroup.rotation.y = Math.atan2(leftFixtureDirNorm.x, leftFixtureDirNorm.z);
 
-            const rightFixtureDir = targetRightPos.clone().sub(pRightFixturePos).normalize();
+            const rightFixtureHeadPos = pRightFixturePos.clone().add(new THREE.Vector3(0, 0.9, 0));
+            const rightFixtureDir = targetRightPos.clone().sub(rightFixtureHeadPos);
+            const rightBeamDist = rightFixtureDir.length();
+            const rightFixtureDirNorm = rightFixtureDir.clone().normalize();
+
             pRightFixture.headGroup.lookAt(targetRightPos);
-            pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDir.x, rightFixtureDir.z);
+            pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
 
-            // Align volumetric beams along fixture-to-target direction vectors
+            // Align volumetric beams and inner cores along fixture-to-target vectors
             const upVec = new THREE.Vector3(0, -1, 0);
-            pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDir);
-            pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDir);
+            pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
+            pLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
+            pLeftBeamMesh.scale.set(1.0, leftBeamDist / 17.5, 1.0);
+            pLeftCoreBeamMesh.scale.set(1.0, leftBeamDist / 17.5, 1.0);
+
+            pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
+            pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
+            pRightBeamMesh.scale.set(1.0, rightBeamDist / 17.5, 1.0);
+            pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 17.5, 1.0);
 
             // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
-            const leftDist = targetLeftPos.length();
-            const leftHit = Math.max(0.0, 1.0 - (leftDist / 2.7));
-            const rightDist = targetRightPos.length();
-            const rightHit = Math.max(0.0, 1.0 - (rightDist / 2.7));
+            const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
+            const leftHit = Math.max(0.0, 1.0 - (leftDistFromCenter / 3.0));
+            const rightDistFromCenter = Math.sqrt(txR * txR + tyR * tyR);
+            const rightHit = Math.max(0.0, 1.0 - (rightDistFromCenter / 3.0));
 
             // Nonlinear power curve for sudden dazzling flare bloom on direct hit
-            const leftGlare = Math.pow(leftHit, 1.8);
-            const rightGlare = Math.pow(rightHit, 1.8);
+            const leftGlare = Math.pow(leftHit, 1.6);
+            const rightGlare = Math.pow(rightHit, 1.6);
             const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
 
             // 3. Dynamic Color Transition: Shades of Ethereal White, Pink, Lilac & Purple
@@ -9303,62 +9313,73 @@ export function createVFXScene(container) {
             pRightFixture.lensMat.color.copy(rightColor);
             pRightFixture.ledRingMat.color.copy(rightColor);
 
-            // 4. Gentle "God-Like" Ray Breathing (Slow Undulation, Zero Aggressive Strobing)
+            // 4. High-Intensity Volumetric Beams & Music Reactivity
             const gentleGodRayBreath = 0.88 + 0.12 * Math.sin(elapsedTime * 0.35);
-            const gentleAudioGlow = (audio.smoothedBass || 0) * 0.08 + (audio.smoothedTreble || 0) * 0.06;
-            const liveIntensity = gentleGodRayBreath + gentleAudioGlow;
+            const musicSurge = (audio.smoothedBass || 0) * 0.45 + (audio.transientImpulse || 0) * 0.35 + (audio.isOnset ? 0.40 : 0.0);
+            const liveIntensity = gentleGodRayBreath + musicSurge * 0.30;
 
-            // Spotlights intensity boosted when aiming bang-on the pumpkin
+            const beamLeftPower = (2.6 + leftHit * 1.8 + musicSurge) * liveIntensity;
+            const beamRightPower = (2.6 + rightHit * 1.8 + musicSurge) * liveIntensity;
+
+            // Spotlights intensity boosted when aiming on the pumpkin front
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = (2.8 + leftHit * 4.5) * liveIntensity;
+            pBottomLeftSpot.intensity = (7.5 + leftHit * 6.0 + musicSurge * 4.0) * liveIntensity;
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = (2.8 + rightHit * 4.5) * liveIntensity;
+            pBottomRightSpot.intensity = (7.5 + rightHit * 6.0 + musicSurge * 4.0) * liveIntensity;
 
             // Volumetric beams intensity
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
-            pLeftBeamMat.uniforms.uIntensity.value = (0.70 + leftHit * 0.95) * liveIntensity;
+            pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
             pLeftBeamMat.uniforms.uTime.value = elapsedTime;
+            pLeftCoreBeamMat.uniforms.uColor.value.copy(leftColor);
+            pLeftCoreBeamMat.uniforms.uIntensity.value = beamLeftPower * 1.35;
+            pLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
 
             pRightBeamMat.uniforms.uColor.value.copy(rightColor);
-            pRightBeamMat.uniforms.uIntensity.value = (0.70 + rightHit * 0.95) * liveIntensity;
+            pRightBeamMat.uniforms.uIntensity.value = beamRightPower;
             pRightBeamMat.uniforms.uTime.value = elapsedTime;
+            pRightCoreBeamMat.uniforms.uColor.value.copy(rightColor);
+            pRightCoreBeamMat.uniforms.uIntensity.value = beamRightPower * 1.35;
+            pRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
 
-            // Key Light & Pumpkin Flame
+            // Front surface impact flares at the exact beam landing coordinates on the pumpkin front
+            pLeftHitFlare.position.copy(targetLeftPos);
+            pLeftHitFlare.material.color.copy(leftColor);
+            pLeftHitFlare.material.opacity = Math.min(1.0, 0.65 + leftHit * 0.35 + musicSurge * 0.25);
+            const flareScaleL = 3.5 + leftHit * 2.5 + musicSurge * 1.5;
+            pLeftHitFlare.scale.set(flareScaleL, flareScaleL, 1.0);
+
+            pRightHitFlare.position.copy(targetRightPos);
+            pRightHitFlare.material.color.copy(rightColor);
+            pRightHitFlare.material.opacity = Math.min(1.0, 0.65 + rightHit * 0.35 + musicSurge * 0.25);
+            const flareScaleR = 3.5 + rightHit * 2.5 + musicSurge * 1.5;
+            pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
+
+            // Front Key Light & Pumpkin Flame
             pKeyLight.color.copy(colPureWhite.clone().lerp(leftColor, 0.25));
-            pKeyLight.intensity = (2.0 + totalGlareScore * 3.5) * liveIntensity;
+            pKeyLight.intensity = (2.8 + totalGlareScore * 4.0 + musicSurge * 2.0) * liveIntensity;
 
             pumpkinFlameLight.color.copy(leftColor.clone().lerp(rightColor, 0.5));
-            pumpkinFlameLight.intensity = (2.4 + totalGlareScore * 3.0) * liveIntensity;
+            pumpkinFlameLight.intensity = (3.0 + totalGlareScore * 3.5 + musicSurge * 2.0) * liveIntensity;
 
             // 5. Update Central Bright Specular Glare (Reflection back to viewer position in center)
             const glareTint = colPureWhite.clone().lerp(leftGlare > rightGlare ? leftColor : rightColor, 0.35);
             pCenterGlareSprite.material.color.copy(glareTint);
             pCenterStarburstSprite.material.color.copy(glareTint);
 
-            const baseGlareScale = (4.0 + totalGlareScore * 18.0 + (audio.smoothedBass || 0) * 4.0);
+            const baseGlareScale = 5.0 + totalGlareScore * 20.0 + musicSurge * 6.0;
             pCenterGlareSprite.scale.set(baseGlareScale * 1.85, baseGlareScale * 0.75, 1.0);
-            pCenterStarburstSprite.scale.set(baseGlareScale * 1.1, baseGlareScale * 1.1, 1.0);
+            pCenterStarburstSprite.scale.set(baseGlareScale * 1.15, baseGlareScale * 1.15, 1.0);
 
             pCenterGlareSprite.material.opacity = Math.max(0.0, totalGlareScore * 0.98);
-            pCenterStarburstSprite.material.opacity = Math.max(0.0, totalGlareScore * 0.90);
+            pCenterStarburstSprite.material.opacity = Math.max(0.0, totalGlareScore * 0.92);
 
-            // 6. Update Outward Bouncing Reflection God Rays (Shimmer & surge when hit bang-on)
-            pumpkinRayMeshes.forEach((rObj, idx) => {
-                const rayCol = (idx % 2 === 0) ? leftColor : rightColor;
-                rObj.mat.uniforms.uColor.value.copy(rayCol);
-                rObj.mat.uniforms.uTime.value = elapsedTime;
-                rObj.mat.uniforms.uPulse.value = gentleGodRayBreath;
-                rObj.mat.uniforms.uIntensity.value = (0.85 + totalGlareScore * 2.2) * liveIntensity;
-                rObj.mat.uniforms.uShimmer.value = 0.35 + totalGlareScore * 0.75;
-                rObj.mat.uniforms.uTreble.value = (audio.smoothedTreble || 0) * 0.5;
-            });
-
-            // 7. Floor & Room Caustic Reflection Spots (Brighter on bang-on hit)
+            // 6. Floor & Room Caustic Reflection Spots (Brighter on direct hit)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.05;
-            pFloorMat.size = 0.50 + totalGlareScore * 0.40 + (audio.smoothedBass || 0) * 0.15;
+            pFloorMat.size = 0.55 + totalGlareScore * 0.45 + (audio.smoothedBass || 0) * 0.20;
 
-            // 6. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
+            // 7. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
             const emberPosAttr = pEmberGeo.attributes.position;
             const emberArray = emberPosAttr.array;
             for (let e = 0; e < pEmberCount; e++) {
