@@ -3745,15 +3745,24 @@
                         </div>
                     </div>
 
-                    <!-- Staged Candidate Track Found Card (2-Click Safety to Prevent Mis-hits!) -->
-                    <div id="shazam-candidate-card" style="display:none; margin-top:8px; background:linear-gradient(135deg, rgba(0,136,255,0.14) 0%, rgba(0,255,204,0.14) 100%); border:1px solid #00ffcc; border-radius:5px; padding:8px 10px;">
-                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
-                            <span class="hud-badge" style="background:rgba(0,255,204,0.2); color:#00ffcc; border-color:#00ffcc; font-size:7.5px; font-weight:800;">✓ SHAZAM MATCH FOUND</span>
-                            <span style="font-size:7.5px; color:#8c909e;" id="shazam-match-genre">Dance</span>
+                    <!-- Staged Candidate Track Found Card (With 30-Second Acceptance Countdown Bar & Decline Option) -->
+                    <div id="shazam-candidate-card" style="display:none; margin-top:8px; background:linear-gradient(135deg, rgba(0,136,255,0.18) 0%, rgba(0,255,204,0.18) 100%); border:1px solid #00ffcc; border-radius:6px; padding:10px; box-shadow: 0 4px 16px rgba(0,255,204,0.2);">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <span class="hud-badge" style="background:rgba(0,255,204,0.25); color:#00ffcc; border-color:#00ffcc; font-size:8px; font-weight:800;">✓ SHAZAM MATCH FOUND</span>
+                                <span style="font-size:7.5px; color:#8c909e;" id="shazam-match-genre">Dance</span>
+                            </div>
+                            <span id="shazam-countdown-text" style="font-size:8.5px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace; background:rgba(0,0,0,0.5); padding:1px 6px; border-radius:3px; border:1px solid rgba(0,255,204,0.4);">⏳ AUTO-DECLINE IN 30s</span>
                         </div>
+
+                        <!-- 30-Second Visual Acceptance Progress Bar -->
+                        <div style="width:100%; height:4px; background:rgba(0,0,0,0.6); border-radius:2px; overflow:hidden; margin-bottom:8px; border:1px solid rgba(0,255,204,0.3);">
+                            <div id="shazam-countdown-bar" style="width:100%; height:100%; background:linear-gradient(90deg, #00ffcc, #0088ff); transition:width 0.2s linear;"></div>
+                        </div>
+
                         <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
-                            <img id="shazam-match-art" src="" alt="Album Art" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid #00ffcc; display:none;">
-                            <div id="shazam-match-art-fallback" class="vinyl-record" style="width:32px; height:32px; min-width:32px; animation:spin 3s linear infinite;">
+                            <img id="shazam-match-art" src="" alt="Album Art" style="width:38px; height:38px; border-radius:4px; object-fit:cover; border:1px solid #00ffcc; display:none;">
+                            <div id="shazam-match-art-fallback" class="vinyl-record" style="width:34px; height:34px; min-width:34px; animation:spin 3s linear infinite;">
                                 <div class="vinyl-center-label">
                                     <span class="vinyl-label-icon" style="font-size:9px;">⚡</span>
                                 </div>
@@ -3764,16 +3773,16 @@
                             </div>
                         </div>
 
-                        <!-- 2-Click Confirmation Action Buttons -->
-                        <div style="display:flex; gap:4px;">
-                            <button class="btn-mini" id="btn-shazam-publish" style="flex:2; font-size:9px; font-weight:800; padding:5px 6px; background:linear-gradient(180deg, #00ffcc 0%, #00bb88 100%); border:1px solid #00ffcc; color:#000000; cursor:pointer;" title="Click to publish this verified match to stream overlay">
-                                ⚡ PUBLISH TO STREAM NOW
+                        <!-- 2-Click Confirmation Action Buttons (Accept vs Decline) -->
+                        <div style="display:flex; gap:6px;">
+                            <button class="btn-mini" id="btn-shazam-publish" style="flex:2; font-size:9.5px; font-weight:800; padding:6px 8px; background:linear-gradient(180deg, #00ffcc 0%, #00bb88 100%); border:1px solid #00ffcc; color:#000000; cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; gap:4px;" title="Click to accept and publish verified match to stream overlay">
+                                <span>✓ ACCEPT TRACK</span>
                             </button>
-                            <button class="btn-mini" id="btn-shazam-to-manual" style="flex:1; font-size:8.5px; font-weight:700; padding:5px 4px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; cursor:pointer;" title="Load into manual fields to tweak remix title before publishing">
+                            <button class="btn-mini" id="btn-shazam-to-manual" style="font-size:8.5px; font-weight:700; padding:6px 6px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; cursor:pointer; border-radius:4px;" title="Load into manual fields to tweak before publishing">
                                 ✏️ EDIT
                             </button>
-                            <button class="btn-mini" id="btn-shazam-discard" style="font-size:8.5px; padding:5px 6px; background:rgba(255,0,0,0.15); border:1px solid rgba(255,0,0,0.35); color:#ff6666; cursor:pointer;" title="Dismiss candidate match">
-                                ✕
+                            <button class="btn-mini" id="btn-shazam-discard" style="flex:1; font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,50,50,0.2); border:1px solid #ff4466; color:#ff7788; cursor:pointer; border-radius:4px; display:flex; align-items:center; justify-content:center; gap:3px;" title="Decline and discard this track">
+                                <span>✕ DECLINE</span>
                             </button>
                         </div>
                     </div>

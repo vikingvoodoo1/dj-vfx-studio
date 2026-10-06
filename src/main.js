@@ -136,12 +136,16 @@ async function init() {
     const shazamMatchArtist = document.getElementById('shazam-match-artist');
     const shazamMatchGenre = document.getElementById('shazam-match-genre');
     const shazamEngineBadge = document.getElementById('shazam-engine-badge');
+    const shazamCountdownBar = document.getElementById('shazam-countdown-bar');
+    const shazamCountdownText = document.getElementById('shazam-countdown-text');
     const btnShazamPublish = document.getElementById('btn-shazam-publish');
     const btnShazamToManual = document.getElementById('btn-shazam-to-manual');
     const btnShazamDiscard = document.getElementById('btn-shazam-discard');
 
     let stagedShazamTrack = null;
     let isShazaming = false;
+    let shazamCountdownTimer = null;
+    let lastAutoShazamAttemptTime = 0;
 
     let isTrackBannerEnabled = true;
     let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
@@ -979,130 +983,189 @@ async function init() {
         });
     }
 
-    // 🎧 Shazam Live Audio Recognition Listener
-    if (btnShazamListen) {
-        btnShazamListen.addEventListener('click', async () => {
-            if (isShazaming) return;
-            isShazaming = true;
+    // 🎧 Shazam Live Audio Recognition Engine with 30s Acceptance Countdown & Auto-Decline
+    function clearShazamCountdown() {
+        if (shazamCountdownTimer) {
+            clearInterval(shazamCountdownTimer);
+            shazamCountdownTimer = null;
+        }
+    }
+
+    function startShazamAcceptanceCountdown(durationSec = 30) {
+        clearShazamCountdown();
+        const startTime = Date.now();
+        const totalMs = durationSec * 1000;
+
+        if (shazamCountdownBar) shazamCountdownBar.style.width = '100%';
+        if (shazamCountdownText) shazamCountdownText.textContent = `⏳ AUTO-DECLINE IN ${durationSec}s`;
+
+        shazamCountdownTimer = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const remaining = Math.max(0, totalMs - elapsed);
+            const secRemaining = Math.ceil(remaining / 1000);
+            const pct = Math.max(0, (remaining / totalMs) * 100);
+
+            if (shazamCountdownBar) shazamCountdownBar.style.width = `${pct.toFixed(1)}%`;
+            if (shazamCountdownText) shazamCountdownText.textContent = `⏳ AUTO-DECLINE IN ${secRemaining}s`;
+
+            if (remaining <= 0) {
+                clearShazamCountdown();
+                // 30 seconds elapsed without accept: auto-decline and show nothing on stream
+                stagedShazamTrack = null;
+                if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+                if (shazamEngineBadge) {
+                    shazamEngineBadge.textContent = 'READY';
+                    shazamEngineBadge.style.color = '#00e1ff';
+                    shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
+                }
+            }
+        }, 100);
+    }
+
+    async function triggerShazamRecognition(isSilentAuto = false) {
+        if (isShazaming || stagedShazamTrack) return;
+        if (navigator.onLine === false) {
+            if (!isSilentAuto && shazamEngineBadge) {
+                shazamEngineBadge.textContent = 'OFFLINE';
+                shazamEngineBadge.style.color = '#8899aa';
+            }
+            return;
+        }
+
+        isShazaming = true;
+        if (btnShazamListen) {
             btnShazamListen.disabled = true;
             btnShazamListen.style.opacity = '0.6';
-            if (shazamRadarBox) shazamRadarBox.style.display = 'block';
+        }
+        if (shazamRadarBox) shazamRadarBox.style.display = 'block';
+        if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+        if (shazamEngineBadge) {
+            shazamEngineBadge.textContent = 'LISTENING';
+            shazamEngineBadge.style.color = '#00e1ff';
+            shazamEngineBadge.style.borderColor = '#00e1ff';
+        }
+        if (shazamProgressBar) shazamProgressBar.style.width = '0%';
+        if (shazamListenStatus) shazamListenStatus.textContent = '🎧 LISTENING TO LIVE AUDIO... (4s)';
+
+        try {
+            if (!audioProcessor) {
+                audioProcessor = await setupAudio((devs, activeId) => {
+                    updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
+                });
+            }
+
+            const audioData = await audioProcessor.captureSample(4.0, (progress, remainingSec) => {
+                if (shazamProgressBar) shazamProgressBar.style.width = `${Math.round(progress * 100)}%`;
+                if (shazamListenStatus) shazamListenStatus.textContent = `🎧 LISTENING TO LIVE AUDIO... (${remainingSec}s)`;
+            });
+
+            if (shazamListenStatus) shazamListenStatus.textContent = `🧠 ANALYZING ACOUSTIC FINGERPRINT...`;
+            if (shazamEngineBadge) shazamEngineBadge.textContent = 'ANALYZING';
+
+            // Call Shazam service with local dev & bridge server fallback
+            const payload = { audioBase64: audioData.base64, samples: audioData.samples };
+            const endpoints = [
+                '/api/shazam',
+                `http://${window.location.hostname || 'localhost'}:8080/api/shazam`
+            ];
+
+            let data = null;
+            let lastErr = null;
+            for (const endpoint of endpoints) {
+                try {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 12000);
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(payload),
+                        signal: controller.signal
+                    });
+                    clearTimeout(timeoutId);
+                    if (res.ok) {
+                        data = await res.json();
+                        break;
+                    }
+                } catch (e) {
+                    lastErr = e;
+                }
+            }
+
+            if (!data) {
+                throw (lastErr || new Error('Shazam service unavailable.'));
+            }
+
+            if (data.success && data.match) {
+                stagedShazamTrack = {
+                    title: data.match.title,
+                    artist: data.match.artist,
+                    genre: data.match.genre || 'Identified Track',
+                    coverart: data.match.coverart || '',
+                    album: data.match.album || ''
+                };
+
+                if (shazamMatchTitle) shazamMatchTitle.textContent = stagedShazamTrack.title;
+                if (shazamMatchArtist) shazamMatchArtist.textContent = stagedShazamTrack.artist;
+                if (shazamMatchGenre) shazamMatchGenre.textContent = stagedShazamTrack.genre;
+
+                if (stagedShazamTrack.coverart && shazamMatchArt) {
+                    shazamMatchArt.src = stagedShazamTrack.coverart;
+                    shazamMatchArt.style.display = 'block';
+                    if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'none';
+                } else {
+                    if (shazamMatchArt) shazamMatchArt.style.display = 'none';
+                    if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'block';
+                }
+
+                if (shazamRadarBox) shazamRadarBox.style.display = 'none';
+                if (shazamCandidateCard) shazamCandidateCard.style.display = 'block';
+                if (shazamEngineBadge) {
+                    shazamEngineBadge.textContent = 'CONFIRM TRACK';
+                    shazamEngineBadge.style.color = '#00ffcc';
+                    shazamEngineBadge.style.borderColor = '#00ffcc';
+                }
+
+                // Start 30-second acceptance countdown bar in performance deck
+                startShazamAcceptanceCountdown(30);
+            } else {
+                // If Shazam cannot match and there is no deck info: quietly reset without any popup!
+                if (shazamRadarBox) shazamRadarBox.style.display = 'none';
+                if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+                if (shazamEngineBadge) {
+                    shazamEngineBadge.textContent = 'READY';
+                    shazamEngineBadge.style.color = '#00e1ff';
+                    shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
+                }
+            }
+        } catch (err) {
+            console.warn('[Shazam Notice]', err.message);
+            if (shazamRadarBox) shazamRadarBox.style.display = 'none';
             if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
             if (shazamEngineBadge) {
-                shazamEngineBadge.textContent = 'LISTENING';
+                shazamEngineBadge.textContent = 'READY';
                 shazamEngineBadge.style.color = '#00e1ff';
-                shazamEngineBadge.style.borderColor = '#00e1ff';
+                shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
             }
-            if (shazamProgressBar) shazamProgressBar.style.width = '0%';
-            if (shazamListenStatus) shazamListenStatus.textContent = '🎧 LISTENING TO LIVE AUDIO... (4s)';
-
-            try {
-                if (!audioProcessor) {
-                    audioProcessor = await setupAudio((devs, activeId) => {
-                        updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
-                    });
-                }
-
-                const audioData = await audioProcessor.captureSample(4.0, (progress, remainingSec) => {
-                    if (shazamProgressBar) shazamProgressBar.style.width = `${Math.round(progress * 100)}%`;
-                    if (shazamListenStatus) shazamListenStatus.textContent = `🎧 LISTENING TO LIVE AUDIO... (${remainingSec}s)`;
-                });
-
-                if (shazamListenStatus) shazamListenStatus.textContent = `🧠 ANALYZING ACOUSTIC FINGERPRINT...`;
-                if (shazamEngineBadge) shazamEngineBadge.textContent = 'ANALYZING';
-
-                // Call Shazam service with local dev & bridge server fallback
-                const payload = { audioBase64: audioData.base64, samples: audioData.samples };
-                const endpoints = [
-                    '/api/shazam',
-                    `http://${window.location.hostname || 'localhost'}:8080/api/shazam`
-                ];
-
-                let data = null;
-                let lastErr = null;
-                for (const endpoint of endpoints) {
-                    try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(() => controller.abort(), 12000);
-                        const res = await fetch(endpoint, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify(payload),
-                            signal: controller.signal
-                        });
-                        clearTimeout(timeoutId);
-                        if (res.ok) {
-                            data = await res.json();
-                            break;
-                        }
-                    } catch (e) {
-                        lastErr = e;
-                    }
-                }
-
-                if (!data) {
-                    throw (lastErr || new Error('Shazam service unavailable. Please ensure server is running.'));
-                }
-
-                if (data.success && data.match) {
-                    stagedShazamTrack = {
-                        title: data.match.title,
-                        artist: data.match.artist,
-                        genre: data.match.genre || 'Identified Track',
-                        coverart: data.match.coverart || '',
-                        album: data.match.album || ''
-                    };
-
-                    if (shazamMatchTitle) shazamMatchTitle.textContent = stagedShazamTrack.title;
-                    if (shazamMatchArtist) shazamMatchArtist.textContent = stagedShazamTrack.artist;
-                    if (shazamMatchGenre) shazamMatchGenre.textContent = stagedShazamTrack.genre;
-
-                    if (stagedShazamTrack.coverart && shazamMatchArt) {
-                        shazamMatchArt.src = stagedShazamTrack.coverart;
-                        shazamMatchArt.style.display = 'block';
-                        if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'none';
-                    } else {
-                        if (shazamMatchArt) shazamMatchArt.style.display = 'none';
-                        if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'block';
-                    }
-
-                    if (shazamRadarBox) shazamRadarBox.style.display = 'none';
-                    if (shazamCandidateCard) shazamCandidateCard.style.display = 'block';
-                    if (shazamEngineBadge) {
-                        shazamEngineBadge.textContent = 'MATCH FOUND';
-                        shazamEngineBadge.style.color = '#00ffcc';
-                        shazamEngineBadge.style.borderColor = '#00ffcc';
-                    }
-                    showToast(`✓ Shazam Identified: ${stagedShazamTrack.artist} - ${stagedShazamTrack.title}`);
-                } else {
-                    if (shazamRadarBox) shazamRadarBox.style.display = 'none';
-                    if (shazamEngineBadge) {
-                        shazamEngineBadge.textContent = 'NO MATCH';
-                        shazamEngineBadge.style.color = '#ffaa00';
-                        shazamEngineBadge.style.borderColor = '#ffaa00';
-                    }
-                    showToast(data.message || 'No track match found in Shazam database. Try letting the drop play.');
-                }
-            } catch (err) {
-                console.error('[Shazam Error]', err);
-                if (shazamRadarBox) shazamRadarBox.style.display = 'none';
-                if (shazamEngineBadge) {
-                    shazamEngineBadge.textContent = 'ERROR';
-                    shazamEngineBadge.style.color = '#ff3366';
-                    shazamEngineBadge.style.borderColor = '#ff3366';
-                }
-                showToast(err.message || 'Could not record live audio for Shazam.');
-            } finally {
-                isShazaming = false;
+            // Do not show error popup on live deck
+        } finally {
+            isShazaming = false;
+            if (btnShazamListen) {
                 btnShazamListen.disabled = false;
                 btnShazamListen.style.opacity = '1';
             }
+        }
+    }
+
+    if (btnShazamListen) {
+        btnShazamListen.addEventListener('click', () => {
+            triggerShazamRecognition(false);
         });
     }
 
-    // 2nd Click Confirm: Publish verified match to stream
+    // Accept Track: Publishes verified match to stream overlay
     if (btnShazamPublish) {
         btnShazamPublish.addEventListener('click', () => {
+            clearShazamCountdown();
             if (!stagedShazamTrack) return;
             const currentTrack = {
                 title: stagedShazamTrack.title,
@@ -1112,7 +1175,7 @@ async function init() {
                 bpm: Number(bpmVal?.textContent) || 126.0
             };
             showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
-            showToast(`⚡ Published Shazam Match: ${currentTrack.artist} - ${currentTrack.title}`);
+            showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
 
             broadcastSync({
                 type: 'pop_track_banner_now',
@@ -1126,6 +1189,7 @@ async function init() {
                 shazamEngineBadge.style.color = '#00ffcc';
                 shazamEngineBadge.style.borderColor = '#00ffcc';
             }
+            stagedShazamTrack = null;
         });
     }
 
@@ -1140,9 +1204,10 @@ async function init() {
         });
     }
 
-    // Discard match
+    // Decline / Dismiss candidate match (nothing is published to stream)
     if (btnShazamDiscard) {
         btnShazamDiscard.addEventListener('click', () => {
+            clearShazamCountdown();
             stagedShazamTrack = null;
             if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
             if (shazamEngineBadge) {
@@ -4666,6 +4731,17 @@ async function init() {
                 const subBeatFraction = Math.min(1.0, Math.max(0, elapsed / beatPeriodMs));
                 const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
                 phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
+            }
+        }
+
+        // If no hardware decks are connected and internet is available, allow Shazam to attempt recognition
+        if (!isHardwareDeckStreaming && navigator.onLine && !isShazaming && !stagedShazamTrack) {
+            const currentAudioEnergy = (data.overall || 0) + (data.smoothedBass || 0);
+            if (currentAudioEnergy > 0.12) {
+                if (now - lastAutoShazamAttemptTime > 60000) {
+                    lastAutoShazamAttemptTime = now;
+                    triggerShazamRecognition(true);
+                }
             }
         }
 

@@ -281,7 +281,7 @@ const VolumetricPinspotShader = {
 
 // -------------------------------------------------------------------------
 // Volumetric Shaded Blue Reflection Light Rays & Mie Scattering Shader (FX 22: Pumpkin Disco)
-// Flat Faceted Light Blade Profile (Zero Round / Cylindrical Cone Nature)
+// Wide, Graceful, Flat Faceted Light Blade Profile (Zero Round / Cone Nature)
 // -------------------------------------------------------------------------
 const PumpkinVolumetricRaysShader = {
     uniforms: {
@@ -327,39 +327,39 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Transverse Profile Across Flat Mirror Reflection Blade (Luminous Central Spine + Soft Feathered Edges)
+            // 1. Transverse Profile Across Wide Graceful Reflection Blade (Silky Soft Edges + Radiant Core)
             float span = sin(vUv.x * 3.14159265);
-            float softEdges = smoothstep(0.0, 0.38, span);
-            float hotSpine = pow(span, 3.6);
+            float softEdges = smoothstep(0.0, 0.45, span);
+            float hotSpine = pow(span, 3.2);
 
             // 2. Grazing Angle Soft Glow (Non-rounded flat blade lighting)
             float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
-            float viewGlow = 0.65 + 0.35 * (1.0 - viewFacing);
+            float viewGlow = 0.70 + 0.30 * (1.0 - viewFacing);
 
-            // 3. Longitudinal Attenuation along Beam (Bloom at Mirror Origin -> Soft Feathered Tip)
+            // 3. Longitudinal Attenuation along Beam (Bloom at Mirror Origin -> Feathered Tip)
             float y = vUv.y;
-            float sourceGlow = exp(-y * 2.8) * 1.8;
-            float beamLengthFade = smoothstep(1.0, 0.10, y);
-            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.04, y);
+            float sourceGlow = exp(-y * 2.2) * 1.6;
+            float beamLengthFade = smoothstep(1.0, 0.20, y);
+            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.03, y);
 
             // 4. Facet Reflection Caustic Shimmer & Micro-Sparkle
-            float shimmerWave1 = sin(y * 22.0 - uTime * (4.2 + uTreble * 6.0) + vUv.x * 12.0);
-            float shimmerWave2 = cos(y * 36.0 + uTime * 5.2 - vUv.x * 16.0);
-            float causticShimmer = 0.72 + 0.28 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 1.3);
+            float shimmerWave1 = sin(y * 18.0 - uTime * (3.0 + uTreble * 4.5) + vUv.x * 8.0);
+            float shimmerWave2 = cos(y * 28.0 + uTime * 4.0 - vUv.x * 10.0);
+            float causticShimmer = 0.78 + 0.22 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 1.0);
 
             // 5. Subtle Atmospheric Volumetric Smoke Haze Drift
-            float smoke = sin(vPositionWorld.x * 0.12 + vPositionWorld.y * 0.16 + uTime * 0.30) * 
-                          cos(vPositionWorld.z * 0.12 - uTime * 0.22);
-            float hazeDensity = 0.88 + 0.12 * smoke;
+            float smoke = sin(vPositionWorld.x * 0.10 + vPositionWorld.y * 0.12 + uTime * 0.25) * 
+                          cos(vPositionWorld.z * 0.10 - uTime * 0.18);
+            float hazeDensity = 0.90 + 0.10 * smoke;
 
-            // 6. Total Alpha Composition (Super-blended, razor-sharp shimmering flat reflection)
-            float baseAlpha = (softEdges * 0.70 + hotSpine * 0.88) * viewGlow * longProfile * causticShimmer * hazeDensity;
-            float alpha = baseAlpha * (0.58 + uPulse * 0.62 + uTreble * 0.35) * uIntensity * 0.70;
+            // 6. Total Alpha Composition (Super-blended, graceful flat reflection)
+            float baseAlpha = (softEdges * 0.72 + hotSpine * 0.88) * viewGlow * longProfile * causticShimmer * hazeDensity;
+            float alpha = baseAlpha * (0.60 + uPulse * 0.55 + uTreble * 0.30) * uIntensity * 0.72;
             if (alpha < 0.002) discard;
 
             // 7. Prismatic / Silvery-Sapphire Color Gradient
-            float coreBlend = clamp(hotSpine * 0.92 + sourceGlow * 0.45 + uPulse * 0.4 + uTreble * 0.35, 0.0, 1.0);
-            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.7 + uTreble * 0.5);
+            float coreBlend = clamp(hotSpine * 0.88 + sourceGlow * 0.40 + uPulse * 0.35 + uTreble * 0.30, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.6 + uTreble * 0.4);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7388,7 +7388,7 @@ export function createVFXScene(container) {
     pumpkinPivot.add(pumpkinRaySystem); // Attached to pumpkinPivot so all rays spin synchronously in 3D!
 
     // Procedural Cross-Plane Flat Light Ribbon Blade Geometry (2 Intersecting Planar Sheets = Zero Roundness)
-    function createCrossPlaneRayGeometry(baseWidth = 0.24, tipWidth = 2.6, length = 36.0) {
+    function createCrossPlaneRayGeometry(baseWidth = 0.55, tipWidth = 5.8, length = 42.0) {
         const geo = new THREE.BufferGeometry();
         const halfBase = baseWidth * 0.5;
         const halfTip = tipWidth * 0.5;
@@ -7446,9 +7446,9 @@ export function createVFXScene(container) {
         return geo;
     }
 
-    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.24, 2.6, 36.0);
+    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.55, 5.8, 42.0);
 
-    const numPumpkinRays = 36;
+    const numPumpkinRays = 14;
     const pumpkinRayMeshes = [];
 
     const rayPalettes = [
@@ -7539,55 +7539,7 @@ export function createVFXScene(container) {
     pOrangeFill.position.set(0.0, -3.0, 8.0);
     gPumpkinDiscoBall.add(pOrangeFill);
 
-    // 7. 1,200 Specular Starburst Reflection Glints
-    const pGlintCount = 1200;
-    const pGlintGeo = new THREE.BufferGeometry();
-    const pGlintPos = new Float32Array(pGlintCount * 3);
-    const pGlintCol = new Float32Array(pGlintCount * 3);
-    const pGlintThetas = new Float32Array(pGlintCount);
-    const pGlintPhis = new Float32Array(pGlintCount);
-    const pGlintBaseRads = new Float32Array(pGlintCount);
-
-    const pHues = [
-        new THREE.Color(0xffffff),
-        new THREE.Color(0x88ffff),
-        new THREE.Color(0x00ffff),
-        new THREE.Color(0x44aaff),
-        new THREE.Color(0xffaa00),
-        new THREE.Color(0xff6600),
-        new THREE.Color(0x0088ff)
-    ];
-
-    for (let i = 0; i < pGlintCount; i++) {
-        const theta = Math.random() * Math.PI * 2;
-        const phi = Math.acos((Math.random() * 2) - 1);
-        const r = 5.8 + Math.random() * 22.0;
-
-        pGlintThetas[i] = theta;
-        pGlintPhis[i] = phi;
-        pGlintBaseRads[i] = r;
-
-        pGlintPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
-        pGlintPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-        pGlintPos[i * 3 + 2] = r * Math.cos(phi);
-
-        const c = pHues[i % pHues.length];
-        pGlintCol[i * 3] = c.r; pGlintCol[i * 3 + 1] = c.g; pGlintCol[i * 3 + 2] = c.b;
-    }
-    pGlintGeo.setAttribute('position', new THREE.BufferAttribute(pGlintPos, 3));
-    pGlintGeo.setAttribute('color', new THREE.BufferAttribute(pGlintCol, 3));
-    const pGlintMat = new THREE.PointsMaterial({
-        size: 0.38,
-        map: starburstTex,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false
-    });
-    const glintSystemPumpkin = new THREE.Points(pGlintGeo, pGlintMat);
-    gPumpkinDiscoBall.add(glintSystemPumpkin);
-
-    // 8. 450 Floor & Room Mirror Reflection Sparkle Spots
+    // 7. 450 Floor & Room Mirror Reflection Sparkle Spots
     const pFloorSpotCount = 450;
     const pFloorGeo = new THREE.BufferGeometry();
     const pFloorPos = new Float32Array(pFloorSpotCount * 3);
@@ -9121,16 +9073,16 @@ export function createVFXScene(container) {
             const transientVal = audio.transientImpulse || 0;
             const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
 
-            // 1. Motorized Motor Spin (Y-axis) scaled by BPM & Music Energy
-            const spinVelocity = 0.42 * (currentBPM / 126.0) * (1.0 + (audio.smoothedBass || 0) * 0.40);
+            // 1. Motorized Motor Spin (Y-axis) - Gracefully reduced slow majestic spin
+            const spinVelocity = 0.14 * (currentBPM / 126.0) * (1.0 + (audio.smoothedBass || 0) * 0.20);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Subtle natural pendulum sway
-            pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.65) * 0.035;
-            pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.50) * 0.025;
+            // Subtle gentle natural pendulum sway
+            pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.40) * 0.015;
+            pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.35) * 0.012;
 
             // Subtle beat scale bounce on heavy kicks
-            const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.035 + (audio.isOnset ? 0.045 : 0.0);
+            const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.025 + (audio.isOnset ? 0.035 : 0.0);
             pumpkinMesh.scale.set(targetScale, targetScale, targetScale);
 
             // 2. Stage Pinspots & Facet Specular Lighting
@@ -9154,12 +9106,7 @@ export function createVFXScene(container) {
                 rObj.mat.uniforms.uIntensity.value = 0.90 + bassImpactVal;
             });
 
-            // 4. Pinspot Lights & Tile Specular Reflections
-            glintSystemPumpkin.rotation.y = pumpkinPivot.rotation.y;
-            glintSystemPumpkin.rotation.z = pumpkinPivot.rotation.z;
-            pGlintMat.size = 0.38 + (audio.smoothedTreble || 0) * 0.30 + (audio.isOnset ? 0.25 : 0.0);
-
-            // 5. Orbiting Floor & Room Caustic Reflection Spots
+            // 4. Orbiting Floor & Room Caustic Reflection Spots
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.05;
             pFloorMat.size = 0.55 + (audio.smoothedBass || 0) * 0.30;
 
