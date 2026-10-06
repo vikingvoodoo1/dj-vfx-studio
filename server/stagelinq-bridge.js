@@ -132,8 +132,67 @@ const nowPlayingService = new NowPlayingService({
 });
 nowPlayingService.init();
 
+import fs from 'fs';
+import path from 'path';
+
 // Setup HTTP + WebSocket Server
 const server = http.createServer((req, res) => {
+    const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+    if (reqUrl.pathname === '/api/media-list') {
+        const root = process.cwd();
+        const validExtensions = ['.mp4', '.webm', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp'];
+        const excludeFiles = ['.ds_store', 'philipshuelogo.png', 'engine-dj-logo.png'];
+
+        function scanFolder(folderRelPath, urlPrefix) {
+            const fullPath = path.resolve(root, folderRelPath);
+            const results = [];
+            if (fs.existsSync(fullPath)) {
+                try {
+                    const files = fs.readdirSync(fullPath);
+                    for (const file of files) {
+                        if (file.startsWith('.') || excludeFiles.includes(file.toLowerCase())) continue;
+                        const ext = path.extname(file).toLowerCase();
+                        if (!validExtensions.includes(ext)) continue;
+                        const isVideo = ext === '.mp4' || ext === '.webm';
+                        const title = path.basename(file, ext);
+                        results.push({
+                            url: `${urlPrefix}/${file}`,
+                            title: title,
+                            isVideo: isVideo,
+                            filename: file,
+                            sub: isVideo ? 'Video' : 'Logo'
+                        });
+                    }
+                } catch (e) {
+                    console.error('[Media Scanner Error]', e);
+                }
+            }
+            return results;
+        }
+
+        const djMap = new Map();
+        scanFolder('public/images/logo', '/images/logo').forEach(item => djMap.set(item.url, item));
+        scanFolder('images/logo', '/images/logo').forEach(item => {
+            if (!djMap.has(item.url)) djMap.set(item.url, item);
+        });
+
+        const stationMap = new Map();
+        scanFolder('public/images/station_logos', '/images/station_logos').forEach(item => stationMap.set(item.url, item));
+        scanFolder('images/station logos', '/images/station_logos').forEach(item => {
+            if (!stationMap.has(item.url)) stationMap.set(item.url, item);
+        });
+
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+            dj_logos: Array.from(djMap.values()),
+            station_logos: Array.from(stationMap.values())
+        }));
+        return;
+    }
+
     // Handle Universal REST API endpoints (/api/track, /api/nowplaying, /api/status)
     if (nowPlayingService.handleHttpRequest(req, res)) {
         return;

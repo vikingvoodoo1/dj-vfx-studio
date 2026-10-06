@@ -431,6 +431,10 @@ async function init() {
         tabPanes.forEach(pane => {
             pane.classList.toggle('active', pane.id === `pane-${tabId}`);
         });
+
+        if (tabId === 'branding') {
+            syncMediaFolders().catch(() => {});
+        }
     }
 
     // Activity Bar Tab Click Listeners
@@ -1311,6 +1315,7 @@ async function init() {
             subtabContentStation.classList.toggle('active', subtabId === 'station');
             subtabContentStation.style.display = subtabId === 'station' ? 'block' : 'none';
         }
+        syncMediaFolders().catch(() => {});
     }
 
     if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
@@ -1376,7 +1381,7 @@ async function init() {
         });
     }
 
-    function addDjLogoCard(url, title, isVideo = true, selectImmediately = true, id = null) {
+    function addDjLogoCard(url, title, isVideo = true, selectImmediately = true, id = null, subLabel = null) {
         if (!djLogosContainer) return;
 
         const existing = djLogosContainer.querySelector(`.dj-card[data-dj-url="${CSS.escape(url)}"]`);
@@ -1411,7 +1416,7 @@ async function init() {
 
         const subSpan = document.createElement('span');
         subSpan.className = 'dj-card-sub';
-        subSpan.textContent = isVideo ? 'Custom Video' : 'Custom Logo';
+        subSpan.textContent = subLabel || (id ? (isVideo ? 'Custom Video' : 'Custom Logo') : (isVideo ? 'Video' : 'DJ Logo'));
 
         info.appendChild(titleSpan);
         info.appendChild(subSpan);
@@ -1894,7 +1899,7 @@ async function init() {
         });
     }
 
-    function addStationLogoCard(url, title, isVideo = false, selectImmediately = true, id = null) {
+    function addStationLogoCard(url, title, isVideo = false, selectImmediately = true, id = null, subLabel = null) {
         if (!stationLogosContainer) return;
 
         const existing = stationLogosContainer.querySelector(`.station-card[data-station-url="${CSS.escape(url)}"]`);
@@ -1929,7 +1934,7 @@ async function init() {
 
         const subSpan = document.createElement('span');
         subSpan.className = 'station-card-sub';
-        subSpan.textContent = isVideo ? 'Custom Video' : 'Custom Logo';
+        subSpan.textContent = subLabel || (id ? (isVideo ? 'Custom Video' : 'Custom Logo') : (isVideo ? 'Video' : 'Station Logo'));
 
         info.appendChild(titleSpan);
         info.appendChild(subSpan);
@@ -1961,22 +1966,47 @@ async function init() {
         }
     }
 
-    // Initialize Persistent Media Libraries from IndexedDB
+    // Fetch and Sync Media from Server Directories & IndexedDB
+    async function syncMediaFolders() {
+        try {
+            const resp = await fetch('/api/media-list', { signal: AbortSignal.timeout(3000) });
+            if (resp.ok) {
+                const data = await resp.json();
+                if (data.dj_logos && Array.isArray(data.dj_logos)) {
+                    data.dj_logos.forEach(item => {
+                        addDjLogoCard(item.url, item.title, item.isVideo, false, null, item.sub || (item.isVideo ? 'Video' : 'DJ Logo'));
+                    });
+                }
+                if (data.station_logos && Array.isArray(data.station_logos)) {
+                    data.station_logos.forEach(item => {
+                        addStationLogoCard(item.url, item.title, item.isVideo, false, null, item.sub || (item.isVideo ? 'Video' : 'Station Logo'));
+                    });
+                }
+            }
+        } catch (e) {
+            // Server endpoint unavailable (offline/static mode) - graceful fallback
+        }
+    }
+
+    // Initialize Persistent Media Libraries from Directories and IndexedDB
     async function initStoredMediaLibraries() {
         try {
-            // Load DJ Media from IndexedDB
+            // 1. Scan filesystem folders
+            await syncMediaFolders();
+
+            // 2. Load DJ Media from IndexedDB (custom uploads)
             const storedDj = await MediaDB.getAll('dj_logos');
             storedDj.forEach(item => {
                 addDjLogoCard(item.dataUrl, item.title, item.isVideo, false, item.id);
             });
 
-            // Load Station Logos from IndexedDB
+            // 3. Load Station Logos from IndexedDB (custom uploads)
             const storedStation = await MediaDB.getAll('station_logos');
             storedStation.forEach(item => {
                 addStationLogoCard(item.dataUrl, item.title, item.isVideo, false, item.id);
             });
 
-            // Restore active saved choices
+            // 4. Restore active saved choices
             const savedDj = localStorage.getItem('dj_vfx_active_dj_media');
             if (savedDj) {
                 try {
