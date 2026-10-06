@@ -31,3 +31,6 @@ ehthumbs.db
 .env
 .env.local
 .env.*.local
+
+# Scratch & temporary testing files
+scratch/

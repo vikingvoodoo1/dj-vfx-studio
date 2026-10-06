@@ -7,7 +7,11 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 ## 🌟 Key Highlights
 
 - **22 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
-- **🎨 Dynamic UI Theme & Aesthetic Switcher**: 5 curated visual themes (**Cyber Glass**, **Cyberpunk Matrix**, **Obsidian Stealth**, **Titanium Pioneer Pro**, and **Analog Synthwave Studio**) with custom SVG icon sets, zero-FOUC persistence, and CSS variable styling.
+- **🖼️ 3-Layer 3D Branding & Promo System**: Independent hardware-accelerated layers for **DJ Logo / Media (MP4/PNG)**, **Station / Broadcast Logo**, and **Event Flyer / Promo Graphics** with 9-way directional grid positioning, 3D spin/orbit/freeroam physics, custom display modes, and dark contrast shields.
+- **⏱️ Multi-Layer Automation & Pop-Up Scheduler**: Interval scheduling for branding layers with customizable frequency (`30s` to `30m`), display duration (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
+- **🎬 10 Cinematic Transition Effects**: Smooth Exponential Fade, Scale Zoom & Spring Pop, Slide In/Down/Up, Neon Strobe Multi-Burst, Cyber Hologram Glitch, 3D Spin Vortex, 3D Perspective Flip Card, and Instant Cut.
+- **🎵 Shazam AI Live Audio Recognition & Album Art**: Instant 1-click live audio listening and Shazam fingerprint matching, with high-resolution Apple Music / iTunes album artwork retrieval, manual track injection, and animated vinyl broadcast banners.
+- **🎨 Dynamic UI Theme & Aesthetic Switcher**: 6 curated visual themes (**Cyber Glass**, **Studio Hardware Pro 🎛️**, **Cyberpunk Matrix**, **Obsidian Stealth**, **Titanium Pioneer Pro**, and **Analog Synthwave Studio**) with custom SVG icon sets, zero-FOUC persistence, and CSS variable styling.
 - **Universal Multi-Platform DJ Hardware Bridge**: Zero-latency companion bridge supporting **Denon DJ StageLinq** (Prime/Engine OS), **Pioneer Pro DJ Link / Rekordbox** (CDJ/XDJ UDP beat packets), **Native Instruments Traktor Pro** (session watcher & port 8001 metadata), and **Universal REST / File Drop API** (Serato & VirtualDJ).
 - **💡 Philips Hue Smart Lighting Engine**: Ultra-low-latency lighting synchronization with 4 dedicated reaction modes, high-dynamic-range punch, independent physical room power toggle (`💡 LIGHTS: ON / OFF`), multi-room discovery, and the **⚡ Kick Pop White Strobe** burst system.
 - **Studio-Grade Audio & Loudness Metering**: High-resolution FFT spectrum analysis (Bass, Mid, Treble), transient onset detection, ITU-R BS.1770 LUFS loudness metering, dBFS true-peak gauges, peak-hold needles, and clip alerts.
@@ -52,6 +56,50 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ---
 
+## 🖼️ 3-Layer Branding, Pop-Up Automation & Transition Engine
+
+The **Branding & Overlays** panel provides full multi-layer graphic management:
+
+### 1. Layers & Media Storage
+- **🎧 DJ Logo / Animated Video**: Supports MP4 video loops (e.g. JK McLaren Shock) and PNG/JPG graphics with persistent IndexedDB storage (`dj_logos` store).
+- **📻 Station / Broadcast Logo**: Dedicated radio/station watermark layer with persistent IndexedDB storage (`station_logos` store).
+- **🖼️ Event Flyer / Promo Graphics**: High-impact event posters and video flyers with auto-scanning from `public/images/flyers/` and persistent IndexedDB storage (`flyers` store).
+
+### 2. Multi-Layer Automation & Pop-Up Scheduler
+Configure independent schedules for each layer:
+- **Display Modes**: `🟢 Always Visible (Continuous)` or `⏱️ Periodic Pop-Up (Scheduled Interval)`.
+- **Interval Frequency**: `30s`, `1m`, `2m`, `3m`, `5m`, `10m`, `15m`, `30m`.
+- **Show Duration**: `5s`, `10s`, `15s`, `20s`, `30s`, `45s`, `60s`.
+- **Manual Action Triggers**: `⚡ POP NOW` (instant trigger for current duration) and `⏹️ POP OFF` (dismiss with exit transition).
+
+### 3. 🎬 10 Cinematic Transition Effects
+1. **✨ Smooth Exponential Fade** — Soft ease-in/out opacity curve.
+2. **🎯 Scale Zoom & Spring Pop** — Explosive elastic zoom from 0 to target size.
+3. **⬇️ Slide Down from Top** — Slides smoothly in from above the ceiling.
+4. **⬆️ Slide Up from Bottom** — Rises up from stage level.
+5. **➡️ Slide In from Left** — Sweeps horizontally from stage left.
+6. **⬅️ Slide In from Right** — Sweeps horizontally from stage right.
+7. **⚡ Neon Strobe Multi-Burst** — Multi-phase high-speed flash and strobe reveal.
+8. **👾 Cyber Hologram Glitch** — Jittery chromatic holographic scanlines entrance.
+9. **🌀 3D Spin & Zoom Vortex** — Rotating 3D vortex scaling in from depth.
+10. **🃏 3D Perspective Flip Card** — Flips forward 90° on the X-axis like a card.
+11. **⚡ Instant Cut** — Immediate hard cut with zero transition time.
+
+---
+
+## 🎵 Shazam AI Live Track Recognition & Banner System
+
+- **🎙️ Live Audio Listening**: Click **`🎙️ LISTEN WITH SHAZAM`** to sample incoming microphone or line-in audio for 4 seconds.
+- **⚡ Shazam Fingerprint Engine**: Queries the global music database with zero subscription or API key required.
+- **🛡️ Review & Approval Gatekeeper**: Prevents misidentifications on microphone bleed:
+  - **`⚡ SEND LIVE`**: Instantly publishes the identified track and triggers the on-screen banner.
+  - **`✏️ EDIT IN MANUAL`**: Loads the recognized artist and title into manual fields for quick tweaks.
+  - **`🗑️ DISCARD`**: Rejects the sample without publishing.
+- **🎨 Automatic High-Res Cover Art**: Fetches official album artwork from Apple Music / iTunes API with fallback to high-resolution procedural vinyl record artwork.
+- **🎛️ Manual Track Injection**: Type any custom track title and artist with custom show duration and broadcast sync.
+
+---
+
 ## 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine
 
 Customize the look and feel of the control console with 6 curated themes:
@@ -64,8 +112,6 @@ Customize the look and feel of the control console with 6 curated themes:
 | **Obsidian Stealth** | Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents | Minimalist monochromatic geometric line icons with zero distraction |
 | **Titanium Pioneer Pro** | Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks | Recessed tactile hardware cue button keys with illuminated amber LEDs |
 | **Analog Synthwave Studio** | Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges | Warm vintage phosphor glowing icons with analog studio styling |
-
-**Quick Switch**: Click **`🎨 THEME`** in the top bar, press **`Alt + T`**, or select a card in the **Calibration & Glow** tab.
 
 ---
 
@@ -137,16 +183,18 @@ npm run preview
 | Key | Action |
 |---|---|
 | `Space` | Manual Beat Strobe / Xenon Flash Burst |
-| `0` – `9` | Instant Scene Switch (FX 0 through FX 9) |
-| `Alt + 1` – `Alt + 7` | Switch Activity Bar Tab (Audio, FX, Glow/Theme, Logo, Hue, OBS, About) |
-| `Alt + A` | Toggle Show All Panes (Scroll View) |
-| `Alt + T` | Quick Cycle UI Theme & Icon Style |
+| `0` – `9`, `-`, `=`, `Q` – `P` | Instant Scene Switch (All 22 Presets) |
+| `Alt + 1` – `Alt + 6` | Switch Master Consoles (Perform, FX Bank, Branding, Now Playing, Setup, About) |
+| `Alt + A` | Toggle Show All Panes (Multi-Pane Scroll View) |
 | `Arrow Left` / `Arrow Right` | Previous / Next Visual Effect Preset |
 | `A` | Toggle Auto-VJ Mode |
 | `L` | Toggle DJ Logo Layer Visibility |
 | `S` | Toggle Station Logo Layer Visibility |
-| `C` | Toggle Clean Display Mode (Hide all HUD overlays for clean video output) |
-| `H` | Toggle HUD Overlays & Control Panel |
+| `Y` / `Shift + F` | Toggle Event Flyer / Promo Layer Visibility |
+| `F` | Toggle Fullscreen (Stage / External HDMI Output) |
+| `C` | Toggle Clean Display Mode (Hide HUD overlays for clean video feed) |
+| `H` | Toggle HUD Console & Toolbar |
+| `O` / `Shift + O` | Open OBS Manager / Toggle OBS Mute |
 
 ---
 

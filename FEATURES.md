@@ -1,12 +1,79 @@
 # 📋 DJ VFX Studio — Feature Matrix & Complete Technical Documentation
 
-This document tracks all features, architectural components, lighting integrations, and recent enhancements for **DJ VFX Studio**.
+This document tracks all features, architectural components, lighting integrations, branding engines, and recent enhancements for **DJ VFX Studio**.
 
 ---
 
 ## 🚀 Complete Feature Catalog
 
-### 1. 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine *(NEW)*
+### 1. 🖼️ 3-Layer 3D Branding & Event Promo Engine *(NEW & ENHANCED)*
+- [x] **3 Independent Hardware-Accelerated 3D Layers**:
+  1. **🎧 DJ Logo & Animated Video Layer**: Supports MP4 video loops (e.g. JK McLaren Shock) and PNG/JPG images with IndexedDB persistence (`dj_logos` store).
+  2. **📻 Radio & Station Logo Layer**: Dedicated broadcasting watermark layer with folder auto-scanning (`public/images/station_logos/`) and IndexedDB storage (`station_logos` store).
+  3. **🖼️ Event Flyer & Promo Graphics Layer**: Dedicated event flyer and promotional poster layer with folder auto-scanning (`public/images/flyers/`) and IndexedDB storage (`flyers` store).
+- [x] **9-Way Directional Grid Positioning**: Precise anchor snapping (Top-Left, Top-Center, Top-Right, Center-Left, Center, Center-Right, Bottom-Left, Bottom-Center, Bottom-Right) with proportional screen aspect margin scaling.
+- [x] **6 Display Presentation Modes**:
+  - `Overlay (HUD)`: Crisp 2D plane anchored to viewport.
+  - `Hologram`: Chromatic aberration scanlines with additive glow.
+  - `Flat 2D`: Direct camera-facing billboard plane.
+  - `Cylinder Curved`: 3D panoramic curved surface wrapping around the center stage.
+  - `Floating Billboard`: Depth-positioned stage card reacting to camera motion.
+  - `Backdrop Stage`: Stadium-scale background wall behind all 3D geometry.
+- [x] **6 Real-Time Blend Modes**:
+  - `0: Alpha Blend` — Standard transparent cutout.
+  - `1: Additive Glow` — High-energy neon luminescence.
+  - `2: Screen` — Soft photographic highlight blending.
+  - `3: Multiply` — Dark contrast ink blending.
+  - `4: Color Dodge` — Vibrant electric highlight boost.
+  - `5: Soft Light` — Cinematic filmic grading.
+- [x] **3D Rotation & Movement Engine**:
+  - `Off`: Front-facing static placement.
+  - `3D Centered Spin`: Smooth continuous horizontal Y-axis rotation.
+  - `Depth Orbit`: 3D perspective orbital rotation with depth perspective.
+  - `Free-Roam Drift`: Organic Lissajous figure-8 3D stage drift across the screen.
+- [x] **Contrast & Anti-Bleed Dark Shield**: Procedural radial gradient backdrop mesh placed behind graphics to guarantee 100% legibility over complex, vibrant 3D visualizers.
+
+---
+
+### 2. ⏱️ Multi-Layer Automation & Pop-Up Scheduler *(NEW)*
+- [x] **Continuous vs Periodic Pop-Up Modes**: Toggle between continuous display and automated timed pop-ups for each layer independently.
+- [x] **Configurable Interval Frequency**: `30s`, `1m`, `2m`, `3m`, `5m`, `10m`, `15m`, `30m`.
+- [x] **Configurable Show Duration**: `5s`, `10s`, `15s`, `20s`, `30s`, `45s`, `60s`.
+- [x] **Manual Action Triggers**:
+  - `⚡ POP NOW`: Instantly pops the graphic on screen for the selected duration with full entrance and exit transitions.
+  - `⏹️ POP OFF`: Dismisses the layer immediately with smooth exit transition.
+
+---
+
+### 3. 🎬 10 Cinematic Transition Effects *(NEW)*
+- [x] **10 Built-In Transition Styles**:
+  1. `✨ Smooth Exponential Fade`: Exponential ease-in/out opacity curve.
+  2. `🎯 Scale Zoom & Spring Pop`: Elastic spring zoom from 0 to 1.15x before resting at target scale.
+  3. `⬇️ Slide Down from Top`: Smooth ceiling entrance with velocity damping.
+  4. `⬆️ Slide Up from Bottom`: Stage-level rise-up entrance.
+  5. `➡️ Slide In from Left`: Stage-left horizontal entrance.
+  6. `⬅️ Slide In from Right`: Stage-right horizontal entrance.
+  7. `⚡ Neon Strobe Multi-Burst`: Multi-phase strobe flash sequence.
+  8. `👾 Cyber Hologram Glitch`: Chromatic scanline jitter with horizontal displacement.
+  9. `🌀 3D Spin & Zoom Vortex`: 720-degree rotating vortex scaling in from depth.
+  10. `🃏 3D Perspective Flip Card`: 90-degree perspective flip card animation on the X-axis.
+  11. `⚡ Instant Cut`: Hard cut with zero latency.
+
+---
+
+### 4. 🎵 Shazam AI Live Audio Recognition & Track Banner System *(NEW)*
+- [x] **Live Microphone / Line-In Audio Sampling**: 4-second audio chunk capture directly from selected audio input.
+- [x] **Shazam Global Database Fingerprinting**: Automatic signature matching with zero subscription or third-party API keys required.
+- [x] **Review & Approval Gatekeeper**:
+  - `⚡ SEND LIVE`: Approves recognized match and triggers on-screen banner.
+  - `✏️ EDIT IN MANUAL`: Loads match into manual fields for instant DJ corrections.
+  - `🗑️ DISCARD`: Dismisses unrecognized or bleed samples.
+- [x] **Automatic High-Res Cover Artwork Fetching**: Official artwork retrieval via Apple Music / iTunes API with fallback to rotating 3D vinyl disc.
+- [x] **Manual Track Injection**: Type any custom track title and artist with custom show duration and broadcast sync.
+
+---
+
+### 5. 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine
 - [x] **6 Curated Visual Themes**:
   1. **Cyber Glass (Default)**: Sleek frosted glassmorphism (`rgba(8,9,20,0.92)`), cyan neon (`#00ffcc`), soft diffuse drop shadows, and modern vector stroke icons.
   2. **Studio Hardware Pro (Universal Audio Skeuomorphic)**: Full analog mixing console & rack unit skeuomorphism, brushed dark charcoal metallic chassis, 3D rack bolted bezel, milled mixing console faders with recessed grooves, dual-stage physical 3D push buttons with mechanical inset press, debossed screen-printed labels, and analog warm instrument LEDs.
@@ -15,12 +82,11 @@ This document tracks all features, architectural components, lighting integratio
   5. **Titanium Pioneer Pro Hardware**: Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks, and recessed illuminated keypads.
   6. **Analog Synthwave Studio**: Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges, and warm vintage glowing icons.
 - [x] **Zero-FOUC Theme Persistence**: Instant `localStorage` loading before DOM rendering to eliminate theme flicker upon page refresh.
-- [x] **1-Click Theme Switcher & Hotkeys**: Integrated Theme Selector card grid in the **Calibration & Glow** pane (`#pane-glow`), quick header button (`🎨 THEME`), and **`Alt + T`** hotkey.
-- [x] **CSS Variable System**: Complete root tokens (`--hud-bg`, `--hud-accent`, `--hud-border`, `--hud-shadow`, `--hud-radius`, `--hud-slider-thumb`) controlling every panel component dynamically.
+- [x] **1-Click Theme Switcher & Hotkeys**: Integrated Theme Selector card grid in the **Calibration & Glow** tab (`#pane-glow`), quick header button (`🎨 THEME`), and **`Alt + T`** hotkey.
 
 ---
 
-### 2. 💡 Philips Hue Reactive Smart Lighting Engine *(NEW & ENHANCED)*
+### 6. 💡 Philips Hue Reactive Smart Lighting Engine
 - [x] **Dedicated Physical Power & Sync Toggle**:
   - `⚡ SYNC: ACTIVE / OFF`: Toggles live audio beat synchronization without affecting room lights.
   - `💡 LIGHTS: ON / OFF`: Instantly turns off/on physical Philips Hue lamps without disconnecting the bridge.
@@ -35,15 +101,7 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 3. 📼 FX 21: VHS Glitch Typography & Overhead Concert Godrays *(NEW)*
-- [x] **Retro CRT Phosphor Display Shader**: Real-time electron beam scanlines, RGB phosphor triad mask, horizontal tape tracking tears, chromatic displacement, and analog static noise.
-- [x] **Alternating Slogan Typography**: Bold white typography (*"DREAMLOVER"* / *"DO YOU BELIEVE?"*) with auto-fit viewport scaling and smooth phrase crossfades.
-- [x] **8 Overhead Concert Moving-Head Godrays**: Downward-pointing spotlight beams bathing the typography in subtle warm golden concert lighting.
-- [x] **Dual-Directional Inward Atmospheric Smoke**: Soft billowing smoke drifting continuously from left and right wings into the center stage.
-
----
-
-### 4. 🗂️ 22 GPU-Accelerated 3D VFX Scenes
+### 7. 🗂️ 22 GPU-Accelerated 3D VFX Scenes
 
 #### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: 3D Studio LED Equalizer Wall** — Segmented stadium LED towers with peak-hold physics and dynamic hue cascades.
@@ -79,7 +137,7 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 5. 🎛️ Audio Processing & Live Telemetry Engine
+### 8. 🎛️ Audio Processing & Live Telemetry Engine
 - [x] **3-Band Frequency Analysis**: Real-time FFT spectrum split into sub-bass, mid-range, and high-frequency treble bins with exponential inertia filtering.
 - [x] **Transient / Kick Drum Onset Detection**: History-windowed energy peak detection for musical beat tracking and drop triggers.
 - [x] **System & Tab Audio Capture (`🖥️ CAPTURE TAB / SYS`)**: Built-in tab audio capture allowing visualization of Spotify Web, YouTube, Beatport, or system audio while using headphones.
@@ -89,7 +147,7 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 6. 🌉 Universal Multi-Platform DJ Hardware Bridge
+### 9. 🌉 Universal Multi-Platform DJ Hardware Bridge
 - [x] **Denon DJ StageLinq**: UDP broadcast discovery and WebSocket relay (`server/stagelinq-bridge.js`) parsing track titles, artists, BPM, and fader state from Prime hardware.
 - [x] **Pioneer Pro DJ Link / Rekordbox**: Auto-syncs with CDJ-2000NXS2, CDJ-3000, and XDJ players over UDP ports 50000/50002.
 - [x] **Native Instruments Traktor Pro 3 & 4**: Monitors live session history (`.nml`) and metadata for seamless track detection.
@@ -98,12 +156,10 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 7. 🖥️ Multi-Screen, OBS Broadcast & DJ Branding
+### 10. 🖥️ Multi-Screen, OBS Broadcast & DJ Branding
 - [x] **Zero-FOUC Clean Display Mode**: `?mode=obs` or `?mode=stage` loads visualizer without UI controls for clean projector or second screen output.
 - [x] **Transparent OBS Browser Source**: `?overlay=true` removes background canvas for alpha-blended transparent stream overlays.
 - [x] **Detached Master Control Console**: `?mode=controller` opens a dedicated full-featured control window on a laptop while streaming visualizer full-screen to stage displays.
-- [x] **3D DJ Brand & Station Logo System**: Customizable video/image logos with 3D Center Spin, Depth Orbit, and Watermark modes, complete with bass pulse physics and contrast shield.
-- [x] **Interactive Track Banner**: Animated *"Now Playing"* vinyl record overlay displaying active deck, track title, artist, and BPM.
 
 ---
 
