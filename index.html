@@ -991,7 +991,7 @@
         /* Studio Setup Drawer Segmented Navigation Bar */
         .setup-nav-bar {
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(3, 1fr);
             gap: 4px;
             background: #0e0f13;
             border: 1px solid #252833;
@@ -1664,48 +1664,76 @@
             white-space: nowrap;
         }
 
-        /* FX Category Segmented Switcher */
+        /* Authentic Browser-Style Studio Navigation Tabs for Visual FX Bank */
         .fx-category-bar {
             display: flex;
-            background: #0e0f14;
-            border: 1px solid #282a34;
-            border-radius: 4px;
-            padding: 2px;
-            gap: 2px;
-            margin-bottom: 6px;
-            box-shadow: inset 0 2px 4px rgba(0,0,0,0.7);
+            flex-wrap: wrap;
+            align-items: stretch;
+            gap: 4px;
+            background: #0d0e12;
+            border-bottom: 2px solid #282a35;
+            padding: 5px 6px 3px 6px;
+            margin-bottom: 10px;
+            border-radius: 6px 6px 0 0;
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
         }
 
         .fx-category-btn {
-            flex: 1;
+            flex: 1 1 auto;
+            min-width: calc(33.333% - 4px);
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 3px;
-            padding: 4px 2px;
-            background: transparent;
-            border: 1px solid transparent;
-            border-radius: 3px;
-            color: #8c909e;
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 8px;
-            font-weight: 800;
+            gap: 6px;
+            padding: 7px 8px;
+            border-radius: 5px 5px 0 0;
+            background: #14161c;
+            border: 1px solid #232632;
+            border-bottom: none;
+            color: #8c91a2;
+            font-size: 9px;
+            font-weight: 700;
             cursor: pointer;
             transition: all 0.15s ease;
+            user-select: none;
+            font-family: 'JetBrains Mono', monospace;
             white-space: nowrap;
             outline: none;
+            position: relative;
+            margin-bottom: -1px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
         }
 
         .fx-category-btn:hover {
-            color: #ffffff;
-            background: rgba(255,255,255,0.04);
+            color: #e2e5ec;
+            background: #1c1e27;
+            border-color: #3b3f52;
         }
 
         .fx-category-btn.active {
-            background: linear-gradient(180deg, #2c2f3b 0%, #1c1d24 100%);
-            border-color: #ffaa00;
-            color: #ffaa00;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
+            background: linear-gradient(180deg, #282b36 0%, #1a1c24 100%) !important;
+            border: 1px solid #ffaa00 !important;
+            border-bottom: 2px solid #1a1c24 !important;
+            color: #ffaa00 !important;
+            font-weight: 800 !important;
+            text-shadow: 0 0 8px rgba(255,170,0,0.45);
+            box-shadow: 0 -2px 10px rgba(255,170,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+            z-index: 2;
+        }
+
+        .fx-category-btn .tab-led {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3e4250;
+            box-shadow: none;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .fx-category-btn.active .tab-led {
+            background: #ffaa00;
+            box-shadow: 0 0 6px #ffaa00, 0 0 10px rgba(255,170,0,0.7);
         }
 
         /* FX Bank Quick Action Strip */
@@ -2039,7 +2067,7 @@
             <!-- App Logo / Status Icon -->
             <div class="activity-logo" id="activity-logo-btn" title="⚡ DJ VFX Studio - Click to Cycle Panes">⚡</div>
 
-            <!-- Navigation Icon Tabs (4 Streamlined Consoles) -->
+            <!-- Navigation Icon Tabs (6 Streamlined Consoles) -->
             <div class="activity-tabs">
                 <button class="activity-tab active" data-tab="perform" title="🎛️ Live Performance Deck & Faders [Alt+1]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -2064,12 +2092,30 @@
                     <span class="act-dot" id="dot-branding"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="setup" title="⚙️ Studio Setup, OBS, Hue & Bridges [Alt+4]">
+                <button class="activity-tab" data-tab="nowplaying" title="🎵 Now Playing & Track Banner Stream Overlay [Alt+4]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18V5l12-2v13" />
+                        <circle cx="6" cy="18" r="3" />
+                        <circle cx="18" cy="16" r="3" />
+                    </svg>
+                    <span class="act-dot" id="dot-nowplaying"></span>
+                </button>
+
+                <button class="activity-tab" data-tab="setup" title="⚙️ Studio Setup, OBS, Hue & Bridges [Alt+5]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
                     </svg>
                     <span class="act-dot" id="dot-setup"></span>
+                </button>
+
+                <button class="activity-tab" data-tab="about" title="ℹ️ About, System Specs & Shortcuts [Alt+6]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="10" />
+                        <line x1="12" y1="16" x2="12" y2="12" />
+                        <line x1="12" y1="8" x2="12.01" y2="8" />
+                    </svg>
+                    <span class="act-dot" id="dot-about"></span>
                 </button>
             </div>
 
@@ -2265,13 +2311,28 @@
                     <span class="fx-search-count" id="fx-search-count">22 / 22</span>
                 </div>
 
-                <!-- Category Filter Segmented Tabs -->
+                <!-- Category Filter Segmented Tabs (Browser-Style Multi-Row) -->
                 <div class="fx-category-bar" id="fx-pane-cat-pills">
-                    <button class="fx-category-btn active" data-fxcat="all">⚡ ALL (22)</button>
-                    <button class="fx-category-btn" data-fxcat="eq">📊 EQ (4)</button>
-                    <button class="fx-category-btn" data-fxcat="laser">⚡ LASERS (7)</button>
-                    <button class="fx-category-btn" data-fxcat="wire">🕸️ CYBER (6)</button>
-                    <button class="fx-category-btn" data-fxcat="space">🌌 SPACE (3)</button>
+                    <button class="fx-category-btn active" data-fxcat="all" title="View all 22 visual scenes">
+                        <span class="tab-led"></span>
+                        <span>⚡ ALL (22)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="eq" title="Equalizers & Audio Decks">
+                        <span class="tab-led"></span>
+                        <span>📊 EQ (4)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="laser" title="Lasers, Disco & Lighting">
+                        <span class="tab-led"></span>
+                        <span>⚡ LASERS (7)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="wire" title="Cyber, Retro & Matrix">
+                        <span class="tab-led"></span>
+                        <span>🕸️ CYBER (6)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="space" title="Space, Galaxy & Particle Voids">
+                        <span class="tab-led"></span>
+                        <span>🌌 SPACE (3)</span>
+                    </button>
                 </div>
 
                 <!-- Quick Action Switches -->
@@ -2820,7 +2881,112 @@
             </div>
 
             <!-- ========================================================================= -->
-            <!-- PANE 4: STUDIO SETUP (BROADCAST/OBS, PHILIPS HUE, DJ BRIDGES, SPECS/INFO) -->
+            <!-- PANE 4: NOW PLAYING & TRACK BANNER (METADATA, OVERLAY, TIMINGS & SYNC)    -->
+            <!-- ========================================================================= -->
+            <div class="ide-tab-pane" id="pane-nowplaying">
+                <div class="pane-section-title">
+                    <span>🎵 Now Playing & Track Banner</span>
+                    <span class="hud-badge" id="nowplaying-status-badge" style="background:rgba(0,255,204,0.15); color:#00ffcc; border-color:rgba(0,255,204,0.4);">LIVE ON STREAM</span>
+                </div>
+
+                <!-- Live Track Banner Monitor Card (Visual Preview of the Stream Banner) -->
+                <div class="media-preview-card" style="padding:10px 12px; margin-bottom:12px;">
+                    <div style="display:flex; align-items:center; gap:10px; width:100%;">
+                        <div class="vinyl-record" style="width:36px; height:36px; min-width:36px; animation:spin 4s linear infinite;">
+                            <div class="vinyl-center-label">
+                                <span class="vinyl-label-icon" style="font-size:10px;">⚡</span>
+                                <div class="vinyl-spindle-hole"></div>
+                            </div>
+                        </div>
+                        <div style="flex:1; overflow:hidden;">
+                            <div style="display:flex; align-items:center; gap:5px; margin-bottom:2px;">
+                                <span class="track-now-tag" style="font-size:7.5px; padding:1px 4px;">ON STREAM</span>
+                                <span class="hud-badge" id="nowplaying-pane-deck" style="font-size:7.5px; padding:1px 5px;">DECK 1</span>
+                                <span class="hud-badge" id="nowplaying-pane-bpm" style="font-size:7.5px; padding:1px 5px; color:#ffaa00; border-color:#ffaa00;">126.0 BPM</span>
+                            </div>
+                            <div id="nowplaying-pane-title" style="font-size:12px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Opus (Live Intro Mix)</div>
+                            <div id="nowplaying-pane-artist" style="font-size:9.5px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Eric Prydz</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Master Action Controls -->
+                <div style="display:flex; gap:6px; margin-bottom:10px;">
+                    <button class="btn-mini" id="btn-toggle-track-banner" style="flex:1; font-size:10px; font-weight:800; padding:6px 8px; background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; cursor:pointer;">🟢 TRACK OVERLAY: ON</button>
+                    <button class="btn-mini" id="btn-pop-track-banner" style="font-size:10px; font-weight:700; padding:6px 10px; background:rgba(255,0,127,0.18); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;" title="Manually Pop Track Banner On Stream">⚡ POP NOW</button>
+                    <button class="btn-mini" id="btn-pop-off-track-banner" style="font-size:10px; font-weight:700; padding:6px 10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); cursor:pointer;" title="Immediately Dismiss Track Banner On Stream">⏹️ POP OFF</button>
+                </div>
+
+                <!-- Manual Song Title Override / Live Injection -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:10px;">
+                    <div class="hud-row" style="margin-bottom:6px; align-items:center;">
+                        <span class="hud-label">✍️ MANUAL TRACK INJECTION</span>
+                        <span style="font-size:8px; color:#8c909e;">Serato / Vinyl / ID</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px; margin-bottom:6px;">
+                        <input type="text" id="input-manual-track-title" class="obs-url-input" placeholder="Track Title (e.g. Opus)" style="background:#090a0d; padding:6px 10px; font-size:10px; color:#ffffff;">
+                        <input type="text" id="input-manual-track-artist" class="obs-url-input" placeholder="Artist Name (e.g. Eric Prydz)" style="background:#090a0d; padding:6px 10px; font-size:10px; color:#ffaa00;">
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button class="btn-mini" id="btn-inject-track" style="flex:1; font-size:9.5px; font-weight:800; padding:6px; background:linear-gradient(180deg, rgba(255,170,0,0.25) 0%, rgba(255,170,0,0.1) 100%); border:1px solid #ffaa00; color:#ffaa00; cursor:pointer;">⚡ INJECT ON STREAM</button>
+                        <button class="btn-mini" id="btn-clear-inject-track" style="font-size:9px; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;">Clear</button>
+                    </div>
+                </div>
+
+                <!-- Timing & Trigger Controls -->
+                <div class="hud-section" style="margin-bottom:10px;">
+                    <div class="hud-row" style="margin-bottom:2px;">
+                        <span class="hud-label">TRIGGER DELAY (AFTER TRACK START)</span>
+                    </div>
+                    <select id="select-track-delay" class="hud-select" title="Delay before Track Banner drops down onto the stream">
+                        <option value="0" selected>⚡ Instant (0s - immediately on change)</option>
+                        <option value="5">⏳ 5 seconds into track</option>
+                        <option value="10">⏳ 10 seconds into track</option>
+                        <option value="15">⏳ 15 seconds into track</option>
+                        <option value="20">⏳ 20 seconds into track</option>
+                        <option value="30">⏳ 30 seconds into track (Post-Intro)</option>
+                        <option value="45">⏳ 45 seconds into track</option>
+                        <option value="60">⏳ 60 seconds into track (1 min in)</option>
+                    </select>
+
+                    <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
+                        <span class="hud-label">DISPLAY DURATION (AUTO-FADEOUT)</span>
+                    </div>
+                    <select id="select-track-duration" class="hud-select" title="How long the Track Banner stays visible before fading out">
+                        <option value="10">⏱️ 10 seconds display</option>
+                        <option value="15">⏱️ 15 seconds display</option>
+                        <option value="20">⏱️ 20 seconds display</option>
+                        <option value="30" selected>⏱️ 30 seconds display (Recommended)</option>
+                        <option value="45">⏱️ 45 seconds display</option>
+                        <option value="0">🔒 Stay ON (Always Visible)</option>
+                    </select>
+
+                    <div class="hud-row" style="margin-top:7px; margin-bottom:2px;">
+                        <span class="hud-label">OVERLAY SCALE / SIZE</span>
+                        <span class="hud-val" id="track-scale-val" style="color:#ffaa00; font-weight:700;">1.4x (Large)</span>
+                    </div>
+                    <input type="range" id="slider-track-scale" min="0.8" max="2.5" step="0.1" value="1.4" style="width:100%;" title="Adjust Now Playing Track Banner size for Big Screen / OBS">
+                </div>
+
+                <!-- Live Bridge Integration Status Box -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:0;">
+                    <div class="hud-row" style="margin-bottom:4px; align-items:center;">
+                        <span class="hud-label">🎧 HARDWARE DECK TRACK SOURCE</span>
+                        <span class="hud-badge" style="font-size:7.5px; color:#10b981; border-color:#10b981;">AUTO-SYNC</span>
+                    </div>
+                    <div style="font-size:8.5px; color:#d8dbe2; line-height:1.45;">
+                        Track metadata synchronizes automatically from:
+                        <br>• <strong>Pioneer Pro DJ Link & Rekordbox</strong>
+                        <br>• <strong>Native Instruments Traktor Pro</strong>
+                        <br>• <strong>Denon DJ StageLinQ Engine OS</strong>
+                        <br>• <strong>Snip / Tuna / Serato / VirtualDJ <code>nowplaying.txt</code></strong>
+                        <br>• <strong>HTTP REST Push API</strong> (<code>/api/nowplaying</code>)
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================================= -->
+            <!-- PANE 5: STUDIO SETUP (BROADCAST/OBS, PHILIPS HUE, DJ BRIDGES)            -->
             <!-- ========================================================================= -->
             <div class="ide-tab-pane" id="pane-setup">
                 <div class="pane-section-title">
@@ -2838,9 +3004,6 @@
                     </button>
                     <button class="setup-nav-tab" id="subtab-btn-bridge" data-setuptab="bridge">
                         <span>🎧 DECKS</span>
-                    </button>
-                    <button class="setup-nav-tab" id="subtab-btn-about" data-setuptab="about">
-                        <span>ℹ️ ABOUT</span>
                     </button>
                 </div>
 
@@ -2860,50 +3023,6 @@
                     <div style="display:flex; gap:6px; margin-top:8px;">
                         <button class="btn-mini" id="btn-pane-open-modal" style="flex:1; font-size:9px; padding:5px; background:rgba(0,180,255,0.18); border:1px solid rgba(0,180,255,0.4); color:#00e1ff; cursor:pointer;">⚙️ Detailed Setup Guide</button>
                         <button class="btn-mini" id="btn-pane-test-window" style="font-size:9px; padding:5px 8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;">🚀 Test Window</button>
-                    </div>
-
-                    <!-- Now Playing Stream Overlay Controls -->
-                    <div class="hud-section" style="margin-top:10px; padding-top:8px; border-top:1px solid #2b2e3a;">
-                        <div class="hud-row" style="margin-bottom:3px;">
-                            <span class="hud-label">🎛️ NOW PLAYING STREAM OVERLAY</span>
-                        </div>
-                        <div style="display:flex; gap:6px; margin-bottom:6px;">
-                            <button class="btn-mini" id="btn-toggle-track-banner" style="flex:1; font-size:9.5px; font-weight:800; padding:5px 8px; background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; cursor:pointer;">🟢 TRACK OVERLAY: ON</button>
-                            <button class="btn-mini" id="btn-pop-track-banner" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(255,0,127,0.18); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;" title="Manually Pop Track Banner On Stream">⚡ POP NOW</button>
-                            <button class="btn-mini" id="btn-pop-off-track-banner" style="font-size:9.5px; font-weight:700; padding:5px 8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); cursor:pointer;" title="Immediately Dismiss Track Banner On Stream">⏹️ POP OFF</button>
-                        </div>
-
-                        <div class="hud-row" style="margin-top:4px; margin-bottom:2px;">
-                            <span class="hud-label">TRIGGER DELAY (AFTER TRACK START)</span>
-                        </div>
-                        <select id="select-track-delay" class="hud-select" title="Delay before Track Banner drops down onto the stream">
-                            <option value="0" selected>⚡ Instant (0s - immediately on change)</option>
-                            <option value="5">⏳ 5 seconds into track</option>
-                            <option value="10">⏳ 10 seconds into track</option>
-                            <option value="15">⏳ 15 seconds into track</option>
-                            <option value="20">⏳ 20 seconds into track</option>
-                            <option value="30">⏳ 30 seconds into track (Post-Intro)</option>
-                            <option value="45">⏳ 45 seconds into track</option>
-                            <option value="60">⏳ 60 seconds into track (1 min in)</option>
-                        </select>
-
-                        <div class="hud-row" style="margin-top:6px; margin-bottom:2px;">
-                            <span class="hud-label">DISPLAY DURATION (AUTO-FADEOUT)</span>
-                        </div>
-                        <select id="select-track-duration" class="hud-select" title="How long the Track Banner stays visible before fading out">
-                            <option value="10">⏱️ 10 seconds display</option>
-                            <option value="15">⏱️ 15 seconds display</option>
-                            <option value="20">⏱️ 20 seconds display</option>
-                            <option value="30" selected>⏱️ 30 seconds display (Recommended)</option>
-                            <option value="45">⏱️ 45 seconds display</option>
-                            <option value="0">🔒 Stay ON (Always Visible)</option>
-                        </select>
-
-                        <div class="hud-row" style="margin-top:7px; margin-bottom:2px;">
-                            <span class="hud-label">OVERLAY SCALE / SIZE</span>
-                            <span class="hud-val" id="track-scale-val" style="color:#ffaa00; font-weight:700;">1.4x (Large)</span>
-                        </div>
-                        <input type="range" id="slider-track-scale" min="0.8" max="2.5" step="0.1" value="1.4" style="width:100%;" title="Adjust Now Playing Track Banner size for Big Screen / OBS">
                     </div>
                 </div>
 
@@ -3024,68 +3143,94 @@
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <!-- SUB-DRAWER 4: SPECS, GITHUB RELEASES & ABOUT -->
-                <div id="setup-content-about" class="setup-subcontent" style="display:none;">
-                    <!-- Hero Branding Card -->
-                    <div style="background:linear-gradient(135deg, rgba(255,170,0,0.1) 0%, rgba(16,185,129,0.1) 100%); border:1px solid #363945; border-radius:6px; padding:10px 12px; margin-bottom:8px;">
-                        <div style="font-size:13px; font-weight:900; color:#ffffff; font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">
-                            ⚡ DJ VFX STUDIO <span class="hud-badge" id="about-badge-version">v1.0.0</span>
-                        </div>
-                        <div style="font-size:9px; color:#ffaa00; font-family:'JetBrains Mono',monospace; margin-top:2px;">
-                            Professional Live Visual Engine & Smart Lighting Sync
-                        </div>
+            <!-- ========================================================================= -->
+            <!-- PANE 6: ABOUT, SYSTEM SPECS & KEYBOARD SHORTCUTS                          -->
+            <!-- ========================================================================= -->
+            <div class="ide-tab-pane" id="pane-about">
+                <div class="pane-section-title">
+                    <span>ℹ️ About & System Information</span>
+                    <span class="hud-badge" id="about-badge-version">v1.0.0</span>
+                </div>
+
+                <!-- Hero Branding Card -->
+                <div style="background:linear-gradient(135deg, rgba(255,170,0,0.12) 0%, rgba(16,185,129,0.12) 100%); border:1px solid #363945; border-radius:6px; padding:10px 12px; margin-bottom:8px;">
+                    <div style="font-size:13px; font-weight:900; color:#ffffff; font-family:'JetBrains Mono',monospace; letter-spacing:0.5px;">
+                        ⚡ DJ VFX STUDIO <span class="hud-badge">PRO EDITION</span>
                     </div>
+                    <div style="font-size:9px; color:#ffaa00; font-family:'JetBrains Mono',monospace; margin-top:2px;">
+                        High-Performance 60FPS Live Visual Engine & Smart Lighting Sync
+                    </div>
+                </div>
 
-                    <!-- GitHub Releases & Desktop Downloads -->
-                    <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:8px;">
-                        <div class="hud-label" style="margin-bottom:4px; color:#ffaa00; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
-                            <span>💾 GITHUB DOWNLOADS</span>
-                            <span class="hud-badge" style="font-size:8px;">LATEST</span>
-                        </div>
-                        <p style="font-size:9px; color:#d8dbe2; margin:0 0 6px 0; line-height:1.4;">
-                            Download standalone desktop installers for macOS & Windows:
-                        </p>
-                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:6px; background:linear-gradient(180deg, #323542 0%, #181921 100%); border:1px solid #ffaa00; color:#ffaa00; font-weight:800; font-size:10px; padding:6px 10px; border-radius:4px; text-decoration:none; margin-bottom:6px;">
-                            <span>🚀 Open GitHub Releases</span>
+                <!-- GitHub Releases & Desktop Downloads -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:8px;">
+                    <div class="hud-label" style="margin-bottom:4px; color:#ffaa00; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
+                        <span>💾 GITHUB DOWNLOADS</span>
+                        <span class="hud-badge" style="font-size:8px;">LATEST</span>
+                    </div>
+                    <p style="font-size:9px; color:#d8dbe2; margin:0 0 6px 0; line-height:1.4;">
+                        Download standalone desktop installers for macOS & Windows:
+                    </p>
+                    <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="display:flex; align-items:center; justify-content:center; gap:6px; background:linear-gradient(180deg, #323542 0%, #181921 100%); border:1px solid #ffaa00; color:#ffaa00; font-weight:800; font-size:10px; padding:6px 10px; border-radius:4px; text-decoration:none; margin-bottom:6px;">
+                        <span>🚀 Open GitHub Releases</span>
+                    </a>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
+                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:#090a0d; border:1px solid #282a34; border-radius:3px; padding:4px 6px; text-decoration:none; color:#ffffff; font-size:8.5px; text-align:center; display:block;">
+                            🍎 <strong>macOS</strong> DMG
                         </a>
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px;">
-                            <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:#090a0d; border:1px solid #282a34; border-radius:3px; padding:4px 6px; text-decoration:none; color:#ffffff; font-size:8.5px; text-align:center; display:block;">
-                                🍎 <strong>macOS</strong> DMG
-                            </a>
-                            <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:#090a0d; border:1px solid #282a34; border-radius:3px; padding:4px 6px; text-decoration:none; color:#ffffff; font-size:8.5px; text-align:center; display:block;">
-                                🪟 <strong>Windows</strong> EXE
-                            </a>
-                        </div>
+                        <a href="https://github.com/vikingvoodoo1/dj-vfx-studio/releases/latest" target="_blank" rel="noopener noreferrer" style="background:#090a0d; border:1px solid #282a34; border-radius:3px; padding:4px 6px; text-decoration:none; color:#ffffff; font-size:8.5px; text-align:center; display:block;">
+                            🪟 <strong>Windows</strong> EXE
+                        </a>
                     </div>
+                </div>
 
-                    <!-- Hardware Requirements Guide -->
-                    <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:8px;">
-                        <div class="hud-label" style="margin-bottom:4px; color:#ffaa00; font-weight:800;">⚡ MINIMUM & RECOMMENDED SPECS</div>
-                        <div style="font-size:8.5px; color:#d8dbe2; line-height:1.4;">
-                            • <strong>Recommended:</strong> Apple M2/M3/M4 Pro (16+ GPU Cores, 16GB+ RAM) or Intel i7 + RTX 3060+.<br>
-                            • <strong>Minimum:</strong> Apple M1 or Intel i5 (8th Gen+), 8GB RAM, Metal/WebGL2 GPU.<br>
-                            • <strong>OBS Pro-Tip:</strong> Set Video Encoder to <em>Apple VideoToolbox (Hardware)</em> or <em>NVIDIA NVENC</em>.
-                        </div>
+                <!-- Complete Hotkeys & Keyboard Shortcuts Cheatsheet -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:8px;">
+                    <div class="hud-label" style="margin-bottom:6px; color:#00ffcc; font-weight:800;">⌨️ KEYBOARD SHORTCUTS CHEATSHEET</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:4px; font-size:8.5px; font-family:'JetBrains Mono',monospace;">
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 1</strong> : Live Deck</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 2</strong> : Visual FX</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 3</strong> : Logos/Branding</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 4</strong> : Now Playing</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 5</strong> : Setup & OBS</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ffaa00;">Alt + 6</strong> : About / Info</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">H</strong> : Hide HUD & Bar</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">A</strong> : Toggle Auto VJ</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">L</strong> : Toggle DJ Logo</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">S</strong> : Station Logo</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">Space</strong> : Strobe Burst</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">1..0, -, =</strong> : Switch FX</div>
                     </div>
+                </div>
 
-                    <!-- Copyright & Contact -->
-                    <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:0;">
-                        <div style="font-size:9.5px; color:#e5e7ec; margin-bottom:4px;">
-                            © 2026 JK McLaren. All rights reserved.
-                        </div>
-                        <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
-                            <span style="font-size:8.5px; color:#8c909e;">Build: <span id="about-build-ver">v1.0.0</span> (<span id="about-build-num">20261005</span>)</span>
-                            <button class="btn-mini" id="btn-copy-about-email" style="font-size:8.5px; padding:2px 6px;" title="Copy contact email">✉️ info@jkmcalren.com</button>
-                        </div>
+                <!-- Hardware Requirements Guide -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:8px;">
+                    <div class="hud-label" style="margin-bottom:4px; color:#ffaa00; font-weight:800;">⚡ HARDWARE & GPU ACCELERATION</div>
+                    <div style="font-size:8.5px; color:#d8dbe2; line-height:1.4;">
+                        • <strong>Recommended:</strong> Apple M2/M3/M4 Pro (16+ GPU Cores, 16GB+ RAM) or Intel i7/i9 + RTX 3060+.<br>
+                        • <strong>Minimum:</strong> Apple M1 or Intel i5 (8th Gen+), 8GB RAM, WebGL2 GPU.<br>
+                        • <strong>OBS Pro-Tip:</strong> Set Video Encoder to <em>Apple VideoToolbox (Hardware)</em> or <em>NVIDIA NVENC</em> for zero frame drops.
+                    </div>
+                </div>
+
+                <!-- Copyright & Contact -->
+                <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:0;">
+                    <div style="font-size:9.5px; color:#e5e7ec; margin-bottom:4px;">
+                        © 2026 JK McLaren. All rights reserved.
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; gap:6px;">
+                        <span style="font-size:8.5px; color:#8c909e;">Build: <span id="about-build-ver">v1.0.0</span> (<span id="about-build-num">20261006</span>)</span>
+                        <button class="btn-mini" id="btn-copy-about-email" style="font-size:8.5px; padding:2px 6px;" title="Copy contact email">✉️ info@jkmcalren.com</button>
                     </div>
                 </div>
             </div>
 
             <!-- Bottom Shortcuts Help Footer -->
             <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid #2b2e3a; font-size: 8px; color: #8c909e; display: flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:3px;">
-                <span>[Alt+1..4] Consoles</span>
-                <span>[H] Hide FX Bar</span>
+                <span>[Alt+1..6] Consoles</span>
+                <span>[H] Hide Console</span>
                 <span>[A] Auto VJ</span>
                 <span>[L] DJ Logo</span>
                 <span>[S] Station Logo</span>

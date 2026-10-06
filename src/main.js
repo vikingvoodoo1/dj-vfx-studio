@@ -109,6 +109,15 @@ async function init() {
     const trackScaleVal = document.getElementById('track-scale-val');
     const trackDeckBadge = document.getElementById('track-deck-badge');
     const trackBpmBadge = document.getElementById('track-bpm-badge');
+    const nowplayingPaneTitle = document.getElementById('nowplaying-pane-title');
+    const nowplayingPaneArtist = document.getElementById('nowplaying-pane-artist');
+    const nowplayingPaneDeck = document.getElementById('nowplaying-pane-deck');
+    const nowplayingPaneBpm = document.getElementById('nowplaying-pane-bpm');
+    const nowplayingStatusBadge = document.getElementById('nowplaying-status-badge');
+    const inputManualTrackTitle = document.getElementById('input-manual-track-title');
+    const inputManualTrackArtist = document.getElementById('input-manual-track-artist');
+    const btnInjectTrack = document.getElementById('btn-inject-track');
+    const btnClearInjectTrack = document.getElementById('btn-clear-inject-track');
 
     let isTrackBannerEnabled = true;
     let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
@@ -367,16 +376,17 @@ async function init() {
     const dotPerform = document.getElementById('dot-perform') || document.getElementById('dot-audio');
     const dotFx = document.getElementById('dot-fx');
     const dotBranding = document.getElementById('dot-branding');
+    const dotNowPlaying = document.getElementById('dot-nowplaying');
     const dotSetup = document.getElementById('dot-setup');
+    const dotAbout = document.getElementById('dot-about');
     const audioDeviceBadge = document.getElementById('audio-device-badge');
 
-    // Setup Sub-Drawers Elements & State (OBS, HUE, BRIDGES, ABOUT)
+    // Setup Sub-Drawers Elements & State (OBS, HUE, BRIDGES)
     const setupSubtabs = document.querySelectorAll('.setup-nav-tab[data-setuptab]');
     const setupContents = {
         obs: document.getElementById('setup-content-obs'),
         hue: document.getElementById('setup-content-hue'),
-        bridge: document.getElementById('setup-content-bridge'),
-        about: document.getElementById('setup-content-about')
+        bridge: document.getElementById('setup-content-bridge')
     };
 
     function switchSetupSubtab(subtabId) {
@@ -409,7 +419,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['perform', 'fx', 'branding', 'setup'];
+    const tabOrder = ['perform', 'fx', 'branding', 'nowplaying', 'setup', 'about'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -419,7 +429,9 @@ async function init() {
         // Aliases for consolidated setup & branding tabs
         if (tabId === 'audio') tabId = 'perform';
         if (tabId === 'glow' || tabId === 'logo') tabId = 'branding';
-        if (tabId === 'obs' || tabId === 'hue' || tabId === 'about' || tabId === 'bridge') {
+        if (tabId === 'banner' || tabId === 'track') tabId = 'nowplaying';
+        if (tabId === 'info' || tabId === 'specs') tabId = 'about';
+        if (tabId === 'obs' || tabId === 'hue' || tabId === 'bridge') {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
@@ -608,11 +620,16 @@ async function init() {
         lastDisplayedTrackArtist = artist;
         lastDisplayedTrackDeck = rawDeck;
 
-        // Update DOM elements on HUD and Banner
+        // Update DOM elements on HUD, Banner and Now Playing Pane
         if (trackTitle) trackTitle.textContent = title;
         if (trackArtist) trackArtist.textContent = artist ? `${artist} • ${deckLabel}` : deckLabel;
         if (trackDeckBadge) trackDeckBadge.textContent = deckLabel;
         if (trackBpmBadge) trackBpmBadge.textContent = `${bpm.toFixed(1)} BPM`;
+
+        if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = title;
+        if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = artist || 'Live Performance';
+        if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = deckLabel;
+        if (nowplayingPaneBpm) nowplayingPaneBpm.textContent = `${bpm.toFixed(1)} BPM`;
 
         // Clear existing timers
         if (trackBannerDelayTimer) {
@@ -664,6 +681,12 @@ async function init() {
             btnToggleTrackBanner.style.borderColor = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.2)';
             btnToggleTrackBanner.style.background = isTrackBannerEnabled ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
         }
+        if (nowplayingStatusBadge) {
+            nowplayingStatusBadge.textContent = isTrackBannerEnabled ? 'LIVE ON STREAM' : 'OVERLAY MUTED';
+            nowplayingStatusBadge.style.color = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.4)';
+            nowplayingStatusBadge.style.borderColor = isTrackBannerEnabled ? 'rgba(0,255,204,0.4)' : '#323542';
+            nowplayingStatusBadge.style.background = isTrackBannerEnabled ? 'rgba(0,255,204,0.15)' : 'rgba(255,255,255,0.05)';
+        }
         if (!isTrackBannerEnabled) {
             hideTrackBanner();
         }
@@ -675,6 +698,36 @@ async function init() {
 
     if (btnToggleTrackBanner) {
         btnToggleTrackBanner.addEventListener('click', () => setTrackBannerEnabled(!isTrackBannerEnabled, true));
+    }
+
+    // Manual Track Injection from Now Playing Panel
+    if (btnInjectTrack) {
+        btnInjectTrack.addEventListener('click', () => {
+            const title = (inputManualTrackTitle?.value || '').trim() || 'Live Track';
+            const artist = (inputManualTrackArtist?.value || '').trim();
+            const bpm = Number(bpmVal?.textContent) || 126.0;
+            const currentTrack = {
+                title,
+                artist,
+                deck: lastDisplayedTrackDeck || 1,
+                bpm
+            };
+            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
+            showToast(`⚡ Injected: ${artist ? artist + ' - ' : ''}${title}`);
+
+            broadcastSync({
+                type: 'pop_track_banner_now',
+                trackData: currentTrack,
+                duration: trackDurationSec
+            });
+        });
+    }
+
+    if (btnClearInjectTrack) {
+        btnClearInjectTrack.addEventListener('click', () => {
+            if (inputManualTrackTitle) inputManualTrackTitle.value = '';
+            if (inputManualTrackArtist) inputManualTrackArtist.value = '';
+        });
     }
 
     if (btnPopTrackBanner) {
@@ -2971,15 +3024,14 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..4] for 4 Master Consoles, [Alt + A] for Show All
+        // [Alt + 1..6] for 6 Master Consoles, [Alt + A] for Show All
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('perform'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
             if (e.key === '3') { e.preventDefault(); switchTab('branding'); return; }
-            if (e.key === '4') { e.preventDefault(); switchTab('setup'); return; }
-            if (e.key === '5') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('hue'); return; }
-            if (e.key === '6') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('bridge'); return; }
-            if (e.key === '7') { e.preventDefault(); switchTab('setup'); switchSetupSubtab('about'); return; }
+            if (e.key === '4') { e.preventDefault(); switchTab('nowplaying'); return; }
+            if (e.key === '5') { e.preventDefault(); switchTab('setup'); return; }
+            if (e.key === '6') { e.preventDefault(); switchTab('about'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
