@@ -191,6 +191,7 @@ npm run preview
 | `L` | Toggle DJ Logo Layer Visibility |
 | `S` | Toggle Station Logo Layer Visibility |
 | `Y` / `Shift + F` | Toggle Event Flyer / Promo Layer Visibility |
+| `N` | Toggle Now Playing Track Stream Overlay |
 | `F` | Toggle Fullscreen (Stage / External HDMI Output) |
 | `C` | Toggle Clean Display Mode (Hide HUD overlays for clean video feed) |
 | `H` | Toggle HUD Console & Toolbar |

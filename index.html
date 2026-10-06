@@ -991,7 +991,7 @@
         /* Studio Setup Drawer Segmented Navigation Bar */
         .setup-nav-bar {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
+            grid-template-columns: repeat(4, 1fr);
             gap: 4px;
             background: #0e0f13;
             border: 1px solid #252833;
@@ -2206,7 +2206,7 @@
                     </div>
                     <div style="display:flex; gap:6px; margin-top:6px;">
                         <button class="btn-mini" id="btn-listen-audio" style="flex:1; font-size:9px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-weight:700; padding:4px 6px;">🔴 RE-CONNECT</button>
-                        <button class="btn-mini" id="btn-capture-system-audio" style="flex:1.4; font-size:9px; background:rgba(0,180,255,0.18); border:1px solid rgba(0,180,255,0.45); color:#00d2ff; font-weight:700; padding:4px 6px;" title="Capture audio from browser tab or system audio while using headphones">🖥️ CAPTURE TAB / SYS</button>
+                        <button class="btn-mini" id="btn-capture-system-audio" style="flex:1; font-size:8.5px; background:rgba(0,180,255,0.18); border:1px solid rgba(0,180,255,0.45); color:#00d2ff; font-weight:700; padding:4px 6px;" title="Capture audio from browser tab or system audio while using headphones">🖥️ SYS AUDIO</button>
                     </div>
                 </div>
 
@@ -2255,12 +2255,20 @@
                 <!-- Master Stage Rocker Switches (Physical Power Switch Aesthetic) -->
                 <div class="logos-power-deck" style="margin-top:10px;">
                     <button class="logo-power-btn active" id="btn-toggle-dj-logo-top" title="Turn DJ Logo Layer ON/OFF [L]">
-                        <span class="power-btn-label">DJ LOGO LAYER [L]</span>
+                        <span class="power-btn-label">DJ LOGO [L]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="dj-power-status-text">ACTIVE ON</span></span>
                     </button>
                     <button class="logo-power-btn" id="btn-toggle-station-logo-top" title="Turn Station Logo Layer ON/OFF [S]">
                         <span class="power-btn-label">STATION LOGO [S]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="station-power-status-text">OFF</span></span>
+                    </button>
+                    <button class="logo-power-btn" id="btn-toggle-flyer-top" title="Turn Event Flyer / Promo Layer ON/OFF [Y]">
+                        <span class="power-btn-label">FLYER / PROMO [Y]</span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="flyer-power-status-text">OFF</span></span>
+                    </button>
+                    <button class="logo-power-btn active" id="btn-toggle-nowplaying-top" title="Turn Now Playing Track Stream Overlay ON/OFF [N]">
+                        <span class="power-btn-label">NOW PLAYING [N]</span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="nowplaying-power-status-text">ACTIVE ON</span></span>
                     </button>
                 </div>
 
@@ -3424,7 +3432,10 @@
 
                 <!-- Segmented Setup Drawer Subtabs -->
                 <div class="setup-nav-bar" id="setup-subtabs">
-                    <button class="setup-nav-tab active" id="subtab-btn-obs" data-setuptab="obs">
+                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master">
+                        <span>🎛️ MASTER</span>
+                    </button>
+                    <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs">
                         <span>📡 OBS</span>
                     </button>
                     <button class="setup-nav-tab" id="subtab-btn-hue" data-setuptab="hue">
@@ -3435,8 +3446,60 @@
                     </button>
                 </div>
 
+                <!-- SUB-DRAWER 0: MASTER SYSTEM CONSOLE & 2ND SCREEN -->
+                <div id="setup-content-master" class="setup-subcontent active">
+                    <div style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:10px; margin-bottom:10px;">
+                        <div class="hud-label" style="margin-bottom:8px; color:#ffaa00; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
+                            <span>🎛️ MASTER DISPLAYS & CONSOLE</span>
+                            <span class="hud-badge">PRO STAGE</span>
+                        </div>
+
+                        <!-- Detached Master Console -->
+                        <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #22242d;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <span style="font-size:10px; font-weight:700; color:#fff;">MASTER CONTROLLER CONSOLE</span>
+                                <span class="hud-badge" style="font-size:8px;">LAPTOP CONSOLE</span>
+                            </div>
+                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
+                                Detach full control panel into a dedicated window on your laptop while visualizer streams full-screen on stage displays.
+                            </p>
+                            <button class="btn-mini" id="btn-setup-detach-console" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #ff007f 0%, #aa0055 100%); border:1px solid #ff007f; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,0,127,0.3);">
+                                🎛️ OPEN MASTER CONTROLLER
+                            </button>
+                        </div>
+
+                        <!-- 2nd Screen / Clean Stage Display -->
+                        <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #22242d;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <span style="font-size:10px; font-weight:700; color:#fff;">2ND SCREEN / STAGE DISPLAY</span>
+                                <span class="hud-badge" style="font-size:8px;">CLEAN OUTPUT</span>
+                            </div>
+                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
+                                Open a clean visualizer output window without UI menus for 2nd monitors, external HDMI projectors, or OBS capture.
+                            </p>
+                            <button class="btn-mini" id="btn-setup-popout-screen" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #00b4d8 0%, #0077b6 100%); border:1px solid #00d2ff; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(0,210,255,0.3);">
+                                🖥️ LAUNCH 2ND SCREEN POPUP
+                            </button>
+                        </div>
+
+                        <!-- Master Reset -->
+                        <div>
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                <span style="font-size:10px; font-weight:700; color:#ff4466;">RESTORE DEFAULT SETTINGS</span>
+                                <span class="hud-badge" style="font-size:8px; border-color:#ff0055; color:#ff0055;">FACTORY RESET</span>
+                            </div>
+                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
+                                Reset all visualizer parameters, layer opacity, faders and presets back to original factory defaults.
+                            </p>
+                            <button class="btn-mini danger" id="btn-setup-reset-all" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #ff0055 0%, #aa0033 100%); border:1px solid #ff0055; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,0,85,0.3);">
+                                ↺ RESET ALL CONSOLE PARAMETERS
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- SUB-DRAWER 1: OBS STUDIO BROADCAST -->
-                <div id="setup-content-obs" class="setup-subcontent active">
+                <div id="setup-content-obs" class="setup-subcontent" style="display:none;">
                     <div style="display:flex; gap:6px; margin-bottom:8px;">
                         <button class="btn-mini" id="btn-obs-pane-toggle" style="flex:1; font-size:10px; font-weight:800; padding:5px 8px; background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; cursor:pointer;">🟢 OBS OUT: LIVE</button>
                         <button class="btn-mini" id="btn-obs-pane-overlay" style="flex:1; font-size:10px; font-weight:700; padding:5px 8px; background:rgba(255,0,255,0.18); border:1px solid #ff00ff; color:#ff66ff; cursor:pointer;">🎭 OBS: SOLID</button>
@@ -3628,6 +3691,8 @@
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">A</strong> : Toggle Auto VJ</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">L</strong> : Toggle DJ Logo</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">S</strong> : Station Logo</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">Y / ⇧F</strong> : Flyer / Promo</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">N</strong> : Now Playing</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">Space</strong> : Strobe Burst</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">1..0, -, =</strong> : Switch FX</div>
                     </div>
@@ -3661,7 +3726,9 @@
                 <span>[H] Hide Console</span>
                 <span>[A] Auto VJ</span>
                 <span>[L] DJ Logo</span>
-                <span>[S] Station Logo</span>
+                <span>[S] Station</span>
+                <span>[Y] Flyer</span>
+                <span>[N] Track ID</span>
                 <span>[Space] Strobe</span>
             </div>
         </div>

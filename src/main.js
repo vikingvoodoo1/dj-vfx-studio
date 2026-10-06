@@ -264,13 +264,20 @@ async function init() {
 
     // Master Power Switches & Sub-Tabs DOM References
     const btnResetAll = document.getElementById('btn-reset-all');
+    const btnSetupResetAll = document.getElementById('btn-setup-reset-all');
+    const btnSetupDetachConsole = document.getElementById('btn-setup-detach-console');
+    const btnSetupPopoutScreen = document.getElementById('btn-setup-popout-screen');
     const logoBadge = document.getElementById('logo-badge');
     const stationLogoBadge = document.getElementById('station-logo-badge');
     const flyerBadge = document.getElementById('flyer-badge');
     const btnToggleDjLogoTop = document.getElementById('btn-toggle-dj-logo-top');
     const btnToggleStationLogoTop = document.getElementById('btn-toggle-station-logo-top');
+    const btnToggleFlyerTop = document.getElementById('btn-toggle-flyer-top');
+    const btnToggleNowplayingTop = document.getElementById('btn-toggle-nowplaying-top');
     const djPowerStatusText = document.getElementById('dj-power-status-text');
     const stationPowerStatusText = document.getElementById('station-power-status-text');
+    const flyerPowerStatusText = document.getElementById('flyer-power-status-text');
+    const nowplayingPowerStatusText = document.getElementById('nowplaying-power-status-text');
     const subtabBtnDj = document.getElementById('subtab-btn-dj');
     const subtabBtnStation = document.getElementById('subtab-btn-station');
     const subtabBtnFlyer = document.getElementById('subtab-btn-flyer');
@@ -483,9 +490,10 @@ async function init() {
     const dotAbout = document.getElementById('dot-about');
     const audioDeviceBadge = document.getElementById('audio-device-badge');
 
-    // Setup Sub-Drawers Elements & State (OBS, HUE, BRIDGES)
+    // Setup Sub-Drawers Elements & State (MASTER, OBS, HUE, BRIDGES)
     const setupSubtabs = document.querySelectorAll('.setup-nav-tab[data-setuptab]');
     const setupContents = {
+        master: document.getElementById('setup-content-master'),
         obs: document.getElementById('setup-content-obs'),
         hue: document.getElementById('setup-content-hue'),
         bridge: document.getElementById('setup-content-bridge')
@@ -600,29 +608,27 @@ async function init() {
 
 
 
-    const btnDetachConsole = document.getElementById('btn-detach-console');
-    if (btnDetachConsole) {
-        btnDetachConsole.addEventListener('click', () => {
-            const controllerUrl = `${window.location.origin}${window.location.pathname}?mode=controller`;
-            window.open(controllerUrl, 'DJ_VFX_MASTER_CONSOLE', 'width=520,height=880,menubar=no,toolbar=no,location=no,status=no');
-        });
+    function openControllerWindow() {
+        const controllerUrl = `${window.location.origin}${window.location.pathname}?mode=controller`;
+        window.open(controllerUrl, 'DJ_VFX_MASTER_CONSOLE', 'width=520,height=880,menubar=no,toolbar=no,location=no,status=no');
     }
+
+    function openSecondScreenWindow() {
+        const popoutUrl = `${window.location.origin}${window.location.pathname}?clean=true`;
+        window.open(popoutUrl, 'DJ_VFX_2ND_SCREEN', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
+    }
+
+    const btnDetachConsole = document.getElementById('btn-detach-console');
+    if (btnDetachConsole) btnDetachConsole.addEventListener('click', openControllerWindow);
+    if (btnSetupDetachConsole) btnSetupDetachConsole.addEventListener('click', openControllerWindow);
 
     const btnPopout = document.getElementById('btn-popout');
-    if (btnPopout) {
-        btnPopout.addEventListener('click', () => {
-            const popoutUrl = `${window.location.origin}${window.location.pathname}?clean=true`;
-            window.open(popoutUrl, 'DJ_VFX_2ND_SCREEN', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
-        });
-    }
+    if (btnPopout) btnPopout.addEventListener('click', openSecondScreenWindow);
 
     const btnLaunchStage = document.getElementById('btn-launch-stage');
-    if (btnLaunchStage) {
-        btnLaunchStage.addEventListener('click', () => {
-            const popoutUrl = `${window.location.origin}${window.location.pathname}?clean=true`;
-            window.open(popoutUrl, 'DJ_VFX_2ND_SCREEN', 'width=1280,height=720,menubar=no,toolbar=no,location=no,status=no');
-        });
-    }
+    if (btnLaunchStage) btnLaunchStage.addEventListener('click', openSecondScreenWindow);
+
+    if (btnSetupPopoutScreen) btnSetupPopoutScreen.addEventListener('click', openSecondScreenWindow);
 
     let stagelinqClient = null;
 
@@ -895,6 +901,10 @@ async function init() {
             btnToggleTrackBanner.style.borderColor = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.2)';
             btnToggleTrackBanner.style.background = isTrackBannerEnabled ? 'rgba(0,255,204,0.18)' : 'rgba(255,255,255,0.06)';
         }
+        if (btnToggleNowplayingTop) {
+            btnToggleNowplayingTop.classList.toggle('active', isTrackBannerEnabled);
+            if (nowplayingPowerStatusText) nowplayingPowerStatusText.textContent = isTrackBannerEnabled ? 'ACTIVE ON' : 'OFF';
+        }
         if (nowplayingStatusBadge) {
             nowplayingStatusBadge.textContent = isTrackBannerEnabled ? 'LIVE ON STREAM' : 'OVERLAY MUTED';
             nowplayingStatusBadge.style.color = isTrackBannerEnabled ? '#00ffcc' : 'rgba(255,255,255,0.4)';
@@ -912,6 +922,9 @@ async function init() {
 
     if (btnToggleTrackBanner) {
         btnToggleTrackBanner.addEventListener('click', () => setTrackBannerEnabled(!isTrackBannerEnabled, true));
+    }
+    if (btnToggleNowplayingTop) {
+        btnToggleNowplayingTop.addEventListener('click', () => setTrackBannerEnabled(!isTrackBannerEnabled, true));
     }
 
     // Manual Track Injection from Now Playing Panel
@@ -2498,6 +2511,10 @@ async function init() {
             flyerBadge.style.color = isFlyerActive ? '#00ffcc' : 'rgba(255,255,255,0.4)';
             flyerBadge.style.borderColor = isFlyerActive ? 'rgba(0,255,204,0.4)' : 'rgba(255,255,255,0.15)';
         }
+        if (btnToggleFlyerTop) {
+            btnToggleFlyerTop.classList.toggle('active', isFlyerActive);
+            if (flyerPowerStatusText) flyerPowerStatusText.textContent = isFlyerActive ? 'ACTIVE ON' : 'OFF';
+        }
         const tabLogo = document.querySelector('.activity-tab[data-tab="branding"], .activity-tab[data-tab="logo"]');
         if (tabLogo) tabLogo.classList.toggle('has-dot', isLogoActive || isStationLogoActive || isFlyerActive);
         if (broadcast) {
@@ -2510,6 +2527,7 @@ async function init() {
     }
 
     if (flyerBadge) flyerBadge.addEventListener('click', toggleFlyer);
+    if (btnToggleFlyerTop) btnToggleFlyerTop.addEventListener('click', toggleFlyer);
 
     function selectFlyer(url, title, isVideo = false, broadcast = true) {
         currentFlyerUrl = url;
@@ -3328,10 +3346,27 @@ async function init() {
                 btnResetAll.style.color = '';
             }, 1200);
         }
+
+        if (btnSetupResetAll) {
+            const origSetupText = btnSetupResetAll.innerHTML;
+            btnSetupResetAll.innerHTML = '✓ ALL PARAMETERS RESTORED';
+            btnSetupResetAll.style.background = 'rgba(0,255,204,0.3)';
+            btnSetupResetAll.style.borderColor = '#00ffcc';
+            btnSetupResetAll.style.color = '#00ffcc';
+            setTimeout(() => {
+                btnSetupResetAll.innerHTML = origSetupText;
+                btnSetupResetAll.style.background = '';
+                btnSetupResetAll.style.borderColor = '';
+                btnSetupResetAll.style.color = '';
+            }, 1200);
+        }
     }
 
     if (btnResetAll) {
         btnResetAll.addEventListener('click', () => resetAllParameters(true));
+    }
+    if (btnSetupResetAll) {
+        btnSetupResetAll.addEventListener('click', () => resetAllParameters(true));
     }
 
     function loadCustomFile(file) {
@@ -4110,6 +4145,10 @@ async function init() {
         // [Y] or Shift+[F] to toggle Event Flyer layer
         else if (e.key === 'y' || e.key === 'Y' || (e.shiftKey && (e.key === 'f' || e.key === 'F'))) {
             toggleFlyer();
+        }
+        // [N] to toggle Now Playing track stream overlay
+        else if (e.key === 'n' || e.key === 'N') {
+            setTrackBannerEnabled(!isTrackBannerEnabled, true);
         }
         // [C] to toggle Clean Display Mode for Stage / 2nd Screen
         else if (e.key === 'c' || e.key === 'C') {

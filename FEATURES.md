@@ -160,6 +160,9 @@ This document tracks all features, architectural components, lighting integratio
 - [x] **Zero-FOUC Clean Display Mode**: `?mode=obs` or `?mode=stage` loads visualizer without UI controls for clean projector or second screen output.
 - [x] **Transparent OBS Browser Source**: `?overlay=true` removes background canvas for alpha-blended transparent stream overlays.
 - [x] **Detached Master Control Console**: `?mode=controller` opens a dedicated full-featured control window on a laptop while streaming visualizer full-screen to stage displays.
+- [x] **Settings Panel Master Hub**: Direct access within the Settings drawer (`🎛️ MASTER` subtab) to open the Master Controller, launch the 2nd Screen clean display popup, and perform a full Factory Reset with visual feedback.
+- [x] **4-Switch Live Rocker Power Deck**: Real-time tactile rocker switches on the Live Performance Deck for instant toggling of **DJ Logo [L]**, **Station Logo [S]**, **Flyer / Promo [Y]**, and **Now Playing Track Overlay [N]**.
+- [x] **Compact System Audio Capture**: Sleek, balanced `🖥️ SYS AUDIO` button for capturing line-in/tab audio with precision headroom and peak meters.
 
 ---
 
