@@ -7336,16 +7336,16 @@ export function createVFXScene(container) {
     const pumpkinRoughnessTex = discoRoughnessTex;
     const pumpkinMetalnessTex = discoMetalnessTex;
 
-    // Organic Curved Pumpkin Stalk / Stem with Pure Silver Mirror Chrome Finish (Seamlessly interlocked with chain)
+    // Organic Curved Pumpkin Stalk / Stem with Pure Silver Mirror Chrome Finish (Directly attached to hanging chain)
     function createPumpkinStemMesh() {
         const stemGroup = new THREE.Group();
 
         const curve = new THREE.CatmullRomCurve3([
             new THREE.Vector3(0, 4.18, 0),         // Stem base securely in top dimple
-            new THREE.Vector3(0.06, 4.75, 0.04),   // Lower stalk
-            new THREE.Vector3(0.18, 5.30, 0.12),   // Mid stalk curving out
-            new THREE.Vector3(0.22, 5.80, 0.14),   // Upper stalk curve
-            new THREE.Vector3(0.06, 6.25, 0.04)    // Stalk tip seamlessly hooking through bottom chain link
+            new THREE.Vector3(0.06, 4.70, 0.04),   // Lower stalk
+            new THREE.Vector3(0.16, 5.20, 0.10),   // Mid stalk curving out
+            new THREE.Vector3(0.14, 5.60, 0.08),   // Upper stalk curve
+            new THREE.Vector3(0.04, 5.85, 0.03)    // Stalk tip meeting eyelet
         ]);
 
         const stemGeo = new THREE.TubeGeometry(curve, 32, 0.30, 16, false);
@@ -7353,7 +7353,7 @@ export function createVFXScene(container) {
         const v = new THREE.Vector3();
         for (let i = 0; i < stemPos.count; i++) {
             v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 4.18) / 2.07));
+            const t = Math.max(0, Math.min(1, (v.y - 4.18) / 1.67));
             const taper = 1.25 * (1.0 - t * 0.55);
             const angle = Math.atan2(v.x, v.z);
             const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
@@ -7373,6 +7373,13 @@ export function createVFXScene(container) {
 
         const stemMesh = new THREE.Mesh(stemGeo, stemMat);
         stemGroup.add(stemMesh);
+
+        // Heavy-duty polished chrome mounting eyelet / shackle ring welded to stem tip
+        const stemEyeletGeo = new THREE.TorusGeometry(0.32, 0.08, 16, 24);
+        const stemEyeletMesh = new THREE.Mesh(stemEyeletGeo, stemMat);
+        stemEyeletMesh.position.set(0.04, 5.85, 0.03);
+        stemEyeletMesh.rotation.y = Math.PI * 0.25;
+        stemGroup.add(stemEyeletMesh);
 
         return stemGroup;
     }
@@ -7513,22 +7520,24 @@ export function createVFXScene(container) {
 
     // 3. Top Hanging Metal Chain & Ceiling Mount (Cleanly Interlocked Links)
     const pumpkinChainGroup = new THREE.Group();
-    const chainLinkGeo = new THREE.TorusGeometry(0.26, 0.065, 16, 24);
+    const chainLinkGeo = new THREE.TorusGeometry(0.28, 0.075, 16, 24);
     const chainMat = new THREE.MeshStandardMaterial({
         color: 0xd8e4f8, // Polished silver chrome chain links
-        metalness: 0.95,
-        roughness: 0.15,
+        metalness: 0.96,
+        roughness: 0.12,
         envMap: clubEnvMap,
-        envMapIntensity: 2.5
+        envMapIntensity: 2.8
     });
-    const numLinks = 16;
-    for (let l = 0; l < numLinks; l++) {
+    const numChainLinks = 16;
+    const pumpkinChainLinks = [];
+    for (let l = 0; l < numChainLinks; l++) {
         const linkMesh = new THREE.Mesh(chainLinkGeo, chainMat);
-        linkMesh.position.set(0, 6.25 + l * 0.45, 0);
+        linkMesh.position.set(0, 5.95 + l * 0.46, 0);
         linkMesh.rotation.y = (l % 2 === 0) ? 0 : Math.PI / 2;
         pumpkinChainGroup.add(linkMesh);
+        pumpkinChainLinks.push(linkMesh);
     }
-    const ceilingMountGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.25, 24);
+    const ceilingMountGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.30, 24);
     const ceilingMountMesh = new THREE.Mesh(ceilingMountGeo, chainMat);
     ceilingMountMesh.position.set(0, 13.5, 0);
     pumpkinChainGroup.add(ceilingMountMesh);
@@ -9562,30 +9571,18 @@ export function createVFXScene(container) {
             }
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 4.2);
 
-            // 2. Motorized Disco Spin (Y-axis) with Organic Gyroscopic Pumpkin Wobble
+            // 2. Motorized Disco Spin (Y-axis) with Distinct Organic Gyroscopic Pumpkin Wobble
             const spinVelocity = 0.16 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.20 + pumpkinKickThump * 0.10);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Charming natural hanging wobble that rotates dynamically with the pumpkin's spin
+            // Distinct, noticeable natural hanging wobble that precesses dynamically with the pumpkin's spin
             const rotY = pumpkinPivot.rotation.y;
-            const wobbleAmount = 0.055 + smoothedBass * 0.020 + pumpkinKickThump * 0.030; // ~3.5° to 6° organic tilt
+            // Increased wobble amplitude for clearly noticeable, lively organic disco sway (~6.5° to 10.5°):
+            const wobbleAmount = 0.110 + smoothedBass * 0.035 + pumpkinKickThump * 0.055;
             
-            // Nutation and precession tilt synchronized with rotation + subtle pendulum oscillation
-            pumpkinPivot.rotation.z = Math.sin(rotY) * wobbleAmount + Math.sin(elapsedTime * 1.5) * 0.018;
-            pumpkinPivot.rotation.x = Math.cos(rotY) * wobbleAmount * 0.85 + Math.cos(elapsedTime * 1.2) * 0.015;
-
-            // Elastic natural chain link flex along the hanging suspension stack
-            if (pumpkinChainGroup && pumpkinChainGroup.children.length > 0) {
-                const numLinksTotal = 16;
-                for (let l = 0; l < numLinksTotal; l++) {
-                    const link = pumpkinChainGroup.children[l];
-                    if (link) {
-                        const flexFactor = Math.pow(Math.max(0.0, 1.0 - (l / numLinksTotal)), 1.4);
-                        link.position.x = Math.sin(rotY) * wobbleAmount * 2.8 * flexFactor;
-                        link.position.z = Math.cos(rotY) * wobbleAmount * 2.8 * flexFactor;
-                    }
-                }
-            }
+            // Nutation and precession tilt synchronized with rotation + dynamic pendulum sway
+            pumpkinPivot.rotation.z = Math.sin(rotY) * wobbleAmount + Math.sin(elapsedTime * 1.5) * 0.028;
+            pumpkinPivot.rotation.x = Math.cos(rotY) * wobbleAmount * 0.85 + Math.cos(elapsedTime * 1.2) * 0.022;
 
             // 3. 🎃 Visible Beat & Bass Pulse (Rhythmic elastic scale bounce on beats, kicks, and 8-bar drops)
             const pulseScale = (pumpkinKickThump * 0.07 + beatPulse * 0.04 + smoothedBass * 0.03 + pumpkin8BarFlashPulse * 0.12);
@@ -9595,6 +9592,35 @@ export function createVFXScene(container) {
             }
             // Vertical bounce on ceiling chain
             pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.30;
+
+            // 🔗 100% Attached Hanging Chain Dynamic Physics:
+            // Calculate exact world position of the stalk top eyelet ring (tracks tilt and vertical bounce)
+            const stalkTipLocal = new THREE.Vector3(0.04, 5.85 * (1.0 + pulseScale), 0.03);
+            const stalkTipWorld = stalkTipLocal.clone().applyEuler(pumpkinPivot.rotation).add(pumpkinPivot.position);
+            const ceilingAnchor = new THREE.Vector3(0, 13.2, 0);
+
+            // Interpolate all chain links between the stalk eyelet and the ceiling mount
+            const totalLinks = pumpkinChainLinks.length;
+            for (let l = 0; l < totalLinks; l++) {
+                const link = pumpkinChainLinks[l];
+                const t0 = l / (totalLinks - 1);
+                // Position interpolated from stalk tip (l=0) to ceiling (l=15)
+                const linkPos = new THREE.Vector3().lerpVectors(stalkTipWorld, ceilingAnchor, t0);
+                
+                // Natural catenary suspension sag
+                const sagFactor = Math.sin(t0 * Math.PI) * 0.14;
+                linkPos.x += Math.sin(rotY + t0 * 1.5) * sagFactor;
+                linkPos.z += Math.cos(rotY + t0 * 1.5) * sagFactor;
+                link.position.copy(linkPos);
+
+                // Alternating link angles aligned to the hanging chain direction
+                const baseRotY = (l % 2 === 0) ? (pumpkinPivot.rotation.y * 0.20) : (pumpkinPivot.rotation.y * 0.20 + Math.PI / 2);
+                link.rotation.set(
+                    pumpkinPivot.rotation.x * (1.0 - t0),
+                    baseRotY,
+                    pumpkinPivot.rotation.z * (1.0 - t0)
+                );
+            }
 
             // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the pumpkin
             const tL = elapsedTime * 0.55;
