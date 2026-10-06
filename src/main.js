@@ -3699,6 +3699,228 @@ async function init() {
         });
     }
 
+    // =========================================================================
+    // 6b. PIONEER CDJ-3000 & CDJ-2000 PHRASE / PHASE VISUALIZER ENGINE
+    // =========================================================================
+    const phraseModeSelector = document.getElementById('phrase-mode-selector');
+    const phraseModeBtns = document.querySelectorAll('.phrase-mode-btn[data-phrasemode]');
+    const cdj3000View = document.getElementById('cdj3000-view');
+    const cdj2000View = document.getElementById('cdj2000-view');
+    const cdjDualView = document.getElementById('cdjdual-view');
+    const phraseSyncSource = document.getElementById('phrase-sync-source');
+    const cdjMeterContainer = document.getElementById('cdj-meter-container');
+
+    const cdj3000PhraseTag = document.getElementById('cdj3000-phrase-tag');
+    const cdj3000BarText = document.getElementById('cdj3000-bar-text');
+    const cdj3000CountdownText = document.getElementById('cdj3000-countdown-text');
+    const cdj3000BarTrack = document.getElementById('cdj3000-bar-track');
+    const cdj3000Minimap = document.getElementById('cdj3000-minimap');
+
+    const cdj2000BarNum = document.getElementById('cdj2000-bar-num');
+    const cdj2000BeatNum = document.getElementById('cdj2000-beat-num');
+    const phaseBlocks = [
+        document.getElementById('phase-block-1'),
+        document.getElementById('phase-block-2'),
+        document.getElementById('phase-block-3'),
+        document.getElementById('phase-block-4')
+    ];
+    const phaseSweepNeedle = document.getElementById('phase-sweep-needle');
+
+    const cdjDualPhraseTag = document.getElementById('cdjdual-phrase-tag');
+    const cdjDualBarCount = document.getElementById('cdjdual-bar-count');
+    const cdjDualBarTrack = document.getElementById('cdjdual-bar-track');
+    const cdjDualMinimap = document.getElementById('cdjdual-minimap');
+    const dualPips = [
+        document.getElementById('dual-pip-1'),
+        document.getElementById('dual-pip-2'),
+        document.getElementById('dual-pip-3'),
+        document.getElementById('dual-pip-4')
+    ];
+    const beatPips = [
+        document.getElementById('beat-pip-1'),
+        document.getElementById('beat-pip-2'),
+        document.getElementById('beat-pip-3'),
+        document.getElementById('beat-pip-4')
+    ];
+
+    // Standard Electronic / Club Song Structure Model (Rekordbox / CDJ-3000 Phrase Matrix)
+    const CDJ_PHRASE_STRUCT = [
+        { name: 'INTRO 1', type: 'intro', bars: 8, label: 'INTRO', nextAction: 'UP BUILD' },
+        { name: 'UP 1', type: 'up', bars: 8, label: 'UP', nextAction: 'DROP 1' },
+        { name: 'CHORUS 1', type: 'chorus', bars: 16, label: 'CHORUS / DROP', nextAction: 'BREAK' },
+        { name: 'DOWN 1', type: 'down', bars: 8, label: 'BREAKDOWN', nextAction: 'BUILD-UP' },
+        { name: 'UP 2', type: 'up', bars: 8, label: 'BUILD-UP', nextAction: 'MAIN DROP' },
+        { name: 'CHORUS 2', type: 'chorus', bars: 16, label: 'MAIN DROP', nextAction: 'OUTRO' },
+        { name: 'OUTRO', type: 'outro', bars: 8, label: 'OUTRO', nextAction: 'MIX END' }
+    ];
+
+    let currentPhraseIdx = 2; // Default to high energy CHORUS 1
+    let currentBarInPhrase = 3;
+    let currentBeatInBar = 1;
+    let lastBeatTimestamp = performance.now();
+    let lastAudioOnsetTimestamp = 0;
+    let activePhraseDisplayMode = '3000';
+    try {
+        activePhraseDisplayMode = localStorage.getItem('dj_vfx_phrase_mode') || '3000';
+    } catch (e) {}
+
+    function setPhraseDisplayMode(mode) {
+        activePhraseDisplayMode = mode;
+        try { localStorage.setItem('dj_vfx_phrase_mode', mode); } catch (e) {}
+        phraseModeBtns.forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-phrasemode') === mode);
+        });
+        if (cdj3000View) cdj3000View.style.display = (mode === '3000') ? 'flex' : 'none';
+        if (cdj2000View) cdj2000View.style.display = (mode === '2000') ? 'flex' : 'none';
+        if (cdjDualView) cdjDualView.style.display = (mode === 'dual') ? 'flex' : 'none';
+    }
+
+    phraseModeBtns.forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const mode = btn.getAttribute('data-phrasemode');
+            if (mode) setPhraseDisplayMode(mode);
+        });
+    });
+
+    setPhraseDisplayMode(activePhraseDisplayMode);
+
+    function updatePhraseUI() {
+        const curPhrase = CDJ_PHRASE_STRUCT[currentPhraseIdx] || CDJ_PHRASE_STRUCT[0];
+        const totalBars = curPhrase.bars;
+        const barsRemaining = Math.max(0, totalBars - currentBarInPhrase);
+
+        // 1. CDJ-3000 Phrase Tag & Colors
+        const phraseClass = `phrase-${curPhrase.type}`;
+        if (cdj3000PhraseTag) {
+            cdj3000PhraseTag.textContent = curPhrase.name;
+            cdj3000PhraseTag.className = `phrase-tag ${phraseClass}`;
+        }
+        if (cdjDualPhraseTag) {
+            cdjDualPhraseTag.textContent = curPhrase.name;
+            cdjDualPhraseTag.className = `phrase-tag ${phraseClass}`;
+        }
+
+        const barText = `BAR ${String(currentBarInPhrase).padStart(2, '0')} / ${String(totalBars).padStart(2, '0')}`;
+        if (cdj3000BarText) cdj3000BarText.textContent = barText;
+        if (cdjDualBarCount) cdjDualBarCount.textContent = barText;
+
+        if (cdj3000CountdownText) {
+            if (barsRemaining > 0) {
+                cdj3000CountdownText.textContent = `-${barsRemaining} BARS TO ${curPhrase.nextAction}`;
+                cdj3000CountdownText.style.color = (curPhrase.type === 'up') ? '#ff007f' : '#ffaa00';
+            } else {
+                cdj3000CountdownText.textContent = `● DROP READY`;
+                cdj3000CountdownText.style.color = '#00ffcc';
+            }
+        }
+
+        // 2. Bar Track Segment Progress (8-Segment representation)
+        const activeNormalizedBar = Math.min(8, Math.max(1, Math.round((currentBarInPhrase / totalBars) * 8)));
+        const updateSegments = (trackEl) => {
+            if (!trackEl) return;
+            const segments = trackEl.querySelectorAll('.phrase-segment');
+            segments.forEach((seg, idx) => {
+                const segBar = idx + 1;
+                seg.className = 'phrase-segment';
+                if (segBar < activeNormalizedBar) {
+                    seg.classList.add('filled');
+                } else if (segBar === activeNormalizedBar) {
+                    seg.classList.add('current');
+                }
+            });
+            if (curPhrase.type === 'chorus') {
+                trackEl.classList.add('phrase-chorus-active');
+            } else {
+                trackEl.classList.remove('phrase-chorus-active');
+            }
+        };
+        updateSegments(cdj3000BarTrack);
+        updateSegments(cdjDualBarTrack);
+
+        // 3. Minimap Highlights
+        const updateMinimap = (mapEl) => {
+            if (!mapEl) return;
+            const blocks = mapEl.querySelectorAll('.minimap-block');
+            blocks.forEach((b) => b.classList.remove('current-block'));
+            const typeClass = `block-${curPhrase.type}`;
+            const curBlock = mapEl.querySelector(`.${typeClass}`);
+            if (curBlock) curBlock.classList.add('current-block');
+        };
+        updateMinimap(cdj3000Minimap);
+        updateMinimap(cdjDualMinimap);
+
+        // 4. CDJ-2000 Numerical Display
+        if (cdj2000BarNum) cdj2000BarNum.textContent = String(currentBarInPhrase).padStart(2, '0');
+        if (cdj2000BeatNum) cdj2000BeatNum.textContent = String(currentBeatInBar);
+    }
+
+    function triggerBeatPulseVisuals(beatNum) {
+        const b = (beatNum >= 1 && beatNum <= 4) ? beatNum : 1;
+
+        // Flash BPM Sub-beat pips
+        beatPips.forEach((pip, idx) => {
+            if (pip) pip.classList.toggle('active', (idx + 1) === b);
+        });
+
+        // Flash CDJ-2000 Phase Blocks
+        phaseBlocks.forEach((block, idx) => {
+            if (block) block.classList.toggle('active', (idx + 1) === b);
+        });
+
+        // Flash Dual View Pips
+        dualPips.forEach((pip, idx) => {
+            if (pip) pip.classList.toggle('active', (idx + 1) === b);
+        });
+    }
+
+    function advanceCDJBeat(explicitBeatCount = null, isHardware = false) {
+        lastBeatTimestamp = performance.now();
+        if (explicitBeatCount !== null && explicitBeatCount >= 1 && explicitBeatCount <= 4) {
+            currentBeatInBar = explicitBeatCount;
+        } else {
+            currentBeatInBar = (currentBeatInBar % 4) + 1;
+        }
+
+        if (currentBeatInBar === 1) {
+            const curPhrase = CDJ_PHRASE_STRUCT[currentPhraseIdx] || CDJ_PHRASE_STRUCT[0];
+            currentBarInPhrase++;
+            if (currentBarInPhrase > curPhrase.bars) {
+                currentBarInPhrase = 1;
+                currentPhraseIdx = (currentPhraseIdx + 1) % CDJ_PHRASE_STRUCT.length;
+            }
+        }
+
+        if (phraseSyncSource) {
+            if (isHardware) {
+                phraseSyncSource.textContent = 'PRO DJ LINK';
+                phraseSyncSource.style.color = '#ffaa00';
+                phraseSyncSource.style.borderColor = '#ffaa00';
+            } else {
+                phraseSyncSource.textContent = 'BEAT CLOCK';
+                phraseSyncSource.style.color = '#00ffcc';
+                phraseSyncSource.style.borderColor = 'rgba(0,255,204,0.35)';
+            }
+        }
+
+        triggerBeatPulseVisuals(currentBeatInBar);
+        updatePhraseUI();
+    }
+
+    // Tap / Resync downbeat to 1
+    if (cdjMeterContainer) {
+        cdjMeterContainer.addEventListener('click', () => {
+            currentBeatInBar = 1;
+            lastBeatTimestamp = performance.now();
+            triggerBeatPulseVisuals(1);
+            updatePhraseUI();
+            showToast('● Downbeat Resynced to Beat 1');
+        });
+    }
+
+    updatePhraseUI();
+    triggerBeatPulseVisuals(1);
+
     // 6. Connect to Universal DJ Hardware & Software Bridge via WebSocket
     stagelinqClient = setupStageLinqClient({
         onSync: (msg) => handleSyncMessage(msg),
@@ -3718,6 +3940,8 @@ async function init() {
         onBeat: (deck, beatCount) => {
             vfx.triggerBeatPulse();
             broadcastSync({ type: 'beat_pulse', deck, beatCount });
+
+            advanceCDJBeat(beatCount, true);
 
             bpmVal.style.transform = 'scale(1.2)';
             setTimeout(() => {
@@ -3812,12 +4036,22 @@ async function init() {
                     djHardwareLed.style.background = '#00ff88';
                     djHardwareLed.style.boxShadow = '0 0 8px #00ff88';
                 }
+                if (phraseSyncSource) {
+                    phraseSyncSource.textContent = 'PRO DJ LINK';
+                    phraseSyncSource.style.color = '#ffaa00';
+                    phraseSyncSource.style.borderColor = '#ffaa00';
+                }
                 broadcastSync({ type: 'request_state' });
             } else {
                 if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
                 if (djHardwareLed) {
                     djHardwareLed.style.background = '#ff0055';
                     djHardwareLed.style.boxShadow = '0 0 6px #ff0055';
+                }
+                if (phraseSyncSource) {
+                    phraseSyncSource.textContent = 'BEAT CLOCK';
+                    phraseSyncSource.style.color = '#00ffcc';
+                    phraseSyncSource.style.borderColor = 'rgba(0,255,204,0.35)';
                 }
             }
         },
@@ -4341,6 +4575,26 @@ async function init() {
                 } catch (err) {
                     // Ignore Hue telemetry errors to ensure VFX audio pipeline is never interrupted
                 }
+            }
+        }
+
+        // CDJ-2000 Phase Needle Sweep (~60 FPS)
+        if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
+            const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
+            const beatPeriodMs = 60000 / liveBpm;
+            const elapsed = now - lastBeatTimestamp;
+            const subBeatFraction = Math.min(1.0, Math.max(0, elapsed / beatPeriodMs));
+            const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
+            phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
+        }
+
+        // Drive Pioneer Phrase & Phase clock from live audio onsets when offline
+        if (data && data.isOnset) {
+            const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
+            const minBeatInterval = (60000 / liveBpm) * 0.7;
+            if (now - lastAudioOnsetTimestamp > minBeatInterval) {
+                lastAudioOnsetTimestamp = now;
+                advanceCDJBeat(null, false);
             }
         }
 

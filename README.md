@@ -131,6 +131,19 @@ Customize the look and feel of the control console with 6 curated themes:
 
 ---
 
+## 🎧 Pioneer CDJ-3000 Phrase Meter & CDJ-2000 Phase Visualizer
+
+A hardware-inspired Pioneer DJ phrase and phase visualizer positioned right next to the master BPM display on the Live Performance Deck:
+
+- **3 Display Modes**:
+  1. **CDJ-3000 Phrase Mode**: Displays authentic Rekordbox structural phrases (`INTRO`, `UP 1`, `CHORUS 1`, `DOWN 1`, `UP 2`, `CHORUS 2`, `OUTRO`), 8-segment bar progress tracks, countdown to the next drop (`-4 BARS TO DROP 1`), and a micro minimap showing past, active, and upcoming song phrases.
+  2. **CDJ-2000 Phase Mode**: 4-beat phase grid blocks with active LED illumination, a smooth 60FPS sub-beat sweep needle, and big bold `BAR 03 / BEAT 1` digital counters.
+  3. **DUAL Mode**: Stacked combined visualizer featuring both the CDJ-3000 structural phrase analysis track and the CDJ-2000 4-beat phase pulse meter simultaneously.
+- **Hardware Sync & Audio Fallback**: Synchronizes in real time with Pioneer Pro DJ Link / Rekordbox / StageLinQ beat packets (`PRO DJ LINK` indicator), and falls back to audio onset detection (`BEAT CLOCK` indicator) when in standalone microphone / line-in mode.
+- **Tap-to-Resync**: Click or tap anywhere on the phrase meter to instantly re-align the downbeat to Beat 1.
+
+---
+
 ## 🎧 Universal DJ Hardware & Software Bridge
 
 The companion Node.js bridge server (`server/stagelinq-bridge.js`) provides live multi-platform DJ telemetry:

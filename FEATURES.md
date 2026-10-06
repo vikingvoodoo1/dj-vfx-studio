@@ -156,7 +156,23 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 10. 🖥️ Multi-Screen, OBS Broadcast & DJ Branding
+### 10. 🎧 Pioneer CDJ-3000 Phrase Meter & CDJ-2000 Phase Visualizer *(NEW)*
+- [x] **Dual Pioneer CDJ Visualizer Suite**: Built right into the Live Performance Deck alongside the master BPM readout.
+- [x] **3 Selectable Visualizer Modes**:
+  1. **CDJ-3000 Phrase Mode**: Authentic Rekordbox structural phrase engine tracking standard electronic & club song architecture (`INTRO`, `UP BUILD`, `CHORUS / MAIN DROP`, `BREAKDOWN`, `OUTRO`).
+     - **Pioneer Fluorescent Color Badges**: Cyan (`INTRO`), Amber Gold (`UP`), Hot Pink (`CHORUS/DROP`), Violet (`BREAKDOWN`), Blue (`OUTRO`).
+     - **8-Segment Bar Progress Track**: Real-time filled segments and glowing pulse indicators for the active bar.
+     - **Drop & Breakdown Countdown**: Digital countdown showing remaining bars until the drop (`-4 BARS TO DROP 1`, `● DROP READY`).
+     - **Micro Song Minimap**: Overview of the full track structure highlighting completed, active, and upcoming song phrases.
+  2. **CDJ-2000 Phase Mode**: Classic Pioneer 4-beat phase grid with active LED illumination blocks, continuous 60FPS sub-beat sweep needle, and big bold `BAR 03 / BEAT 1` digital countdown.
+  3. **DUAL Mode**: Stacked combined display featuring both the CDJ-3000 structural phrase analysis track and the CDJ-2000 4-beat phase pulse meter simultaneously.
+- [x] **Hardware Pro DJ Link & Audio Beat Clock**: Automatically derives phase and phrase data from Pioneer Pro DJ Link / Rekordbox / StageLinQ beat packets when connected, with seamless fallback to microphone / line-in audio onset detection in standalone mode.
+- [x] **Tap-to-Resync Downbeat**: 1-click downbeat resynchronization directly from the console to snap to Beat 1 anytime.
+- [x] **Sub-Beat BPM Pips**: 4-beat pulse indicators underneath the master BPM readout for instant tempo visualization.
+
+---
+
+### 11. 🖥️ Multi-Screen, OBS Broadcast & DJ Branding
 - [x] **Zero-FOUC Clean Display Mode**: `?mode=obs` or `?mode=stage` loads visualizer without UI controls for clean projector or second screen output.
 - [x] **Transparent OBS Browser Source**: `?overlay=true` removes background canvas for alpha-blended transparent stream overlays.
 - [x] **Detached Master Control Console**: `?mode=controller` opens a dedicated full-featured control window on a laptop while streaming visualizer full-screen to stage displays.

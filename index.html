@@ -417,45 +417,305 @@
             box-shadow: 0 0 10px rgba(255,0,255,0.35);
         }
 
-        .rack-tool-btn#btn-popout {
-            border-color: rgba(0, 255, 204, 0.35);
+        /* ========================================================================= */
+        /* PIONEER CDJ-3000 & CDJ-2000 PHRASE & PHASE VISUALIZER STYLES             */
+        /* ========================================================================= */
+        .phrase-mode-bar {
+            display: flex;
+            gap: 2px;
+            background: #090a0d;
+            border: 1px solid #232530;
+            border-radius: 4px;
+            padding: 2px;
+        }
+
+        .phrase-mode-btn {
+            background: transparent;
+            border: none;
+            color: #64748b;
+            font-size: 8px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 2px 5px;
+            border-radius: 3px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .phrase-mode-btn:hover {
+            color: #e2e8f0;
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .phrase-mode-btn.active {
+            background: linear-gradient(180deg, #ffaa00 0%, #d97706 100%);
+            color: #000000;
+            font-weight: 900;
+            box-shadow: 0 0 6px rgba(255, 170, 0, 0.5);
+        }
+
+        .beat-pip {
+            width: 14px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #181a24;
+            border: 1px solid #282d3e;
+            border-radius: 2px;
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #64748b;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.06s ease;
+        }
+
+        .beat-pip.active {
+            background: #00ffcc;
+            border-color: #00ffcc;
+            color: #000000;
+            box-shadow: 0 0 8px #00ffcc;
+            transform: scale(1.15);
+        }
+
+        .beat-pip#beat-pip-1.active {
+            background: #ff007f;
+            border-color: #ff007f;
+            color: #ffffff;
+            box-shadow: 0 0 10px #ff007f;
+        }
+
+        .cdj-meter-view {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* CDJ-3000 Phrase Tag Badges */
+        .phrase-tag {
+            font-size: 8px;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1.5px 6px;
+            border-radius: 3px;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+            border: 1px solid transparent;
+            box-shadow: 0 0 6px rgba(0,0,0,0.5);
+            transition: all 0.2s ease;
+        }
+
+        .phrase-tag.phrase-intro {
+            background: rgba(0, 240, 255, 0.18);
+            border-color: #00f0ff;
+            color: #00f0ff;
+            text-shadow: 0 0 6px rgba(0, 240, 255, 0.8);
+        }
+
+        .phrase-tag.phrase-up {
+            background: rgba(255, 170, 0, 0.22);
+            border-color: #ffaa00;
+            color: #ffbb33;
+            text-shadow: 0 0 6px rgba(255, 170, 0, 0.8);
+        }
+
+        .phrase-tag.phrase-chorus {
+            background: rgba(255, 0, 127, 0.25);
+            border-color: #ff007f;
+            color: #ff66b2;
+            text-shadow: 0 0 8px rgba(255, 0, 127, 0.9);
+        }
+
+        .phrase-tag.phrase-down {
+            background: rgba(139, 92, 246, 0.25);
+            border-color: #8b5cf6;
+            color: #c4b5fd;
+            text-shadow: 0 0 6px rgba(139, 92, 246, 0.8);
+        }
+
+        .phrase-tag.phrase-outro {
+            background: rgba(59, 130, 246, 0.22);
+            border-color: #3b82f6;
+            color: #93c5fd;
+            text-shadow: 0 0 6px rgba(59, 130, 246, 0.8);
+        }
+
+        /* Phrase Bar Segment Track */
+        .phrase-bar-track {
+            display: grid;
+            grid-template-columns: repeat(8, 1fr);
+            gap: 2px;
+            height: 8px;
+            background: #08090c;
+            border: 1px solid #1e202a;
+            border-radius: 3px;
+            padding: 1.5px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.9);
+        }
+
+        .phrase-segment {
+            background: #181a24;
+            border-radius: 1.5px;
+            transition: all 0.08s ease;
+        }
+
+        .phrase-segment.filled {
+            background: rgba(0, 255, 204, 0.45);
+        }
+
+        .phrase-segment.current {
+            background: #ffaa00;
+            box-shadow: 0 0 8px #ffaa00, 0 0 12px rgba(255, 170, 0, 0.7);
+            transform: scaleY(1.15);
+        }
+
+        .phrase-chorus-active .phrase-segment.filled {
+            background: rgba(255, 0, 127, 0.5);
+        }
+        .phrase-chorus-active .phrase-segment.current {
+            background: #ff007f;
+            box-shadow: 0 0 8px #ff007f, 0 0 14px #ff007f;
+        }
+
+        /* Micro Phrase Minimap */
+        .phrase-minimap {
+            display: flex;
+            gap: 1.5px;
+            height: 7px;
+            border-radius: 2px;
+            overflow: hidden;
+            background: #06070a;
+            border: 1px solid #1c1e28;
+        }
+
+        .minimap-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 5.5px;
+            font-weight: 900;
+            font-family: 'JetBrains Mono', monospace;
+            color: rgba(255, 255, 255, 0.5);
+            transition: all 0.2s ease;
+            opacity: 0.35;
+        }
+
+        .minimap-block.block-intro { background: #00f0ff; color: #000; }
+        .minimap-block.block-up { background: #ffaa00; color: #000; }
+        .minimap-block.block-chorus { background: #ff007f; color: #fff; }
+        .minimap-block.block-down { background: #8b5cf6; color: #fff; }
+        .minimap-block.block-outro { background: #3b82f6; color: #fff; }
+
+        .minimap-block.current-block {
+            opacity: 1 !important;
+            box-shadow: 0 0 6px currentColor;
+            transform: scaleY(1.2);
+            z-index: 1;
+        }
+
+        /* CDJ-2000 Phase Meter (4-Beat Grid) */
+        .phase-grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 3px;
+        }
+
+        .phase-block {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
+            background: #12141c;
+            border: 1px solid #232736;
+            border-radius: 3px;
+            padding: 3px 2px;
+            font-size: 7.5px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            color: #64748b;
+            transition: all 0.08s ease;
+        }
+
+        .phase-block .phase-led {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #282d3e;
+            transition: all 0.08s ease;
+        }
+
+        .phase-block.active {
+            background: linear-gradient(180deg, #1e2836 0%, #0d1e24 100%);
+            border-color: #00ffcc;
             color: #00ffcc;
-        }
-        .rack-tool-btn#btn-popout:hover {
-            background: linear-gradient(180deg, rgba(0,255,204,0.2) 0%, #102120 100%);
-            border-color: #00ffcc;
-            color: #ffffff;
-            box-shadow: 0 0 10px rgba(0,255,204,0.3);
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.4);
         }
 
-        .rack-tool-btn.danger {
-            border-color: rgba(255, 0, 127, 0.35);
-            color: #ff66aa;
-            padding: 0 6px;
-        }
-        .rack-tool-btn.danger:hover {
-            background: linear-gradient(180deg, rgba(255,0,127,0.25) 0%, #23121a 100%);
-            border-color: #ff007f;
-            color: #ffffff;
-            box-shadow: 0 0 10px rgba(255,0,127,0.35);
-        }
-        .rack-tool-btn#btn-popout:hover {
-            background: linear-gradient(180deg, rgba(0,255,204,0.2) 0%, #102120 100%);
-            border-color: #00ffcc;
-            color: #ffffff;
-            box-shadow: 0 0 10px rgba(0,255,204,0.3);
+        .phase-block.active .phase-led {
+            background: #00ffcc;
+            box-shadow: 0 0 6px #00ffcc;
         }
 
-        .rack-tool-btn.danger {
-            border-color: rgba(255, 0, 127, 0.35);
-            color: #ff66aa;
-            padding: 0 6px;
+        .phase-block#phase-block-1.active {
+            border-color: #ffaa00;
+            color: #ffaa00;
+            box-shadow: 0 0 8px rgba(255, 170, 0, 0.4);
         }
-        .rack-tool-btn.danger:hover {
-            background: linear-gradient(180deg, rgba(255,0,127,0.25) 0%, #23121a 100%);
-            border-color: #ff007f;
-            color: #ffffff;
-            box-shadow: 0 0 10px rgba(255,0,127,0.35);
+        .phase-block#phase-block-1.active .phase-led {
+            background: #ffaa00;
+            box-shadow: 0 0 6px #ffaa00;
+        }
+
+        .phase-sweep-track {
+            height: 3px;
+            background: #090a0f;
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+            border: 1px solid #1e2230;
+        }
+
+        .phase-sweep-marker {
+            position: absolute;
+            top: 0;
+            left: 0%;
+            width: 25%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent 0%, #00ffcc 50%, #ffffff 100%);
+            box-shadow: 0 0 6px #00ffcc;
+            border-radius: 2px;
+            transition: left 0.04s linear;
+        }
+
+        /* Dual View Pips */
+        .dual-phase-box {
+            width: 14px;
+            height: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #141620;
+            border: 1px solid #262a3a;
+            border-radius: 2px;
+            font-size: 7.5px;
+            font-weight: 800;
+            color: #64748b;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.08s ease;
+        }
+
+        .dual-phase-box.active {
+            background: #00ffcc;
+            border-color: #00ffcc;
+            color: #000000;
+            box-shadow: 0 0 6px #00ffcc;
+        }
+
+        .dual-phase-box#dual-pip-1.active {
+            background: #ffaa00;
+            border-color: #ffaa00;
+            color: #000000;
+            box-shadow: 0 0 6px #ffaa00;
         }
 
         .hud-badge {
@@ -2182,13 +2442,133 @@
                     <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
                 </div>
 
-                <!-- Live BPM & Audio Source Row -->
-                <div class="hud-section">
-                    <div class="hud-row" style="align-items:center;">
-                        <span class="hud-label">LIVE TEMPO</span>
-                        <div>
-                            <span class="bpm-display" id="bpm-val">126.0</span>
-                            <span class="bpm-unit">BPM</span>
+                <!-- Live Tempo & Pioneer CDJ-3000 / CDJ-2000 Phrase & Phase Visualizer -->
+                <div class="hud-section" style="padding: 8px 10px; background: #0c0d12; border: 1px solid #232530; border-radius: 6px; margin-bottom: 8px;">
+                    <!-- Top Header Row: Label, Telemetry Sync Badge, & Mode Selector (3000 | 2000 | DUAL) -->
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
+                        <div style="display:flex; align-items:center; gap:5px;">
+                            <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;">💿 PIONEER CDJ METRIC</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 4px; border-color:rgba(0,255,204,0.35); color:#00ffcc;" title="Live sync source: Pioneer Pro DJ Link / Rekordbox / StageLinq / Audio Clock">BEAT SYNC</span>
+                        </div>
+                        <!-- Mode Selector Chips (CDJ-3000, CDJ-2000, DUAL) -->
+                        <div class="phrase-mode-bar" id="phrase-mode-selector">
+                            <button class="phrase-mode-btn active" data-phrasemode="3000" title="Pioneer CDJ-3000 Phrase Waveform & Structural Bars">3000</button>
+                            <button class="phrase-mode-btn" data-phrasemode="2000" title="Pioneer CDJ-2000NXS2 Phase Meter & Beat Countdown">2000</button>
+                            <button class="phrase-mode-btn" data-phrasemode="dual" title="Combined Dual Mode: CDJ-3000 Phrase + CDJ-2000 Phase Meter">DUAL</button>
+                        </div>
+                    </div>
+
+                    <!-- Main Metric Container: Left = BPM Display; Right = Dynamic CDJ Visualizer Meter -->
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <!-- BPM Digital Readout Box -->
+                        <div style="flex-shrink:0; background: #13151c; border: 1px solid #282c3c; border-radius: 5px; padding: 4px 8px; text-align:center; min-width:82px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);">
+                            <div style="font-size: 7px; color: #8c909e; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 1px;">TEMPO</div>
+                            <div style="display:flex; align-items:baseline; justify-content:center; gap:2px;">
+                                <span class="bpm-display" id="bpm-val" style="font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
+                                <span class="bpm-unit" style="font-size: 8px; color: #00ffcc; font-weight: 800;">BPM</span>
+                            </div>
+                            <!-- Downbeat Flash Dot (Beat 1-4) -->
+                            <div style="display:flex; justify-content:center; gap:3px; margin-top:2px;" id="bpm-subbeat-dots">
+                                <span class="beat-pip active" id="beat-pip-1">1</span>
+                                <span class="beat-pip" id="beat-pip-2">2</span>
+                                <span class="beat-pip" id="beat-pip-3">3</span>
+                                <span class="beat-pip" id="beat-pip-4">4</span>
+                            </div>
+                        </div>
+
+                        <!-- Right: Pioneer CDJ-3000 & CDJ-2000 Visualizer Container -->
+                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); cursor:pointer;" id="cdj-meter-container" title="Click to Tap / Resync Downbeat to 1">
+                            
+                            <!-- VIEW 1: PIONEER CDJ-3000 PHRASE METER (Intro / Up / Chorus / Drop / Down / Outro) -->
+                            <div id="cdj3000-view" class="cdj-meter-view">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                                    <!-- Current Phrase Tag -->
+                                    <div style="display:flex; align-items:center; gap:5px;">
+                                        <span class="phrase-tag phrase-chorus" id="cdj3000-phrase-tag">CHORUS 1</span>
+                                        <span style="font-size:8px; color:#8c909e; font-family:'JetBrains Mono',monospace;" id="cdj3000-bar-text">BAR 03 / 08</span>
+                                    </div>
+                                    <!-- Countdown to next transition / Drop -->
+                                    <div style="font-size:8px; font-family:'JetBrains Mono',monospace; color:#ffaa00; font-weight:800;" id="cdj3000-countdown-text">
+                                        -5 BARS TO DROP
+                                    </div>
+                                </div>
+                                <!-- Segmented Phrase Progress Bar (8 or 16 bar segments) -->
+                                <div class="phrase-bar-track" id="cdj3000-bar-track">
+                                    <div class="phrase-segment filled" data-bar="1"></div>
+                                    <div class="phrase-segment filled" data-bar="2"></div>
+                                    <div class="phrase-segment current" data-bar="3"></div>
+                                    <div class="phrase-segment" data-bar="4"></div>
+                                    <div class="phrase-segment" data-bar="5"></div>
+                                    <div class="phrase-segment" data-bar="6"></div>
+                                    <div class="phrase-segment" data-bar="7"></div>
+                                    <div class="phrase-segment" data-bar="8"></div>
+                                </div>
+                                <!-- Micro Phrase Structure Mini-Map (Intro -> Up -> Chorus -> Down -> Outro) -->
+                                <div class="phrase-minimap" id="cdj3000-minimap" style="margin-top:4px;">
+                                    <div class="minimap-block block-intro" style="flex:2;" title="Intro (16 Bars)">INTRO</div>
+                                    <div class="minimap-block block-up" style="flex:1;" title="Up / Build (8 Bars)">UP</div>
+                                    <div class="minimap-block block-chorus current-block" style="flex:4;" title="Chorus / Drop (32 Bars)">CHORUS</div>
+                                    <div class="minimap-block block-down" style="flex:2;" title="Breakdown (16 Bars)">BREAK</div>
+                                    <div class="minimap-block block-outro" style="flex:2;" title="Outro (16 Bars)">OUTRO</div>
+                                </div>
+                            </div>
+
+                            <!-- VIEW 2: PIONEER CDJ-2000NXS2 PHASE METER (4-Beat Block Grid & Phase Needle) -->
+                            <div id="cdj2000-view" class="cdj-meter-view" style="display:none;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                                    <div style="font-size:8px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace;">
+                                        PHASE METER <span style="font-size:7px; color:#8c909e;">(GRID 4/4)</span>
+                                    </div>
+                                    <div style="font-size:8.5px; font-weight:800; color:#ffaa00; font-family:'JetBrains Mono',monospace;" id="cdj2000-countdown-display">
+                                        BAR <span id="cdj2000-bar-num">04</span>.<span id="cdj2000-beat-num">2</span>
+                                    </div>
+                                </div>
+                                <!-- 4-Beat LED Phase Grid with Phase Bar Needle -->
+                                <div class="phase-grid-container">
+                                    <div class="phase-block" id="phase-block-1"><span class="phase-led"></span><span>BEAT 1</span></div>
+                                    <div class="phase-block" id="phase-block-2"><span class="phase-led"></span><span>BEAT 2</span></div>
+                                    <div class="phase-block" id="phase-block-3"><span class="phase-led"></span><span>BEAT 3</span></div>
+                                    <div class="phase-block" id="phase-block-4"><span class="phase-led"></span><span>BEAT 4</span></div>
+                                </div>
+                                <!-- Sub-Beat Continuous Phase Sweep Needle -->
+                                <div class="phase-sweep-track" style="margin-top:4px;">
+                                    <div class="phase-sweep-marker" id="phase-sweep-needle"></div>
+                                </div>
+                            </div>
+
+                            <!-- VIEW 3: DUAL MODE (CDJ-3000 Phrase + CDJ-2000 Phase Meter combined) -->
+                            <div id="cdjdual-view" class="cdj-meter-view" style="display:none;">
+                                <!-- Top row: Phrase tag, Bar number, and 4-Beat Phase blocks -->
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
+                                    <span class="phrase-tag phrase-chorus" id="cdjdual-phrase-tag" style="font-size:7.5px; padding:1px 5px;">CHORUS 1</span>
+                                    <div style="display:flex; gap:3px;" id="cdjdual-phase-pips">
+                                        <div class="dual-phase-box active" id="dual-pip-1">1</div>
+                                        <div class="dual-phase-box" id="dual-pip-2">2</div>
+                                        <div class="dual-phase-box" id="dual-pip-3">3</div>
+                                        <div class="dual-phase-box" id="dual-pip-4">4</div>
+                                    </div>
+                                    <span style="font-size:7.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;" id="cdjdual-bar-count">BAR 03 / 08</span>
+                                </div>
+                                <!-- Segmented Phrase bar track -->
+                                <div class="phrase-bar-track" id="cdjdual-bar-track" style="height:6px; margin-bottom:3px;">
+                                    <div class="phrase-segment filled" data-bar="1"></div>
+                                    <div class="phrase-segment filled" data-bar="2"></div>
+                                    <div class="phrase-segment current" data-bar="3"></div>
+                                    <div class="phrase-segment" data-bar="4"></div>
+                                    <div class="phrase-segment" data-bar="5"></div>
+                                    <div class="phrase-segment" data-bar="6"></div>
+                                    <div class="phrase-segment" data-bar="7"></div>
+                                    <div class="phrase-segment" data-bar="8"></div>
+                                </div>
+                                <!-- Minimap -->
+                                <div class="phrase-minimap" id="cdjdual-minimap" style="height:6px;">
+                                    <div class="minimap-block block-intro" style="flex:2;">IN</div>
+                                    <div class="minimap-block block-up" style="flex:1;">UP</div>
+                                    <div class="minimap-block block-chorus current-block" style="flex:4;">DROP</div>
+                                    <div class="minimap-block block-down" style="flex:2;">BRK</div>
+                                    <div class="minimap-block block-outro" style="flex:2;">OUT</div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
