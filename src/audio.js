@@ -624,10 +624,17 @@ export async function setupAudio(onDeviceListChange) {
                     const inputData = e.inputBuffer.getChannelData(0);
                     recordedChunks.push(new Float32Array(inputData));
 
+                    let blockPeak = 0;
+                    for (let i = 0; i < inputData.length; i++) {
+                        const abs = Math.abs(inputData[i]);
+                        if (abs > blockPeak) blockPeak = abs;
+                    }
+                    const vuPercent = Math.min(100, Math.round(blockPeak * 100));
+
                     const elapsed = Date.now() - startTime;
                     const progress = Math.min(1.0, elapsed / totalMs);
                     if (onProgress) {
-                        onProgress(progress, Math.max(0, Math.ceil((totalMs - elapsed) / 1000)));
+                        onProgress(progress, Math.max(0, Math.ceil((totalMs - elapsed) / 1000)), vuPercent);
                     }
 
                     if (elapsed >= totalMs) {
@@ -672,6 +679,7 @@ export async function setupAudio(onDeviceListChange) {
                         const abs = Math.abs(float32All[i]);
                         if (abs > maxPeak) maxPeak = abs;
                     }
+                    const isSilent = maxPeak < 0.002;
                     if (maxPeak > 0.002 && maxPeak < 0.75) {
                         const boost = Math.min(20.0, 0.85 / maxPeak);
                         for (let i = 0; i < float32All.length; i++) {
@@ -691,7 +699,9 @@ export async function setupAudio(onDeviceListChange) {
                             blob: wavBlob,
                             base64: base64data,
                             samples: Array.from(int16Samples),
-                            duration: durationSec
+                            duration: durationSec,
+                            maxPeak,
+                            isSilent
                         });
                     };
                     reader.onerror = () => {
@@ -699,7 +709,9 @@ export async function setupAudio(onDeviceListChange) {
                             blob: wavBlob,
                             base64: '',
                             samples: Array.from(int16Samples),
-                            duration: durationSec
+                            duration: durationSec,
+                            maxPeak,
+                            isSilent
                         });
                     };
                     reader.readAsDataURL(wavBlob);
