@@ -577,17 +577,10 @@ async function startStageLinq() {
     }
 }
 
-// Standby Simulation Loop (Seamless fallback when no live hardware is transmitting)
+// Standby Simulation Loop (Only simulates tempo pulse if explicitly requested via --sim; never broadcasts fake tracks)
 function runSimulationLoop() {
     let simulatedBPM = 126.0;
     let beatCounter = 0;
-    const tracks = [
-        { artist: 'Eric Prydz', title: 'Opus (Live Intro Mix)', bpm: 126.0 },
-        { artist: 'Bicep', title: 'Glue', bpm: 130.0 },
-        { artist: 'Deadmau5', title: 'Strobe (Club Edit)', bpm: 128.0 },
-        { artist: 'Tale of Us', title: 'Astral Echoes', bpm: 125.0 }
-    ];
-    let trackIndex = 0;
 
     function scheduleNextBeat() {
         if (connectedDevices.size > 0) return;
@@ -598,7 +591,8 @@ function runSimulationLoop() {
                 broadcast({
                     type: 'beat',
                     deck: 1,
-                    count: beatCounter
+                    count: beatCounter,
+                    isHardware: false
                 });
                 scheduleNextBeat();
             }
@@ -606,21 +600,6 @@ function runSimulationLoop() {
     }
 
     scheduleNextBeat();
-
-    setInterval(() => {
-        if (connectedDevices.size > 0) return;
-        trackIndex = (trackIndex + 1) % tracks.length;
-        const currentTrack = tracks[trackIndex];
-        simulatedBPM = currentTrack.bpm;
-        handleIncomingTrack({
-            deck: 1,
-            artist: currentTrack.artist,
-            title: currentTrack.title,
-            bpm: currentTrack.bpm,
-            ecosystem: 'simulation',
-            device: 'Demo Telemetry'
-        });
-    }, 45000);
 }
 
 server.listen(PORT, () => {

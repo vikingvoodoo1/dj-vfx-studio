@@ -1044,11 +1044,35 @@ async function init() {
             title: stagedShazamTrack.title,
             artist: stagedShazamTrack.artist,
             coverart: stagedShazamTrack.coverart || '',
-            deck: lastDisplayedTrackDeck || 1,
+            deck: 'SHAZAM',
+            genre: stagedShazamTrack.genre || '',
             bpm: Number(bpmVal?.textContent) || 126.0
         };
+
+        // Update HUD Header
+        if (trackTitle) trackTitle.textContent = currentTrack.title;
+        if (trackArtist) trackArtist.textContent = `${currentTrack.artist} • Shazam Verified`;
+
+        // Update Now Playing Pane (Pane 4)
+        if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = currentTrack.title;
+        if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = currentTrack.artist;
+        if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = 'SHAZAM';
+        if (nowplayingPaneBpm) nowplayingPaneBpm.textContent = `${currentTrack.bpm.toFixed(1)} BPM`;
+
+        // Update Artwork
+        if (currentTrack.coverart) {
+            setTrackBannerArtwork(currentTrack.coverart);
+        }
+
         showTrackBanner(currentTrack, { force: true, immediate: true, fromShazamAcceptance: true, duration: trackDurationSec });
         showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
+
+        broadcastSync({
+            type: 'track',
+            ...currentTrack,
+            isHardware: false,
+            fromShazam: true
+        });
 
         broadcastSync({
             type: 'pop_track_banner_now',
@@ -4372,7 +4396,12 @@ async function init() {
         },
         onTrack: (trackData) => {
             if (!trackData) return;
-            const hasRealTitle = trackData.title && trackData.title.trim() !== '' && trackData.title !== 'Live Track' && trackData.title !== 'Opus (Live Intro Mix)' && trackData.title !== 'No Track Loaded';
+            // Ignore simulation packets and hardcoded demo tracks
+            if (trackData.ecosystem === 'simulation' || trackData.device === 'Demo Telemetry') return;
+            const fakeTitles = ['Astral Echoes', 'Opus (Live Intro Mix)', 'Glue', 'Strobe (Club Edit)', 'Live Track', 'No Track Loaded', '—'];
+            if (fakeTitles.includes(trackData.title)) return;
+
+            const hasRealTitle = trackData.title && trackData.title.trim() !== '';
             if (!hasRealTitle && !trackData.isHardware) return;
 
             if (trackData.isHardware) {
@@ -4384,6 +4413,11 @@ async function init() {
                 bpmVal.textContent = Number(trackData.bpm).toFixed(1);
                 vfx.setBPM(trackData.bpm);
             }
+
+            if (nowplayingPaneTitle && trackData.title) nowplayingPaneTitle.textContent = trackData.title;
+            if (nowplayingPaneArtist && trackData.artist) nowplayingPaneArtist.textContent = trackData.artist;
+            if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = `DECK ${trackData.deck || 1}`;
+            if (nowplayingPaneBpm && trackData.bpm) nowplayingPaneBpm.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
 
