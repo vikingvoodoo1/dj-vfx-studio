@@ -7259,33 +7259,82 @@ export function createVFXScene(container) {
     }
 
     // 1. Textures & Procedural Maps
-    const pumpkinFaceTex = createPumpkinJackFaceTexture();
     const pumpkinTileTex = discoTileTex;
     const pumpkinNormalTex = discoNormalTex;
     const pumpkinRoughnessTex = discoRoughnessTex;
     const pumpkinMetalnessTex = discoMetalnessTex;
 
-    // 2. Pumpkin Disco Ball Pivot & Faceted Sapphire Blue Metallic Glass Mesh
+    // Organic Curved Pumpkin Stalk / Stem with Silver Chrome / Glass Mirror Finish
+    function createPumpkinStemMesh() {
+        const stemGroup = new THREE.Group();
+
+        const curve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 3.8, 0),         // Stem base in the top dimple
+            new THREE.Vector3(0.12, 4.4, 0.08),   // Lower stalk
+            new THREE.Vector3(0.35, 5.0, 0.22),   // Mid stalk curving out
+            new THREE.Vector3(0.65, 5.5, 0.38),   // Upper stalk curve
+            new THREE.Vector3(0.85, 5.8, 0.45)    // Stalk tip
+        ]);
+
+        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.36, 16, false);
+        const stemPos = stemGeo.attributes.position;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < stemPos.count; i++) {
+            v.fromBufferAttribute(stemPos, i);
+            const t = Math.max(0, Math.min(1, (v.y - 3.8) / 2.0));
+            const taper = 1.30 * (1.0 - t * 0.60);
+            const angle = Math.atan2(v.x, v.z);
+            const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
+            v.x = v.x * taper * ridge;
+            v.z = v.z * taper * ridge;
+            stemPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        stemGeo.computeVertexNormals();
+
+        const stemMat = new THREE.MeshStandardMaterial({
+            color: 0xd8e4f8,       // Polished chrome / glass mirror stem
+            roughness: 0.12,
+            metalness: 0.95,
+            envMap: clubEnvMap,
+            envMapIntensity: 2.8
+        });
+
+        const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+        stemGroup.add(stemMesh);
+
+        // Metal suspension eyelet at top of stem
+        const eyeletGeo = new THREE.TorusGeometry(0.30, 0.075, 12, 20);
+        const eyeletMat = new THREE.MeshStandardMaterial({
+            color: 0x8899aa,
+            metalness: 0.9,
+            roughness: 0.2
+        });
+        const eyeletMesh = new THREE.Mesh(eyeletGeo, eyeletMat);
+        eyeletMesh.position.set(0.85, 5.95, 0.45);
+        eyeletMesh.rotation.y = Math.PI / 4;
+        stemGroup.add(eyeletMesh);
+
+        return stemGroup;
+    }
+
+    // 2. Pumpkin Disco Ball Pivot & 100% Glass Mirror Tiles Mesh
     const pumpkinPivot = new THREE.Group();
     pumpkinPivot.position.set(0, 0.0, 0.0);
     gPumpkinDiscoBall.add(pumpkinPivot);
 
     const dPumpkinGeo = createPumpkinDiscoGeometry(5.2, 128, 64, 10);
     const dPumpkinMat = new THREE.MeshPhysicalMaterial({
-        color: 0x143c78, // Deep reflective sapphire blue glass tiles
-        metalness: 0.95,
-        roughness: 0.04,
+        color: 0xffffff, // Pure sparkling glass mirror tiles
+        metalness: 1.0,
+        roughness: 0.03, // Ultra-sharp glass facet reflections
         normalMap: pumpkinNormalTex,
         normalScale: new THREE.Vector2(0.85, 0.85),
         roughnessMap: pumpkinRoughnessTex,
         metalnessMap: pumpkinMetalnessTex,
         bumpMap: pumpkinTileTex,
-        bumpScale: 0.035,
-        emissiveMap: pumpkinFaceTex,
-        emissive: new THREE.Color(0xff6600),
-        emissiveIntensity: 2.6,
+        bumpScale: 0.04,
         envMap: clubEnvMap,
-        envMapIntensity: 3.2,
+        envMapIntensity: 3.6,
         clearcoat: 1.0,
         clearcoatRoughness: 0.01,
         reflectivity: 1.0
@@ -8999,14 +9048,14 @@ export function createVFXScene(container) {
             const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.035 + (audio.isOnset ? 0.045 : 0.0);
             pumpkinMesh.scale.set(targetScale, targetScale, targetScale);
 
-            // 2. Realistic Jack-o'-Lantern Flame Flicker & Core Heat
-            const flameFlicker = Math.sin(elapsedTime * 19.5) * 0.18 + Math.sin(elapsedTime * 33.2) * 0.12 + Math.sin(elapsedTime * 8.4) * 0.25;
-            const bassSurge = (audio.smoothedBass || 0) * 2.8 + (audio.bassImpact || 0) * 3.5;
-            const flameIntensity = Math.max(1.8, 3.4 + flameFlicker + bassSurge);
+            // 2. Stage Pinspots & Facet Specular Lighting
+            const bassSurge = (audio.smoothedBass || 0) * 1.5 + (audio.bassImpact || 0) * 2.2;
+            pKeyLight.intensity = 2.8 + (audio.smoothedTreble || 0) * 1.6 + bassSurge * 0.8;
+            pCyanLight.intensity = 2.2 + (audio.smoothedMid || 0) * 1.4;
+            pDeepBlueRim.intensity = 3.2 + bassSurge * 1.0;
+            pOrangeFill.intensity = 2.0 + (audio.smoothedTreble || 0) * 1.2;
 
-            pumpkinFlameLight.intensity = flameIntensity;
-            pumpkinForwardSpot.intensity = flameIntensity * 1.45;
-            dPumpkinMat.emissiveIntensity = 2.4 + flameFlicker * 0.6 + bassSurge * 0.8;
+            pumpkinForwardSpot.intensity = 3.5 + bassSurge * 1.8;
 
             // 3. Volumetric Shaded Deep Blue Light Ray Fan Animation
             const rayPulseVal = isKickHit ? 1.0 : (pumpkinRayMeshes[0]?.mat.uniforms.uPulse.value * Math.exp(-delta * 3.8) || 0.0);
