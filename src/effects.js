@@ -7165,6 +7165,99 @@ export function createVFXScene(container) {
     // -------------------------------------------------------------------------
     const gPumpkinDiscoBall = createFXGroup();
 
+    // Procedural Parametric 3D Lobed Pumpkin Geometry (10 Vertical Ribs + Oblate Squash + Pole Depressions)
+    function createPumpkinDiscoGeometry(baseRadius = 5.2, widthSegments = 128, heightSegments = 64, numLobes = 10) {
+        const geo = new THREE.SphereGeometry(baseRadius, widthSegments, heightSegments);
+        const pos = geo.attributes.position;
+        const v = new THREE.Vector3();
+
+        for (let i = 0; i < pos.count; i++) {
+            v.fromBufferAttribute(pos, i);
+
+            const r = v.length();
+            if (r < 0.0001) continue;
+
+            const theta = Math.atan2(v.x, v.z);
+            const phi = Math.acos(Math.max(-1, Math.min(1, v.y / r)));
+
+            const sinPhi = Math.sin(phi);
+            const cosPhi = Math.cos(phi);
+
+            // Top stem and bottom base pole depressions (classic pumpkin dimples)
+            const poleDimple = 1.0 - 0.20 * Math.pow(Math.abs(cosPhi), 3.0);
+
+            // 10 pronounced vertical ribbed lobes with smooth creases
+            const lobeWave = Math.cos(numLobes * theta);
+            const lobeHarmonic = Math.cos(numLobes * 2 * theta);
+            const lobeDepth = (0.13 * lobeWave - 0.02 * lobeHarmonic) * Math.pow(sinPhi, 0.75);
+
+            // Squashed oblate profile (wider at equator, shorter in height)
+            const radialScale = (1.0 + lobeDepth) * poleDimple;
+
+            v.x = r * sinPhi * Math.sin(theta) * radialScale * 1.15;
+            v.z = r * sinPhi * Math.cos(theta) * radialScale * 1.15;
+            v.y = r * cosPhi * poleDimple * 0.84;
+
+            pos.setXYZ(i, v.x, v.y, v.z);
+        }
+
+        geo.computeVertexNormals();
+        return geo;
+    }
+
+    // Organic Curved Pumpkin Stalk / Stem with Fluted Ridges and Eyelet Ring
+    function createPumpkinStemMesh() {
+        const stemGroup = new THREE.Group();
+
+        const curve = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(0, 3.8, 0),         // Stem base in the top dimple
+            new THREE.Vector3(0.12, 4.4, 0.08),   // Lower stalk
+            new THREE.Vector3(0.35, 5.0, 0.22),   // Mid stalk curving out
+            new THREE.Vector3(0.65, 5.5, 0.38),   // Upper stalk curve
+            new THREE.Vector3(0.85, 5.8, 0.45)    // Stalk tip
+        ]);
+
+        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.36, 16, false);
+        const stemPos = stemGeo.attributes.position;
+        const v = new THREE.Vector3();
+        for (let i = 0; i < stemPos.count; i++) {
+            v.fromBufferAttribute(stemPos, i);
+            const t = Math.max(0, Math.min(1, (v.y - 3.8) / 2.0));
+            const taper = 1.30 * (1.0 - t * 0.60);
+            const angle = Math.atan2(v.x, v.z);
+            const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
+            v.x = v.x * taper * ridge;
+            v.z = v.z * taper * ridge;
+            stemPos.setXYZ(i, v.x, v.y, v.z);
+        }
+        stemGeo.computeVertexNormals();
+
+        const stemMat = new THREE.MeshStandardMaterial({
+            color: 0x554425,       // Woody bronze / gold stalk
+            roughness: 0.55,
+            metalness: 0.50,
+            envMap: clubEnvMap,
+            envMapIntensity: 1.8
+        });
+
+        const stemMesh = new THREE.Mesh(stemGeo, stemMat);
+        stemGroup.add(stemMesh);
+
+        // Metal suspension eyelet at top of stem
+        const eyeletGeo = new THREE.TorusGeometry(0.30, 0.075, 12, 20);
+        const eyeletMat = new THREE.MeshStandardMaterial({
+            color: 0x8899aa,
+            metalness: 0.9,
+            roughness: 0.2
+        });
+        const eyeletMesh = new THREE.Mesh(eyeletGeo, eyeletMat);
+        eyeletMesh.position.set(0.85, 5.95, 0.45);
+        eyeletMesh.rotation.y = Math.PI / 4;
+        stemGroup.add(eyeletMesh);
+
+        return stemGroup;
+    }
+
     // 1. Textures & Procedural Maps
     const pumpkinFaceTex = createPumpkinJackFaceTexture();
     const pumpkinTileTex = discoTileTex;
@@ -7177,7 +7270,7 @@ export function createVFXScene(container) {
     pumpkinPivot.position.set(0, 0.0, 0.0);
     gPumpkinDiscoBall.add(pumpkinPivot);
 
-    const dPumpkinGeo = new THREE.SphereGeometry(5.2, 96, 48);
+    const dPumpkinGeo = createPumpkinDiscoGeometry(5.2, 128, 64, 10);
     const dPumpkinMat = new THREE.MeshPhysicalMaterial({
         color: 0x143c78, // Deep reflective sapphire blue glass tiles
         metalness: 0.95,
@@ -7200,6 +7293,10 @@ export function createVFXScene(container) {
     const pumpkinMesh = new THREE.Mesh(dPumpkinGeo, dPumpkinMat);
     pumpkinPivot.add(pumpkinMesh);
 
+    // Attach curved pumpkin stalk / stem to pivot so it spins synchronously with the pumpkin
+    const pumpkinStem = createPumpkinStemMesh();
+    pumpkinPivot.add(pumpkinStem);
+
     // 3. Top Hanging Metal Chain & Ceiling Mount
     const pumpkinChainGroup = new THREE.Group();
     const chainLinkGeo = new THREE.TorusGeometry(0.28, 0.075, 12, 18);
@@ -7208,10 +7305,10 @@ export function createVFXScene(container) {
         metalness: 0.9,
         roughness: 0.2
     });
-    const numLinks = 14;
+    const numLinks = 16;
     for (let l = 0; l < numLinks; l++) {
         const linkMesh = new THREE.Mesh(chainLinkGeo, chainMat);
-        linkMesh.position.set(0, 5.2 + l * 0.48, 0);
+        linkMesh.position.set(0, 4.4 + l * 0.48, 0);
         linkMesh.rotation.y = (l % 2 === 0) ? 0 : Math.PI / 2;
         pumpkinChainGroup.add(linkMesh);
     }
