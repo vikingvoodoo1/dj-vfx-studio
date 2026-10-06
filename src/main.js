@@ -1519,6 +1519,7 @@ async function init() {
             posPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setLogoPosition(pos);
+            try { localStorage.setItem('dj_vfx_logo_pos', pos); } catch (e) {}
             broadcastSync({ type: 'set_logo_pos', pos });
         });
     });
@@ -1766,6 +1767,7 @@ async function init() {
             stationPosPills.forEach(p => p.classList.remove('active'));
             pill.classList.add('active');
             vfx.setStationLogoPosition(pos);
+            try { localStorage.setItem('dj_vfx_station_pos', pos); } catch (e) {}
             broadcastSync({ type: 'set_station_logo_pos', pos });
         });
     });
@@ -2021,6 +2023,19 @@ async function init() {
                     const parsed = JSON.parse(savedStation);
                     selectStationLogo(parsed.url, parsed.title, parsed.isVideo, false);
                 } catch (e) {}
+            }
+
+            // Restore saved positions
+            const savedLogoPos = localStorage.getItem('dj_vfx_logo_pos');
+            if (savedLogoPos) {
+                posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === savedLogoPos));
+                vfx.setLogoPosition(savedLogoPos);
+            }
+
+            const savedStationPos = localStorage.getItem('dj_vfx_station_pos');
+            if (savedStationPos) {
+                stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === savedStationPos));
+                vfx.setStationLogoPosition(savedStationPos);
             }
         } catch (err) {
             console.warn('Failed to load libraries from IndexedDB:', err);
@@ -3022,9 +3037,11 @@ async function init() {
                 document.exitFullscreen().catch(err => console.log(err));
             }
         }
-        // [H] to toggle Bottom FX Bank Toolbar
+        // [H] to toggle entire HUD Console / UI & Toolbar
         else if (e.key === 'h' || e.key === 'H') {
+            if (hud) hud.classList.toggle('hidden');
             if (fxBankPanel) fxBankPanel.classList.toggle('hidden');
+            document.body.style.cursor = (hud && hud.classList.contains('hidden')) ? 'none' : 'default';
         }
         // [O] to open OBS Streaming Manager or Shift+[O] to toggle OBS Output Mute
         else if (e.key === 'o' || e.key === 'O') {

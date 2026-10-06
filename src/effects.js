@@ -4042,7 +4042,7 @@ export function createVFXScene(container) {
         if (!logoMesh) return;
 
         let baseZ = 12.0;
-        let baseW = 5.0 * logoBaseScale;
+        let baseW = 4.8 * logoBaseScale;
 
         if (logoMode === 'backdrop') {
             baseZ = -20;
@@ -4051,13 +4051,13 @@ export function createVFXScene(container) {
             if (logoShieldMesh) logoShieldMesh.visible = false;
         } else if (logoMode === 'hologram') {
             baseZ = 6.9;
-            baseW = 7.5 * logoBaseScale;
+            baseW = (logoPosition === 'center' ? 7.5 : 4.8) * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         } else {
             // Default: Overlay / Watermark
             baseZ = 12.0;
-            baseW = 5.0 * logoBaseScale;
+            baseW = 4.8 * logoBaseScale;
             logoShaderMat.blending = THREE.NormalBlending;
             if (logoShieldMesh) logoShieldMesh.visible = isShieldActive;
         }
@@ -4325,7 +4325,7 @@ export function createVFXScene(container) {
         if (!stationLogoMesh) return;
 
         let baseZ = 12.0;
-        let baseW = 5.0 * stationLogoBaseScale;
+        let baseW = 4.8 * stationLogoBaseScale;
 
         if (stationLogoMode === 'backdrop') {
             baseZ = -20;
@@ -4334,13 +4334,13 @@ export function createVFXScene(container) {
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = false;
         } else if (stationLogoMode === 'hologram') {
             baseZ = 6.9;
-            baseW = 7.5 * stationLogoBaseScale;
+            baseW = (stationLogoPosition === 'center' ? 7.5 : 4.8) * stationLogoBaseScale;
             stationLogoShaderMat.blending = THREE.NormalBlending;
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
         } else {
             // Default: Overlay / Broadcast watermark
             baseZ = 12.0;
-            baseW = 5.0 * stationLogoBaseScale;
+            baseW = 4.8 * stationLogoBaseScale;
             stationLogoShaderMat.blending = THREE.NormalBlending;
             if (stationLogoShieldMesh) stationLogoShieldMesh.visible = isStationShieldActive;
         }
@@ -6673,7 +6673,8 @@ export function createVFXScene(container) {
         // 1. Animate Logo Layer
         if (logoVisible && logoMesh) {
             const logoPulse = (bassPop * logoBassPulseAmount * 0.25) + (transient * logoBassPulseAmount * 0.2);
-            const wBase = (logoMode === 'backdrop' ? 45 : (logoMode === 'overlay' ? 5.0 : 7.5)) * logoBaseScale * currentLogoScaleFactor * (1.0 + logoPulse * 0.25);
+            const wTarget = (logoMode === 'backdrop' ? 45 : (logoMode === 'overlay' ? 4.8 : (logoPosition === 'center' ? 7.5 : 4.8))) * logoBaseScale * currentLogoScaleFactor;
+            const wBase = wTarget * (1.0 + logoPulse * 0.25);
             const hBase = (wBase / (logoAspectRatio || 1.0));
 
             // Shield stays stationary flat directly behind the logo
@@ -6751,8 +6752,9 @@ export function createVFXScene(container) {
         // 1b. Animate Station Logo Layer
         if (stationLogoVisible && stationLogoMesh) {
             const stPulse = (bassPop * stationLogoBassPulseAmount * 0.25) + (transient * stationLogoBassPulseAmount * 0.2);
-            const wBase = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 5.0 : 7.5)) * stationLogoBaseScale * currentStationLogoScaleFactor * (1.0 + stPulse * 0.25);
-            const hBase = (wBase / stationLogoAspectRatio);
+            const stTarget = (stationLogoMode === 'backdrop' ? 45 : (stationLogoMode === 'overlay' ? 4.8 : (stationLogoPosition === 'center' ? 7.5 : 4.8))) * stationLogoBaseScale * currentStationLogoScaleFactor;
+            const wBase = stTarget * (1.0 + stPulse * 0.25);
+            const hBase = (wBase / (stationLogoAspectRatio || 1.0));
 
             if (stationLogoShieldMesh && isStationShieldActive && stationLogoMode !== 'backdrop') {
                 stationLogoShieldMesh.position.set(0, 0, -0.2);
