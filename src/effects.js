@@ -374,9 +374,10 @@ const PumpkinVolumetricRaysShader = {
             float alpha = baseAlpha * (0.85 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
             if (alpha < 0.001) discard;
 
-            // 6. Color Composition
-            float coreBlend = clamp(hotCore * 1.20 + originGlow * 0.40 + impactHotspot * 0.35 + uPulse * 0.25, 0.0, 1.0);
-            vec3 finalColor = mix(uColor * 0.88, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
+            // 6. Color Composition with Deep Vibrant Halloween Saturation & Bright Core
+            float coreBlend = clamp(hotCore * 1.10 + originGlow * 0.30 + impactHotspot * 0.25 + uPulse * 0.20, 0.0, 1.0);
+            vec3 saturatedColor = uColor * 1.15;
+            vec3 finalColor = mix(saturatedColor, uCoreColor, coreBlend * 0.65) * (1.0 + uPulse * 0.30 + uTreble * 0.20);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7275,8 +7276,8 @@ export function createVFXScene(container) {
     // -------------------------------------------------------------------------
     const gPumpkinDiscoBall = createFXGroup();
 
-    // Procedural Parametric 3D Lobed Pumpkin Geometry (10 Vertical Ribs + Oblate Squash + Pole Depressions)
-    function createPumpkinDiscoGeometry(baseRadius = 5.2, widthSegments = 128, heightSegments = 64, numLobes = 10) {
+    // Procedural Parametric 3D Lobed Pumpkin Geometry (10 Vertical Ribs + Taller Vertical Stature + Pole Depressions)
+    function createPumpkinDiscoGeometry(baseRadius = 5.4, widthSegments = 128, heightSegments = 64, numLobes = 10) {
         const geo = new THREE.SphereGeometry(baseRadius, widthSegments, heightSegments);
         const pos = geo.attributes.position;
         const v = new THREE.Vector3();
@@ -7294,19 +7295,19 @@ export function createVFXScene(container) {
             const cosPhi = Math.cos(phi);
 
             // Top stem and bottom base pole depressions (classic pumpkin dimples)
-            const poleDimple = 1.0 - 0.20 * Math.pow(Math.abs(cosPhi), 3.0);
+            const poleDimple = 1.0 - 0.18 * Math.pow(Math.abs(cosPhi), 3.0);
 
             // 10 pronounced vertical ribbed lobes with smooth creases
             const lobeWave = Math.cos(numLobes * theta);
             const lobeHarmonic = Math.cos(numLobes * 2 * theta);
             const lobeDepth = (0.13 * lobeWave - 0.02 * lobeHarmonic) * Math.pow(sinPhi, 0.75);
 
-            // Squashed oblate profile (wider at equator, shorter in height)
+            // Taller, majestic vertical stature with pronounced lobed ridges
             const radialScale = (1.0 + lobeDepth) * poleDimple;
 
-            v.x = r * sinPhi * Math.sin(theta) * radialScale * 1.15;
-            v.z = r * sinPhi * Math.cos(theta) * radialScale * 1.15;
-            v.y = r * cosPhi * poleDimple * 0.84;
+            v.x = r * sinPhi * Math.sin(theta) * radialScale * 1.10;
+            v.z = r * sinPhi * Math.cos(theta) * radialScale * 1.10;
+            v.y = r * cosPhi * poleDimple * 1.25; // Noticeably taller pumpkin height!
 
             pos.setXYZ(i, v.x, v.y, v.z);
         }
@@ -7326,19 +7327,19 @@ export function createVFXScene(container) {
         const stemGroup = new THREE.Group();
 
         const curve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 3.8, 0),         // Stem base in the top dimple
-            new THREE.Vector3(0.08, 4.3, 0.06),   // Lower stalk
-            new THREE.Vector3(0.22, 4.8, 0.15),   // Mid stalk curving out
-            new THREE.Vector3(0.40, 5.2, 0.25),   // Upper stalk curve
-            new THREE.Vector3(0.50, 5.4, 0.30)    // Stalk tip
+            new THREE.Vector3(0, 5.25, 0),         // Stem base in the top dimple of taller pumpkin
+            new THREE.Vector3(0.08, 5.85, 0.06),   // Lower stalk
+            new THREE.Vector3(0.22, 6.45, 0.15),   // Mid stalk curving out
+            new THREE.Vector3(0.40, 6.95, 0.25),   // Upper stalk curve
+            new THREE.Vector3(0.50, 7.25, 0.30)    // Stalk tip
         ]);
 
-        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.32, 16, false);
+        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.34, 16, false);
         const stemPos = stemGeo.attributes.position;
         const v = new THREE.Vector3();
         for (let i = 0; i < stemPos.count; i++) {
             v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 3.8) / 1.6));
+            const t = Math.max(0, Math.min(1, (v.y - 5.25) / 2.0));
             const taper = 1.25 * (1.0 - t * 0.55);
             const angle = Math.atan2(v.x, v.z);
             const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
@@ -7367,7 +7368,7 @@ export function createVFXScene(container) {
     pumpkinPivot.position.set(0, 0.0, 0.0);
     gPumpkinDiscoBall.add(pumpkinPivot);
 
-    const dPumpkinGeo = createPumpkinDiscoGeometry(5.2, 128, 64, 10);
+    const dPumpkinGeo = createPumpkinDiscoGeometry(5.4, 128, 64, 10);
     const dPumpkinMat = new THREE.MeshPhysicalMaterial({
         color: 0xffffff, // Sparkling silver optical mirror tiles
         metalness: 0.95,  // Highly reflective mirror metal
@@ -7404,30 +7405,41 @@ export function createVFXScene(container) {
         envMap: clubEnvMap,
         envMapIntensity: 2.5
     });
-    const numLinks = 18;
+    const numLinks = 14;
     for (let l = 0; l < numLinks; l++) {
         const linkMesh = new THREE.Mesh(chainLinkGeo, chainMat);
-        linkMesh.position.set(0, 3.85 + l * 0.45, 0);
+        linkMesh.position.set(0, 7.30 + l * 0.45, 0);
         linkMesh.rotation.y = (l % 2 === 0) ? 0 : Math.PI / 2;
         pumpkinChainGroup.add(linkMesh);
     }
     const ceilingMountGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.25, 24);
     const ceilingMountMesh = new THREE.Mesh(ceilingMountGeo, chainMat);
-    ceilingMountMesh.position.set(0, 12.0, 0);
+    ceilingMountMesh.position.set(0, 13.5, 0);
     pumpkinChainGroup.add(ceilingMountMesh);
     gPumpkinDiscoBall.add(pumpkinChainGroup);
 
-    // Halloween and White Spectral Color Palette for FX 22
+    // Highly Vibrant Halloween & Radiant White Spectral Color Palette for FX 22
     const HALLOWEEN_PALETTE = [
-        { color: new THREE.Color(0xffffff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffffff), name: 'Ghost White' },
-        { color: new THREE.Color(0xff6200), core: new THREE.Color(0xffeed0), emissive: new THREE.Color(0xff5500), name: 'Pumpkin Orange' },
-        { color: new THREE.Color(0xebf5ff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xd0e8ff), name: 'Moonlight White' },
-        { color: new THREE.Color(0x9922ee), core: new THREE.Color(0xf6d8ff), emissive: new THREE.Color(0x8811dd), name: 'Witch Purple' },
-        { color: new THREE.Color(0x2bfd3b), core: new THREE.Color(0xe5ffe8), emissive: new THREE.Color(0x20dd30), name: 'Toxic Slime Green' },
-        { color: new THREE.Color(0xfff7e8), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffeed0), name: 'Candlelight White' },
-        { color: new THREE.Color(0xff1838), core: new THREE.Color(0xffdbe0), emissive: new THREE.Color(0xee0828), name: 'Blood Crimson' },
-        { color: new THREE.Color(0xff9900), core: new THREE.Color(0xfff3d0), emissive: new THREE.Color(0xee8800), name: 'Jack-o-Lantern Amber' },
-        { color: new THREE.Color(0xf5edff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xe0ccff), name: 'Spectral Lilac' }
+        // 1. Hyper-Brilliant Xenon Cool White
+        { color: new THREE.Color(0xffffff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffffff), name: 'Xenon Strobe White' },
+        // 2. Deep Saturated Blood Pumpkin Orange
+        { color: new THREE.Color(0xff4000), core: new THREE.Color(0xffd599), emissive: new THREE.Color(0xff3300), name: 'Deep Pumpkin Flame' },
+        // 3. Shimmering Moonlight Ice Silver White
+        { color: new THREE.Color(0xd6eeff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xb0d8ff), name: 'Moonlight Ice White' },
+        // 4. Sinister Witch Velvet Violet Purple
+        { color: new THREE.Color(0x9900ff), core: new THREE.Color(0xebccff), emissive: new THREE.Color(0x8800ee), name: 'Witch Velvet Purple' },
+        // 5. Radioactive Toxic Acid Neon Slime Green
+        { color: new THREE.Color(0x00ff33), core: new THREE.Color(0xd0ffd9), emissive: new THREE.Color(0x00dd22), name: 'Toxic Slime Green' },
+        // 6. Warm Halogen Candlelight Incandescent Gold White
+        { color: new THREE.Color(0xffeed6), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffd9a8), name: 'Candlelight Gold White' },
+        // 7. Sinister Blood Ruby Crimson Red
+        { color: new THREE.Color(0xff002b), core: new THREE.Color(0xffc2cc), emissive: new THREE.Color(0xee001e), name: 'Blood Ruby Crimson' },
+        // 8. Deep Glowing Jack-o'-Lantern Molten Amber
+        { color: new THREE.Color(0xff7700), core: new THREE.Color(0xffe2b3), emissive: new THREE.Color(0xee6600), name: 'Molten Jack-o-Lantern' },
+        // 9. Spectral Ghost Silver Lilac White
+        { color: new THREE.Color(0xf0e6ff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xdac4ff), name: 'Spectral Phantom White' },
+        // 10. Midnight Phantom Spooky Cobalt Blue
+        { color: new THREE.Color(0x0048ff), core: new THREE.Color(0xb8d0ff), emissive: new THREE.Color(0x0038dd), name: 'Midnight Spooky Blue' }
     ];
 
     function sampleHalloweenPalette(t) {
@@ -7440,7 +7452,10 @@ export function createVFXScene(container) {
         const idx0 = Math.min(n - 1, Math.max(0, Math.floor(progress)));
         const idx1 = (idx0 + 1) % n;
         const frac = Math.max(0.0, Math.min(1.0, progress - idx0));
-        const smoothFrac = 0.5 - 0.5 * Math.cos(frac * Math.PI);
+        
+        // Hold vibrant color plateau for 45% of cycle, smoothly morph across remaining 55%
+        const blendFrac = frac < 0.45 ? 0.0 : ((frac - 0.45) / 0.55);
+        const smoothFrac = 0.5 - 0.5 * Math.cos(blendFrac * Math.PI);
 
         const p0 = HALLOWEEN_PALETTE[idx0] || HALLOWEEN_PALETTE[0];
         const p1 = HALLOWEEN_PALETTE[idx1] || HALLOWEEN_PALETTE[0];
@@ -9342,20 +9357,20 @@ export function createVFXScene(container) {
             const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.025 + (audio.isOnset ? 0.035 : 0.0);
             pumpkinMesh.scale.set(targetScale, targetScale, targetScale);
 
-            // 2. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the pumpkin
-            const tL = elapsedTime * 0.60;
-            const txL = -1.0 + Math.sin(tL * 0.90) * 2.2; // -3.2 to +1.2
-            const tyL = Math.cos(tL * 0.68) * 1.9;       // -1.9 to +1.9
-            const rSqL = txL * txL + tyL * tyL;
-            const tzL = Math.sqrt(Math.max(4.0, 20.5 - rSqL * 0.7)); // Guaranteed FRONT convex facet (Z: +2.4 to +4.6)
+            // 2. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the taller pumpkin
+            const tL = elapsedTime * 0.55;
+            const txL = -1.0 + Math.sin(tL * 0.85) * 2.4; // -3.4 to +1.4
+            const tyL = Math.cos(tL * 0.65) * 2.8;       // -2.8 to +2.8 (sweeps nicely across taller pumpkin height)
+            const rSqL = (txL * txL) / 1.25 + (tyL * tyL) / 1.5;
+            const tzL = Math.sqrt(Math.max(4.0, 24.5 - rSqL)); // Guaranteed FRONT convex facet (Z: +3.0 to +4.9)
             const targetLeftPos = new THREE.Vector3(txL, tyL, tzL);
             pLeftTargetObj.position.copy(targetLeftPos);
 
-            const tR = elapsedTime * 0.60 + Math.PI * 0.72;
-            const txR = 1.0 + Math.cos(tR * 0.88) * 2.2;  // -1.2 to +3.2
-            const tyR = Math.sin(tR * 0.72) * 1.9;       // -1.9 to +1.9
-            const rSqR = txR * txR + tyR * tyR;
-            const tzR = Math.sqrt(Math.max(4.0, 20.5 - rSqR * 0.7)); // Guaranteed FRONT convex facet (Z: +2.4 to +4.6)
+            const tR = elapsedTime * 0.55 + Math.PI * 0.72;
+            const txR = 1.0 + Math.cos(tR * 0.82) * 2.4;  // -1.4 to +3.4
+            const tyR = Math.sin(tR * 0.68) * 2.8;       // -2.8 to +2.8
+            const rSqR = (txR * txR) / 1.25 + (tyR * tyR) / 1.5;
+            const tzR = Math.sqrt(Math.max(4.0, 24.5 - rSqR)); // Guaranteed FRONT convex facet (Z: +3.0 to +4.9)
             const targetRightPos = new THREE.Vector3(txR, tyR, tzR);
             pRightTargetObj.position.copy(targetRightPos);
 
@@ -9377,7 +9392,6 @@ export function createVFXScene(container) {
             pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
 
             // Align volumetric beams and inner cores along fixture-to-target vectors
-            // Align volumetric beams and inner cores along fixture-to-target vectors
             // Terminate EXACTLY at the front surface hit coordinate (ZERO penetration through or behind pumpkin)
             const upVec = new THREE.Vector3(0, -1, 0);
             pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
@@ -9392,9 +9406,9 @@ export function createVFXScene(container) {
 
             // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
             const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
-            const leftHit = Math.max(0.0, 1.0 - (leftDistFromCenter / 2.6));
+            const leftHit = Math.max(0.0, 1.0 - (leftDistFromCenter / 3.0));
             const rightDistFromCenter = Math.sqrt(txR * txR + tyR * tyR);
-            const rightHit = Math.max(0.0, 1.0 - (rightDistFromCenter / 2.6));
+            const rightHit = Math.max(0.0, 1.0 - (rightDistFromCenter / 3.0));
 
             // Nonlinear power curve for sudden dazzling flare bloom on direct hit
             const leftGlare = Math.pow(leftHit, 1.6);
@@ -9415,8 +9429,8 @@ export function createVFXScene(container) {
             pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 3.5);
             manualFlash = Math.max(manualFlash, pumpkinScreenFlash);
 
-            // 3. Dynamic Color Transition: Slowly fade between shades of White and Halloween colors
-            const colorSpeed = 0.10; // Slow, majestic color transition (~90s full cycle)
+            // 3. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
+            const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
             const leftSample = sampleHalloweenPalette(elapsedTime * colorSpeed);
             const rightSample = sampleHalloweenPalette(elapsedTime * colorSpeed + 0.85);
 
@@ -9425,42 +9439,45 @@ export function createVFXScene(container) {
             const rightColor = rightSample.color;
             const rightCore = rightSample.core;
 
-            // 4. ⚡ DUAL MOVING-HEAD STROBE ENGINE (Rapid Rhythmic Strobing onto Pumpkin)
+            // 4. 🎵 MUSICAL BEAT-PULSING LIGHT ENGINE (Pumping in Rhythm with the Track)
             const bps = currentBPM / 60.0;
-            // High-speed musical strobe clock (8 pulses per beat / ~16.8 Hz at 126 BPM)
-            const strobeFreq = bps * 8.0;
-            const strobePhase = elapsedTime * strobeFreq * Math.PI * 2.0;
-            const isStrobeBurst = (isKickHit || transientVal > 0.35 || isDeadOn);
+            const beatTime = elapsedTime * bps;
+            const beatFract = beatTime % 1.0; // 0.0 -> 1.0 on each musical quarter-note beat
+            
+            // Musical beat pulse envelope (smooth attack + exponential release on each quarter note)
+            const beatEnvelope = Math.pow(Math.max(0.0, 1.0 - beatFract), 2.2);
 
-            // Alternating ping-pong strobe pulse wave + simultaneous strobe hits during drops & kick transients
-            const rawStrobeL = Math.sin(strobePhase);
-            const rawStrobeR = Math.sin(strobePhase + (isStrobeBurst ? 0.0 : Math.PI * 0.5));
+            // Smooth musical pumping wave for alternating moving heads (Left on odd beats, Right on even beats)
+            const sinBeat = Math.sin(beatTime * Math.PI);
+            const altPulseL = 0.55 + 0.45 * Math.max(0.0, sinBeat);
+            const altPulseR = 0.55 + 0.45 * Math.max(0.0, -sinBeat);
 
-            // Sharp duty cycle: High-contrast explosive flash + dark cut
-            const strobePulseL = (rawStrobeL > -0.20) ? (0.65 + Math.pow(Math.max(0.0, rawStrobeL), 2.2) * 0.75) : 0.08;
-            const strobePulseR = (rawStrobeR > -0.20) ? (0.65 + Math.pow(Math.max(0.0, rawStrobeR), 2.2) * 0.75) : 0.08;
+            // Dynamic kick / bass surge
+            const audioSurge = (audio.smoothedBass || 0) * 0.65 + (audio.smoothedMid || 0) * 0.35 + (audio.isOnset ? 0.60 : 0.0);
+            const kickBurst = isKickHit ? (0.65 + bassPopVal * 0.45 + transientVal * 0.35) : (beatEnvelope * 0.45);
 
-            const musicSurge = (audio.smoothedBass || 0) * 0.55 + (audio.transientImpulse || 0) * 0.45 + (audio.isOnset ? 0.50 : 0.0);
-            const strobeMultiL = strobePulseL * (1.0 + (audio.smoothedBass || 0) * 0.50 + (isStrobeBurst ? 0.65 : 0.0));
-            const strobeMultiR = strobePulseR * (1.0 + (audio.smoothedBass || 0) * 0.50 + (isStrobeBurst ? 0.65 : 0.0));
+            // Smoothly modulated light multipliers that breathe and pulse musically
+            const pulseMultiL = Math.min(2.5, 0.45 + altPulseL * 0.50 + kickBurst + audioSurge * 0.45);
+            const pulseMultiR = Math.min(2.5, 0.45 + altPulseR * 0.50 + kickBurst + audioSurge * 0.45);
+            const avgPulse = (pulseMultiL + pulseMultiR) * 0.5;
 
-            // Dynamic intensity with strobe modulation
-            const beamLeftPower = Math.max(0.4, (2.8 + leftHit * 2.0 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.2) * strobeMultiL);
-            const beamRightPower = Math.max(0.4, (2.8 + rightHit * 2.0 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.2) * strobeMultiR);
+            // Dynamic beam power
+            const beamLeftPower = Math.max(0.6, (2.6 + leftHit * 2.2 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.5) * pulseMultiL);
+            const beamRightPower = Math.max(0.6, (2.6 + rightHit * 2.2 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.5) * pulseMultiR);
 
-            // Update Fixture Lens & Status LED Colors and Intensity with Strobe Flashes
-            pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(strobeMultiL > 0.4 ? 1.6 : 0.3);
+            // Update Fixture Lens & Status LED Colors and Intensity with Musical Beat Pulse
+            pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(0.7 + pulseMultiL * 0.6);
             pLeftFixture.ledRingMat.color.copy(leftColor);
-            pRightFixture.lensMat.color.copy(rightColor).multiplyScalar(strobeMultiR > 0.4 ? 1.6 : 0.3);
+            pRightFixture.lensMat.color.copy(rightColor).multiplyScalar(0.7 + pulseMultiR * 0.6);
             pRightFixture.ledRingMat.color.copy(rightColor);
 
-            // The Pumpkin and Stalk change colors and catch the rhythmic strobe flashes!
+            // The Pumpkin and Stalk catch the rich Halloween colors and pulse with the beat!
             const pumpkinThemeCol = new THREE.Color().lerpColors(leftColor, rightColor, 0.5);
             const pumpkinEmissiveCol = new THREE.Color().lerpColors(leftSample.emissive, rightSample.emissive, 0.5);
 
             dPumpkinMat.color.copy(pumpkinThemeCol);
             dPumpkinMat.emissive.copy(pumpkinEmissiveCol);
-            dPumpkinMat.emissiveIntensity = (0.15 + (strobeMultiL * 0.45 + strobeMultiR * 0.45) * totalGlareScore + pumpkinDeadOnFlashPulse * 0.85);
+            dPumpkinMat.emissiveIntensity = (0.18 + (pulseMultiL * 0.35 + pulseMultiR * 0.35) * (0.5 + totalGlareScore * 0.5) + pumpkinDeadOnFlashPulse * 0.85);
             if (pumpkinStem) {
                 pumpkinStem.traverse((child) => {
                     if (child.isMesh && child.material && child.material.color) {
@@ -9469,14 +9486,14 @@ export function createVFXScene(container) {
                 });
             }
 
-            // Spotlights strobing intensely onto the pumpkin
+            // Spotlights pulsing musically onto the pumpkin
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = Math.max(1.0, (7.0 + leftHit * 6.0 + musicSurge * 4.5 + pumpkinDeadOnFlashPulse * 8.0) * strobeMultiL);
+            pBottomLeftSpot.intensity = Math.max(1.0, (7.0 + leftHit * 5.0 + audioSurge * 4.0 + pumpkinDeadOnFlashPulse * 7.0) * pulseMultiL);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = Math.max(1.0, (7.0 + rightHit * 6.0 + musicSurge * 4.5 + pumpkinDeadOnFlashPulse * 8.0) * strobeMultiR);
+            pBottomRightSpot.intensity = Math.max(1.0, (7.0 + rightHit * 5.0 + audioSurge * 4.0 + pumpkinDeadOnFlashPulse * 7.0) * pulseMultiR);
 
-            // Volumetric shaded incoming god rays uniforms with strobe flashes
+            // Volumetric shaded incoming god rays uniforms with beat pulsing
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
             pLeftBeamMat.uniforms.uCoreColor.value.copy(leftCore);
             pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
@@ -9497,38 +9514,37 @@ export function createVFXScene(container) {
             pRightCoreBeamMat.uniforms.uIntensity.value = beamRightPower * 1.35;
             pRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
 
-            // Front surface impact flares strobing at the exact beam landing coordinates on the pumpkin front
+            // Front surface impact flares pulsing at the exact beam landing coordinates on the pumpkin front
             pLeftHitFlare.position.copy(targetLeftPos);
             pLeftHitFlare.material.color.copy(leftColor);
-            pLeftHitFlare.material.opacity = Math.min(1.0, (0.50 + leftHit * 0.40 + musicSurge * 0.30 + pumpkinDeadOnFlashPulse * 0.40) * strobeMultiL);
-            const flareScaleL = (3.5 + leftHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.75 + strobeMultiL * 0.35);
+            pLeftHitFlare.material.opacity = Math.min(1.0, (0.55 + leftHit * 0.35 + audioSurge * 0.25 + pumpkinDeadOnFlashPulse * 0.40) * (0.7 + pulseMultiL * 0.3));
+            const flareScaleL = (3.5 + leftHit * 2.2 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.85 + pulseMultiL * 0.25);
             pLeftHitFlare.scale.set(flareScaleL, flareScaleL, 1.0);
 
             pRightHitFlare.position.copy(targetRightPos);
             pRightHitFlare.material.color.copy(rightColor);
-            pRightHitFlare.material.opacity = Math.min(1.0, (0.50 + rightHit * 0.40 + musicSurge * 0.30 + pumpkinDeadOnFlashPulse * 0.40) * strobeMultiR);
-            const flareScaleR = (3.5 + rightHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.75 + strobeMultiR * 0.35);
+            pRightHitFlare.material.opacity = Math.min(1.0, (0.55 + rightHit * 0.35 + audioSurge * 0.25 + pumpkinDeadOnFlashPulse * 0.40) * (0.7 + pulseMultiR * 0.3));
+            const flareScaleR = (3.5 + rightHit * 2.2 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.85 + pulseMultiR * 0.25);
             pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
             // Front Key Light & Pumpkin Flame
-            const avgStrobe = (strobeMultiL + strobeMultiR) * 0.5;
             pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.45));
-            pKeyLight.intensity = (3.0 + totalGlareScore * 4.5 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 6.0) * (0.8 + avgStrobe * 0.4);
+            pKeyLight.intensity = (3.0 + totalGlareScore * 4.5 + audioSurge * 2.0 + pumpkinDeadOnFlashPulse * 6.0) * (0.8 + avgPulse * 0.4);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (3.2 + totalGlareScore * 4.0 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 5.0) * (0.8 + avgStrobe * 0.4);
+            pumpkinFlameLight.intensity = (3.2 + totalGlareScore * 4.0 + audioSurge * 2.0 + pumpkinDeadOnFlashPulse * 5.0) * (0.8 + avgPulse * 0.4);
 
-            // 5. Update Central Bright Specular Glare (Flash on direct hit and strobe peaks)
+            // 5. Update Central Bright Specular Glare (Flash on direct hit and beat pulse peaks)
             const glareTint = (pumpkinDeadOnFlashPulse > 0.3) ? new THREE.Color(0xffffff) : (leftGlare > rightGlare ? leftColor : rightColor);
             pCenterGlareSprite.material.color.copy(glareTint);
             pCenterStarburstSprite.material.color.copy(glareTint);
 
-            const baseGlareScale = 5.0 + totalGlareScore * 22.0 + musicSurge * 6.0 + pumpkinDeadOnFlashPulse * 16.0;
+            const baseGlareScale = 5.0 + totalGlareScore * 22.0 + audioSurge * 6.0 + pumpkinDeadOnFlashPulse * 16.0;
             pCenterGlareSprite.scale.set(baseGlareScale * 1.9, baseGlareScale * 0.8, 1.0);
             pCenterStarburstSprite.scale.set(baseGlareScale * 1.25, baseGlareScale * 1.25, 1.0);
 
-            pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.98 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgStrobe * 0.5)));
-            pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.92 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgStrobe * 0.5)));
+            pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.98 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgPulse * 0.5)));
+            pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.92 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgPulse * 0.5)));
 
             // 6. Floor & Room Caustic Reflection Spots (Brighter on direct hit)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.05;
