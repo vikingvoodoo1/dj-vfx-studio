@@ -3992,7 +3992,7 @@ export function createVFXScene(container) {
     sCtx.fillRect(0, 0, 256, 256);
 
     const shieldTexture = new THREE.CanvasTexture(shieldCanvas);
-    const shieldMat = new THREE.MeshBasicMaterial({
+    const logoShieldMat = new THREE.MeshBasicMaterial({
         map: shieldTexture,
         transparent: true,
         opacity: 0.85,
@@ -4000,7 +4000,8 @@ export function createVFXScene(container) {
         depthWrite: false,
         fog: false
     });
-    logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), shieldMat);
+    const shieldMat = logoShieldMat;
+    logoShieldMesh = new THREE.Mesh(new THREE.PlaneGeometry(16, 16), logoShieldMat);
     logoShieldMesh.renderOrder = 9998;
 
     // Logo Mesh with High-Clarity Shader (Renders in front of all 3D scene objects)
