@@ -338,8 +338,8 @@
         /* Unified Skeuomorphic Panel Header */
         .hud-header {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
+            align-items: center;
+            justify-content: space-between;
             border-bottom: 1px solid #282a34;
             padding-bottom: 8px;
             margin-bottom: 10px;
@@ -367,13 +367,6 @@
             display: flex;
             align-items: center;
             gap: 5px;
-        }
-
-        .hud-header-tools {
-            display: grid;
-            grid-template-columns: 1fr 1fr auto;
-            gap: 4px;
-            width: 100%;
         }
 
         .rack-tool-btn {
@@ -988,50 +981,74 @@
             box-shadow: 0 0 6px #ffaa00, 0 0 12px rgba(255,170,0,0.7);
         }
 
-        /* Studio Setup Drawer Segmented Navigation Bar */
+        /* Studio Setup Drawer Navigation Tabs (Matching Logos Authentic Browser Tabs) */
         .setup-nav-bar {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            display: flex;
+            align-items: flex-end;
             gap: 4px;
-            background: #0e0f13;
-            border: 1px solid #252833;
-            border-radius: 6px;
-            padding: 3px;
+            background: #0d0e12;
+            border-bottom: 2px solid #282a35;
+            padding: 5px 6px 0 6px;
             margin-bottom: 12px;
+            position: relative;
+            border-radius: 6px 6px 0 0;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);
         }
 
         .setup-nav-tab {
+            flex: 1;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 4px;
-            padding: 6px 4px;
-            border-radius: 4px;
-            background: transparent;
-            border: 1px solid transparent;
-            color: #8c91a0;
+            gap: 5px;
+            padding: 8px 6px 7px 6px;
+            border-radius: 6px 6px 0 0;
+            background: #14161c;
+            border: 1px solid #232632;
+            border-bottom: none;
+            color: #8c91a2;
             font-size: 9px;
             font-weight: 700;
             cursor: pointer;
             transition: all 0.15s ease;
             user-select: none;
             font-family: 'JetBrains Mono', monospace;
-            text-align: center;
+            position: relative;
+            margin-bottom: -2px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.05);
             white-space: nowrap;
         }
 
         .setup-nav-tab:hover {
-            color: #ffffff;
-            background: rgba(255, 255, 255, 0.06);
+            color: #e2e5ec;
+            background: #1c1e27;
+            border-color: #3b3f52;
         }
 
         .setup-nav-tab.active {
-            background: linear-gradient(180deg, #242630 0%, #15161c 100%);
-            border: 1px solid #3e4252;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.6), inset 0 1px 0 rgba(255,255,255,0.15);
-            color: #ffaa00;
-            font-weight: 800;
+            background: linear-gradient(180deg, #282b36 0%, #1a1c24 100%) !important;
+            border: 1px solid #ffaa00 !important;
+            border-bottom: 2px solid #1a1c24 !important;
+            color: #ffaa00 !important;
+            font-weight: 800 !important;
+            text-shadow: 0 0 8px rgba(255,170,0,0.45);
+            box-shadow: 0 -2px 10px rgba(255,170,0,0.18), inset 0 1px 0 rgba(255,255,255,0.25) !important;
+            z-index: 2;
+        }
+
+        .setup-nav-tab .tab-led {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #3e4250;
+            box-shadow: none;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+        }
+
+        .setup-nav-tab.active .tab-led {
+            background: #ffaa00;
+            box-shadow: 0 0 6px #ffaa00, 0 0 12px rgba(255,170,0,0.7);
         }
 
         /* Live Selected Media Preview Frame */
@@ -2153,20 +2170,6 @@
                         <span class="power-led" id="hud-power-led" style="background:#00ffcc; box-shadow:0 0 6px #00ffcc;"></span>
                         <span class="hud-badge" id="hud-status">STANDBY</span>
                     </div>
-                </div>
-                <div class="hud-header-tools">
-                    <button class="rack-tool-btn" id="btn-detach-console" title="Detach full DJ Control Console to a dedicated laptop window">
-                        <span class="tool-icon">🎛️</span>
-                        <span class="tool-text">CONTROLLER</span>
-                    </button>
-                    <button class="rack-tool-btn" id="btn-popout" title="Open Clean Visualizer Display in a new window for 2nd Screen / Projector / OBS">
-                        <span class="tool-icon">🖥️</span>
-                        <span class="tool-text">2ND SCREEN</span>
-                    </button>
-                    <button class="rack-tool-btn danger" id="btn-reset-all" title="Reset all console parameters to default values">
-                        <span class="tool-icon">↺</span>
-                        <span class="tool-text">RESET</span>
-                    </button>
                 </div>
             </div>
 
@@ -3430,68 +3433,76 @@
                     <span class="hud-badge">SYSTEM OK</span>
                 </div>
 
-                <!-- Segmented Setup Drawer Subtabs -->
+                <!-- Browser-Style Studio Setup Navigation Tabs -->
                 <div class="setup-nav-bar" id="setup-subtabs">
-                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master">
+                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master" title="Master System Controller, 2nd Screen & Reset">
+                        <span class="tab-led"></span>
                         <span>🎛️ MASTER</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs">
+                    <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs" title="OBS Streaming, Overlays & Web Broadcast">
+                        <span class="tab-led"></span>
                         <span>📡 OBS</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-hue" data-setuptab="hue">
+                    <button class="setup-nav-tab" id="subtab-btn-hue" data-setuptab="hue" title="Philips Hue Smart Venue Lighting Sync">
+                        <span class="tab-led"></span>
                         <span>💡 HUE</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-bridge" data-setuptab="bridge">
+                    <button class="setup-nav-tab" id="subtab-btn-bridge" data-setuptab="bridge" title="Pioneer, Traktor, Denon DJ Hardware Bridges">
+                        <span class="tab-led"></span>
                         <span>🎧 DECKS</span>
                     </button>
                 </div>
 
                 <!-- SUB-DRAWER 0: MASTER SYSTEM CONSOLE & 2ND SCREEN -->
                 <div id="setup-content-master" class="setup-subcontent active">
-                    <div style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:10px; margin-bottom:10px;">
-                        <div class="hud-label" style="margin-bottom:8px; color:#ffaa00; font-weight:800; display:flex; justify-content:space-between; align-items:center;">
-                            <span>🎛️ MASTER DISPLAYS & CONSOLE</span>
-                            <span class="hud-badge">PRO STAGE</span>
-                        </div>
-
-                        <!-- Detached Master Console -->
-                        <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #22242d;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                <span style="font-size:10px; font-weight:700; color:#fff;">MASTER CONTROLLER CONSOLE</span>
-                                <span class="hud-badge" style="font-size:8px;">LAPTOP CONSOLE</span>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Master Controller Card -->
+                        <div style="background: linear-gradient(180deg, #161720 0%, #0e0f14 100%); border: 1px solid rgba(255, 0, 127, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px;">🎛️</span>
+                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">MASTER CONTROLLER CONSOLE</span>
+                                </div>
+                                <span class="hud-badge" style="border-color: #ff007f; color: #ff66b2; font-size: 7.5px;">LAPTOP CONSOLE</span>
                             </div>
-                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
-                                Detach full control panel into a dedicated window on your laptop while visualizer streams full-screen on stage displays.
+                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
+                                Detach the complete DJ control panel into a dedicated window on your laptop screen while projecting the full-screen visualizer onto stage screens.
                             </p>
-                            <button class="btn-mini" id="btn-setup-detach-console" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #ff007f 0%, #aa0055 100%); border:1px solid #ff007f; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,0,127,0.3);">
-                                🎛️ OPEN MASTER CONTROLLER
+                            <button class="btn-mini" id="btn-setup-detach-console" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #ff007f 0%, #aa0055 100%); border: 1px solid #ff007f; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,127,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                                🎛️ OPEN MASTER CONTROLLER WINDOW
                             </button>
                         </div>
 
-                        <!-- 2nd Screen / Clean Stage Display -->
-                        <div style="margin-bottom:10px; padding-bottom:8px; border-bottom:1px solid #22242d;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                <span style="font-size:10px; font-weight:700; color:#fff;">2ND SCREEN / STAGE DISPLAY</span>
-                                <span class="hud-badge" style="font-size:8px;">CLEAN OUTPUT</span>
+                        <!-- 2nd Screen / Clean Stage Display Card -->
+                        <div style="background: linear-gradient(180deg, #131720 0%, #0d0f14 100%); border: 1px solid rgba(0, 210, 255, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px;">🖥️</span>
+                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">2ND SCREEN / STAGE DISPLAY</span>
+                                </div>
+                                <span class="hud-badge" style="border-color: #00d2ff; color: #00d2ff; font-size: 7.5px;">CLEAN OUTPUT</span>
                             </div>
-                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
-                                Open a clean visualizer output window without UI menus for 2nd monitors, external HDMI projectors, or OBS capture.
+                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
+                                Launch a clean visualizer display window with zero menus or UI overlays (<code style="color:#00ffcc; font-size:8px;">?clean=true</code>) for external HDMI projectors, club LED walls, or OBS capture.
                             </p>
-                            <button class="btn-mini" id="btn-setup-popout-screen" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #00b4d8 0%, #0077b6 100%); border:1px solid #00d2ff; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(0,210,255,0.3);">
+                            <button class="btn-mini" id="btn-setup-popout-screen" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #00b4d8 0%, #0077b6 100%); border: 1px solid #00d2ff; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,210,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
                                 🖥️ LAUNCH 2ND SCREEN POPUP
                             </button>
                         </div>
 
-                        <!-- Master Reset -->
-                        <div>
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                <span style="font-size:10px; font-weight:700; color:#ff4466;">RESTORE DEFAULT SETTINGS</span>
-                                <span class="hud-badge" style="font-size:8px; border-color:#ff0055; color:#ff0055;">FACTORY RESET</span>
+                        <!-- Restore Factory Defaults Card -->
+                        <div style="background: linear-gradient(180deg, #181318 0%, #100c0f 100%); border: 1px solid rgba(255, 0, 85, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
+                                <div style="display: flex; align-items: center; gap: 6px;">
+                                    <span style="font-size: 13px;">↺</span>
+                                    <span style="font-size: 10.5px; font-weight: 800; color: #ff5577; letter-spacing: 0.4px;">RESTORE DEFAULT SETTINGS</span>
+                                </div>
+                                <span class="hud-badge" style="border-color: #ff0055; color: #ff0055; font-size: 7.5px;">FACTORY RESET</span>
                             </div>
-                            <p style="font-size:8.5px; color:#8c909e; margin:0 0 6px 0; line-height:1.35;">
-                                Reset all visualizer parameters, layer opacity, faders and presets back to original factory defaults.
+                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
+                                Restore all 22 visual effect shaders, camera parameters, audio sensitivities, layer blends, and timing intervals to initial factory defaults.
                             </p>
-                            <button class="btn-mini danger" id="btn-setup-reset-all" style="width:100%; font-size:10px; font-weight:800; padding:6px 10px; background:linear-gradient(180deg, #ff0055 0%, #aa0033 100%); border:1px solid #ff0055; color:#fff; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,0,85,0.3);">
+                            <button class="btn-mini danger" id="btn-setup-reset-all" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #ff0055 0%, #990033 100%); border: 1px solid #ff0055; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,85,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
                                 ↺ RESET ALL CONSOLE PARAMETERS
                             </button>
                         </div>
