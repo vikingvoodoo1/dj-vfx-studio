@@ -4032,6 +4032,9 @@ export function createVFXScene(container) {
     logoPivot.add(logoShieldMesh);
     logoPivot.add(logoMesh);
 
+    let logoOffsetY = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-height
+    let logoOffsetX = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-width
+
     applyLogoPlacement();
 
     function applyLogoPlacement() {
@@ -4068,59 +4071,56 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
-        const halfLogoW = w * 0.5;
-        const halfLogoH = h * 0.5;
-
         let posX = 0, posY = 0;
 
         switch (logoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = -visibleHalfW * 0.65;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = visibleHalfW * 0.65;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = -visibleHalfW * 0.65;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = visibleHalfW * 0.65;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'top':
             case 'center-top':
             case 'top-center':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'bottom':
             case 'center-bottom':
             case 'bottom-center':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW;
+                posX = -visibleHalfW * 0.65;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW;
+                posX = visibleHalfW * 0.65;
                 posY = 0;
                 break;
             case 'top-quarter':
             case 'center-top-quarter':
                 posX = 0;
-                posY = visibleHalfH * 0.5;
+                posY = visibleHalfH * 0.45;
                 break;
             case 'bottom-quarter':
             case 'center-bottom-quarter':
                 posX = 0;
-                posY = -visibleHalfH * 0.5;
+                posY = -visibleHalfH * 0.45;
                 break;
             case 'center':
             default:
@@ -4128,6 +4128,10 @@ export function createVFXScene(container) {
                 posY = 0;
                 break;
         }
+
+        // Apply fine-tune user offsets (relative to screen bounds)
+        posX += logoOffsetX * visibleHalfW;
+        posY += logoOffsetY * visibleHalfH;
 
         currentLogoPosX = posX;
         currentLogoPosY = posY;
@@ -4297,6 +4301,9 @@ export function createVFXScene(container) {
     stationLogoPivot.add(stationLogoShieldMesh);
     stationLogoPivot.add(stationLogoMesh);
 
+    let stationLogoOffsetY = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-height
+    let stationLogoOffsetX = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-width
+
     function applyStationLogoPlacement() {
         if (!stationLogoMesh) return;
 
@@ -4331,48 +4338,45 @@ export function createVFXScene(container) {
         const visibleHalfH = dist * Math.tan(THREE.MathUtils.degToRad(camera.fov * 0.5));
         const visibleHalfW = visibleHalfH * camera.aspect;
 
-        const halfLogoW = w * 0.5;
-        const halfLogoH = h * 0.5;
-
         let posX = 0, posY = 0;
 
         switch (stationLogoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = -visibleHalfW * 0.70;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = visibleHalfW * 0.70;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = -visibleHalfW * 0.70;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = visibleHalfW * 0.70;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'top':
             case 'top-center':
             case 'center-top':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH;
+                posY = visibleHalfH * 0.72;
                 break;
             case 'bottom':
             case 'bottom-center':
             case 'center-bottom':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH;
+                posY = -visibleHalfH * 0.72;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW;
+                posX = -visibleHalfW * 0.70;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW;
+                posX = visibleHalfW * 0.70;
                 posY = 0;
                 break;
             case 'center':
@@ -4381,6 +4385,10 @@ export function createVFXScene(container) {
                 posY = 0;
                 break;
         }
+
+        // Apply fine-tune user offsets (relative to screen bounds)
+        posX += stationLogoOffsetX * visibleHalfW;
+        posY += stationLogoOffsetY * visibleHalfH;
 
         currentStationLogoPosX = posX;
         currentStationLogoPosY = posY;
@@ -4527,6 +4535,16 @@ export function createVFXScene(container) {
 
     function setStationLogoSpinSpeed(speed) {
         stationLogoSpinSpeed = typeof speed === 'number' ? speed : 1.0;
+    }
+
+    function setStationLogoOffsetY(val) {
+        stationLogoOffsetY = Number(val) || 0.0;
+        applyStationLogoPlacement();
+    }
+
+    function setStationLogoOffsetX(val) {
+        stationLogoOffsetX = Number(val) || 0.0;
+        applyStationLogoPlacement();
     }
 
     // =========================================================================
@@ -6570,6 +6588,16 @@ export function createVFXScene(container) {
         logoSpinSpeed = typeof speed === 'number' ? speed : 1.0;
     }
 
+    function setLogoOffsetY(val) {
+        logoOffsetY = Number(val) || 0.0;
+        applyLogoPlacement();
+    }
+
+    function setLogoOffsetX(val) {
+        logoOffsetX = Number(val) || 0.0;
+        applyLogoPlacement();
+    }
+
     // =========================================================================
     // MAIN RENDER LOOP (18 SCENES)
     // =========================================================================
@@ -7839,6 +7867,8 @@ export function createVFXScene(container) {
         setLogoSpinMode,
         setLogoSpinEnabled,
         setLogoSpinSpeed,
+        setLogoOffsetY,
+        setLogoOffsetX,
         // Station Logo Layer Exports
         loadStationLogoMedia,
         playStationLogoVideo,
@@ -7846,6 +7876,8 @@ export function createVFXScene(container) {
         setStationLogoScale,
         setStationLogoMode,
         setStationLogoPosition,
+        setStationLogoOffsetY,
+        setStationLogoOffsetX,
         setStationLogoBassPulse,
         setStationLogoContrast,
         setStationLogoBrightness,

@@ -258,6 +258,10 @@ async function init() {
     const sliderLogoBright = document.getElementById('slider-logo-bright');
     const sliderLogoScale = document.getElementById('slider-logo-scale');
     const sliderLogoPulse = document.getElementById('slider-logo-pulse');
+    const sliderLogoOffsetY = document.getElementById('slider-logo-offset-y');
+    const logoOffsetYVal = document.getElementById('logo-offset-y-val');
+    const sliderLogoOffsetX = document.getElementById('slider-logo-offset-x');
+    const logoOffsetXVal = document.getElementById('logo-offset-x-val');
     const logoContrastVal = document.getElementById('logo-contrast-val');
     const logoBrightVal = document.getElementById('logo-bright-val');
     const logoScaleVal = document.getElementById('logo-scale-val');
@@ -286,6 +290,10 @@ async function init() {
     const stationSpinSpeedVal = document.getElementById('station-spin-speed-val');
     const sliderStationScale = document.getElementById('slider-station-scale');
     const stationScaleVal = document.getElementById('station-scale-val');
+    const sliderStationOffsetY = document.getElementById('slider-station-offset-y');
+    const stationOffsetYVal = document.getElementById('station-offset-y-val');
+    const sliderStationOffsetX = document.getElementById('slider-station-offset-x');
+    const stationOffsetXVal = document.getElementById('station-offset-x-val');
     const sliderStationPulse = document.getElementById('slider-station-pulse');
     const stationPulseVal = document.getElementById('station-pulse-val');
     const sliderStationContrast = document.getElementById('slider-station-contrast');
@@ -942,6 +950,14 @@ async function init() {
             if (sliderLogoScale) sliderLogoScale.value = msg.val;
             if (logoScaleVal) logoScaleVal.textContent = `${Number(msg.val).toFixed(1)}x`;
             vfx.setLogoScale(msg.val);
+        } else if (msg.type === 'set_logo_offset_y') {
+            if (sliderLogoOffsetY) sliderLogoOffsetY.value = msg.val;
+            if (logoOffsetYVal) logoOffsetYVal.textContent = `${msg.val}%`;
+            vfx.setLogoOffsetY(msg.val / 100);
+        } else if (msg.type === 'set_logo_offset_x') {
+            if (sliderLogoOffsetX) sliderLogoOffsetX.value = msg.val;
+            if (logoOffsetXVal) logoOffsetXVal.textContent = `${msg.val}%`;
+            vfx.setLogoOffsetX(msg.val / 100);
         } else if (msg.type === 'set_logo_pulse') {
             if (sliderLogoPulse) sliderLogoPulse.value = msg.val;
             if (logoPulseVal) logoPulseVal.textContent = `${msg.val}%`;
@@ -1015,6 +1031,14 @@ async function init() {
             if (sliderStationScale) sliderStationScale.value = msg.val;
             if (stationScaleVal) stationScaleVal.textContent = `${Number(msg.val).toFixed(2)}x`;
             vfx.setStationLogoScale(msg.val);
+        } else if (msg.type === 'set_station_offset_y') {
+            if (sliderStationOffsetY) sliderStationOffsetY.value = msg.val;
+            if (stationOffsetYVal) stationOffsetYVal.textContent = `${msg.val}%`;
+            vfx.setStationLogoOffsetY(msg.val / 100);
+        } else if (msg.type === 'set_station_offset_x') {
+            if (sliderStationOffsetX) sliderStationOffsetX.value = msg.val;
+            if (stationOffsetXVal) stationOffsetXVal.textContent = `${msg.val}%`;
+            vfx.setStationLogoOffsetX(msg.val / 100);
         } else if (msg.type === 'set_station_logo_pulse') {
             if (sliderStationPulse) sliderStationPulse.value = msg.val;
             if (stationPulseVal) stationPulseVal.textContent = `${msg.val}%`;
@@ -1507,6 +1531,24 @@ async function init() {
         });
     }
 
+    if (sliderLogoOffsetY) {
+        sliderLogoOffsetY.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            logoOffsetYVal.textContent = `${val}%`;
+            vfx.setLogoOffsetY(val / 100);
+            broadcastSync({ type: 'set_logo_offset_y', val });
+        });
+    }
+
+    if (sliderLogoOffsetX) {
+        sliderLogoOffsetX.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            logoOffsetXVal.textContent = `${val}%`;
+            vfx.setLogoOffsetX(val / 100);
+            broadcastSync({ type: 'set_logo_offset_x', val });
+        });
+    }
+
     if (sliderLogoPulse) {
         sliderLogoPulse.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
@@ -1729,6 +1771,24 @@ async function init() {
             if (stationScaleVal) stationScaleVal.textContent = `${val.toFixed(2)}x`;
             vfx.setStationLogoScale(val);
             broadcastSync({ type: 'set_station_logo_scale', val });
+        });
+    }
+
+    if (sliderStationOffsetY) {
+        sliderStationOffsetY.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (stationOffsetYVal) stationOffsetYVal.textContent = `${val}%`;
+            vfx.setStationLogoOffsetY(val / 100);
+            broadcastSync({ type: 'set_station_offset_y', val });
+        });
+    }
+
+    if (sliderStationOffsetX) {
+        sliderStationOffsetX.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (stationOffsetXVal) stationOffsetXVal.textContent = `${val}%`;
+            vfx.setStationLogoOffsetX(val / 100);
+            broadcastSync({ type: 'set_station_offset_x', val });
         });
     }
 
