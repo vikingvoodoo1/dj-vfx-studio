@@ -280,7 +280,8 @@ const VolumetricPinspotShader = {
 };
 
 // -------------------------------------------------------------------------
-// Volumetric Shaded Blue Light Rays & Mie Scattering Shader (FX 22: Pumpkin Disco)
+// Volumetric Shaded Blue Reflection Light Rays & Mie Scattering Shader (FX 22: Pumpkin Disco)
+// Flat Faceted Light Blade Profile (Zero Round / Cylindrical Cone Nature)
 // -------------------------------------------------------------------------
 const PumpkinVolumetricRaysShader = {
     uniforms: {
@@ -326,35 +327,38 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Smooth Transverse Gaussian / Limb Falloff (Zero Hard Polygonal Edges)
-            float limb = 1.0 - abs(dot(vViewDir, normalize(vNormalLocal)));
-            float softLimb = smoothstep(0.02, 0.48, limb) * (1.0 - smoothstep(0.68, 0.98, limb));
-            float hotCore = pow(clamp(limb, 0.0, 1.0), 4.2);
+            // 1. Transverse Profile Across Flat Mirror Reflection Blade (Luminous Central Spine + Soft Feathered Edges)
+            float span = sin(vUv.x * 3.14159265);
+            float softEdges = smoothstep(0.0, 0.38, span);
+            float hotSpine = pow(span, 3.6);
 
-            // 2. Longitudinal Attenuation along Beam (Bloom at Origin -> Soft Feathered Tip)
+            // 2. Grazing Angle Soft Glow (Non-rounded flat blade lighting)
+            float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
+            float viewGlow = 0.65 + 0.35 * (1.0 - viewFacing);
+
+            // 3. Longitudinal Attenuation along Beam (Bloom at Mirror Origin -> Soft Feathered Tip)
             float y = vUv.y;
-            float sourceGlow = exp(-y * 2.8) * 1.9;
-            float beamLengthFade = smoothstep(1.0, 0.12, y);
-            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.06, y);
+            float sourceGlow = exp(-y * 2.8) * 1.8;
+            float beamLengthFade = smoothstep(1.0, 0.10, y);
+            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.04, y);
 
-            // 3. Facet Reflection Caustic Shimmer & Micro-Sparkle
-            float angle = atan(vNormalLocal.z, vNormalLocal.x);
-            float shimmerWave1 = sin(y * 24.0 - uTime * (4.2 + uTreble * 6.5) + angle * 8.0);
-            float shimmerWave2 = cos(y * 38.0 + uTime * 5.8 - angle * 12.0);
+            // 4. Facet Reflection Caustic Shimmer & Micro-Sparkle
+            float shimmerWave1 = sin(y * 22.0 - uTime * (4.2 + uTreble * 6.0) + vUv.x * 12.0);
+            float shimmerWave2 = cos(y * 36.0 + uTime * 5.2 - vUv.x * 16.0);
             float causticShimmer = 0.72 + 0.28 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 1.3);
 
-            // 4. Subtle Atmospheric Volumetric Smoke Haze Drift
+            // 5. Subtle Atmospheric Volumetric Smoke Haze Drift
             float smoke = sin(vPositionWorld.x * 0.12 + vPositionWorld.y * 0.16 + uTime * 0.30) * 
                           cos(vPositionWorld.z * 0.12 - uTime * 0.22);
             float hazeDensity = 0.88 + 0.12 * smoke;
 
-            // 5. Total Alpha Composition (Super-blended & shimmering reflection)
-            float baseAlpha = (softLimb * 0.75 + hotCore * 0.85) * longProfile * causticShimmer * hazeDensity;
-            float alpha = baseAlpha * (0.55 + uPulse * 0.60 + uTreble * 0.35) * uIntensity * 0.68;
+            // 6. Total Alpha Composition (Super-blended, razor-sharp shimmering flat reflection)
+            float baseAlpha = (softEdges * 0.70 + hotSpine * 0.88) * viewGlow * longProfile * causticShimmer * hazeDensity;
+            float alpha = baseAlpha * (0.58 + uPulse * 0.62 + uTreble * 0.35) * uIntensity * 0.70;
             if (alpha < 0.002) discard;
 
-            // 6. Prismatic / Silvery-Sapphire Color Gradient
-            float coreBlend = clamp(hotCore * 0.95 + sourceGlow * 0.5 + uPulse * 0.4 + uTreble * 0.35, 0.0, 1.0);
+            // 7. Prismatic / Silvery-Sapphire Color Gradient
+            float coreBlend = clamp(hotSpine * 0.92 + sourceGlow * 0.45 + uPulse * 0.4 + uTreble * 0.35, 0.0, 1.0);
             vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.7 + uTreble * 0.5);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
@@ -7379,12 +7383,70 @@ export function createVFXScene(container) {
     pumpkinForwardSpot.target = pumpkinSpotTarget;
     pumpkinPivot.add(pumpkinForwardSpot);
 
-    // 5. 360° Volumetric Shaded Blue Reflection Light Rays (Bouncing All Around the Pumpkin)
+    // 5. 360° Flat-Faceted Reflection Light Blades (Zero Round / Cone Nature)
     const pumpkinRaySystem = new THREE.Group();
     pumpkinPivot.add(pumpkinRaySystem); // Attached to pumpkinPivot so all rays spin synchronously in 3D!
 
-    const pumpkinRayConeGeo = new THREE.CylinderGeometry(0.18, 3.8, 36.0, 32, 1, true);
-    pumpkinRayConeGeo.translate(0, -18.0, 0); // Origin at (0,0,0) pointing down -Y
+    // Procedural Cross-Plane Flat Light Ribbon Blade Geometry (2 Intersecting Planar Sheets = Zero Roundness)
+    function createCrossPlaneRayGeometry(baseWidth = 0.24, tipWidth = 2.6, length = 36.0) {
+        const geo = new THREE.BufferGeometry();
+        const halfBase = baseWidth * 0.5;
+        const halfTip = tipWidth * 0.5;
+
+        // Origin at y=0 (mirror tile surface), extends down -Y to y=-length
+        const positions = new Float32Array([
+            // Sheet 1: XY Plane
+            -halfBase, 0, 0,
+             halfBase, 0, 0,
+            -halfTip, -length, 0,
+             halfTip, -length, 0,
+
+            // Sheet 2: ZY Plane (Perpendicular)
+            0, 0, -halfBase,
+            0, 0,  halfBase,
+            0, -length, -halfTip,
+            0, -length,  halfTip
+        ]);
+
+        const uvs = new Float32Array([
+            // Sheet 1
+            0.0, 0.0,
+            1.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0,
+
+            // Sheet 2
+            0.0, 0.0,
+            1.0, 0.0,
+            0.0, 1.0,
+            1.0, 1.0
+        ]);
+
+        const normals = new Float32Array([
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+            0, 0, 1,
+
+            1, 0, 0,
+            1, 0, 0,
+            1, 0, 0,
+            1, 0, 0
+        ]);
+
+        const indices = [
+            0, 2, 1,  1, 2, 3, // Sheet 1
+            4, 6, 5,  5, 6, 7  // Sheet 2
+        ];
+
+        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
+        geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+        geo.setIndex(indices);
+        return geo;
+    }
+
+    const pumpkinRayBladeGeo = createCrossPlaneRayGeometry(0.24, 2.6, 36.0);
 
     const numPumpkinRays = 36;
     const pumpkinRayMeshes = [];
@@ -7433,9 +7495,9 @@ export function createVFXScene(container) {
             depthWrite: false
         });
 
-        const rayMesh = new THREE.Mesh(pumpkinRayConeGeo, rayMat);
+        const rayMesh = new THREE.Mesh(pumpkinRayBladeGeo, rayMat);
         
-        // Align ray cone pointing along 'dir'
+        // Align ray blade pointing along 'dir'
         const upVec = new THREE.Vector3(0, -1, 0);
         rayMesh.quaternion.setFromUnitVectors(upVec, dir);
 

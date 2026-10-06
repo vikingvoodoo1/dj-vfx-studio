@@ -1011,13 +1011,39 @@ async function init() {
                 if (shazamListenStatus) shazamListenStatus.textContent = `🧠 ANALYZING ACOUSTIC FINGERPRINT...`;
                 if (shazamEngineBadge) shazamEngineBadge.textContent = 'ANALYZING';
 
-                const res = await fetch('/api/shazam', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ audioBase64: audioData.base64, samples: audioData.samples })
-                });
+                // Call Shazam service with local dev & bridge server fallback
+                const payload = { audioBase64: audioData.base64, samples: audioData.samples };
+                const endpoints = [
+                    '/api/shazam',
+                    `http://${window.location.hostname || 'localhost'}:8080/api/shazam`
+                ];
 
-                const data = await res.json();
+                let data = null;
+                let lastErr = null;
+                for (const endpoint of endpoints) {
+                    try {
+                        const controller = new AbortController();
+                        const timeoutId = setTimeout(() => controller.abort(), 12000);
+                        const res = await fetch(endpoint, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload),
+                            signal: controller.signal
+                        });
+                        clearTimeout(timeoutId);
+                        if (res.ok) {
+                            data = await res.json();
+                            break;
+                        }
+                    } catch (e) {
+                        lastErr = e;
+                    }
+                }
+
+                if (!data) {
+                    throw (lastErr || new Error('Shazam service unavailable. Please ensure server is running.'));
+                }
+
                 if (data.success && data.match) {
                     stagedShazamTrack = {
                         title: data.match.title,
@@ -3794,11 +3820,25 @@ async function init() {
     let currentBarInPhrase = 3;
     let currentBeatInBar = 1;
     let lastBeatTimestamp = performance.now();
-    let lastAudioOnsetTimestamp = 0;
+    let isHardwareDeckStreaming = false;
+    let lastHardwarePacketTimestamp = 0;
     let activePhraseDisplayMode = '3000';
     try {
         activePhraseDisplayMode = localStorage.getItem('dj_vfx_phrase_mode') || '3000';
     } catch (e) {}
+
+    function notifyHardwareDeckPacket(source = 'PRO DJ LINK') {
+        isHardwareDeckStreaming = true;
+        lastHardwarePacketTimestamp = performance.now();
+        if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
+        if (phraseModeSelector) phraseModeSelector.style.display = 'flex';
+        if (phraseSyncSource) {
+            phraseSyncSource.style.display = 'inline-block';
+            phraseSyncSource.textContent = source;
+            phraseSyncSource.style.color = '#ffaa00';
+            phraseSyncSource.style.borderColor = '#ffaa00';
+        }
+    }
 
     function setPhraseDisplayMode(mode) {
         activePhraseDisplayMode = mode;
@@ -3910,7 +3950,7 @@ async function init() {
         });
     }
 
-    function advanceCDJBeat(explicitBeatCount = null, isHardware = false) {
+    function advanceCDJBeat(explicitBeatCount = null, isHardware = true) {
         lastBeatTimestamp = performance.now();
         if (explicitBeatCount !== null && explicitBeatCount >= 1 && explicitBeatCount <= 4) {
             currentBeatInBar = explicitBeatCount;
@@ -3924,18 +3964,6 @@ async function init() {
             if (currentBarInPhrase > curPhrase.bars) {
                 currentBarInPhrase = 1;
                 currentPhraseIdx = (currentPhraseIdx + 1) % CDJ_PHRASE_STRUCT.length;
-            }
-        }
-
-        if (phraseSyncSource) {
-            if (isHardware) {
-                phraseSyncSource.textContent = 'PRO DJ LINK';
-                phraseSyncSource.style.color = '#ffaa00';
-                phraseSyncSource.style.borderColor = '#ffaa00';
-            } else {
-                phraseSyncSource.textContent = 'BEAT CLOCK';
-                phraseSyncSource.style.color = '#00ffcc';
-                phraseSyncSource.style.borderColor = 'rgba(0,255,204,0.35)';
             }
         }
 
@@ -3962,6 +3990,7 @@ async function init() {
         onSync: (msg) => handleSyncMessage(msg),
         onBPM: (bpm, deck) => {
             if (bpm && bpm > 40 && bpm < 300) {
+                notifyHardwareDeckPacket('PRO DJ LINK');
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
                 if (vfx.setDeckData) vfx.setDeckData({ deck: deck || 1, bpm: Number(bpm) });
@@ -3974,6 +4003,7 @@ async function init() {
             }
         },
         onBeat: (deck, beatCount) => {
+            notifyHardwareDeckPacket('PRO DJ LINK');
             vfx.triggerBeatPulse();
             broadcastSync({ type: 'beat_pulse', deck, beatCount });
 
@@ -4012,6 +4042,7 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
+            notifyHardwareDeckPacket('PRO DJ LINK');
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
                 if (deckCards[dIdx].bpm && data.bpm) deckCards[dIdx].bpm.textContent = Number(data.bpm).toFixed(1);
@@ -4019,6 +4050,7 @@ async function init() {
             }
         },
         onTrack: (trackData) => {
+            notifyHardwareDeckPacket('PRO DJ LINK');
             if (trackData.title) trackTitle.textContent = trackData.title;
             if (trackData.artist) trackArtist.textContent = `${trackData.artist} • Deck ${trackData.deck || 1}`;
             if (trackData.bpm && trackData.bpm > 40 && trackData.bpm < 300) {
@@ -4053,7 +4085,11 @@ async function init() {
             }
         },
         onDecksSnapshot: (decks) => {
-            if (Array.isArray(decks)) {
+            if (Array.isArray(decks) && decks.length > 0) {
+                const hasActivePlaying = decks.some(d => d.play || (d.bpm && d.bpm > 40));
+                if (hasActivePlaying) {
+                    notifyHardwareDeckPacket('PRO DJ LINK');
+                }
                 decks.forEach(deckData => {
                     const idx = (parseInt(deckData.deck, 10) || 1) - 1;
                     if (deckCards[idx]) {
@@ -4615,23 +4651,21 @@ async function init() {
             }
         }
 
-        // CDJ-2000 Phase Needle Sweep (~60 FPS)
-        if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
-            const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
-            const beatPeriodMs = 60000 / liveBpm;
-            const elapsed = now - lastBeatTimestamp;
-            const subBeatFraction = Math.min(1.0, Math.max(0, elapsed / beatPeriodMs));
-            const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
-            phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
-        }
-
-        // Drive Pioneer Phrase & Phase clock from live audio onsets when offline
-        if (data && data.isOnset) {
-            const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
-            const minBeatInterval = (60000 / liveBpm) * 0.7;
-            if (now - lastAudioOnsetTimestamp > minBeatInterval) {
-                lastAudioOnsetTimestamp = now;
-                advanceCDJBeat(null, false);
+        // Only update / sweep phase needle and show CDJ widgets when streaming straight from live decks
+        if (isHardwareDeckStreaming) {
+            if (now - lastHardwarePacketTimestamp > 6000) {
+                // Deck stream timed out / disconnected
+                isHardwareDeckStreaming = false;
+                if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
+                if (phraseModeSelector) phraseModeSelector.style.display = 'none';
+                if (phraseSyncSource) phraseSyncSource.style.display = 'none';
+            } else if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
+                const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
+                const beatPeriodMs = 60000 / liveBpm;
+                const elapsed = now - lastBeatTimestamp;
+                const subBeatFraction = Math.min(1.0, Math.max(0, elapsed / beatPeriodMs));
+                const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
+                phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
             }
         }
 

@@ -2479,11 +2479,11 @@
                     <!-- Top Header Row: Label, Telemetry Sync Badge, & Mode Selector (3000 | 2000 | DUAL) -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <div style="display:flex; align-items:center; gap:5px;">
-                            <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;">💿 PIONEER CDJ METRIC</span>
-                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 4px; border-color:rgba(0,255,204,0.35); color:#00ffcc;" title="Live sync source: Pioneer Pro DJ Link / Rekordbox / StageLinq / Audio Clock">BEAT SYNC</span>
+                            <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 4px; border-color:rgba(0,255,204,0.35); color:#00ffcc; display:none;" title="Live sync source: Pioneer Pro DJ Link / Rekordbox / StageLinq">PRO DJ LINK</span>
                         </div>
-                        <!-- Mode Selector Chips (CDJ-3000, CDJ-2000, DUAL) -->
-                        <div class="phrase-mode-bar" id="phrase-mode-selector">
+                        <!-- Mode Selector Chips (CDJ-3000, CDJ-2000, DUAL) - Only shown when connected straight to live hardware decks -->
+                        <div class="phrase-mode-bar" id="phrase-mode-selector" style="display:none;">
                             <button class="phrase-mode-btn active" data-phrasemode="3000" title="Pioneer CDJ-3000 Phrase Waveform & Structural Bars">3000</button>
                             <button class="phrase-mode-btn" data-phrasemode="2000" title="Pioneer CDJ-2000NXS2 Phase Meter & Beat Countdown">2000</button>
                             <button class="phrase-mode-btn" data-phrasemode="dual" title="Combined Dual Mode: CDJ-3000 Phrase + CDJ-2000 Phase Meter">DUAL</button>
@@ -2508,8 +2508,8 @@
                             </div>
                         </div>
 
-                        <!-- Right: Pioneer CDJ-3000 & CDJ-2000 Visualizer Container -->
-                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); cursor:pointer;" id="cdj-meter-container" title="Click to Tap / Resync Downbeat to 1">
+                        <!-- Right: Pioneer CDJ-3000 & CDJ-2000 Visualizer Container (Hidden by default unless reading straight off live decks) -->
+                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); cursor:pointer; display:none;" id="cdj-meter-container" title="Pioneer Pro DJ Link / Hardware Phase Meter">
                             
                             <!-- VIEW 1: PIONEER CDJ-3000 PHRASE METER (Intro / Up / Chorus / Drop / Down / Outro) -->
                             <div id="cdj3000-view" class="cdj-meter-view">

@@ -641,9 +641,11 @@ export async function setupAudio(onDeviceListChange) {
                     if (timer) clearTimeout(timer);
 
                     try {
-                        sourceNode.disconnect(processor);
-                        processor.disconnect(silentGain);
+                        processor.disconnect();
                         silentGain.disconnect();
+                        if (createdStream && sourceNode) {
+                            sourceNode.disconnect();
+                        }
                     } catch (e) {}
 
                     if (createdStream && streamToUse) {
