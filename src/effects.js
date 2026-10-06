@@ -4034,6 +4034,7 @@ export function createVFXScene(container) {
 
     let logoOffsetY = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-height
     let logoOffsetX = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-width
+    let logoEdgeMargin = 0.04; // Default 4% edge/corner margin
 
     applyLogoPlacement();
 
@@ -4074,45 +4075,48 @@ export function createVFXScene(container) {
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
 
+        const marginX = visibleHalfW * logoEdgeMargin;
+        const marginY = visibleHalfH * logoEdgeMargin;
+
         let posX = 0, posY = 0;
 
         switch (logoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'top':
             case 'center-top':
             case 'top-center':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'bottom':
             case 'center-bottom':
             case 'bottom-center':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW;
+                posX = -visibleHalfW + halfLogoW + marginX;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW;
+                posX = visibleHalfW - halfLogoW - marginX;
                 posY = 0;
                 break;
             case 'top-quarter':
@@ -4306,6 +4310,7 @@ export function createVFXScene(container) {
 
     let stationLogoOffsetY = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-height
     let stationLogoOffsetX = 0.0; // Normalized -1.0 to +1.0 relative to viewport half-width
+    let stationLogoEdgeMargin = 0.04; // Default 4% edge/corner margin
 
     function applyStationLogoPlacement() {
         if (!stationLogoMesh) return;
@@ -4344,45 +4349,48 @@ export function createVFXScene(container) {
         const halfLogoW = w * 0.5;
         const halfLogoH = h * 0.5;
 
+        const marginX = visibleHalfW * stationLogoEdgeMargin;
+        const marginY = visibleHalfH * stationLogoEdgeMargin;
+
         let posX = 0, posY = 0;
 
         switch (stationLogoPosition) {
             case 'top-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'top-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = visibleHalfH - halfLogoH;
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'bottom-left':
-                posX = -visibleHalfW + halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = -visibleHalfW + halfLogoW + marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'bottom-right':
-                posX = visibleHalfW - halfLogoW;
-                posY = -visibleHalfH + halfLogoH;
+                posX = visibleHalfW - halfLogoW - marginX;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'top':
             case 'top-center':
             case 'center-top':
                 posX = 0;
-                posY = visibleHalfH - halfLogoH;
+                posY = visibleHalfH - halfLogoH - marginY;
                 break;
             case 'bottom':
             case 'bottom-center':
             case 'center-bottom':
                 posX = 0;
-                posY = -visibleHalfH + halfLogoH;
+                posY = -visibleHalfH + halfLogoH + marginY;
                 break;
             case 'left':
             case 'center-left':
-                posX = -visibleHalfW + halfLogoW;
+                posX = -visibleHalfW + halfLogoW + marginX;
                 posY = 0;
                 break;
             case 'right':
             case 'center-right':
-                posX = visibleHalfW - halfLogoW;
+                posX = visibleHalfW - halfLogoW - marginX;
                 posY = 0;
                 break;
             case 'center':
@@ -4550,6 +4558,11 @@ export function createVFXScene(container) {
 
     function setStationLogoOffsetX(val) {
         stationLogoOffsetX = Number(val) || 0.0;
+        applyStationLogoPlacement();
+    }
+
+    function setStationLogoEdgeMargin(val) {
+        stationLogoEdgeMargin = Math.max(0.0, Math.min(0.4, Number(val) || 0.04));
         applyStationLogoPlacement();
     }
 
@@ -6604,6 +6617,11 @@ export function createVFXScene(container) {
         applyLogoPlacement();
     }
 
+    function setLogoEdgeMargin(val) {
+        logoEdgeMargin = Math.max(0.0, Math.min(0.4, Number(val) || 0.04));
+        applyLogoPlacement();
+    }
+
     // =========================================================================
     // MAIN RENDER LOOP (18 SCENES)
     // =========================================================================
@@ -7875,6 +7893,7 @@ export function createVFXScene(container) {
         setLogoSpinSpeed,
         setLogoOffsetY,
         setLogoOffsetX,
+        setLogoEdgeMargin,
         // Station Logo Layer Exports
         loadStationLogoMedia,
         playStationLogoVideo,
@@ -7884,6 +7903,7 @@ export function createVFXScene(container) {
         setStationLogoPosition,
         setStationLogoOffsetY,
         setStationLogoOffsetX,
+        setStationLogoEdgeMargin,
         setStationLogoBassPulse,
         setStationLogoContrast,
         setStationLogoBrightness,

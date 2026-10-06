@@ -258,6 +258,8 @@ async function init() {
     const sliderLogoBright = document.getElementById('slider-logo-bright');
     const sliderLogoScale = document.getElementById('slider-logo-scale');
     const sliderLogoPulse = document.getElementById('slider-logo-pulse');
+    const sliderLogoEdgeMargin = document.getElementById('slider-logo-edge-margin');
+    const logoEdgeMarginVal = document.getElementById('logo-edge-margin-val');
     const sliderLogoOffsetY = document.getElementById('slider-logo-offset-y');
     const logoOffsetYVal = document.getElementById('logo-offset-y-val');
     const sliderLogoOffsetX = document.getElementById('slider-logo-offset-x');
@@ -290,6 +292,8 @@ async function init() {
     const stationSpinSpeedVal = document.getElementById('station-spin-speed-val');
     const sliderStationScale = document.getElementById('slider-station-scale');
     const stationScaleVal = document.getElementById('station-scale-val');
+    const sliderStationEdgeMargin = document.getElementById('slider-station-edge-margin');
+    const stationEdgeMarginVal = document.getElementById('station-edge-margin-val');
     const sliderStationOffsetY = document.getElementById('slider-station-offset-y');
     const stationOffsetYVal = document.getElementById('station-offset-y-val');
     const sliderStationOffsetX = document.getElementById('slider-station-offset-x');
@@ -950,6 +954,10 @@ async function init() {
             if (sliderLogoScale) sliderLogoScale.value = msg.val;
             if (logoScaleVal) logoScaleVal.textContent = `${Number(msg.val).toFixed(1)}x`;
             vfx.setLogoScale(msg.val);
+        } else if (msg.type === 'set_logo_edge_margin') {
+            if (sliderLogoEdgeMargin) sliderLogoEdgeMargin.value = msg.val;
+            if (logoEdgeMarginVal) logoEdgeMarginVal.textContent = `${msg.val}%`;
+            vfx.setLogoEdgeMargin(msg.val / 100);
         } else if (msg.type === 'set_logo_offset_y') {
             if (sliderLogoOffsetY) sliderLogoOffsetY.value = msg.val;
             if (logoOffsetYVal) logoOffsetYVal.textContent = `${msg.val}%`;
@@ -1031,6 +1039,10 @@ async function init() {
             if (sliderStationScale) sliderStationScale.value = msg.val;
             if (stationScaleVal) stationScaleVal.textContent = `${Number(msg.val).toFixed(2)}x`;
             vfx.setStationLogoScale(msg.val);
+        } else if (msg.type === 'set_station_edge_margin') {
+            if (sliderStationEdgeMargin) sliderStationEdgeMargin.value = msg.val;
+            if (stationEdgeMarginVal) stationEdgeMarginVal.textContent = `${msg.val}%`;
+            vfx.setStationLogoEdgeMargin(msg.val / 100);
         } else if (msg.type === 'set_station_offset_y') {
             if (sliderStationOffsetY) sliderStationOffsetY.value = msg.val;
             if (stationOffsetYVal) stationOffsetYVal.textContent = `${msg.val}%`;
@@ -1072,6 +1084,7 @@ async function init() {
                 const activePos = document.querySelector('#logo-pos-pills .mode-pill.active')?.getAttribute('data-pos') || 'center';
                 broadcastSync({ type: 'set_logo_pos', pos: activePos });
                 if (sliderLogoScale) broadcastSync({ type: 'set_logo_scale', val: parseFloat(sliderLogoScale.value) || 1.0 });
+                if (sliderLogoEdgeMargin) broadcastSync({ type: 'set_logo_edge_margin', val: parseFloat(sliderLogoEdgeMargin.value) || 4 });
                 if (sliderLogoPulse) broadcastSync({ type: 'set_logo_pulse', val: parseFloat(sliderLogoPulse.value) || 50 });
                 if (sliderLogoContrast) broadcastSync({ type: 'set_logo_contrast', val: parseFloat(sliderLogoContrast.value) || 1.35 });
                 if (sliderLogoBright) broadcastSync({ type: 'set_logo_bright', val: parseFloat(sliderLogoBright.value) || 1.15 });
@@ -1090,6 +1103,7 @@ async function init() {
                 broadcastSync({ type: 'set_station_logo_spin', spin: activeStSpin });
                 if (sliderStationSpinSpeed) broadcastSync({ type: 'set_station_logo_spin_speed', speed: parseFloat(sliderStationSpinSpeed.value) || 1.0 });
                 if (sliderStationScale) broadcastSync({ type: 'set_station_logo_scale', val: parseFloat(sliderStationScale.value) || 0.85 });
+                if (sliderStationEdgeMargin) broadcastSync({ type: 'set_station_edge_margin', val: parseFloat(sliderStationEdgeMargin.value) || 4 });
                 if (sliderStationPulse) broadcastSync({ type: 'set_station_logo_pulse', val: parseFloat(sliderStationPulse.value) || 25 });
                 if (sliderStationContrast) broadcastSync({ type: 'set_station_logo_contrast', val: parseFloat(sliderStationContrast.value) || 1.25 });
                 if (sliderStationBright) broadcastSync({ type: 'set_station_logo_bright', val: parseFloat(sliderStationBright.value) || 1.05 });
@@ -1531,6 +1545,15 @@ async function init() {
         });
     }
 
+    if (sliderLogoEdgeMargin) {
+        sliderLogoEdgeMargin.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (logoEdgeMarginVal) logoEdgeMarginVal.textContent = `${val}%`;
+            vfx.setLogoEdgeMargin(val / 100);
+            broadcastSync({ type: 'set_logo_edge_margin', val });
+        });
+    }
+
     if (sliderLogoOffsetY) {
         sliderLogoOffsetY.addEventListener('input', (e) => {
             const val = parseInt(e.target.value, 10);
@@ -1771,6 +1794,15 @@ async function init() {
             if (stationScaleVal) stationScaleVal.textContent = `${val.toFixed(2)}x`;
             vfx.setStationLogoScale(val);
             broadcastSync({ type: 'set_station_logo_scale', val });
+        });
+    }
+
+    if (sliderStationEdgeMargin) {
+        sliderStationEdgeMargin.addEventListener('input', (e) => {
+            const val = parseInt(e.target.value, 10);
+            if (stationEdgeMarginVal) stationEdgeMarginVal.textContent = `${val}%`;
+            vfx.setStationLogoEdgeMargin(val / 100);
+            broadcastSync({ type: 'set_station_edge_margin', val });
         });
     }
 
@@ -2061,11 +2093,16 @@ async function init() {
             vfx.setLogoBrightness(1.05);
         }
 
-        // Scale
+        // Scale & Edge Margin
         if (sliderLogoScale) {
             sliderLogoScale.value = 1.0;
             logoScaleVal.textContent = '1.0x';
             vfx.setLogoScale(1.0);
+        }
+        if (sliderLogoEdgeMargin) {
+            sliderLogoEdgeMargin.value = 4;
+            if (logoEdgeMarginVal) logoEdgeMarginVal.textContent = '4%';
+            vfx.setLogoEdgeMargin(0.04);
         }
 
         // Pulse
@@ -2104,6 +2141,11 @@ async function init() {
             sliderStationScale.value = 0.85;
             if (stationScaleVal) stationScaleVal.textContent = '0.85x';
             vfx.setStationLogoScale(0.85);
+        }
+        if (sliderStationEdgeMargin) {
+            sliderStationEdgeMargin.value = 4;
+            if (stationEdgeMarginVal) stationEdgeMarginVal.textContent = '4%';
+            vfx.setStationLogoEdgeMargin(0.04);
         }
         if (sliderStationPulse) {
             sliderStationPulse.value = 25;
