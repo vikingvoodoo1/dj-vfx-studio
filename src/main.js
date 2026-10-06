@@ -80,9 +80,21 @@ async function init() {
         { card: document.getElementById('deck-card-4'), bpm: document.getElementById('deck-bpm-4'), state: document.getElementById('deck-state-4') }
     ];
 
+    // 3-Band Pro Graphic EQ Elements & State
     const eqBass = document.getElementById('eq-bass');
     const eqMid = document.getElementById('eq-mid');
     const eqTreble = document.getElementById('eq-treble');
+    const eqValBass = document.getElementById('eq-val-bass');
+    const eqValMid = document.getElementById('eq-val-mid');
+    const eqValTreble = document.getElementById('eq-val-treble');
+    const eqPeakNeedleBass = document.getElementById('eq-peak-needle-bass');
+    const eqPeakNeedleMid = document.getElementById('eq-peak-needle-mid');
+    const eqPeakNeedleTreble = document.getElementById('eq-peak-needle-treble');
+    const eqEnergyBadge = document.getElementById('eq-energy-badge');
+
+    let eqPeakBassVal = 0.0;
+    let eqPeakMidVal = 0.0;
+    let eqPeakTrebleVal = 0.0;
 
     // Line-In Precision VU Meter & Loudness Elements
     const vuRmsFill = document.getElementById('vu-rms-fill');
@@ -4937,9 +4949,51 @@ async function init() {
             };
         }
 
-        if (eqBass && data.bass !== undefined) eqBass.style.height = `${Math.min(100, Math.round((data.bassImpact || data.bass) * 100))}%`;
-        if (eqMid && data.mid !== undefined) eqMid.style.height = `${Math.min(100, Math.round(data.mid * 100))}%`;
-        if (eqTreble && data.treble !== undefined) eqTreble.style.height = `${Math.min(100, Math.round(data.treble * 100))}%`;
+        // 3-Band Pro Graphic EQ Meter & Headroom Telemetry
+        const bassValRaw = Math.min(100, Math.round(((data.bassImpact || data.bass || 0) * 1.05) * 100));
+        const midValRaw = Math.min(100, Math.round(((data.smoothedMid || data.mid || 0) * 1.10) * 100));
+        const trebleValRaw = Math.min(100, Math.round(((data.smoothedTreble || data.treble || 0) * 1.15) * 100));
+
+        // Peak Hold needles with physical gravity drop
+        if (bassValRaw >= eqPeakBassVal) eqPeakBassVal = bassValRaw;
+        else eqPeakBassVal = Math.max(0, eqPeakBassVal - 1.4);
+
+        if (midValRaw >= eqPeakMidVal) eqPeakMidVal = midValRaw;
+        else eqPeakMidVal = Math.max(0, eqPeakMidVal - 1.4);
+
+        if (trebleValRaw >= eqPeakTrebleVal) eqPeakTrebleVal = trebleValRaw;
+        else eqPeakTrebleVal = Math.max(0, eqPeakTrebleVal - 1.4);
+
+        if (eqBass) eqBass.style.height = `${bassValRaw}%`;
+        if (eqMid) eqMid.style.height = `${midValRaw}%`;
+        if (eqTreble) eqTreble.style.height = `${trebleValRaw}%`;
+
+        if (eqValBass) eqValBass.textContent = `${bassValRaw}%`;
+        if (eqValMid) eqValMid.textContent = `${midValRaw}%`;
+        if (eqValTreble) eqValTreble.textContent = `${trebleValRaw}%`;
+
+        if (eqPeakNeedleBass) eqPeakNeedleBass.style.bottom = `calc(${Math.min(98, eqPeakBassVal)}% - 1px)`;
+        if (eqPeakNeedleMid) eqPeakNeedleMid.style.bottom = `calc(${Math.min(98, eqPeakMidVal)}% - 1px)`;
+        if (eqPeakNeedleTreble) eqPeakNeedleTreble.style.bottom = `calc(${Math.min(98, eqPeakTrebleVal)}% - 1px)`;
+
+        if (eqEnergyBadge) {
+            if (data.isOnset && bassValRaw > 75) {
+                eqEnergyBadge.textContent = '🔥 SUB DROP';
+                eqEnergyBadge.style.color = '#ff0055';
+                eqEnergyBadge.style.borderColor = '#ff0055';
+                eqEnergyBadge.style.background = 'rgba(255,0,85,0.25)';
+            } else if (data.transientImpulse > 0.40) {
+                eqEnergyBadge.textContent = '⚡ TRANSIENT';
+                eqEnergyBadge.style.color = '#00ffff';
+                eqEnergyBadge.style.borderColor = '#00ffff';
+                eqEnergyBadge.style.background = 'rgba(0,255,255,0.20)';
+            } else {
+                eqEnergyBadge.textContent = 'LIVE 3-WAY';
+                eqEnergyBadge.style.color = '#00ffcc';
+                eqEnergyBadge.style.borderColor = 'rgba(0,255,204,0.3)';
+                eqEnergyBadge.style.background = 'rgba(0,255,204,0.12)';
+            }
+        }
 
         // High-Precision Line-In VU & Loudness Meter Updates
         if (vuPeakFill && data.vuPercent !== undefined) {

@@ -281,8 +281,8 @@ const VolumetricPinspotShader = {
 };
 
 // -------------------------------------------------------------------------
-// Volumetric White & Pink/Purple Reflection Light Rays & Mie Scattering Shader (FX 22: Pumpkin Disco)
-// Wide, Graceful, Flat Faceted Light Blade Profile & Silky God Rays
+// Volumetric Shaded God Rays Shader (FX 22: Incoming Beams to Front Face)
+// Wide, Graceful Profile that Dynamically Thins Out with Intensity
 // -------------------------------------------------------------------------
 const PumpkinVolumetricRaysShader = {
     uniforms: {
@@ -328,37 +328,40 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Transverse Profile with Gaussian Fog Edge Feathering & Shaded God-Ray Shafts
-            float uDist = abs(vUv.x - 0.5) * 2.0; // 0.0 at center spine, 1.0 at outer lateral edge
-            float lateralGaussian = exp(-pow(uDist * 1.85, 2.0));
-            float lateralFeather = smoothstep(1.0, 0.60, uDist);
-            float hotCore = exp(-pow(uDist * 3.8, 2.0));
+            // 1. Dynamic Width Modulation: Core thins out and sharpens as intensity surges
+            float normIntensity = clamp(uIntensity / 3.0, 0.25, 2.5);
+            float widthFactor = 0.82 + normIntensity * 0.70;
+            float uDist = abs(vUv.x - 0.5) * 2.0; // 0.0 at spine, 1.0 at outer edge
+            float uDistThinned = uDist * widthFactor;
+
+            float lateralGaussian = exp(-pow(uDistThinned * 1.50, 2.0));
+            float lateralFeather = smoothstep(1.0, 0.42, uDist);
+            float hotCore = exp(-pow(uDistThinned * 3.4, 2.0));
 
             // Shaded God-Ray Shaft Striations across the blade width
-            float shaft1 = sin(vUv.x * 22.0 + uTime * 0.9 + vUv.y * 6.0) * 0.5 + 0.5;
-            float shaft2 = cos(vUv.x * 38.0 - uTime * 1.3 - vUv.y * 8.0) * 0.5 + 0.5;
-            float shaft3 = sin(vUv.x * 12.0 - uTime * 0.4 + vUv.y * 3.0) * 0.5 + 0.5;
-            float godRayShafts = 0.68 + 0.32 * (shaft1 * 0.5 + shaft2 * 0.3 + shaft3 * 0.2);
+            float shaft1 = sin(vUv.x * 24.0 + uTime * 0.95 + vUv.y * 6.0) * 0.5 + 0.5;
+            float shaft2 = cos(vUv.x * 40.0 - uTime * 1.35 - vUv.y * 8.0) * 0.5 + 0.5;
+            float shaft3 = sin(vUv.x * 14.0 - uTime * 0.40 + vUv.y * 3.0) * 0.5 + 0.5;
+            float godRayShafts = 0.65 + 0.35 * (shaft1 * 0.5 + shaft2 * 0.3 + shaft3 * 0.2);
 
-            float beamCross = (lateralGaussian * lateralFeather * 0.60 + hotCore * 1.40) * godRayShafts;
+            float beamCross = (lateralGaussian * lateralFeather * 0.65 + hotCore * 1.45) * godRayShafts;
 
             // 2. Volumetric Depth & View-Facing Grazing Glow
             float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
-            float viewGlow = 0.78 + 0.22 * (1.0 - viewFacing);
+            float viewGlow = 0.76 + 0.24 * (1.0 - viewFacing);
 
-            // 3. Longitudinal Profile: Origin Lens Glow -> Soft Column -> Ethereal Fog Dissolution at Tip
+            // 3. Longitudinal Profile: Lens Glow (y=0) -> Shaded Shaft -> Hits Front Glass Face (y=1)
             float y = vUv.y;
-            float originGlow = exp(-y * 3.8) * 2.4;
-            
-            // Soft atmospheric fog dissolution at the end of the beam (feathers to zero before geometry tip)
-            float fogTipDissolve = pow(1.0 - smoothstep(0.25, 0.92, y), 1.6);
+            float originGlow = exp(-y * 4.0) * 2.5;
+            float impactHotspot = exp(-(1.0 - y) * 5.0) * 2.0; // Hits the front surface directly
+            float shaftBody = smoothstep(0.01, 0.08, y) * (1.0 - smoothstep(0.96, 1.0, y) * 0.30);
 
             // Drifting atmospheric haze and subtle wispy smoke along beam path
             float smokeWisp1 = sin(vPositionWorld.x * 0.25 + vPositionWorld.y * 0.35 + uTime * 0.40) * 0.12;
             float smokeWisp2 = cos(vPositionWorld.z * 0.30 - uTime * 0.35 + y * 4.0) * 0.12;
             float fogAtmosphere = 0.88 + smokeWisp1 + smokeWisp2;
 
-            float longProfile = (originGlow + fogTipDissolve * 1.25) * fogAtmosphere * smoothstep(0.0, 0.02, y);
+            float longProfile = (originGlow + shaftBody * 1.15 + impactHotspot) * fogAtmosphere;
 
             // 4. Mie Forward Scattering & Atmospheric Dust Shading
             float dustMotes1 = sin(vPositionWorld.x * 0.35 + vPositionWorld.y * 0.45 + uTime * 0.60) * 
@@ -366,14 +369,96 @@ const PumpkinVolumetricRaysShader = {
             float dustMotes2 = cos(vPositionWorld.x * 0.70 - vPositionWorld.y * 0.60 + uTime * 0.90);
             float dustHaze = 0.88 + 0.12 * (dustMotes1 + dustMotes2 * 0.5);
 
-            // 5. Total Alpha Composition (Feathered Volumetric God Rays)
+            // 5. Total Alpha Composition
             float baseAlpha = beamCross * viewGlow * longProfile * dustHaze;
             float alpha = baseAlpha * (0.85 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
             if (alpha < 0.001) discard;
 
-            // 6. Shaded God-Ray Color: Luminous White/Tinted Core shading into Rich Halloween Tone Penumbra
-            float coreBlend = clamp(hotCore * 1.15 + originGlow * 0.40 + uPulse * 0.25, 0.0, 1.0);
-            vec3 finalColor = mix(uColor * 0.90, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
+            // 6. Color Composition
+            float coreBlend = clamp(hotCore * 1.20 + originGlow * 0.40 + impactHotspot * 0.35 + uPulse * 0.25, 0.0, 1.0);
+            vec3 finalColor = mix(uColor * 0.88, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
+
+            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
+// Specular Reflected Rays Shader (FX 22: Light Bouncing OFF Front Glass Mirror Facets)
+// -------------------------------------------------------------------------
+const PumpkinReflectionRaysShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0xff66cc) },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 1.0 },
+        uTime: { value: 0.0 },
+        uPulse: { value: 0.0 },
+        uTreble: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            vUv = uv;
+            vNormalLocal = normal;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vPositionWorld = worldPos.xyz;
+            vViewDir = normalize(cameraPosition - worldPos.xyz);
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uTime;
+        uniform float uPulse;
+        uniform float uTreble;
+
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            // Lateral profile: wide shimmering reflected god-ray fan that thins with intensity
+            float normIntensity = clamp(uIntensity / 3.0, 0.25, 2.5);
+            float widthFactor = 0.78 + normIntensity * 0.65;
+            float uDist = abs(vUv.x - 0.5) * 2.0;
+            float uDistThinned = uDist * widthFactor;
+
+            float lateralGaussian = exp(-pow(uDistThinned * 1.35, 2.0));
+            float lateralFeather = smoothstep(1.0, 0.45, uDist);
+            float hotCore = exp(-pow(uDistThinned * 3.0, 2.0));
+
+            // Reflected mirror facet shimmer lines
+            float shimmer1 = sin(vUv.x * 28.0 - uTime * 1.8 + vUv.y * 8.0) * 0.5 + 0.5;
+            float shimmer2 = cos(vUv.x * 48.0 + uTime * 2.2 - vUv.y * 12.0) * 0.5 + 0.5;
+            float facetShimmer = 0.60 + 0.40 * (shimmer1 * 0.6 + shimmer2 * 0.4);
+
+            float beamCross = (lateralGaussian * lateralFeather * 0.60 + hotCore * 1.40) * facetShimmer;
+
+            // View grazing boost
+            float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
+            float viewGlow = 0.70 + 0.30 * (1.0 - viewFacing);
+
+            // Longitudinal: High mirror reflection at pumpkin surface (y=0) -> Dissolves into room fog at tip (y=1)
+            float y = vUv.y;
+            float bounceOrigin = exp(-y * 3.2) * 2.6;
+            float fogTipDissolve = pow(1.0 - smoothstep(0.20, 0.95, y), 1.5);
+
+            float dust = 0.90 + 0.10 * sin(vPositionWorld.x * 0.4 + vPositionWorld.z * 0.4 + uTime * 0.8);
+            float longProfile = (bounceOrigin + fogTipDissolve * 1.35) * dust * smoothstep(0.0, 0.02, y);
+
+            float baseAlpha = beamCross * viewGlow * longProfile;
+            float alpha = baseAlpha * (0.80 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
+            if (alpha < 0.001) discard;
+
+            float coreBlend = clamp(hotCore * 1.20 + bounceOrigin * 0.45 + uPulse * 0.25, 0.0, 1.0);
+            vec3 finalColor = mix(uColor * 0.88, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7541,8 +7626,8 @@ export function createVFXScene(container) {
         return geo;
     }
 
-    // High-Intensity Volumetric Beams from Bottom Left & Right aiming at the front of the pumpkin
-    const pLeftBeamGeo = createMultiPlaneRayGeometry(6, 0.60, 4.4, 22.0);
+    // High-Intensity Volumetric Incoming Beams (Aiming at front glass face of pumpkin)
+    const pLeftBeamGeo = createMultiPlaneRayGeometry(6, 0.85, 6.2, 22.0);
     const pLeftBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7568,7 +7653,7 @@ export function createVFXScene(container) {
     gPumpkinDiscoBall.add(pLeftBeamMesh);
 
     // Inner bright core beam (Left)
-    const pLeftCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.25, 1.6, 22.0);
+    const pLeftCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.38, 2.4, 22.0);
     const pLeftCoreBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7593,7 +7678,7 @@ export function createVFXScene(container) {
     pLeftCoreBeamMesh.renderOrder = 21;
     gPumpkinDiscoBall.add(pLeftCoreBeamMesh);
 
-    const pRightBeamGeo = createMultiPlaneRayGeometry(6, 0.60, 4.4, 22.0);
+    const pRightBeamGeo = createMultiPlaneRayGeometry(6, 0.85, 6.2, 22.0);
     const pRightBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7619,7 +7704,7 @@ export function createVFXScene(container) {
     gPumpkinDiscoBall.add(pRightBeamMesh);
 
     // Inner bright core beam (Right)
-    const pRightCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.25, 1.6, 22.0);
+    const pRightCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.38, 2.4, 22.0);
     const pRightCoreBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7644,6 +7729,49 @@ export function createVFXScene(container) {
     pRightCoreBeamMesh.renderOrder = 21;
     gPumpkinDiscoBall.add(pRightCoreBeamMesh);
 
+    // Specular Reflected Light Beams (Bouncing OFF the front glass mirror facets into the room)
+    const pLeftReflectGeo = createMultiPlaneRayGeometry(6, 0.70, 8.5, 18.0);
+    const pLeftReflectMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 2.2 },
+            uTime: { value: 0.0 },
+            uPulse: { value: 0.0 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinReflectionRaysShader.vertexShader,
+        fragmentShader: PumpkinReflectionRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pLeftReflectMesh = new THREE.Mesh(pLeftReflectGeo, pLeftReflectMat);
+    pLeftReflectMesh.renderOrder = 22;
+    gPumpkinDiscoBall.add(pLeftReflectMesh);
+
+    const pRightReflectGeo = createMultiPlaneRayGeometry(6, 0.70, 8.5, 18.0);
+    const pRightReflectMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uColor: { value: new THREE.Color(0xffffff) },
+            uCoreColor: { value: new THREE.Color(0xffffff) },
+            uIntensity: { value: 2.2 },
+            uTime: { value: 0.0 },
+            uPulse: { value: 0.0 },
+            uTreble: { value: 0.0 }
+        },
+        vertexShader: PumpkinReflectionRaysShader.vertexShader,
+        fragmentShader: PumpkinReflectionRaysShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+    const pRightReflectMesh = new THREE.Mesh(pRightReflectGeo, pRightReflectMat);
+    pRightReflectMesh.renderOrder = 22;
+    gPumpkinDiscoBall.add(pRightReflectMesh);
+
     // Front Surface Impact Hotspot Flares (Where beams land on the front of the pumpkin)
     const pLeftHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
         map: starburstTex,
@@ -7654,7 +7782,7 @@ export function createVFXScene(container) {
         depthWrite: false
     }));
     pLeftHitFlare.scale.set(4.5, 4.5, 1.0);
-    pLeftHitFlare.renderOrder = 22;
+    pLeftHitFlare.renderOrder = 23;
     gPumpkinDiscoBall.add(pLeftHitFlare);
 
     const pRightHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -7666,7 +7794,7 @@ export function createVFXScene(container) {
         depthWrite: false
     }));
     pRightHitFlare.scale.set(4.5, 4.5, 1.0);
-    pRightHitFlare.renderOrder = 22;
+    pRightHitFlare.renderOrder = 23;
     gPumpkinDiscoBall.add(pRightHitFlare);
 
     // Front Key Light & Center Pumpkin Core Glow
@@ -9292,17 +9420,32 @@ export function createVFXScene(container) {
             pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
 
             // Align volumetric beams and inner cores along fixture-to-target vectors
-            // Extend beam slightly past the target so the soft fog dissolution feathers into empty air around the pumpkin
+            // Terminate EXACTLY at the front surface hit coordinate (ZERO penetration through or behind pumpkin)
             const upVec = new THREE.Vector3(0, -1, 0);
             pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
             pLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
-            pLeftBeamMesh.scale.set(1.0, (leftBeamDist + 5.5) / 22.0, 1.0);
-            pLeftCoreBeamMesh.scale.set(1.0, (leftBeamDist + 5.5) / 22.0, 1.0);
+            pLeftBeamMesh.scale.set(1.0, leftBeamDist / 22.0, 1.0);
+            pLeftCoreBeamMesh.scale.set(1.0, leftBeamDist / 22.0, 1.0);
 
             pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
             pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
-            pRightBeamMesh.scale.set(1.0, (rightBeamDist + 5.5) / 22.0, 1.0);
-            pRightCoreBeamMesh.scale.set(1.0, (rightBeamDist + 5.5) / 22.0, 1.0);
+            pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
+            pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
+
+            // Compute Specular Reflection Vectors Bouncing OFF the Front Glass Mirror Facets
+            const pNormalLeft = targetLeftPos.clone().normalize();
+            const pNormalRight = targetRightPos.clone().normalize();
+
+            // Reflected vector R = I - 2 * (I . N) * N
+            const pReflectDirLeft = leftFixtureDirNorm.clone().sub(pNormalLeft.clone().multiplyScalar(2.0 * leftFixtureDirNorm.dot(pNormalLeft))).normalize();
+            const pReflectDirRight = rightFixtureDirNorm.clone().sub(pNormalRight.clone().multiplyScalar(2.0 * rightFixtureDirNorm.dot(pNormalRight))).normalize();
+
+            // Position and orient reflected light beams originating from the front glass facets and bouncing into the room
+            pLeftReflectMesh.position.copy(targetLeftPos);
+            pLeftReflectMesh.quaternion.setFromUnitVectors(upVec, pReflectDirLeft);
+
+            pRightReflectMesh.position.copy(targetRightPos);
+            pRightReflectMesh.quaternion.setFromUnitVectors(upVec, pReflectDirRight);
 
             // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
             const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
@@ -9382,7 +9525,7 @@ export function createVFXScene(container) {
             pBottomRightSpot.color.copy(rightColor);
             pBottomRightSpot.intensity = Math.max(1.5, 6.5 + rightWave * 4.0 + rightHit * 5.5 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0);
 
-            // Volumetric shaded god rays uniforms with dynamic individual intensity
+            // Volumetric shaded incoming god rays uniforms with dynamic individual intensity
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
             pLeftBeamMat.uniforms.uCoreColor.value.copy(leftCore);
             pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
@@ -9402,6 +9545,21 @@ export function createVFXScene(container) {
             pRightCoreBeamMat.uniforms.uCoreColor.value.copy(rightCore);
             pRightCoreBeamMat.uniforms.uIntensity.value = beamRightPower * 1.35;
             pRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
+
+            // Specular reflected light beams bouncing off the glass facets into the room
+            pLeftReflectMat.uniforms.uColor.value.copy(leftColor);
+            pLeftReflectMat.uniforms.uCoreColor.value.copy(leftCore);
+            pLeftReflectMat.uniforms.uIntensity.value = beamLeftPower * 0.90;
+            pLeftReflectMat.uniforms.uTime.value = elapsedTime;
+            pLeftReflectMat.uniforms.uPulse.value = pumpkinDeadOnFlashPulse;
+            pLeftReflectMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
+
+            pRightReflectMat.uniforms.uColor.value.copy(rightColor);
+            pRightReflectMat.uniforms.uCoreColor.value.copy(rightCore);
+            pRightReflectMat.uniforms.uIntensity.value = beamRightPower * 0.90;
+            pRightReflectMat.uniforms.uTime.value = elapsedTime;
+            pRightReflectMat.uniforms.uPulse.value = pumpkinDeadOnFlashPulse;
+            pRightReflectMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
 
             // Front surface impact flares at the exact beam landing coordinates on the pumpkin front
             pLeftHitFlare.position.copy(targetLeftPos);
