@@ -7403,25 +7403,25 @@ export function createVFXScene(container) {
 
     const dPumpkinMat = new THREE.MeshPhysicalMaterial({
         color: 0xffffff,
-        metalness: 0.96,  // Sleek mirror glass / polished chrome
-        roughness: 0.015, // Sharp facet mirror reflections
+        metalness: 0.98,
+        roughness: 0.02, // Ultra-sharp crystal mirror glass facets
         normalMap: pumpkinNormalTex,
-        normalScale: new THREE.Vector2(1.25, 1.25), // Crisp individual tile facets
+        normalScale: new THREE.Vector2(1.2, 1.2),
         roughnessMap: pumpkinRoughnessTex,
         metalnessMap: pumpkinMetalnessTex,
         bumpMap: pumpkinTileTex,
-        bumpScale: 0.048, // Pronounced individual glass tile bevels
+        bumpScale: 0.035, // Crisp glass facet bevels
         envMap: clubEnvMap,
-        envMapIntensity: 5.5, // Maximum HDRI nightclub reflection brilliance
+        envMapIntensity: 5.0, // Intense nightclub HDRI glass reflections
         clearcoat: 1.0,
-        clearcoatRoughness: 0.0, // Crystal optical glass glaze
-        ior: 1.55, // Optical crown glass index of refraction
+        clearcoatRoughness: 0.01,
         reflectivity: 1.0,
+        ior: 1.55,
         emissive: new THREE.Color(0x000000),
         emissiveIntensity: 0.0
     });
 
-    // Custom Shader Injection: Spatially Localized Spot Illumination & Dark Mirror Glass with Disco Facet Sparkles
+    // Custom Shader Injection: Facet glints aligned to UV segments & bass kick grout glow
     dPumpkinMat.onBeforeCompile = (shader) => {
         shader.uniforms.uSpot1Pos = pumpkinUniforms.uSpot1Pos;
         shader.uniforms.uSpot2Pos = pumpkinUniforms.uSpot2Pos;
@@ -7465,58 +7465,39 @@ export function createVFXScene(container) {
         ` + shader.fragmentShader;
 
         shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <color_fragment>',
-            `
-            #include <color_fragment>
-            
-            // Distance from this pumpkin facet to the left & right beam landing spots
-            float dist1 = length(vCustomWorldPos - uSpot1Pos);
-            float dist2 = length(vCustomWorldPos - uSpot2Pos);
-            
-            // Soft feathered spotlight contact masks
-            float spotMask1 = exp(-pow(dist1 / 2.5, 2.0)) * uSpot1Intensity;
-            float spotMask2 = exp(-pow(dist2 / 2.5, 2.0)) * uSpot2Intensity;
-            float totalSpot = clamp(spotMask1 + spotMask2, 0.0, 1.5);
-            
-            // Procedural mirror tile facet grid & audio-reactive disco sparkles
-            vec3 tileCoords = vCustomWorldPos * 5.8;
-            vec3 tileId = floor(tileCoords);
-            vec3 tileLocal = fract(tileCoords) - 0.5;
-            float tileGrout = smoothstep(0.48, 0.40, max(abs(tileLocal.x), max(abs(tileLocal.y), abs(tileLocal.z))));
-            
-            // Dancing disco mirror glints (sparkles on individual tiles as ball spins or treble hits)
-            float facetHash = sin(dot(tileId, vec3(12.9898, 78.233, 37.719))) * 43758.5453;
-            float facetShimmer = pow(clamp(sin(facetHash * 6.283 + uTime * 3.5 + uTreble * 6.0), 0.0, 1.0), 10.0);
-            
-            // Unlit spots: Deep, rich dark true Halloween colors with dark mirror glass effect
-            vec3 darkTrueColor = uDarkBaseColor * 0.16 * (0.8 + tileGrout * 0.2);
-            
-            // Lit spots: Crisp musical disco illumination without blowtorch burnout
-            vec3 spotMixColor = (spotMask1 * uSpot1Color + spotMask2 * uSpot2Color) / max(0.001, spotMask1 + spotMask2);
-            vec3 litFacetColor = spotMixColor * (0.75 + facetShimmer * 0.50 * (1.0 + uTreble * 1.2)) * (0.7 + tileGrout * 0.3);
-            
-            diffuseColor.rgb = mix(darkTrueColor, litFacetColor, clamp(totalSpot * 1.0 + uFlash * 0.60, 0.0, 1.0));
-            `
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
             '#include <emissivemap_fragment>',
             `
             #include <emissivemap_fragment>
             
-            // Controlled sparkling facet glints on the disco mirror tiles + bass kick seam punch
-            vec3 spotEmissive = spotMixColor * (0.22 * totalSpot + facetShimmer * totalSpot * 0.75 * (1.0 + uTreble * 1.5)) + (uEmissiveThemeColor * uFlash * 0.85);
-            vec3 kickEmissive = uEmissiveThemeColor * (uBassPunch * 0.75 * (1.0 - tileGrout * 0.5));
-            totalEmissiveRadiance = uEmissiveThemeColor * 0.02 + spotEmissive + kickEmissive;
-            `
-        );
-
-        shader.fragmentShader = shader.fragmentShader.replace(
-            '#include <roughnessmap_fragment>',
-            `
-            #include <roughnessmap_fragment>
-            // Mirror glass smoothness (sharp disco reflections)
-            roughnessFactor = mix(0.008, 0.025, clamp(totalSpot, 0.0, 1.0));
+            // 1. Facet coordinate aligned to the 10 pumpkin lobes (80 columns = 8 per lobe, 40 rings)
+            vec2 tileGrid = vUv * vec2(80.0, 40.0);
+            vec2 tileId = floor(tileGrid);
+            vec2 tileLocal = fract(tileGrid) - 0.5;
+            float tileInterior = smoothstep(0.48, 0.38, max(abs(tileLocal.x), abs(tileLocal.y)));
+            
+            // 2. Facet sparkle glints on individual glass mirror tiles
+            float facetHash = sin(dot(tileId, vec2(12.9898, 78.233))) * 43758.5453;
+            float facetShimmer = pow(clamp(sin(facetHash * 6.283 + uTime * 3.8 + uTreble * 5.0), 0.0, 1.0), 12.0) * tileInterior;
+            
+            // 3. Spotlight landing intensity on front facets
+            float dist1 = length(vCustomWorldPos - uSpot1Pos);
+            float dist2 = length(vCustomWorldPos - uSpot2Pos);
+            float spotMask1 = exp(-pow(dist1 / 2.8, 2.0)) * uSpot1Intensity;
+            float spotMask2 = exp(-pow(dist2 / 2.8, 2.0)) * uSpot2Intensity;
+            float totalSpot = clamp(spotMask1 + spotMask2, 0.0, 2.0);
+            
+            vec3 spotMixColor = (spotMask1 * uSpot1Color + spotMask2 * uSpot2Color) / max(0.001, spotMask1 + spotMask2);
+            
+            // Dazzling disco mirror sparkle flares catching the spotlight beams
+            vec3 facetSparkles = spotMixColor * (facetShimmer * totalSpot * (1.6 + uTreble * 2.2));
+            
+            // Bass kick seam pulse between tiles (glowing grout seams on heavy drops)
+            vec3 kickGrout = uEmissiveThemeColor * (uBassPunch * 0.95 * (1.0 - tileInterior * 0.7));
+            
+            // Direct dead-on hit flash
+            vec3 flashGlow = uEmissiveThemeColor * (uFlash * 0.85 * tileInterior);
+            
+            totalEmissiveRadiance += facetSparkles + kickGrout + flashGlow;
             `
         );
     };
@@ -9478,34 +9459,64 @@ export function createVFXScene(container) {
         // FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 22) {
-            const rawBassVal = audio.bass || 0;
-            const bassPopVal = audio.bassImpact || audio.bass || 0;
-            const transientVal = audio.transientImpulse || 0;
-            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+            // 1. 🎵 MUSICAL BEAT & BASS KICK TRANSIENT ENGINE
+            const bps = currentBPM / 60.0;
+            const beatTime = elapsedTime * bps;
+            const beatFract = beatTime % 1.0; // 0.0 -> 1.0 on every musical quarter-note beat
+            
+            // Musical quarter-note beat pulse envelope (spikes to 1.0 on every kick downbeat)
+            const beatPulse = Math.pow(Math.max(0.0, 1.0 - beatFract), 3.5);
 
-            // Snappy bass kick punch accumulator with exponential spring recoil
-            if (isKickHit) {
-                const impactForce = Math.max(audio.bassImpact || 0, transientVal * 1.2, rawBassVal);
-                pumpkinKickThump = Math.min(1.0, pumpkinKickThump + 0.65 + impactForce * 0.35);
+            // Rhythmic alternating head swings (left pumps on 1 & 3, right on 2 & 4)
+            const swingL = Math.pow(Math.max(0.0, Math.sin(beatTime * Math.PI)), 2.0);
+            const swingR = Math.pow(Math.max(0.0, -Math.sin(beatTime * Math.PI)), 2.0);
+
+            // Multi-frequency audio signals
+            const rawBass = audio.bass || 0;
+            const smoothedBass = audio.smoothedBass || 0;
+            const bassImpact = audio.bassImpact || 0;
+            const transient = audio.transientImpulse || 0;
+            const treblePop = audio.smoothedTreble || audio.treble || 0;
+            const midSurge = audio.smoothedMid || 0;
+
+            // Kick detection: high-sensitivity audio trigger OR synthetic BPM beat kick fallback
+            const isKickTriggered = audio.isOnset || bassImpact > 0.18 || transient > 0.22 || rawBass > 0.25 || (beatFract < 0.07);
+            const kickEnergy = Math.max(
+                audio.isOnset ? 1.0 : 0.0,
+                bassImpact * 2.2,
+                rawBass * 1.8,
+                transient * 1.6,
+                beatPulse * 0.90
+            );
+
+            // Fast explosive attack & elastic spring recovery
+            if (isKickTriggered || kickEnergy > 0.25) {
+                pumpkinKickThump = Math.min(1.0, pumpkinKickThump + kickEnergy * 0.75);
             }
-            pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
+            pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 4.2);
 
-            // 1. Motorized Motor Spin (Y-axis) - Gracefully reduced slow majestic spin
-            const spinVelocity = 0.14 * (currentBPM / 126.0) * (1.0 + (audio.smoothedBass || 0) * 0.20);
+            // 2. Motorized Motor Spin (Y-axis) - Graceful disco spin
+            const spinVelocity = 0.15 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.25 + pumpkinKickThump * 0.15);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Subtle gentle natural pendulum sway
+            // Subtle natural pendulum sway
             pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.40) * 0.015;
             pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.35) * 0.012;
 
-            // Dynamic bass kick reaction: Subwoofer punch expands laterally (X & Z) while squashing vertically (Y)
-            const kickPunch = pumpkinKickThump * 0.12 + (audio.smoothedBass || 0) * 0.035;
-            pumpkinMesh.scale.set(1.0 + kickPunch, 1.0 - kickPunch * 0.68, 1.0 + kickPunch);
+            // 3. 💥 UNMISTAKABLE PHYSICAL BASS KICK BOUNCE (Oblate expansion + vertical recoil)
+            const kickScale = pumpkinKickThump * 0.24 + smoothedBass * 0.08;
+            pumpkinMesh.scale.set(
+                1.0 + kickScale * 1.2,  // Width X
+                1.0 - kickScale * 0.75, // Height Y (Speaker compression)
+                1.0 + kickScale * 1.2   // Depth Z
+            );
             if (pumpkinStem) {
-                pumpkinStem.scale.set(1.0 + kickPunch * 0.5, 1.0 - kickPunch * 0.3, 1.0 + kickPunch * 0.5);
+                pumpkinStem.scale.set(1.0 + kickScale * 0.6, 1.0 - kickScale * 0.4, 1.0 + kickScale * 0.6);
             }
+            // Vertical bounce on ceiling chain
+            pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.45;
 
-            // 2. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the pumpkin
+            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT face of the pumpkin
             const tL = elapsedTime * 0.55;
             const txL = -1.0 + Math.sin(tL * 0.85) * 2.3; // -3.3 to +1.3
             const tyL = Math.cos(tL * 0.65) * 2.3;       // -2.3 to +2.3 (spans balanced pumpkin height)
@@ -9577,7 +9588,7 @@ export function createVFXScene(container) {
             pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 3.5);
             manualFlash = Math.max(manualFlash, pumpkinScreenFlash);
 
-            // 3. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
+            // 5. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
             const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
             const leftSample = sampleHalloweenPalette(elapsedTime * colorSpeed);
             const rightSample = sampleHalloweenPalette(elapsedTime * colorSpeed + 0.85);
@@ -9587,33 +9598,17 @@ export function createVFXScene(container) {
             const rightColor = rightSample.color;
             const rightCore = rightSample.core;
 
-            // 4. 🎵 MUSICAL DISCO BEAT-PULSING & FACET SPARKLE ENGINE
-            const bps = currentBPM / 60.0;
-            const beatTime = elapsedTime * bps;
-            const beatFract = beatTime % 1.0; // 0.0 -> 1.0 on each musical quarter-note beat
-            
-            // Musical beat envelope (sharp kick transient on downbeat, smooth decay)
-            const beatEnvelope = Math.pow(Math.max(0.0, 1.0 - beatFract), 2.5);
+            // Multi-frequency lighting surge
+            const audioSurge = smoothedBass * 0.65 + midSurge * 0.35 + pumpkinKickThump * 0.65;
+            const kickHitBoost = pumpkinKickThump * 0.60;
 
-            // Rhythmic alternating swing (Left head pumps on beats 1 & 3, Right head on beats 2 & 4)
-            const swingL = Math.pow(Math.max(0.0, Math.sin(beatTime * Math.PI)), 2.0);
-            const swingR = Math.pow(Math.max(0.0, -Math.sin(beatTime * Math.PI)), 2.0);
-
-            // Multi-frequency audio reactivity
-            const bassPop = audio.bassImpact || audio.bass || 0;
-            const treblePop = audio.smoothedTreble || audio.treble || 0;
-            const midSurge = audio.smoothedMid || 0;
-            const audioSurge = (audio.smoothedBass || 0) * 0.55 + midSurge * 0.25 + (audio.isOnset ? 0.45 : 0.0);
-            const kickHitBoost = isKickHit ? (0.45 + bassPop * 0.35 + transientVal * 0.25) : 0.0;
-
-            // Controlled dynamic range: Trough ~0.10 in darkness, Peak ~1.25 on beat drops (no blowtorch)
-            const pulseMultiL = Math.min(1.5, 0.08 + swingL * 0.55 + beatEnvelope * 0.25 + kickHitBoost + audioSurge * 0.25);
-            const pulseMultiR = Math.min(1.5, 0.08 + swingR * 0.55 + beatEnvelope * 0.25 + kickHitBoost + audioSurge * 0.25);
+            const pulseMultiL = Math.min(1.6, 0.15 + swingL * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
+            const pulseMultiR = Math.min(1.6, 0.15 + swingR * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
             const avgPulse = (pulseMultiL + pulseMultiR) * 0.5;
 
             // Beams power - atmospheric concert plumes (no blowout)
-            const beamLeftPower = Math.max(0.10, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80) * pulseMultiL);
-            const beamRightPower = Math.max(0.10, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80) * pulseMultiR);
+            const beamLeftPower = Math.max(0.12, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80) * pulseMultiL);
+            const beamRightPower = Math.max(0.12, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80) * pulseMultiR);
 
             // Update Fixture Lens & Status LED Colors and Intensity with Musical Beat Pulse
             pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(0.20 + pulseMultiL * 0.70);
@@ -9647,12 +9642,12 @@ export function createVFXScene(container) {
                 });
             }
 
-            // Spotlights dip down between pulses to create dramatic stage lighting shadows (softened intensity)
+            // Spotlights dip down between pulses to create dramatic stage lighting shadows
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = Math.max(0.10, (0.40 + leftHit * 1.6 + audioSurge * 1.2 + pumpkinDeadOnFlashPulse * 2.0) * pulseMultiL);
+            pBottomLeftSpot.intensity = Math.max(0.15, (0.50 + leftHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkinKickThump * 1.8) * pulseMultiL);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = Math.max(0.10, (0.40 + rightHit * 1.6 + audioSurge * 1.2 + pumpkinDeadOnFlashPulse * 2.0) * pulseMultiR);
+            pBottomRightSpot.intensity = Math.max(0.15, (0.50 + rightHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkinKickThump * 1.8) * pulseMultiR);
 
             // Volumetric shaded incoming god rays uniforms with high-contrast beat pulsing and uHit modulation
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
@@ -9698,12 +9693,12 @@ export function createVFXScene(container) {
 
             // Front Key Light & Pumpkin Flame (internal flame reacts powerfully to bass kicks)
             pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.45));
-            pKeyLight.intensity = (0.35 + totalGlareScore * 2.0 + audioSurge * 1.0 + pumpkinDeadOnFlashPulse * 3.0) * (0.25 + avgPulse * 0.75);
+            pKeyLight.intensity = (0.45 + totalGlareScore * 2.2 + audioSurge * 1.2 + pumpkinDeadOnFlashPulse * 3.0 + pumpkinKickThump * 2.5) * (0.35 + avgPulse * 0.65);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (0.55 + totalGlareScore * 1.6 + audioSurge * 1.0 + pumpkinDeadOnFlashPulse * 2.5 + pumpkinKickThump * 3.5) * (0.35 + avgPulse * 0.65);
+            pumpkinFlameLight.intensity = (0.75 + totalGlareScore * 2.0 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.0 + pumpkinKickThump * 4.5) * (0.40 + avgPulse * 0.60);
 
-            // 5. Update Central Specular Glare (Flash on direct hit and beat pulse peaks)
+            // 6. Update Central Specular Glare (Flash on direct hit and beat pulse peaks)
             const glareTint = (pumpkinDeadOnFlashPulse > 0.3) ? new THREE.Color(0xffffff) : (leftGlare > rightGlare ? leftColor : rightColor);
             pCenterGlareSprite.material.color.copy(glareTint);
             pCenterStarburstSprite.material.color.copy(glareTint);
@@ -9715,16 +9710,16 @@ export function createVFXScene(container) {
             pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(0.65, (totalGlareScore * 0.65 + pumpkinDeadOnFlashPulse * 0.75) * (0.20 + avgPulse * 0.80)));
             pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(0.60, (totalGlareScore * 0.60 + pumpkinDeadOnFlashPulse * 0.75) * (0.20 + avgPulse * 0.80)));
 
-            // 6. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
+            // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25;
-            pFloorMat.size = 0.45 + totalGlareScore * 0.35 + (audio.smoothedBass || 0) * 0.35 + treblePop * 0.30 + pumpkinKickThump * 0.35;
-            pFloorMat.opacity = Math.min(0.90, 0.35 + avgPulse * 0.35 + (audio.isOnset ? 0.25 : 0.0) + pumpkinKickThump * 0.20);
+            pFloorMat.size = 0.45 + totalGlareScore * 0.35 + smoothedBass * 0.35 + treblePop * 0.30 + pumpkinKickThump * 0.40;
+            pFloorMat.opacity = Math.min(0.95, 0.35 + avgPulse * 0.35 + (audio.isOnset ? 0.25 : 0.0) + pumpkinKickThump * 0.30);
 
-            // 7. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
+            // 8. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
             const emberPosAttr = pEmberGeo.attributes.position;
             const emberArray = emberPosAttr.array;
             for (let e = 0; e < pEmberCount; e++) {
-                emberArray[e * 3 + 1] += (pEmberVel[e * 3 + 1] + (audio.smoothedBass || 0) * 0.8 + pumpkinKickThump * 0.6) * delta * 5.0;
+                emberArray[e * 3 + 1] += (pEmberVel[e * 3 + 1] + smoothedBass * 0.8 + pumpkinKickThump * 0.8) * delta * 5.0;
                 emberArray[e * 3] += pEmberVel[e * 3] * delta * 4.0;
                 emberArray[e * 3 + 2] += pEmberVel[e * 3 + 2] * delta * 4.0;
 
