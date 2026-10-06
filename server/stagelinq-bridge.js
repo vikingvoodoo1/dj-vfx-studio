@@ -134,10 +134,64 @@ nowPlayingService.init();
 
 import fs from 'fs';
 import path from 'path';
+import { recognizeAudio } from './shazam-service.js';
 
 // Setup HTTP + WebSocket Server
 const server = http.createServer((req, res) => {
     const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+    // Handle Shazam Live Audio Recognition Endpoint
+    if (reqUrl.pathname === '/api/shazam') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+        if (req.method === 'POST') {
+            const chunks = [];
+            req.on('data', chunk => chunks.push(chunk));
+            req.on('end', async () => {
+                try {
+                    const bodyBuf = Buffer.concat(chunks);
+                    const contentType = req.headers['content-type'] || '';
+                    let audioInput = null;
+
+                    if (contentType.includes('application/json')) {
+                        const json = JSON.parse(bodyBuf.toString('utf8'));
+                        if (json.audioBase64) {
+                            audioInput = Buffer.from(json.audioBase64, 'base64');
+                        } else if (json.signatureUri) {
+                            audioInput = json.signatureUri;
+                        } else if (json.samples && Array.isArray(json.samples)) {
+                            audioInput = json.samples;
+                        }
+                    } else {
+                        audioInput = bodyBuf;
+                    }
+
+                    const result = await recognizeAudio(audioInput);
+                    res.writeHead(200, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify(result));
+                } catch (err) {
+                    console.error('[Shazam API Error]', err);
+                    res.writeHead(500, {
+                        'Content-Type': 'application/json',
+                        'Access-Control-Allow-Origin': '*'
+                    });
+                    res.end(JSON.stringify({ success: false, message: err.message || 'Internal Server Error' }));
+                }
+            });
+            return;
+        }
+    }
+
     if (reqUrl.pathname === '/api/media-list') {
         const root = process.cwd();
         const validExtensions = ['.mp4', '.webm', '.png', '.jpg', '.jpeg', '.svg', '.gif', '.webp'];

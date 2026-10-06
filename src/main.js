@@ -119,6 +119,26 @@ async function init() {
     const btnInjectTrack = document.getElementById('btn-inject-track');
     const btnClearInjectTrack = document.getElementById('btn-clear-inject-track');
 
+    // Shazam Live Audio Recognition Elements & State
+    const btnShazamListen = document.getElementById('btn-shazam-listen');
+    const shazamBtnText = document.getElementById('shazam-btn-text');
+    const shazamRadarBox = document.getElementById('shazam-radar-box');
+    const shazamListenStatus = document.getElementById('shazam-listen-status');
+    const shazamProgressBar = document.getElementById('shazam-progress-bar');
+    const shazamCandidateCard = document.getElementById('shazam-candidate-card');
+    const shazamMatchArt = document.getElementById('shazam-match-art');
+    const shazamMatchArtFallback = document.getElementById('shazam-match-art-fallback');
+    const shazamMatchTitle = document.getElementById('shazam-match-title');
+    const shazamMatchArtist = document.getElementById('shazam-match-artist');
+    const shazamMatchGenre = document.getElementById('shazam-match-genre');
+    const shazamEngineBadge = document.getElementById('shazam-engine-badge');
+    const btnShazamPublish = document.getElementById('btn-shazam-publish');
+    const btnShazamToManual = document.getElementById('btn-shazam-to-manual');
+    const btnShazamDiscard = document.getElementById('btn-shazam-discard');
+
+    let stagedShazamTrack = null;
+    let isShazaming = false;
+
     let isTrackBannerEnabled = true;
     let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
     let trackDurationSec = 30;
@@ -727,6 +747,153 @@ async function init() {
         btnClearInjectTrack.addEventListener('click', () => {
             if (inputManualTrackTitle) inputManualTrackTitle.value = '';
             if (inputManualTrackArtist) inputManualTrackArtist.value = '';
+        });
+    }
+
+    // 🎧 Shazam Live Audio Recognition Listener
+    if (btnShazamListen) {
+        btnShazamListen.addEventListener('click', async () => {
+            if (isShazaming) return;
+            isShazaming = true;
+            btnShazamListen.disabled = true;
+            btnShazamListen.style.opacity = '0.6';
+            if (shazamRadarBox) shazamRadarBox.style.display = 'block';
+            if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+            if (shazamEngineBadge) {
+                shazamEngineBadge.textContent = 'LISTENING';
+                shazamEngineBadge.style.color = '#00e1ff';
+                shazamEngineBadge.style.borderColor = '#00e1ff';
+            }
+            if (shazamProgressBar) shazamProgressBar.style.width = '0%';
+            if (shazamListenStatus) shazamListenStatus.textContent = '🎧 LISTENING TO LIVE AUDIO... (4s)';
+
+            try {
+                if (!audioProcessor) {
+                    audioProcessor = await setupAudio((devs, activeId) => {
+                        updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
+                    });
+                }
+
+                const audioData = await audioProcessor.captureSample(4.0, (progress, remainingSec) => {
+                    if (shazamProgressBar) shazamProgressBar.style.width = `${Math.round(progress * 100)}%`;
+                    if (shazamListenStatus) shazamListenStatus.textContent = `🎧 LISTENING TO LIVE AUDIO... (${remainingSec}s)`;
+                });
+
+                if (shazamListenStatus) shazamListenStatus.textContent = `🧠 ANALYZING ACOUSTIC FINGERPRINT...`;
+                if (shazamEngineBadge) shazamEngineBadge.textContent = 'ANALYZING';
+
+                const res = await fetch('/api/shazam', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ audioBase64: audioData.base64, samples: audioData.samples })
+                });
+
+                const data = await res.json();
+                if (data.success && data.match) {
+                    stagedShazamTrack = {
+                        title: data.match.title,
+                        artist: data.match.artist,
+                        genre: data.match.genre || 'Identified Track',
+                        coverart: data.match.coverart || '',
+                        album: data.match.album || ''
+                    };
+
+                    if (shazamMatchTitle) shazamMatchTitle.textContent = stagedShazamTrack.title;
+                    if (shazamMatchArtist) shazamMatchArtist.textContent = stagedShazamTrack.artist;
+                    if (shazamMatchGenre) shazamMatchGenre.textContent = stagedShazamTrack.genre;
+
+                    if (stagedShazamTrack.coverart && shazamMatchArt) {
+                        shazamMatchArt.src = stagedShazamTrack.coverart;
+                        shazamMatchArt.style.display = 'block';
+                        if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'none';
+                    } else {
+                        if (shazamMatchArt) shazamMatchArt.style.display = 'none';
+                        if (shazamMatchArtFallback) shazamMatchArtFallback.style.display = 'block';
+                    }
+
+                    if (shazamRadarBox) shazamRadarBox.style.display = 'none';
+                    if (shazamCandidateCard) shazamCandidateCard.style.display = 'block';
+                    if (shazamEngineBadge) {
+                        shazamEngineBadge.textContent = 'MATCH FOUND';
+                        shazamEngineBadge.style.color = '#00ffcc';
+                        shazamEngineBadge.style.borderColor = '#00ffcc';
+                    }
+                    showToast(`✓ Shazam Identified: ${stagedShazamTrack.artist} - ${stagedShazamTrack.title}`);
+                } else {
+                    if (shazamRadarBox) shazamRadarBox.style.display = 'none';
+                    if (shazamEngineBadge) {
+                        shazamEngineBadge.textContent = 'NO MATCH';
+                        shazamEngineBadge.style.color = '#ffaa00';
+                        shazamEngineBadge.style.borderColor = '#ffaa00';
+                    }
+                    showToast(data.message || 'No track match found in Shazam database. Try letting the drop play.');
+                }
+            } catch (err) {
+                console.error('[Shazam Error]', err);
+                if (shazamRadarBox) shazamRadarBox.style.display = 'none';
+                if (shazamEngineBadge) {
+                    shazamEngineBadge.textContent = 'ERROR';
+                    shazamEngineBadge.style.color = '#ff3366';
+                    shazamEngineBadge.style.borderColor = '#ff3366';
+                }
+                showToast(err.message || 'Could not record live audio for Shazam.');
+            } finally {
+                isShazaming = false;
+                btnShazamListen.disabled = false;
+                btnShazamListen.style.opacity = '1';
+            }
+        });
+    }
+
+    // 2nd Click Confirm: Publish verified match to stream
+    if (btnShazamPublish) {
+        btnShazamPublish.addEventListener('click', () => {
+            if (!stagedShazamTrack) return;
+            const currentTrack = {
+                title: stagedShazamTrack.title,
+                artist: stagedShazamTrack.artist,
+                deck: lastDisplayedTrackDeck || 1,
+                bpm: Number(bpmVal?.textContent) || 126.0
+            };
+            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
+            showToast(`⚡ Published Shazam Match: ${currentTrack.artist} - ${currentTrack.title}`);
+
+            broadcastSync({
+                type: 'pop_track_banner_now',
+                trackData: currentTrack,
+                duration: trackDurationSec
+            });
+
+            if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+            if (shazamEngineBadge) {
+                shazamEngineBadge.textContent = 'PUBLISHED';
+                shazamEngineBadge.style.color = '#00ffcc';
+                shazamEngineBadge.style.borderColor = '#00ffcc';
+            }
+        });
+    }
+
+    // Edit before publish (copies into manual input fields)
+    if (btnShazamToManual) {
+        btnShazamToManual.addEventListener('click', () => {
+            if (!stagedShazamTrack) return;
+            if (inputManualTrackTitle) inputManualTrackTitle.value = stagedShazamTrack.title;
+            if (inputManualTrackArtist) inputManualTrackArtist.value = stagedShazamTrack.artist;
+            showToast('✏️ Copied into manual form. Tweak and click Inject when ready.');
+            if (inputManualTrackTitle) inputManualTrackTitle.focus();
+        });
+    }
+
+    // Discard match
+    if (btnShazamDiscard) {
+        btnShazamDiscard.addEventListener('click', () => {
+            stagedShazamTrack = null;
+            if (shazamCandidateCard) shazamCandidateCard.style.display = 'none';
+            if (shazamEngineBadge) {
+                shazamEngineBadge.textContent = 'READY';
+                shazamEngineBadge.style.color = '#00e1ff';
+                shazamEngineBadge.style.borderColor = 'rgba(0,225,255,0.4)';
+            }
         });
     }
 

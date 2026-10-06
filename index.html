@@ -2917,6 +2917,66 @@
                     <button class="btn-mini" id="btn-pop-off-track-banner" style="font-size:10px; font-weight:700; padding:6px 10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); cursor:pointer;" title="Immediately Dismiss Track Banner On Stream">⏹️ POP OFF</button>
                 </div>
 
+                <!-- 🎧 Shazam Live Audio Recognition (AI Acoustic Fingerprinting) -->
+                <div class="hud-section" style="background:#0e121a; border:1px solid #1c324a; border-radius:6px; padding:8px 10px; margin-bottom:10px;">
+                    <div class="hud-row" style="margin-bottom:6px; align-items:center;">
+                        <span class="hud-label" style="color:#00aaff; font-weight:800; display:flex; align-items:center; gap:5px;">
+                            <span>🎧 SHAZAM LIVE AUDIO RECOGNITION</span>
+                        </span>
+                        <span class="hud-badge" id="shazam-engine-badge" style="font-size:7.5px; color:#00e1ff; border-color:rgba(0,225,255,0.4); background:rgba(0,136,255,0.12);">READY</span>
+                    </div>
+
+                    <!-- Main Shazam Trigger Button -->
+                    <button class="btn-mini" id="btn-shazam-listen" style="width:100%; font-size:10px; font-weight:800; padding:8px 10px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#ffffff; cursor:pointer; border-radius:4px; box-shadow:0 2px 8px rgba(0,136,255,0.3); display:flex; align-items:center; justify-content:center; gap:7px;">
+                        <span style="font-size:13px;">🔍</span>
+                        <span id="shazam-btn-text">SHAZAM CURRENT PLAYING TRACK</span>
+                    </button>
+
+                    <!-- Active Listening / Radar Animation Box (Hidden until triggered) -->
+                    <div id="shazam-radar-box" style="display:none; margin-top:8px; background:#080b12; border:1px solid #0088ff; border-radius:4px; padding:8px 10px; text-align:center;">
+                        <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-bottom:6px;">
+                            <span class="power-led" style="background:#00e1ff; box-shadow:0 0 8px #00e1ff;"></span>
+                            <span id="shazam-listen-status" style="font-size:9.5px; font-weight:800; color:#00e1ff; font-family:'JetBrains Mono',monospace;">🎧 LISTENING TO LIVE AUDIO... (4s)</span>
+                        </div>
+                        <div style="width:100%; height:4px; background:#1b2030; border-radius:2px; overflow:hidden;">
+                            <div id="shazam-progress-bar" style="width:0%; height:100%; background:linear-gradient(90deg, #0088ff, #00ffcc); transition:width 0.1s linear;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Staged Candidate Track Found Card (2-Click Safety to Prevent Mis-hits!) -->
+                    <div id="shazam-candidate-card" style="display:none; margin-top:8px; background:linear-gradient(135deg, rgba(0,136,255,0.14) 0%, rgba(0,255,204,0.14) 100%); border:1px solid #00ffcc; border-radius:5px; padding:8px 10px;">
+                        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:5px;">
+                            <span class="hud-badge" style="background:rgba(0,255,204,0.2); color:#00ffcc; border-color:#00ffcc; font-size:7.5px; font-weight:800;">✓ SHAZAM MATCH FOUND</span>
+                            <span style="font-size:7.5px; color:#8c909e;" id="shazam-match-genre">Dance</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                            <img id="shazam-match-art" src="" alt="Album Art" style="width:36px; height:36px; border-radius:4px; object-fit:cover; border:1px solid #00ffcc; display:none;">
+                            <div id="shazam-match-art-fallback" class="vinyl-record" style="width:32px; height:32px; min-width:32px; animation:spin 3s linear infinite;">
+                                <div class="vinyl-center-label">
+                                    <span class="vinyl-label-icon" style="font-size:9px;">⚡</span>
+                                </div>
+                            </div>
+                            <div style="flex:1; overflow:hidden;">
+                                <div id="shazam-match-title" style="font-size:11px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Opus</div>
+                                <div id="shazam-match-artist" style="font-size:9px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Eric Prydz</div>
+                            </div>
+                        </div>
+
+                        <!-- 2-Click Confirmation Action Buttons -->
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-mini" id="btn-shazam-publish" style="flex:2; font-size:9px; font-weight:800; padding:5px 6px; background:linear-gradient(180deg, #00ffcc 0%, #00bb88 100%); border:1px solid #00ffcc; color:#000000; cursor:pointer;" title="Click to publish this verified match to stream overlay">
+                                ⚡ PUBLISH TO STREAM NOW
+                            </button>
+                            <button class="btn-mini" id="btn-shazam-to-manual" style="flex:1; font-size:8.5px; font-weight:700; padding:5px 4px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; cursor:pointer;" title="Load into manual fields to tweak remix title before publishing">
+                                ✏️ EDIT
+                            </button>
+                            <button class="btn-mini" id="btn-shazam-discard" style="font-size:8.5px; padding:5px 6px; background:rgba(255,0,0,0.15); border:1px solid rgba(255,0,0,0.35); color:#ff6666; cursor:pointer;" title="Dismiss candidate match">
+                                ✕
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Manual Song Title Override / Live Injection -->
                 <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px; margin-bottom:10px;">
                     <div class="hud-row" style="margin-bottom:6px; align-items:center;">

@@ -572,6 +572,190 @@ export async function setupAudio(onDeviceListChange) {
                 vuPeakHoldPercent: Number((((-8.5 + 48) / 48) * 100).toFixed(1)),
                 isClipping: false
             };
+        },
+
+        /**
+         * Capture a 16kHz mono audio recording sample from the live audio stream for Shazam recognition.
+         * @param {number} durationSec - Length of recording in seconds (default 4.0)
+         * @param {Function} [onProgress] - Callback(progress 0..1, remainingSec)
+         * @returns {Promise<{blob: Blob, base64: string, samples: number[], duration: number}>}
+         */
+        async captureSample(durationSec = 4.0, onProgress = null) {
+            initAudioContext();
+            if (audioCtx.state === 'suspended') {
+                await audioCtx.resume();
+            }
+
+            let streamToUse = currentStream;
+            let createdStream = false;
+
+            if (!streamToUse) {
+                try {
+                    streamToUse = await navigator.mediaDevices.getUserMedia({
+                        audio: {
+                            deviceId: currentDeviceId !== 'default' ? { exact: currentDeviceId } : undefined,
+                            echoCancellation: false,
+                            noiseSuppression: false,
+                            autoGainControl: false
+                        }
+                    });
+                    createdStream = true;
+                } catch (e) {
+                    throw new Error('Please click to enable Audio Input or select a sound card in the Live Deck console first.');
+                }
+            }
+
+            const source = audioCtx.createMediaStreamSource(streamToUse);
+            const bufferSize = 4096;
+            const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+            const recordedChunks = [];
+            const startTime = Date.now();
+            const totalMs = durationSec * 1000;
+
+            return new Promise((resolve, reject) => {
+                let timer = null;
+
+                processor.onaudioprocess = (e) => {
+                    const inputData = e.inputBuffer.getChannelData(0);
+                    recordedChunks.push(new Float32Array(inputData));
+
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(1.0, elapsed / totalMs);
+                    if (onProgress) {
+                        onProgress(progress, Math.max(0, Math.ceil((totalMs - elapsed) / 1000)));
+                    }
+
+                    if (elapsed >= totalMs) {
+                        cleanup();
+                    }
+                };
+
+                function cleanup() {
+                    if (timer) clearTimeout(timer);
+                    try {
+                        source.disconnect();
+                        processor.disconnect();
+                    } catch (e) {}
+
+                    if (createdStream && streamToUse) {
+                        try {
+                            streamToUse.getTracks().forEach(t => t.stop());
+                        } catch (e) {}
+                    }
+
+                    const totalSamples = recordedChunks.reduce((acc, c) => acc + c.length, 0);
+                    if (totalSamples === 0) {
+                        return reject(new Error('No audio samples captured.'));
+                    }
+
+                    const float32All = new Float32Array(totalSamples);
+                    let offset = 0;
+                    for (const chunk of recordedChunks) {
+                        float32All.set(chunk, offset);
+                        offset += chunk.length;
+                    }
+
+                    // Resample Float32 to 16kHz mono Int16 PCM
+                    const int16Samples = resampleTo16kMono(float32All, audioCtx.sampleRate);
+                    const wavBlob = createWavBlob(int16Samples, 16000);
+
+                    // Convert blob to base64
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                        const base64data = (reader.result || '').split(',')[1] || '';
+                        resolve({
+                            blob: wavBlob,
+                            base64: base64data,
+                            samples: Array.from(int16Samples),
+                            duration: durationSec
+                        });
+                    };
+                    reader.onerror = () => {
+                        resolve({
+                            blob: wavBlob,
+                            base64: '',
+                            samples: Array.from(int16Samples),
+                            duration: durationSec
+                        });
+                    };
+                    reader.readAsDataURL(wavBlob);
+                }
+
+                source.connect(processor);
+                processor.connect(audioCtx.destination);
+
+                timer = setTimeout(cleanup, totalMs + 600);
+            });
         }
     };
 }
+
+/**
+ * Resample Float32 array from inputSampleRate down to 16kHz mono Int16.
+ */
+function resampleTo16kMono(float32Array, inputSampleRate) {
+    const targetSampleRate = 16000;
+    if (inputSampleRate === targetSampleRate) {
+        const int16 = new Int16Array(float32Array.length);
+        for (let i = 0; i < float32Array.length; i++) {
+            const s = Math.max(-1, Math.min(1, float32Array[i]));
+            int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        return int16;
+    }
+    const ratio = inputSampleRate / targetSampleRate;
+    const newLength = Math.round(float32Array.length / ratio);
+    const int16 = new Int16Array(newLength);
+    for (let i = 0; i < newLength; i++) {
+        const srcIdx = i * ratio;
+        const i0 = Math.floor(srcIdx);
+        const i1 = Math.min(i0 + 1, float32Array.length - 1);
+        const frac = srcIdx - i0;
+        const sample = float32Array[i0] * (1 - frac) + float32Array[i1] * frac;
+        const s = Math.max(-1, Math.min(1, sample));
+        int16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+    }
+    return int16;
+}
+
+/**
+ * Create a WAV format Blob from 16-bit 16kHz mono Int16 PCM samples.
+ */
+function createWavBlob(int16Samples, sampleRate = 16000) {
+    const dataLength = int16Samples.length * 2;
+    const buffer = new ArrayBuffer(44 + dataLength);
+    const view = new DataView(buffer);
+
+    function writeString(view, offset, string) {
+        for (let i = 0; i < string.length; i++) {
+            view.setUint8(offset + i, string.charCodeAt(i));
+        }
+    }
+
+    // RIFF chunk
+    writeString(view, 0, 'RIFF');
+    view.setUint32(4, 36 + dataLength, true);
+    writeString(view, 8, 'WAVE');
+
+    // fmt chunk
+    writeString(view, 12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true); // PCM
+    view.setUint16(22, 1, true); // Mono (1 channel)
+    view.setUint32(24, sampleRate, true);
+    view.setUint32(28, sampleRate * 2, true); // Byte rate
+    view.setUint16(32, 2, true); // Block align
+    view.setUint16(34, 16, true); // 16-bit
+
+    // data chunk
+    writeString(view, 36, 'data');
+    view.setUint32(40, dataLength, true);
+
+    const offset = 44;
+    for (let i = 0; i < int16Samples.length; i++) {
+        view.setInt16(offset + i * 2, int16Samples[i], true);
+    }
+
+    return new Blob([buffer], { type: 'audio/wav' });
+}
+
