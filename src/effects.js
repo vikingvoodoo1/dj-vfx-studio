@@ -7941,8 +7941,8 @@ export function createVFXScene(container) {
     pumpkinFlameLight.position.set(0, 0, 0);
     pumpkinPivot.add(pumpkinFlameLight);
 
-    // 6. Ethereal Halo Glow / Corona Flare Mesh framing the pumpkin silhouette (only visible during reflection flash)
-    const pumpkinHaloGeo = new THREE.PlaneGeometry(24.0, 24.0);
+    // 6. Hyper-Vivid, Wider & Brighter Halo Corona Flare Mesh framing the pumpkin silhouette (only visible during reflection flash)
+    const pumpkinHaloGeo = new THREE.PlaneGeometry(42.0, 42.0);
     const pumpkinHaloMat = new THREE.ShaderMaterial({
         uniforms: {
             uHaloColor: { value: new THREE.Color(0xff7700) },
@@ -7970,18 +7970,29 @@ export function createVFXScene(container) {
                 p.y /= 0.88;
                 float dist = length(p);
                 
-                // Outer perimeter halo: completely transparent inside the pumpkin (dist < 0.40)
-                // Bright silhouette rim aura right along the outer edge (dist 0.43 to 0.50)
-                // Soft gradient falloff out to dist 0.82
-                float ring = smoothstep(0.40, 0.46, dist) * (1.0 - smoothstep(0.48, 0.82, dist));
+                // Wide, Vivid & Bright outer perimeter halo:
+                // Clear cut-out inside the pumpkin silhouette (dist < 0.24) so mirror facets stay crystal clear
+                // Ultra-dense glowing corona rim (dist 0.25 to 0.45)
+                // Expansive multi-layer ambient halo spreading wide across stage (dist 0.35 to 0.98)
+                float innerCut = smoothstep(0.24, 0.29, dist);
+                float rimGlow = smoothstep(0.25, 0.38, dist) * (1.0 - smoothstep(0.38, 0.70, dist));
+                float wideAura = (1.0 - smoothstep(0.28, 0.98, dist));
+                float ring = innerCut * (rimGlow * 1.8 + wideAura * 0.95);
                 
-                // Subtle ray spikes during the flash
+                // Vivid multi-frequency diffraction spikes, diamond starburst & anamorphic flare rays
                 float angle = atan(p.y, p.x);
-                float rays = 0.85 + 0.15 * sin(angle * 16.0 + uTime * 3.0);
+                float rays1 = 0.75 + 0.25 * sin(angle * 16.0 + uTime * 6.0);
+                float rays2 = pow(abs(sin(angle * 4.0 + uTime * 3.0)), 6.0) * 0.85; // 8-point high-energy diamond spikes
+                float rays3 = pow(abs(sin(angle * 12.0 - uTime * 4.0)), 3.0) * 0.40; // Dense micro-streaks
+                float rays = rays1 + rays2 + rays3;
                 
                 float alpha = ring * rays * uHaloIntensity;
-                if (alpha < 0.005) discard;
-                gl_FragColor = vec4(uHaloColor * alpha * 1.8, clamp(alpha, 0.0, 1.0));
+                if (alpha < 0.002) discard;
+
+                // Blazing white-hot incandescent center with hyper-vivid saturated color outer rim
+                vec3 saturatedTint = normalize(uHaloColor + vec3(0.12, 0.06, 0.0)) * 2.4;
+                vec3 vividColor = mix(saturatedTint, vec3(1.0, 1.0, 1.0), clamp(ring * 1.8 + uHaloIntensity * 0.4 - 0.3, 0.0, 1.0));
+                gl_FragColor = vec4(vividColor * alpha * 3.6, clamp(alpha, 0.0, 1.0));
             }
         `,
         transparent: true,
@@ -9541,8 +9552,8 @@ export function createVFXScene(container) {
                 pumpkinLastPhraseIndex = currentPhraseIndex;
                 pumpkin8BarFlashPulse = 1.0; // Trigger dramatic 8-bar phrase drop flash!
             }
-            // Smooth musical decay for 8-bar phrase flash (~0.45s)
-            pumpkin8BarFlashPulse = Math.max(0.0, pumpkin8BarFlashPulse - delta * 2.2);
+            // Smooth musical decay for 8-bar phrase flash (~0.28s snappy drop)
+            pumpkin8BarFlashPulse = Math.max(0.0, pumpkin8BarFlashPulse - delta * 3.6);
 
             // Rhythmic alternating head swings (left pumps on 1 & 3, right on 2 & 4)
             const swingL = Math.pow(Math.max(0.0, Math.sin(beatTime * Math.PI)), 2.0);
@@ -9691,23 +9702,23 @@ export function createVFXScene(container) {
             const isHittingL = (leftHit > 0.28);
             const isHittingR = (rightHit > 0.28);
             if ((isHittingL && !pumpkinWasHitL) || (isHittingR && !pumpkinWasHitR)) {
-                pumpkinGlimpsePulse = Math.max(pumpkinGlimpsePulse, 0.75); // Glimpse the light as it hits
+                pumpkinGlimpsePulse = Math.max(pumpkinGlimpsePulse, 0.85); // Glimpse the light as it hits
             }
             pumpkinWasHitL = isHittingL;
             pumpkinWasHitR = isHittingR;
-            // Rapid smooth decay so the glimpse backs off
-            pumpkinGlimpsePulse = Math.max(0.0, pumpkinGlimpsePulse - delta * 3.8);
+            // Rapid smooth decay so the glimpse backs off quickly
+            pumpkinGlimpsePulse = Math.max(0.0, pumpkinGlimpsePulse - delta * 6.5);
 
             // Specular reflection to viewer: when beam sweeps through the front center facing camera
             const isReflectingToViewer = (leftDistFromCenter < 1.30 || rightDistFromCenter < 1.30);
-            if (isReflectingToViewer && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 0.75)) {
+            if (isReflectingToViewer && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 0.40)) {
                 pumpkinLastFlashTime = elapsedTime;
                 pumpkinDeadOnFlashPulse = 1.0;
             }
             pumpkinWasDeadOn = isReflectingToViewer;
 
-            // Fast flash decay so the reflection flare is a quick, crisp burst
-            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 4.5);
+            // Ultra-quick flash decay so the reflection flare is a snappy, brilliant burst
+            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 7.5);
 
             // 5. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
             const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
@@ -9845,21 +9856,21 @@ export function createVFXScene(container) {
 
             // 6. Halo flash around pumpkin: Reflection flash + 8-bar drop flash + Light strike glimpse + Dual convergence!
             const totalHaloFlash = Math.max(
-                pumpkinDeadOnFlashPulse * 1.0,
-                pumpkin8BarFlashPulse * 1.25,
-                pumpkinGlimpsePulse * 0.60,
-                convergencePower * 1.15
+                pumpkinDeadOnFlashPulse * 1.25,
+                pumpkin8BarFlashPulse * 1.45,
+                pumpkinGlimpsePulse * 0.75,
+                convergencePower * 1.35
             );
 
             if (totalHaloFlash > 0.005) {
                 pumpkinHaloMesh.visible = true;
                 // Brilliant white strobe on convergence, 8-bar drops and direct reflection; rich theme tint for beam glimpses
-                const haloTint = (pumpkin8BarFlashPulse > 0.25 || pumpkinDeadOnFlashPulse > 0.35 || convergencePower > 0.35)
+                const haloTint = (pumpkin8BarFlashPulse > 0.20 || pumpkinDeadOnFlashPulse > 0.25 || convergencePower > 0.25)
                     ? new THREE.Color(0xffffff)
                     : pumpkinThemeCol;
                 pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
                 pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
-                pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.pow(totalHaloFlash, 1.4) * 2.8;
+                pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.pow(totalHaloFlash, 1.1) * 4.2;
             } else {
                 pumpkinHaloMesh.visible = false;
                 pumpkinHaloMat.uniforms.uHaloIntensity.value = 0.0;
