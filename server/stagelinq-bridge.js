@@ -135,10 +135,44 @@ nowPlayingService.init();
 import fs from 'fs';
 import path from 'path';
 import { recognizeAudio } from './shazam-service.js';
+import { searchAlbumArt } from './artwork-service.js';
 
 // Setup HTTP + WebSocket Server
 const server = http.createServer((req, res) => {
     const reqUrl = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+
+    // Handle Universal Album Art Lookup Endpoint
+    if (reqUrl.pathname === '/api/artwork') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+        (async () => {
+            try {
+                const title = reqUrl.searchParams.get('title') || '';
+                const artist = reqUrl.searchParams.get('artist') || '';
+                const result = await searchAlbumArt(title, artist);
+                res.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify(result));
+            } catch (err) {
+                console.error('[Artwork API Error]', err);
+                res.writeHead(500, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(JSON.stringify({ success: false, message: err.message || 'Internal Server Error' }));
+            }
+        })();
+        return;
+    }
 
     // Handle Shazam Live Audio Recognition Endpoint
     if (reqUrl.pathname === '/api/shazam') {

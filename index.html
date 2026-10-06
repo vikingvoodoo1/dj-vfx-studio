@@ -1358,13 +1358,24 @@
             width: 46px;
             height: 46px;
             min-width: 46px;
-            border-radius: 50%;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
             position: relative;
-            contain: strict;
             filter: drop-shadow(0 0 12px rgba(0, 255, 204, 0.35));
+        }
+
+        .track-banner-art {
+            width: 46px;
+            height: 46px;
+            min-width: 46px;
+            border-radius: 10px;
+            object-fit: cover;
+            border: 1.5px solid rgba(0, 255, 204, 0.7);
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.8), 0 0 14px rgba(0, 255, 204, 0.35);
+            display: none;
+            transition: opacity 0.3s ease;
         }
 
         .vinyl-record {
@@ -2892,10 +2903,13 @@
                 <!-- Live Track Banner Monitor Card (Visual Preview of the Stream Banner) -->
                 <div class="media-preview-card" style="padding:10px 12px; margin-bottom:12px;">
                     <div style="display:flex; align-items:center; gap:10px; width:100%;">
-                        <div class="vinyl-record" style="width:36px; height:36px; min-width:36px; animation:spin 4s linear infinite;">
-                            <div class="vinyl-center-label">
-                                <span class="vinyl-label-icon" style="font-size:10px;">⚡</span>
-                                <div class="vinyl-spindle-hole"></div>
+                        <div id="nowplaying-pane-art-box" style="width:36px; height:36px; min-width:36px; position:relative; display:flex; align-items:center; justify-content:center;">
+                            <img id="nowplaying-pane-art" src="" alt="Album Art" style="width:36px; height:36px; border-radius:6px; object-fit:cover; border:1px solid #00ffcc; display:none;">
+                            <div id="nowplaying-pane-vinyl" class="vinyl-record" style="width:36px; height:36px; min-width:36px; animation:spinVinyl 4s linear infinite;">
+                                <div class="vinyl-center-label">
+                                    <span class="vinyl-label-icon" style="font-size:10px;">⚡</span>
+                                    <div class="vinyl-spindle-hole"></div>
+                                </div>
                             </div>
                         </div>
                         <div style="flex:1; overflow:hidden;">
@@ -3301,8 +3315,9 @@
 
     <!-- Active Track Banner (Stream & Nightclub Overlay) -->
     <div id="track-banner" class="track-banner-overlay banner-hidden">
-        <div class="track-icon-box">
-            <div class="vinyl-record">
+        <div class="track-icon-box" id="track-banner-art-box">
+            <img id="track-banner-art" class="track-banner-art" src="" alt="Cover Art" style="display:none;">
+            <div id="track-banner-vinyl" class="vinyl-record">
                 <div class="vinyl-center-label">
                     <span class="vinyl-label-icon">⚡</span>
                     <div class="vinyl-spindle-hole"></div>

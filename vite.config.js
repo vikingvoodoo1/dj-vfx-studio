@@ -2,15 +2,44 @@ import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import { recognizeAudio } from './server/shazam-service.js';
+import { searchAlbumArt } from './server/artwork-service.js';
 
 function apiHandlerPlugin() {
     return {
         name: 'api-handlers',
         configureServer(server) {
-            server.middlewares.use((req, res, next) => {
+            server.middlewares.use(async (req, res, next) => {
                 const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
 
-                // 1. Shazam Live Audio Recognition Endpoint
+                // 1. Universal Album Art Lookup Endpoint
+                if (url.pathname === '/api/artwork') {
+                    if (req.method === 'OPTIONS') {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+                        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+                        res.statusCode = 204;
+                        res.end();
+                        return;
+                    }
+                    try {
+                        const title = url.searchParams.get('title') || '';
+                        const artist = url.searchParams.get('artist') || '';
+                        const result = await searchAlbumArt(title, artist);
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 200;
+                        res.end(JSON.stringify(result));
+                    } catch (err) {
+                        console.error('[Artwork API Error]', err);
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 500;
+                        res.end(JSON.stringify({ success: false, message: err.message || 'Artwork lookup failed' }));
+                    }
+                    return;
+                }
+
+                // 2. Shazam Live Audio Recognition Endpoint
                 if (url.pathname === '/api/shazam') {
                     if (req.method === 'OPTIONS') {
                         res.setHeader('Access-Control-Allow-Origin', '*');

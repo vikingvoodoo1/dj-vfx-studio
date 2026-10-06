@@ -109,10 +109,14 @@ async function init() {
     const trackScaleVal = document.getElementById('track-scale-val');
     const trackDeckBadge = document.getElementById('track-deck-badge');
     const trackBpmBadge = document.getElementById('track-bpm-badge');
+    const trackBannerArt = document.getElementById('track-banner-art');
+    const trackBannerVinyl = document.getElementById('track-banner-vinyl');
     const nowplayingPaneTitle = document.getElementById('nowplaying-pane-title');
     const nowplayingPaneArtist = document.getElementById('nowplaying-pane-artist');
     const nowplayingPaneDeck = document.getElementById('nowplaying-pane-deck');
     const nowplayingPaneBpm = document.getElementById('nowplaying-pane-bpm');
+    const nowplayingPaneArt = document.getElementById('nowplaying-pane-art');
+    const nowplayingPaneVinyl = document.getElementById('nowplaying-pane-vinyl');
     const nowplayingStatusBadge = document.getElementById('nowplaying-status-badge');
     const inputManualTrackTitle = document.getElementById('input-manual-track-title');
     const inputManualTrackArtist = document.getElementById('input-manual-track-artist');
@@ -595,6 +599,95 @@ async function init() {
     let lastDisplayedTrackArtist = '';
     let lastDisplayedTrackDeck = 1;
     let currentDisplayedTrackKey = '';
+    let lastDisplayedCoverArt = '';
+
+    const artworkClientCache = new Map();
+
+    function setTrackBannerArtwork(coverUrl) {
+        lastDisplayedCoverArt = coverUrl || '';
+        if (coverUrl) {
+            if (trackBannerArt) {
+                trackBannerArt.src = coverUrl;
+                trackBannerArt.style.display = 'block';
+            }
+            if (trackBannerVinyl) {
+                trackBannerVinyl.style.display = 'none';
+            }
+            if (nowplayingPaneArt) {
+                nowplayingPaneArt.src = coverUrl;
+                nowplayingPaneArt.style.display = 'block';
+            }
+            if (nowplayingPaneVinyl) {
+                nowplayingPaneVinyl.style.display = 'none';
+            }
+        } else {
+            if (trackBannerArt) {
+                trackBannerArt.style.display = 'none';
+                trackBannerArt.src = '';
+            }
+            if (trackBannerVinyl) {
+                trackBannerVinyl.style.display = 'flex';
+            }
+            if (nowplayingPaneArt) {
+                nowplayingPaneArt.style.display = 'none';
+                nowplayingPaneArt.src = '';
+            }
+            if (nowplayingPaneVinyl) {
+                nowplayingPaneVinyl.style.display = 'flex';
+            }
+        }
+    }
+
+    if (trackBannerArt) {
+        trackBannerArt.onerror = () => {
+            if (trackBannerArt) trackBannerArt.style.display = 'none';
+            if (trackBannerVinyl) trackBannerVinyl.style.display = 'flex';
+        };
+    }
+    if (nowplayingPaneArt) {
+        nowplayingPaneArt.onerror = () => {
+            if (nowplayingPaneArt) nowplayingPaneArt.style.display = 'none';
+            if (nowplayingPaneVinyl) nowplayingPaneVinyl.style.display = 'flex';
+        };
+    }
+
+    async function fetchTrackArtwork(title, artist) {
+        const cleanTitle = (title || '').trim();
+        const cleanArtist = (artist || '').trim();
+        if (!cleanTitle && !cleanArtist) return null;
+
+        const cacheKey = `${cleanArtist.toLowerCase()}:::${cleanTitle.toLowerCase()}`;
+        if (artworkClientCache.has(cacheKey)) {
+            return artworkClientCache.get(cacheKey);
+        }
+
+        try {
+            const res = await fetch(`/api/artwork?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(cleanArtist)}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data && data.success && data.coverart) {
+                    artworkClientCache.set(cacheKey, data.coverart);
+                    return data.coverart;
+                }
+            }
+        } catch (e) {
+            // Direct client fallback to iTunes if local API route unreachable
+            try {
+                const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
+                const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
+                const res2 = await fetch(url);
+                if (res2.ok) {
+                    const d2 = await res2.json();
+                    if (d2.results && d2.results[0] && d2.results[0].artworkUrl100) {
+                        const art = d2.results[0].artworkUrl100.replace(/\/\d+x\d+bb\.jpg/i, '/600x600bb.jpg');
+                        artworkClientCache.set(cacheKey, art);
+                        return art;
+                    }
+                }
+            } catch (err2) {}
+        }
+        return null;
+    }
 
     function hideTrackBanner() {
         if (trackBannerDelayTimer) {
@@ -650,6 +743,29 @@ async function init() {
         if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = artist || 'Live Performance';
         if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = deckLabel;
         if (nowplayingPaneBpm) nowplayingPaneBpm.textContent = `${bpm.toFixed(1)} BPM`;
+
+        // Handle Album Cover Art (Shazam provided, or auto-fetch from iTunes/Deezer, or fallback to spinning vinyl)
+        const incomingCover = trackData?.coverart || null;
+        if (incomingCover) {
+            setTrackBannerArtwork(incomingCover);
+        } else {
+            // Default to classic spinning vinyl record
+            setTrackBannerArtwork(null);
+
+            // Asynchronously resolve high-res album cover art
+            const targetKey = trackKey;
+            fetchTrackArtwork(title, artist).then((artUrl) => {
+                if (artUrl && currentDisplayedTrackKey === targetKey) {
+                    setTrackBannerArtwork(artUrl);
+                    if (trackData) trackData.coverart = artUrl;
+                    broadcastSync({
+                        type: 'track_art_update',
+                        trackKey: targetKey,
+                        coverart: artUrl
+                    });
+                }
+            });
+        }
 
         // Clear existing timers
         if (trackBannerDelayTimer) {
@@ -852,6 +968,7 @@ async function init() {
             const currentTrack = {
                 title: stagedShazamTrack.title,
                 artist: stagedShazamTrack.artist,
+                coverart: stagedShazamTrack.coverart || '',
                 deck: lastDisplayedTrackDeck || 1,
                 bpm: Number(bpmVal?.textContent) || 126.0
             };
@@ -902,6 +1019,7 @@ async function init() {
             const currentTrack = {
                 title: trackTitle ? trackTitle.textContent : 'Live Track',
                 artist: trackArtist ? trackArtist.textContent.split(' • ')[0] : '',
+                coverart: lastDisplayedCoverArt || '',
                 deck: lastDisplayedTrackDeck || 1,
                 bpm: Number(bpmVal?.textContent) || 126.0
             };
@@ -1227,6 +1345,10 @@ async function init() {
             showTrackBanner(msg.trackData, { force: false });
         } else if (msg.type === 'pop_track_banner_now') {
             showTrackBanner(msg.trackData, { force: true, immediate: true, duration: msg.duration });
+        } else if (msg.type === 'track_art_update') {
+            if (msg.trackKey === currentDisplayedTrackKey && msg.coverart) {
+                setTrackBannerArtwork(msg.coverart);
+            }
         } else if (msg.type === 'hide_track_banner_now') {
             hideTrackBanner();
         } else if (msg.type === 'set_track_banner_enabled') {
