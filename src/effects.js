@@ -285,12 +285,14 @@ const VolumetricPinspotShader = {
 const PumpkinVolumetricRaysShader = {
     uniforms: {
         uColor: { value: new THREE.Color(0x0044ff) },
-        uCoreColor: { value: new THREE.Color(0x88ddff) },
+        uCoreColor: { value: new THREE.Color(0xccf0ff) },
         uIntensity: { value: 1.0 },
         uTime: { value: 0.0 },
-        uTimeSpeed: { value: 0.20 },
+        uTimeSpeed: { value: 0.25 },
         uNoiseScale: { value: 3.2 },
-        uPulse: { value: 0.0 }
+        uPulse: { value: 0.0 },
+        uShimmer: { value: 0.6 },
+        uTreble: { value: 0.0 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -315,6 +317,8 @@ const PumpkinVolumetricRaysShader = {
         uniform float uTimeSpeed;
         uniform float uNoiseScale;
         uniform float uPulse;
+        uniform float uShimmer;
+        uniform float uTreble;
 
         varying vec2 vUv;
         varying vec3 vNormalLocal;
@@ -322,33 +326,36 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Angular blade striations radiating along ray cone
-            float angle = atan(vNormalLocal.z, vNormalLocal.x);
-            float rayShafts = 0.70 + 0.30 * sin(angle * 8.0 + uTime * uTimeSpeed);
-
-            // 2. Transverse edge softness (Fresnel limb integration for realistic beam haze)
+            // 1. Smooth Transverse Gaussian / Limb Falloff (Zero Hard Polygonal Edges)
             float limb = 1.0 - abs(dot(vViewDir, normalize(vNormalLocal)));
-            float edgeSoft = pow(limb, 1.8);
-            float hotCore = pow(limb, 5.5);
+            float softLimb = smoothstep(0.02, 0.48, limb) * (1.0 - smoothstep(0.68, 0.98, limb));
+            float hotCore = pow(clamp(limb, 0.0, 1.0), 4.2);
 
-            // 3. Longitudinal attenuation along beam length (0.0 apex at source -> 1.0 far field)
+            // 2. Longitudinal Attenuation along Beam (Bloom at Origin -> Soft Feathered Tip)
             float y = vUv.y;
-            float sourceGlow = exp(-y * 3.5) * 2.5;
-            float beamSpread = pow(1.0 - y * 0.75, 1.2);
-            float longProfile = sourceGlow + beamSpread;
+            float sourceGlow = exp(-y * 2.8) * 1.9;
+            float beamLengthFade = smoothstep(1.0, 0.12, y);
+            float longProfile = (sourceGlow + beamLengthFade) * smoothstep(0.0, 0.06, y);
 
-            // 4. Subtle atmospheric smoke drift
-            float smoke = sin(vPositionWorld.x * 0.15 + vPositionWorld.y * 0.20 + uTime * 0.35) * 
-                          cos(vPositionWorld.z * 0.15 - uTime * 0.25);
-            float hazeDensity = 0.85 + 0.15 * smoke;
+            // 3. Facet Reflection Caustic Shimmer & Micro-Sparkle
+            float angle = atan(vNormalLocal.z, vNormalLocal.x);
+            float shimmerWave1 = sin(y * 24.0 - uTime * (4.2 + uTreble * 6.5) + angle * 8.0);
+            float shimmerWave2 = cos(y * 38.0 + uTime * 5.8 - angle * 12.0);
+            float causticShimmer = 0.72 + 0.28 * (shimmerWave1 * shimmerWave2) * (1.0 + uTreble * 1.3);
 
-            // 5. Total Alpha
-            float alpha = (edgeSoft * 0.65 + hotCore * 0.85) * longProfile * rayShafts * hazeDensity * (0.45 + uPulse * 0.55) * uIntensity;
-            if (alpha < 0.003) discard;
+            // 4. Subtle Atmospheric Volumetric Smoke Haze Drift
+            float smoke = sin(vPositionWorld.x * 0.12 + vPositionWorld.y * 0.16 + uTime * 0.30) * 
+                          cos(vPositionWorld.z * 0.12 - uTime * 0.22);
+            float hazeDensity = 0.88 + 0.12 * smoke;
 
-            // 6. Color Gradient: Deep sapphire blue at edges, electric cyan/white-hot at core
-            float coreBlend = clamp(hotCore * 0.85 + sourceGlow * 0.4 + uPulse * 0.3, 0.0, 1.0);
-            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.8);
+            // 5. Total Alpha Composition (Super-blended & shimmering reflection)
+            float baseAlpha = (softLimb * 0.75 + hotCore * 0.85) * longProfile * causticShimmer * hazeDensity;
+            float alpha = baseAlpha * (0.55 + uPulse * 0.60 + uTreble * 0.35) * uIntensity * 0.68;
+            if (alpha < 0.002) discard;
+
+            // 6. Prismatic / Silvery-Sapphire Color Gradient
+            float coreBlend = clamp(hotCore * 0.95 + sourceGlow * 0.5 + uPulse * 0.4 + uTreble * 0.35, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.7 + uTreble * 0.5);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7372,36 +7379,51 @@ export function createVFXScene(container) {
     pumpkinForwardSpot.target = pumpkinSpotTarget;
     pumpkinPivot.add(pumpkinForwardSpot);
 
-    // 5. Volumetric Shaded Deep Blue Light Ray Fan (Radiating behind and around the ball)
-    const pumpkinRayFanGroup = new THREE.Group();
-    pumpkinRayFanGroup.position.set(0, 0.0, -2.5);
-    gPumpkinDiscoBall.add(pumpkinRayFanGroup);
+    // 5. 360° Volumetric Shaded Blue Reflection Light Rays (Bouncing All Around the Pumpkin)
+    const pumpkinRaySystem = new THREE.Group();
+    pumpkinPivot.add(pumpkinRaySystem); // Attached to pumpkinPivot so all rays spin synchronously in 3D!
 
-    const pumpkinRayConeGeo = new THREE.CylinderGeometry(0.22, 4.8, 42.0, 36, 1, true);
-    pumpkinRayConeGeo.translate(0, -21.0, 0);
+    const pumpkinRayConeGeo = new THREE.CylinderGeometry(0.18, 3.8, 36.0, 32, 1, true);
+    pumpkinRayConeGeo.translate(0, -18.0, 0); // Origin at (0,0,0) pointing down -Y
 
-    const pumpkinRayColors = [
-        0x0033ff, 0x0066ff, 0x0088ff, 0x00aaff, 0x0022cc,
-        0x1144ff, 0x0077ff, 0x0099ff, 0x0055ee, 0x00aacc,
-        0x0044ee, 0x0088ff, 0x0033dd, 0x00aaff
+    const numPumpkinRays = 36;
+    const pumpkinRayMeshes = [];
+
+    const rayPalettes = [
+        new THREE.Color(0x0055ff),
+        new THREE.Color(0x0088ff),
+        new THREE.Color(0x00bbff),
+        new THREE.Color(0x0033dd),
+        new THREE.Color(0x1166ff),
+        new THREE.Color(0x00aacc),
+        new THREE.Color(0x2244ff),
+        new THREE.Color(0x0099ee)
     ];
 
-    const pumpkinRayMeshes = [];
-    const numPumpkinRays = 14;
     for (let r = 0; r < numPumpkinRays; r++) {
-        const norm = (r / (numPumpkinRays - 1)) - 0.5; // -0.5 to +0.5
-        const yaw = norm * 1.55; // Spread fan horizontally (~88 degrees)
-        const pitch = Math.sin(r * 1.2) * 0.35 + 0.12; // Slight vertical stagger
+        // Golden Ratio Fibonacci Sphere Distribution for uniform 360-degree spherical coverage
+        const phi = Math.acos(1.0 - 2.0 * (r + 0.5) / numPumpkinRays); // Polar angle: 0 (top) to PI (bottom)
+        const theta = Math.PI * (1.0 + Math.sqrt(5.0)) * r;             // Golden spiral azimuth
 
+        // Direction vector radiating outward from pumpkin center
+        const dir = new THREE.Vector3(
+            Math.sin(phi) * Math.cos(theta),
+            Math.cos(phi),
+            Math.sin(phi) * Math.sin(theta)
+        ).normalize();
+
+        const baseCol = rayPalettes[r % rayPalettes.length];
         const rayMat = new THREE.ShaderMaterial({
             uniforms: {
-                uColor: { value: new THREE.Color(pumpkinRayColors[r % pumpkinRayColors.length]) },
-                uCoreColor: { value: new THREE.Color(0x99eeff) },
+                uColor: { value: baseCol.clone() },
+                uCoreColor: { value: new THREE.Color(0xccf0ff) },
                 uIntensity: { value: 1.0 },
                 uTime: { value: 0.0 },
-                uTimeSpeed: { value: 0.22 },
+                uTimeSpeed: { value: 0.25 },
                 uNoiseScale: { value: 3.2 },
-                uPulse: { value: 0.0 }
+                uPulse: { value: 0.0 },
+                uShimmer: { value: 0.6 },
+                uTreble: { value: 0.0 }
             },
             vertexShader: PumpkinVolumetricRaysShader.vertexShader,
             fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
@@ -7412,16 +7434,21 @@ export function createVFXScene(container) {
         });
 
         const rayMesh = new THREE.Mesh(pumpkinRayConeGeo, rayMat);
-        rayMesh.rotation.z = yaw + Math.PI / 2; // Fan out radially
-        rayMesh.rotation.x = pitch;
-        pumpkinRayFanGroup.add(rayMesh);
+        
+        // Align ray cone pointing along 'dir'
+        const upVec = new THREE.Vector3(0, -1, 0);
+        rayMesh.quaternion.setFromUnitVectors(upVec, dir);
+
+        // Position apex right on the pumpkin mirror surface (r ≈ 4.6)
+        rayMesh.position.copy(dir.clone().multiplyScalar(4.6));
+
+        pumpkinRaySystem.add(rayMesh);
 
         pumpkinRayMeshes.push({
             mesh: rayMesh,
             mat: rayMat,
-            baseYaw: yaw,
-            basePitch: pitch,
-            phase: r * 0.45
+            baseDir: dir.clone(),
+            phase: r * 0.35
         });
     }
 
@@ -9054,17 +9081,15 @@ export function createVFXScene(container) {
             pOrangeFill.intensity = 2.2 + trebleShimmer * 0.8;
             pumpkinForwardSpot.intensity = 3.8 + bassSurge * 1.8;
 
-            // 3. Volumetric Shaded Deep Blue Light Ray Fan Animation
-            const rayPulseVal = isKickHit ? 1.0 : (pumpkinRayMeshes[0]?.mat.uniforms.uPulse.value * Math.exp(-delta * 3.8) || 0.0);
+            // 3. 360° Volumetric Shaded Blue Reflection Light Rays Animation (Shimmering Reflections)
+            const rayPulseVal = isKickHit ? 1.0 : ((pumpkinRayMeshes[0]?.mat.uniforms.uPulse.value || 0.0) * Math.exp(-delta * 3.8));
+            const trebleVal = audio.smoothedTreble || 0;
+            const bassImpactVal = (audio.smoothedBass || 0) * 0.50 + (audio.bassImpact || 0) * 0.70;
             pumpkinRayMeshes.forEach((rObj) => {
                 rObj.mat.uniforms.uTime.value = elapsedTime;
                 rObj.mat.uniforms.uPulse.value = rayPulseVal;
-                rObj.mat.uniforms.uIntensity.value = 0.85 + (audio.smoothedBass || 0) * 0.45 + (audio.bassImpact || 0) * 0.65;
-
-                // Gentle floating breath in the ray fan
-                const raySway = Math.sin(elapsedTime * 0.40 + rObj.phase) * 0.06;
-                rObj.mesh.rotation.z = rObj.baseYaw + Math.PI / 2 + raySway;
-                rObj.mesh.rotation.x = rObj.basePitch + Math.cos(elapsedTime * 0.35 + rObj.phase) * 0.04;
+                rObj.mat.uniforms.uTreble.value = trebleVal * 1.5;
+                rObj.mat.uniforms.uIntensity.value = 0.90 + bassImpactVal;
             });
 
             // 4. Pinspot Lights & Tile Specular Reflections
