@@ -1,5 +1,6 @@
 import { recognizeBytes } from 'shazamio-core';
 import crypto from 'crypto';
+import { searchAlbumArt } from './artwork-service.js';
 
 /**
  * Creates a standard 16-bit PCM WAV buffer.
@@ -43,6 +44,7 @@ export function createWavBuffer(sampleRate, numChannels, bitsPerSample, samples)
 export async function recognizeAudio(audioInput) {
     try {
         let signatureUri = null;
+        let samplems = 4000;
 
         if (typeof audioInput === 'string' && audioInput.startsWith('data:audio/vnd.shazam.sig')) {
             signatureUri = audioInput;
@@ -57,12 +59,14 @@ export async function recognizeAudio(audioInput) {
             const sigs = recognizeBytes(wavBuf);
             if (sigs && sigs.length > 0) {
                 signatureUri = sigs[0].uri;
+                samplems = sigs[0].samplems || 4000;
             }
         } else if (Array.isArray(audioInput) || audioInput instanceof Int16Array) {
             const wavBuf = createWavBuffer(16000, 1, 16, audioInput);
             const sigs = recognizeBytes(wavBuf);
             if (sigs && sigs.length > 0) {
                 signatureUri = sigs[0].uri;
+                samplems = sigs[0].samplems || 4000;
             }
         }
 
@@ -73,15 +77,15 @@ export async function recognizeAudio(audioInput) {
             };
         }
 
-        const uuid1 = crypto.randomUUID();
-        const uuid2 = crypto.randomUUID();
-        const url = `https://amp.shazam.com/discovery/v5/en-US/GB/iphone/-/tag/${uuid1}/${uuid2}?sync=true&webv3=true&sampling=true&shazamapiversion=v3&hubv5minorversion=v5.1`;
+        const uuid1 = crypto.randomUUID().toUpperCase();
+        const uuid2 = crypto.randomUUID().toUpperCase();
+        const url = `https://amp.shazam.com/discovery/v5/en-US/GB/iphone/-/tag/${uuid1}/${uuid2}?sync=true&webv3=true&sampling=true&connected=&shazamapiversion=v3&sharehub=true&hubv5minorversion=v5.1&hidelb=`;
 
         const payload = {
             timezone: 'Europe/London',
             signatures: [
                 {
-                    samplems: 4000,
+                    samplems: Math.round(samplems),
                     timestamp: Date.now(),
                     uri: signatureUri
                 }
@@ -92,7 +96,7 @@ export async function recognizeAudio(audioInput) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148'
+                'User-Agent': 'Shazam/15.0.0 (iPhone; iOS 17.0; Scale/3.00)'
             },
             body: JSON.stringify(payload)
         });
@@ -106,15 +110,30 @@ export async function recognizeAudio(audioInput) {
 
         const data = await res.json();
         if (data.track) {
+            const title = data.track.title || 'Unknown Title';
+            const artist = data.track.subtitle || 'Unknown Artist';
+            let coverart = data.track.images?.coverart || data.track.images?.background || '';
+            const genre = data.track.genres?.primary || '';
             const album = data.track.sections?.flatMap(s => s.metadata || []).find(m => m.title?.toLowerCase() === 'album')?.text || '';
+
+            // If Shazam has no album art, automatically query Apple Music / iTunes / Deezer for high-res 600x600 artwork
+            if (!coverart && title && artist) {
+                try {
+                    const artResult = await searchAlbumArt(title, artist);
+                    if (artResult && artResult.coverart) {
+                        coverart = artResult.coverart;
+                    }
+                } catch (e) {}
+            }
+
             return {
                 success: true,
                 match: {
-                    title: data.track.title || 'Unknown Title',
-                    artist: data.track.subtitle || 'Unknown Artist',
-                    coverart: data.track.images?.coverart || data.track.images?.background || '',
-                    genre: data.track.genres?.primary || '',
-                    album: album,
+                    title,
+                    artist,
+                    coverart,
+                    genre,
+                    album,
                     key: data.track.key || '',
                     shazamUrl: data.track.url || ''
                 }

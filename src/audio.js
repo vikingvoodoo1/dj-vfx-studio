@@ -605,17 +605,22 @@ export async function setupAudio(onDeviceListChange) {
                 }
             }
 
-            const source = audioCtx.createMediaStreamSource(streamToUse);
+            const sourceNode = (currentStream && currentSource) ? currentSource : audioCtx.createMediaStreamSource(streamToUse);
             const bufferSize = 4096;
             const processor = audioCtx.createScriptProcessor(bufferSize, 1, 1);
+            const silentGain = audioCtx.createGain();
+            silentGain.gain.value = 0.0; // Silent keep-alive without feedback
+
             const recordedChunks = [];
             const startTime = Date.now();
             const totalMs = durationSec * 1000;
+            let isCleanedUp = false;
 
             return new Promise((resolve, reject) => {
                 let timer = null;
 
                 processor.onaudioprocess = (e) => {
+                    if (isCleanedUp) return;
                     const inputData = e.inputBuffer.getChannelData(0);
                     recordedChunks.push(new Float32Array(inputData));
 
@@ -631,10 +636,14 @@ export async function setupAudio(onDeviceListChange) {
                 };
 
                 function cleanup() {
+                    if (isCleanedUp) return;
+                    isCleanedUp = true;
                     if (timer) clearTimeout(timer);
+
                     try {
-                        source.disconnect();
-                        processor.disconnect();
+                        sourceNode.disconnect(processor);
+                        processor.disconnect(silentGain);
+                        silentGain.disconnect();
                     } catch (e) {}
 
                     if (createdStream && streamToUse) {
@@ -645,7 +654,7 @@ export async function setupAudio(onDeviceListChange) {
 
                     const totalSamples = recordedChunks.reduce((acc, c) => acc + c.length, 0);
                     if (totalSamples === 0) {
-                        return reject(new Error('No audio samples captured.'));
+                        return reject(new Error('No audio samples captured. Please verify input level.'));
                     }
 
                     const float32All = new Float32Array(totalSamples);
@@ -653,6 +662,19 @@ export async function setupAudio(onDeviceListChange) {
                     for (const chunk of recordedChunks) {
                         float32All.set(chunk, offset);
                         offset += chunk.length;
+                    }
+
+                    // Dynamic Audio Peak Normalization for High-Accuracy Shazam Fingerprinting
+                    let maxPeak = 0;
+                    for (let i = 0; i < float32All.length; i++) {
+                        const abs = Math.abs(float32All[i]);
+                        if (abs > maxPeak) maxPeak = abs;
+                    }
+                    if (maxPeak > 0.002 && maxPeak < 0.75) {
+                        const boost = Math.min(20.0, 0.85 / maxPeak);
+                        for (let i = 0; i < float32All.length; i++) {
+                            float32All[i] *= boost;
+                        }
                     }
 
                     // Resample Float32 to 16kHz mono Int16 PCM
@@ -681,10 +703,11 @@ export async function setupAudio(onDeviceListChange) {
                     reader.readAsDataURL(wavBlob);
                 }
 
-                source.connect(processor);
-                processor.connect(audioCtx.destination);
+                sourceNode.connect(processor);
+                processor.connect(silentGain);
+                silentGain.connect(audioCtx.destination);
 
-                timer = setTimeout(cleanup, totalMs + 600);
+                timer = setTimeout(cleanup, totalMs + 750);
             });
         }
     };
