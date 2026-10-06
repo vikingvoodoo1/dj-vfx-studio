@@ -3423,7 +3423,7 @@ async function init() {
         'Strobe Rings', 'Silhouette Dancers', 'Synthwave Grid', 'Synthwave River & Sun',
         'Matrix Code Rain', 'Retro Arcade 80s', 'Warp Starfield', 'Spiral Galaxy Vortex',
         'Hyper Particle Stream', 'Time.is Clock', 'Sweeping Godrays', 'White Godrays & Fog',
-        'Disco Floor & Godrays', 'VHS Glitch Words'
+        'Disco Floor & Godrays', 'VHS Glitch Words', 'Pumpkin Disco Ball'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -3464,6 +3464,16 @@ async function init() {
         }
     }
 
+    // Bottom Bar FX Button Click Listeners
+    fxButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const fxIdx = parseInt(btn.getAttribute('data-fx'), 10);
+            if (!isNaN(fxIdx)) {
+                selectFX(fxIdx);
+            }
+        });
+    });
+
     // Restore Saved FX Scene from LocalStorage on Startup
     try {
         const savedFX = localStorage.getItem('dj_vfx_current_fx');
@@ -3491,11 +3501,12 @@ async function init() {
 
         fxPaneCards.forEach((card) => {
             const cardCat = card.getAttribute('data-fxcat') || '';
+            const cardCats = cardCat.split(' ').map(c => c.trim()).filter(Boolean);
             const title = (card.querySelector('.fx-pane-card-title')?.textContent || '').toLowerCase();
             const key = (card.querySelector('.fx-pane-key')?.textContent || '').toLowerCase();
             const catTag = (card.querySelector('.fx-pane-cat-tag')?.textContent || '').toLowerCase();
 
-            const matchesCategory = (currentFxCategory === 'all' || cardCat === currentFxCategory);
+            const matchesCategory = (currentFxCategory === 'all' || cardCats.includes(currentFxCategory) || cardCat === currentFxCategory);
             const matchesSearch = !q || title.includes(q) || key.includes(q) || catTag.includes(q);
 
             if (matchesCategory && matchesSearch) {
@@ -3571,7 +3582,9 @@ async function init() {
     fxPaneCards.forEach((card) => {
         card.addEventListener('click', () => {
             const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
-            selectFX(fxIdx);
+            if (!isNaN(fxIdx)) {
+                selectFX(fxIdx);
+            }
         });
     });
 
@@ -3588,8 +3601,9 @@ async function init() {
             }
 
             fxButtons.forEach((btn) => {
-                const btnCat = btn.getAttribute('data-cat');
-                if (cat === 'all' || btnCat === cat) {
+                const btnCat = btn.getAttribute('data-cat') || '';
+                const btnCats = btnCat.split(' ').map(c => c.trim()).filter(Boolean);
+                if (cat === 'all' || btnCats.includes(cat) || btnCat === cat) {
                     btn.style.display = 'inline-flex';
                 } else {
                     btn.style.display = 'none';
