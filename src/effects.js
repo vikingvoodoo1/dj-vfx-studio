@@ -328,29 +328,37 @@ const PumpkinVolumetricRaysShader = {
         varying vec3 vViewDir;
 
         void main() {
-            // 1. Transverse Profile with God-Ray Light Shafts & Soft Shaded Penumbra
-            float span = sin(vUv.x * 3.14159265);
-            float softPenumbra = smoothstep(0.0, 0.48, span);
-            float hotCore = pow(span, 3.2);
+            // 1. Transverse Profile with Gaussian Fog Edge Feathering & Shaded God-Ray Shafts
+            float uDist = abs(vUv.x - 0.5) * 2.0; // 0.0 at center spine, 1.0 at outer lateral edge
+            float lateralGaussian = exp(-pow(uDist * 1.85, 2.0));
+            float lateralFeather = smoothstep(1.0, 0.60, uDist);
+            float hotCore = exp(-pow(uDist * 3.8, 2.0));
 
             // Shaded God-Ray Shaft Striations across the blade width
-            float shaft1 = sin(vUv.x * 24.0 + uTime * 0.9 + vUv.y * 6.0) * 0.5 + 0.5;
-            float shaft2 = cos(vUv.x * 42.0 - uTime * 1.3 - vUv.y * 8.0) * 0.5 + 0.5;
+            float shaft1 = sin(vUv.x * 22.0 + uTime * 0.9 + vUv.y * 6.0) * 0.5 + 0.5;
+            float shaft2 = cos(vUv.x * 38.0 - uTime * 1.3 - vUv.y * 8.0) * 0.5 + 0.5;
             float shaft3 = sin(vUv.x * 12.0 - uTime * 0.4 + vUv.y * 3.0) * 0.5 + 0.5;
-            float godRayShafts = 0.65 + 0.35 * (shaft1 * 0.5 + shaft2 * 0.3 + shaft3 * 0.2);
+            float godRayShafts = 0.68 + 0.32 * (shaft1 * 0.5 + shaft2 * 0.3 + shaft3 * 0.2);
 
-            float beamCross = (softPenumbra * 0.55 + hotCore * 1.45) * godRayShafts;
+            float beamCross = (lateralGaussian * lateralFeather * 0.60 + hotCore * 1.40) * godRayShafts;
 
             // 2. Volumetric Depth & View-Facing Grazing Glow
             float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
-            float viewGlow = 0.76 + 0.24 * (1.0 - viewFacing);
+            float viewGlow = 0.78 + 0.22 * (1.0 - viewFacing);
 
-            // 3. Longitudinal Profile (Origin Lens Glow -> Silky Shaded God Ray Shaft -> Smooth Impact Diffuse)
+            // 3. Longitudinal Profile: Origin Lens Glow -> Soft Column -> Ethereal Fog Dissolution at Tip
             float y = vUv.y;
-            float originGlow = exp(-y * 2.8) * 2.2;
-            float surfaceImpactGlow = exp(-(1.0 - y) * 3.4) * 1.6;
-            float shaftAtmosphere = 0.92 + 0.08 * sin(y * 6.0 - uTime * 1.2);
-            float longProfile = (originGlow + surfaceImpactGlow + shaftAtmosphere) * smoothstep(0.0, 0.02, y);
+            float originGlow = exp(-y * 3.8) * 2.4;
+            
+            // Soft atmospheric fog dissolution at the end of the beam (feathers to zero before geometry tip)
+            float fogTipDissolve = pow(1.0 - smoothstep(0.25, 0.92, y), 1.6);
+
+            // Drifting atmospheric haze and subtle wispy smoke along beam path
+            float smokeWisp1 = sin(vPositionWorld.x * 0.25 + vPositionWorld.y * 0.35 + uTime * 0.40) * 0.12;
+            float smokeWisp2 = cos(vPositionWorld.z * 0.30 - uTime * 0.35 + y * 4.0) * 0.12;
+            float fogAtmosphere = 0.88 + smokeWisp1 + smokeWisp2;
+
+            float longProfile = (originGlow + fogTipDissolve * 1.25) * fogAtmosphere * smoothstep(0.0, 0.02, y);
 
             // 4. Mie Forward Scattering & Atmospheric Dust Shading
             float dustMotes1 = sin(vPositionWorld.x * 0.35 + vPositionWorld.y * 0.45 + uTime * 0.60) * 
@@ -358,14 +366,14 @@ const PumpkinVolumetricRaysShader = {
             float dustMotes2 = cos(vPositionWorld.x * 0.70 - vPositionWorld.y * 0.60 + uTime * 0.90);
             float dustHaze = 0.88 + 0.12 * (dustMotes1 + dustMotes2 * 0.5);
 
-            // 5. Total Alpha Composition (Silky Shaded Volumetric God Rays)
+            // 5. Total Alpha Composition (Feathered Volumetric God Rays)
             float baseAlpha = beamCross * viewGlow * longProfile * dustHaze;
             float alpha = baseAlpha * (0.85 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
-            if (alpha < 0.002) discard;
+            if (alpha < 0.001) discard;
 
             // 6. Shaded God-Ray Color: Luminous White/Tinted Core shading into Rich Halloween Tone Penumbra
             float coreBlend = clamp(hotCore * 1.15 + originGlow * 0.40 + uPulse * 0.25, 0.0, 1.0);
-            vec3 finalColor = mix(uColor * 0.92, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
+            vec3 finalColor = mix(uColor * 0.90, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7512,51 +7520,74 @@ export function createVFXScene(container) {
     pBottomRightSpot.target = pRightTargetObj;
     gPumpkinDiscoBall.add(pBottomRightSpot);
 
-    // Procedural Cross-Plane Flat Light Ribbon Blade Geometry (2 Intersecting Planar Sheets = Zero Roundness)
-    function createCrossPlaneRayGeometry(baseWidth = 0.50, tipWidth = 3.6, length = 18.0) {
+    // Procedural Multi-Plane Volumetric God-Ray Geometry (6 Radial Intersecting Sheets for Smooth 3D Volume)
+    function createMultiPlaneRayGeometry(numSheets = 6, baseWidth = 0.60, tipWidth = 4.4, length = 22.0) {
         const geo = new THREE.BufferGeometry();
         const halfBase = baseWidth * 0.5;
         const halfTip = tipWidth * 0.5;
 
-        // Origin at y=0 (lens), extends down -Y to y=-length (pumpkin front)
-        const positions = new Float32Array([
-            // Sheet 1: XY Plane
-            -halfBase, 0, 0,
-             halfBase, 0, 0,
-            -halfTip, -length, 0,
-             halfTip, -length, 0,
+        const positions = [];
+        const uvs = [];
+        const normals = [];
+        const indices = [];
 
-            // Sheet 2: ZY Plane (Perpendicular)
-            0, 0, -halfBase,
-            0, 0,  halfBase,
-            0, -length, -halfTip,
-            0, -length,  halfTip
-        ]);
+        for (let s = 0; s < numSheets; s++) {
+            const angle = (s / numSheets) * Math.PI;
+            const cosA = Math.cos(angle);
+            const sinA = Math.sin(angle);
 
-        const uvs = new Float32Array([
-            0.0, 0.0,  1.0, 0.0,  0.0, 1.0,  1.0, 1.0,
-            0.0, 0.0,  1.0, 0.0,  0.0, 1.0,  1.0, 1.0
-        ]);
+            // Base vertices (at y=0, origin at fixture lens)
+            const b0x = -halfBase * cosA;
+            const b0z = -halfBase * sinA;
+            const b1x =  halfBase * cosA;
+            const b1z =  halfBase * sinA;
 
-        const normals = new Float32Array([
-            0, 0, 1,  0, 0, 1,  0, 0, 1,  0, 0, 1,
-            1, 0, 0,  1, 0, 0,  1, 0, 0,  1, 0, 0
-        ]);
+            // Tip vertices (at y=-length)
+            const t0x = -halfTip * cosA;
+            const t0z = -halfTip * sinA;
+            const t1x =  halfTip * cosA;
+            const t1z =  halfTip * sinA;
 
-        const indices = [
-            0, 2, 1,  1, 2, 3,
-            4, 6, 5,  5, 6, 7
-        ];
+            const baseIdx = s * 4;
 
-        geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
-        geo.setAttribute('uv', new THREE.BufferAttribute(uvs, 2));
-        geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+            positions.push(
+                b0x, 0, b0z,
+                b1x, 0, b1z,
+                t0x, -length, t0z,
+                t1x, -length, t1z
+            );
+
+            uvs.push(
+                0.0, 0.0,
+                1.0, 0.0,
+                0.0, 1.0,
+                1.0, 1.0
+            );
+
+            const nx = -sinA;
+            const nz = cosA;
+            normals.push(
+                nx, 0, nz,
+                nx, 0, nz,
+                nx, 0, nz,
+                nx, 0, nz
+            );
+
+            indices.push(
+                baseIdx, baseIdx + 2, baseIdx + 1,
+                baseIdx + 1, baseIdx + 2, baseIdx + 3
+            );
+        }
+
+        geo.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+        geo.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+        geo.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
         geo.setIndex(indices);
         return geo;
     }
 
     // High-Intensity Volumetric Beams from Bottom Left & Right aiming at the front of the pumpkin
-    const pLeftBeamGeo = createCrossPlaneRayGeometry(0.55, 3.8, 17.5);
+    const pLeftBeamGeo = createMultiPlaneRayGeometry(6, 0.60, 4.4, 22.0);
     const pLeftBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7582,7 +7613,7 @@ export function createVFXScene(container) {
     gPumpkinDiscoBall.add(pLeftBeamMesh);
 
     // Inner bright core beam (Left)
-    const pLeftCoreBeamGeo = createCrossPlaneRayGeometry(0.22, 1.4, 17.5);
+    const pLeftCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.25, 1.6, 22.0);
     const pLeftCoreBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7607,7 +7638,7 @@ export function createVFXScene(container) {
     pLeftCoreBeamMesh.renderOrder = 21;
     gPumpkinDiscoBall.add(pLeftCoreBeamMesh);
 
-    const pRightBeamGeo = createCrossPlaneRayGeometry(0.55, 3.8, 17.5);
+    const pRightBeamGeo = createMultiPlaneRayGeometry(6, 0.60, 4.4, 22.0);
     const pRightBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -7633,7 +7664,7 @@ export function createVFXScene(container) {
     gPumpkinDiscoBall.add(pRightBeamMesh);
 
     // Inner bright core beam (Right)
-    const pRightCoreBeamGeo = createCrossPlaneRayGeometry(0.22, 1.4, 17.5);
+    const pRightCoreBeamGeo = createMultiPlaneRayGeometry(6, 0.25, 1.6, 22.0);
     const pRightCoreBeamMat = new THREE.ShaderMaterial({
         uniforms: {
             uColor: { value: new THREE.Color(0xffffff) },
@@ -9305,16 +9336,17 @@ export function createVFXScene(container) {
             pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
 
             // Align volumetric beams and inner cores along fixture-to-target vectors
+            // Extend beam slightly past the target so the soft fog dissolution feathers into empty air around the pumpkin
             const upVec = new THREE.Vector3(0, -1, 0);
             pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
             pLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
-            pLeftBeamMesh.scale.set(1.0, leftBeamDist / 17.5, 1.0);
-            pLeftCoreBeamMesh.scale.set(1.0, leftBeamDist / 17.5, 1.0);
+            pLeftBeamMesh.scale.set(1.0, (leftBeamDist + 5.5) / 22.0, 1.0);
+            pLeftCoreBeamMesh.scale.set(1.0, (leftBeamDist + 5.5) / 22.0, 1.0);
 
             pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
             pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
-            pRightBeamMesh.scale.set(1.0, rightBeamDist / 17.5, 1.0);
-            pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 17.5, 1.0);
+            pRightBeamMesh.scale.set(1.0, (rightBeamDist + 5.5) / 22.0, 1.0);
+            pRightCoreBeamMesh.scale.set(1.0, (rightBeamDist + 5.5) / 22.0, 1.0);
 
             // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
             const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
@@ -9350,7 +9382,22 @@ export function createVFXScene(container) {
             const rightColor = rightSample.color;
             const rightCore = rightSample.core;
 
-            // Update Fixture Lens & Status LED Colors
+            // 4. Dynamic Organic Intensity Breathing & Music Reactivity (Both Lights Change in Intensity independently)
+            const leftLfo1 = Math.sin(elapsedTime * 1.10);
+            const leftLfo2 = Math.sin(elapsedTime * 0.42 + 1.2);
+            const leftWave = (leftLfo1 * 0.48 + leftLfo2 * 0.32); // -0.80 to +0.80
+
+            const rightLfo1 = Math.sin(elapsedTime * 1.10 + Math.PI * 0.75);
+            const rightLfo2 = Math.cos(elapsedTime * 0.48 + 2.5);
+            const rightWave = (rightLfo1 * 0.48 + rightLfo2 * 0.32); // -0.80 to +0.80
+
+            const musicSurge = (audio.smoothedBass || 0) * 0.50 + (audio.transientImpulse || 0) * 0.40 + (audio.isOnset ? 0.45 : 0.0);
+
+            // Left and Right change in intensity independently, swelling, dipping, and cross-fading smoothly
+            const beamLeftPower = Math.max(0.5, (2.6 + leftWave * 1.6 + leftHit * 1.8 + musicSurge * 1.2 + pumpkinDeadOnFlashPulse * 1.8));
+            const beamRightPower = Math.max(0.5, (2.6 + rightWave * 1.6 + rightHit * 1.8 + musicSurge * 1.2 + pumpkinDeadOnFlashPulse * 1.8));
+
+            // Update Fixture Lens & Status LED Colors and Intensity
             pLeftFixture.lensMat.color.copy(leftColor);
             pLeftFixture.ledRingMat.color.copy(leftColor);
             pRightFixture.lensMat.color.copy(rightColor);
@@ -9367,22 +9414,14 @@ export function createVFXScene(container) {
                 pumpkinStem.children[0].material.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.65));
             }
 
-            // 4. High-Intensity Volumetric Shaded God Rays & Music Reactivity
-            const gentleGodRayBreath = 0.88 + 0.12 * Math.sin(elapsedTime * 0.35);
-            const musicSurge = (audio.smoothedBass || 0) * 0.45 + (audio.transientImpulse || 0) * 0.35 + (audio.isOnset ? 0.40 : 0.0);
-            const liveIntensity = gentleGodRayBreath + musicSurge * 0.30;
-
-            const beamLeftPower = (2.6 + leftHit * 1.8 + musicSurge + pumpkinDeadOnFlashPulse * 1.5) * liveIntensity;
-            const beamRightPower = (2.6 + rightHit * 1.8 + musicSurge + pumpkinDeadOnFlashPulse * 1.5) * liveIntensity;
-
-            // Spotlights intensity boosted when aiming on the pumpkin front
+            // Spotlights intensity scales in sync with each beam's individual dynamic intensity
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = (7.5 + leftHit * 6.0 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0) * liveIntensity;
+            pBottomLeftSpot.intensity = Math.max(1.5, 6.5 + leftWave * 4.0 + leftHit * 5.5 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = (7.5 + rightHit * 6.0 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0) * liveIntensity;
+            pBottomRightSpot.intensity = Math.max(1.5, 6.5 + rightWave * 4.0 + rightHit * 5.5 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0);
 
-            // Volumetric shaded god rays uniforms
+            // Volumetric shaded god rays uniforms with dynamic individual intensity
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
             pLeftBeamMat.uniforms.uCoreColor.value.copy(leftCore);
             pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
