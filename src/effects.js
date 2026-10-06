@@ -7369,25 +7369,122 @@ export function createVFXScene(container) {
     gPumpkinDiscoBall.add(pumpkinPivot);
 
     const dPumpkinGeo = createPumpkinDiscoGeometry(5.2, 128, 64, 10);
+    
+    // Spatially-Localized Lighting & Dark Mirror Glass Surface Shader Uniforms
+    const pumpkinUniforms = {
+        uSpot1Pos: { value: new THREE.Vector3(-1.2, 0.2, 2.5) },
+        uSpot2Pos: { value: new THREE.Vector3(1.2, 0.2, 2.5) },
+        uSpot1Color: { value: new THREE.Color(0xffffff) },
+        uSpot2Color: { value: new THREE.Color(0xffffff) },
+        uSpot1Intensity: { value: 1.0 },
+        uSpot2Intensity: { value: 1.0 },
+        uDarkBaseColor: { value: new THREE.Color(0x331100) },
+        uEmissiveThemeColor: { value: new THREE.Color(0xff4400) },
+        uFlash: { value: 0.0 }
+    };
+
     const dPumpkinMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff, // Sparkling silver optical mirror tiles
-        metalness: 0.95,  // Highly reflective mirror metal
-        roughness: 0.02, // Sharp facet mirror reflections
+        color: 0xffffff,
+        metalness: 0.96,  // Sleek mirror glass / polished chrome
+        roughness: 0.015, // Sharp facet mirror reflections
         normalMap: pumpkinNormalTex,
-        normalScale: new THREE.Vector2(1.15, 1.15), // Crisp individual tile facets
+        normalScale: new THREE.Vector2(1.25, 1.25), // Crisp individual tile facets
         roughnessMap: pumpkinRoughnessTex,
         metalnessMap: pumpkinMetalnessTex,
         bumpMap: pumpkinTileTex,
         bumpScale: 0.048, // Pronounced individual glass tile bevels
         envMap: clubEnvMap,
-        envMapIntensity: 4.8, // Maximum HDRI nightclub reflection brilliance
+        envMapIntensity: 5.5, // Maximum HDRI nightclub reflection brilliance
         clearcoat: 1.0,
-        clearcoatRoughness: 0.0, // Optical glass glaze
+        clearcoatRoughness: 0.0, // Crystal optical glass glaze
         ior: 1.55, // Optical crown glass index of refraction
         reflectivity: 1.0,
         emissive: new THREE.Color(0x000000),
-        emissiveIntensity: 0.4
+        emissiveIntensity: 0.0
     });
+
+    // Custom Shader Injection: Spatially Localized Spot Illumination & Dark Mirror Glass in Unlit Areas
+    dPumpkinMat.onBeforeCompile = (shader) => {
+        shader.uniforms.uSpot1Pos = pumpkinUniforms.uSpot1Pos;
+        shader.uniforms.uSpot2Pos = pumpkinUniforms.uSpot2Pos;
+        shader.uniforms.uSpot1Color = pumpkinUniforms.uSpot1Color;
+        shader.uniforms.uSpot2Color = pumpkinUniforms.uSpot2Color;
+        shader.uniforms.uSpot1Intensity = pumpkinUniforms.uSpot1Intensity;
+        shader.uniforms.uSpot2Intensity = pumpkinUniforms.uSpot2Intensity;
+        shader.uniforms.uDarkBaseColor = pumpkinUniforms.uDarkBaseColor;
+        shader.uniforms.uEmissiveThemeColor = pumpkinUniforms.uEmissiveThemeColor;
+        shader.uniforms.uFlash = pumpkinUniforms.uFlash;
+
+        shader.vertexShader = `
+            varying vec3 vCustomWorldPos;
+        ` + shader.vertexShader;
+
+        shader.vertexShader = shader.vertexShader.replace(
+            '#include <worldpos_vertex>',
+            `
+            #include <worldpos_vertex>
+            vCustomWorldPos = worldPosition.xyz;
+            `
+        );
+
+        shader.fragmentShader = `
+            uniform vec3 uSpot1Pos;
+            uniform vec3 uSpot2Pos;
+            uniform vec3 uSpot1Color;
+            uniform vec3 uSpot2Color;
+            uniform float uSpot1Intensity;
+            uniform float uSpot2Intensity;
+            uniform vec3 uDarkBaseColor;
+            uniform vec3 uEmissiveThemeColor;
+            uniform float uFlash;
+            varying vec3 vCustomWorldPos;
+        ` + shader.fragmentShader;
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <color_fragment>',
+            `
+            #include <color_fragment>
+            
+            // Distance from this pumpkin facet to the left & right beam landing spots
+            float dist1 = length(vCustomWorldPos - uSpot1Pos);
+            float dist2 = length(vCustomWorldPos - uSpot2Pos);
+            
+            // Spatially-localized beam contact hotspot masks
+            float spotMask1 = exp(-pow(dist1 / 2.7, 2.0)) * uSpot1Intensity;
+            float spotMask2 = exp(-pow(dist2 / 2.7, 2.0)) * uSpot2Intensity;
+            float totalSpot = clamp(spotMask1 + spotMask2, 0.0, 2.0);
+            
+            // Unlit spots: Deep, rich dark true Halloween colors with mirror glass effect
+            // Lit spots: Brilliant spotlight colors with white-hot core
+            vec3 spotMixColor = (spotMask1 * uSpot1Color + spotMask2 * uSpot2Color) / max(0.001, spotMask1 + spotMask2);
+            vec3 darkTrueColor = uDarkBaseColor * 0.12;
+            vec3 brightContactColor = mix(spotMixColor, vec3(1.0), clamp((totalSpot - 0.7) * 0.5, 0.0, 0.6));
+            
+            diffuseColor.rgb = mix(darkTrueColor, brightContactColor, clamp(totalSpot * 1.3 + uFlash * 0.85, 0.0, 1.0));
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <emissivemap_fragment>',
+            `
+            #include <emissivemap_fragment>
+            
+            // Emissive brilliance at beam contact points, subtle dark glow in shadow
+            vec3 spotEmissive = (spotMask1 * uSpot1Color * 1.8 + spotMask2 * uSpot2Color * 1.8) + (uEmissiveThemeColor * uFlash * 1.5);
+            totalEmissiveRadiance = uEmissiveThemeColor * 0.02 + spotEmissive;
+            `
+        );
+
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <roughnessmap_fragment>',
+            `
+            #include <roughnessmap_fragment>
+            // Unlit spots are mirror-smooth dark glass (roughness 0.008), lit spots catch sparkling glints
+            roughnessFactor = mix(0.008, 0.035, clamp(totalSpot, 0.0, 1.0));
+            `
+        );
+    };
+
     const pumpkinMesh = new THREE.Mesh(dPumpkinGeo, dPumpkinMat);
     pumpkinPivot.add(pumpkinMesh);
 
@@ -9469,16 +9566,20 @@ export function createVFXScene(container) {
             pRightFixture.lensMat.color.copy(rightColor).multiplyScalar(0.25 + pulseMultiR * 0.90);
             pRightFixture.ledRingMat.color.copy(rightColor);
 
-            // The Pumpkin body reveals its TRUE dark spooky Halloween colors between pulses, then gleams on pulse hits!
+            // The Pumpkin body reveals its TRUE dark spooky Halloween colors in unlit spots, and blazes at beam contact spots!
             const pumpkinThemeCol = new THREE.Color().lerpColors(leftColor, rightColor, 0.5);
             const pumpkinEmissiveCol = new THREE.Color().lerpColors(leftSample.emissive, rightSample.emissive, 0.5);
 
-            // Deep sinister base color that shows its dark rich pigment when lights dip
-            const darkPumpkinBase = pumpkinThemeCol.clone().multiplyScalar(0.18 + avgPulse * 0.82);
-            dPumpkinMat.color.copy(darkPumpkinBase);
-            dPumpkinMat.emissive.copy(pumpkinEmissiveCol);
-            // Emissive facet lines stay richly saturated and deep, flaring brightly during pulse peaks
-            dPumpkinMat.emissiveIntensity = 0.06 + (pulseMultiL * 0.32 + pulseMultiR * 0.32) * (0.35 + totalGlareScore * 0.65) + pumpkinDeadOnFlashPulse * 0.85;
+            // Update Spatially-Localized Lighting & Dark Mirror Glass Shader Uniforms
+            pumpkinUniforms.uSpot1Pos.value.copy(targetLeftPos);
+            pumpkinUniforms.uSpot2Pos.value.copy(targetRightPos);
+            pumpkinUniforms.uSpot1Color.value.copy(leftColor);
+            pumpkinUniforms.uSpot2Color.value.copy(rightColor);
+            pumpkinUniforms.uSpot1Intensity.value = pulseMultiL * (0.85 + leftHit * 0.55);
+            pumpkinUniforms.uSpot2Intensity.value = pulseMultiR * (0.85 + rightHit * 0.55);
+            pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
+            pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
+            pumpkinUniforms.uFlash.value = pumpkinDeadOnFlashPulse;
 
             if (pumpkinStem) {
                 pumpkinStem.traverse((child) => {
