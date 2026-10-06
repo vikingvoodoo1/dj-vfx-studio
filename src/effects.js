@@ -7412,7 +7412,7 @@ export function createVFXScene(container) {
         bumpMap: pumpkinTileTex,
         bumpScale: 0.035, // Crisp glass facet bevels
         envMap: clubEnvMap,
-        envMapIntensity: 5.0, // Intense nightclub HDRI glass reflections
+        envMapIntensity: 4.8, // Intense nightclub HDRI glass reflections
         clearcoat: 1.0,
         clearcoatRoughness: 0.01,
         reflectivity: 1.0,
@@ -7437,6 +7437,7 @@ export function createVFXScene(container) {
         shader.uniforms.uBassPunch = pumpkinUniforms.uBassPunch;
 
         shader.vertexShader = `
+            varying vec2 vPumpkinUv;
             varying vec3 vCustomWorldPos;
         ` + shader.vertexShader;
 
@@ -7444,6 +7445,7 @@ export function createVFXScene(container) {
             '#include <worldpos_vertex>',
             `
             #include <worldpos_vertex>
+            vPumpkinUv = uv;
             vCustomWorldPos = worldPosition.xyz;
             `
         );
@@ -7461,6 +7463,7 @@ export function createVFXScene(container) {
             uniform float uTime;
             uniform float uTreble;
             uniform float uBassPunch;
+            varying vec2 vPumpkinUv;
             varying vec3 vCustomWorldPos;
         ` + shader.fragmentShader;
 
@@ -7470,7 +7473,7 @@ export function createVFXScene(container) {
             #include <emissivemap_fragment>
             
             // 1. Facet coordinate aligned to the 10 pumpkin lobes (80 columns = 8 per lobe, 40 rings)
-            vec2 tileGrid = vUv * vec2(80.0, 40.0);
+            vec2 tileGrid = vPumpkinUv * vec2(80.0, 40.0);
             vec2 tileId = floor(tileGrid);
             vec2 tileLocal = fract(tileGrid) - 0.5;
             float tileInterior = smoothstep(0.48, 0.38, max(abs(tileLocal.x), abs(tileLocal.y)));
@@ -7898,36 +7901,51 @@ export function createVFXScene(container) {
     pumpkinFlameLight.position.set(0, 0, 0);
     pumpkinPivot.add(pumpkinFlameLight);
 
-    // Central Bright Specular Glare & Starburst Billboard (Direct-hit reflection back to viewer in center)
-    const pGlareGroup = new THREE.Group();
-    pGlareGroup.position.set(0, 0, 4.35); // Directly on front face toward viewer
-    pumpkinPivot.add(pGlareGroup);
+    // 6. Ethereal Halo Glow / Corona Flare Mesh framing the pumpkin silhouette (never covers the pumpkin)
+    const pumpkinHaloGeo = new THREE.PlaneGeometry(24.0, 24.0);
+    const pumpkinHaloMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uHaloColor: { value: new THREE.Color(0xff7700) },
+            uHaloIntensity: { value: 0.0 },
+            uTime: { value: 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform vec3 uHaloColor;
+            uniform float uHaloIntensity;
+            uniform float uTime;
+            varying vec2 vUv;
 
-    const pGlareSpriteMat = new THREE.SpriteMaterial({
-        map: anamorphicFlareTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
+            void main() {
+                float dist = length(vUv - 0.5) * 2.0; // 0 at center, 1 at outer boundary
+                // Circular corona ring that hugs the outer perimeter of the pumpkin (dist 0.38 -> 0.85)
+                // Center is transparent (dist < 0.38) so it frames the pumpkin rather than covering it!
+                float ring = smoothstep(0.36, 0.52, dist) * (1.0 - smoothstep(0.52, 0.95, dist));
+                
+                // Subtle ray spikes pulsing around the corona ring
+                float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
+                float rays = 0.80 + 0.20 * sin(angle * 12.0 + uTime * 2.0);
+                
+                float alpha = ring * rays * uHaloIntensity;
+                if (alpha < 0.001) discard;
+                gl_FragColor = vec4(uHaloColor * alpha * 1.5, clamp(alpha, 0.0, 1.0));
+            }
+        `,
         transparent: true,
-        opacity: 0.0,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
         depthWrite: false
     });
-    const pCenterGlareSprite = new THREE.Sprite(pGlareSpriteMat);
-    pCenterGlareSprite.scale.set(12.0, 5.0, 1.0);
-    pCenterGlareSprite.renderOrder = 25;
-    pGlareGroup.add(pCenterGlareSprite);
-
-    const pStarburstSpriteMat = new THREE.SpriteMaterial({
-        map: starburstTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-    });
-    const pCenterStarburstSprite = new THREE.Sprite(pStarburstSpriteMat);
-    pCenterStarburstSprite.scale.set(8.5, 8.5, 1.0);
-    pCenterStarburstSprite.renderOrder = 25;
-    pGlareGroup.add(pCenterStarburstSprite);
+    const pumpkinHaloMesh = new THREE.Mesh(pumpkinHaloGeo, pumpkinHaloMat);
+    pumpkinHaloMesh.position.set(0, 0, -0.4); // Just behind the pumpkin
+    pumpkinHaloMesh.renderOrder = 18;
+    gPumpkinDiscoBall.add(pumpkinHaloMesh);
 
     // 7. 450 Floor & Room Mirror Reflection Sparkle Spots
     const pFloorSpotCount = 450;
@@ -9574,19 +9592,16 @@ export function createVFXScene(container) {
             const rightGlare = Math.pow(rightHit, 1.6);
             const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
 
-            // Dead-on Hit Detection: When beam hits pumpkin dead-on, trigger a temporary flash!
+            // Dead-on Hit Detection: When beam hits pumpkin dead-on, trigger halo flash!
             const isDeadOn = (leftHit > 0.82 || rightHit > 0.82 || (leftHit > 0.68 && rightHit > 0.68));
             if (isDeadOn && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 1.2)) {
                 pumpkinLastFlashTime = elapsedTime;
-                pumpkinScreenFlash = (leftHit > 0.68 && rightHit > 0.68) ? 0.90 : 0.75;
                 pumpkinDeadOnFlashPulse = 1.0;
             }
             pumpkinWasDeadOn = isDeadOn;
 
-            // Smooth flash decay
-            pumpkinScreenFlash = Math.max(0.0, pumpkinScreenFlash - delta * 3.5);
+            // Smooth halo flash decay (no full-screen flash)
             pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 3.5);
-            manualFlash = Math.max(manualFlash, pumpkinScreenFlash);
 
             // 5. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
             const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
@@ -9698,17 +9713,13 @@ export function createVFXScene(container) {
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
             pumpkinFlameLight.intensity = (0.75 + totalGlareScore * 2.0 + audioSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.0 + pumpkinKickThump * 4.5) * (0.40 + avgPulse * 0.60);
 
-            // 6. Update Central Specular Glare (Flash on direct hit and beat pulse peaks)
-            const glareTint = (pumpkinDeadOnFlashPulse > 0.3) ? new THREE.Color(0xffffff) : (leftGlare > rightGlare ? leftColor : rightColor);
-            pCenterGlareSprite.material.color.copy(glareTint);
-            pCenterStarburstSprite.material.color.copy(glareTint);
-
-            const baseGlareScale = 3.0 + totalGlareScore * 10.0 + audioSurge * 3.0 + pumpkinDeadOnFlashPulse * 8.0;
-            pCenterGlareSprite.scale.set(baseGlareScale * 1.5, baseGlareScale * 0.6, 1.0);
-            pCenterStarburstSprite.scale.set(baseGlareScale * 1.0, baseGlareScale * 1.0, 1.0);
-
-            pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(0.65, (totalGlareScore * 0.65 + pumpkinDeadOnFlashPulse * 0.75) * (0.20 + avgPulse * 0.80)));
-            pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(0.60, (totalGlareScore * 0.60 + pumpkinDeadOnFlashPulse * 0.75) * (0.20 + avgPulse * 0.80)));
+            // 6. Update Halo Glow Ring / Corona Flare around pumpkin silhouette (never covers the pumpkin face)
+            const haloTint = (pumpkinDeadOnFlashPulse > 0.25) ? new THREE.Color(0xffffff) : pumpkinThemeCol;
+            pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
+            pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
+            const haloIntensity = (pumpkinDeadOnFlashPulse * 2.8 + pumpkinKickThump * 1.4 + totalGlareScore * 0.9) * (0.35 + avgPulse * 0.65);
+            pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.max(0.0, Math.min(2.5, haloIntensity));
+            pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
 
             // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25;
