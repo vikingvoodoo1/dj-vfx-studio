@@ -7729,49 +7729,6 @@ export function createVFXScene(container) {
     pRightCoreBeamMesh.renderOrder = 21;
     gPumpkinDiscoBall.add(pRightCoreBeamMesh);
 
-    // Specular Reflected Light Beams (Bouncing OFF the front glass mirror facets into the room)
-    const pLeftReflectGeo = createMultiPlaneRayGeometry(6, 0.70, 8.5, 18.0);
-    const pLeftReflectMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 2.2 },
-            uTime: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 }
-        },
-        vertexShader: PumpkinReflectionRaysShader.vertexShader,
-        fragmentShader: PumpkinReflectionRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pLeftReflectMesh = new THREE.Mesh(pLeftReflectGeo, pLeftReflectMat);
-    pLeftReflectMesh.renderOrder = 22;
-    gPumpkinDiscoBall.add(pLeftReflectMesh);
-
-    const pRightReflectGeo = createMultiPlaneRayGeometry(6, 0.70, 8.5, 18.0);
-    const pRightReflectMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 2.2 },
-            uTime: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 }
-        },
-        vertexShader: PumpkinReflectionRaysShader.vertexShader,
-        fragmentShader: PumpkinReflectionRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pRightReflectMesh = new THREE.Mesh(pRightReflectGeo, pRightReflectMat);
-    pRightReflectMesh.renderOrder = 22;
-    gPumpkinDiscoBall.add(pRightReflectMesh);
-
     // Front Surface Impact Hotspot Flares (Where beams land on the front of the pumpkin)
     const pLeftHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
         map: starburstTex,
@@ -9420,6 +9377,7 @@ export function createVFXScene(container) {
             pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
 
             // Align volumetric beams and inner cores along fixture-to-target vectors
+            // Align volumetric beams and inner cores along fixture-to-target vectors
             // Terminate EXACTLY at the front surface hit coordinate (ZERO penetration through or behind pumpkin)
             const upVec = new THREE.Vector3(0, -1, 0);
             pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
@@ -9431,21 +9389,6 @@ export function createVFXScene(container) {
             pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
             pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
-
-            // Compute Specular Reflection Vectors Bouncing OFF the Front Glass Mirror Facets
-            const pNormalLeft = targetLeftPos.clone().normalize();
-            const pNormalRight = targetRightPos.clone().normalize();
-
-            // Reflected vector R = I - 2 * (I . N) * N
-            const pReflectDirLeft = leftFixtureDirNorm.clone().sub(pNormalLeft.clone().multiplyScalar(2.0 * leftFixtureDirNorm.dot(pNormalLeft))).normalize();
-            const pReflectDirRight = rightFixtureDirNorm.clone().sub(pNormalRight.clone().multiplyScalar(2.0 * rightFixtureDirNorm.dot(pNormalRight))).normalize();
-
-            // Position and orient reflected light beams originating from the front glass facets and bouncing into the room
-            pLeftReflectMesh.position.copy(targetLeftPos);
-            pLeftReflectMesh.quaternion.setFromUnitVectors(upVec, pReflectDirLeft);
-
-            pRightReflectMesh.position.copy(targetRightPos);
-            pRightReflectMesh.quaternion.setFromUnitVectors(upVec, pReflectDirRight);
 
             // Detect "Aim Bang On" Hit Score (Closeness to pumpkin disco ball center)
             const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
@@ -9482,34 +9425,42 @@ export function createVFXScene(container) {
             const rightColor = rightSample.color;
             const rightCore = rightSample.core;
 
-            // 4. Dynamic Organic Intensity Breathing & Music Reactivity (Both Lights Change in Intensity independently)
-            const leftLfo1 = Math.sin(elapsedTime * 1.10);
-            const leftLfo2 = Math.sin(elapsedTime * 0.42 + 1.2);
-            const leftWave = (leftLfo1 * 0.48 + leftLfo2 * 0.32); // -0.80 to +0.80
+            // 4. ⚡ DUAL MOVING-HEAD STROBE ENGINE (Rapid Rhythmic Strobing onto Pumpkin)
+            const bps = currentBPM / 60.0;
+            // High-speed musical strobe clock (8 pulses per beat / ~16.8 Hz at 126 BPM)
+            const strobeFreq = bps * 8.0;
+            const strobePhase = elapsedTime * strobeFreq * Math.PI * 2.0;
+            const isStrobeBurst = (isKickHit || transientVal > 0.35 || isDeadOn);
 
-            const rightLfo1 = Math.sin(elapsedTime * 1.10 + Math.PI * 0.75);
-            const rightLfo2 = Math.cos(elapsedTime * 0.48 + 2.5);
-            const rightWave = (rightLfo1 * 0.48 + rightLfo2 * 0.32); // -0.80 to +0.80
+            // Alternating ping-pong strobe pulse wave + simultaneous strobe hits during drops & kick transients
+            const rawStrobeL = Math.sin(strobePhase);
+            const rawStrobeR = Math.sin(strobePhase + (isStrobeBurst ? 0.0 : Math.PI * 0.5));
 
-            const musicSurge = (audio.smoothedBass || 0) * 0.50 + (audio.transientImpulse || 0) * 0.40 + (audio.isOnset ? 0.45 : 0.0);
+            // Sharp duty cycle: High-contrast explosive flash + dark cut
+            const strobePulseL = (rawStrobeL > -0.20) ? (0.65 + Math.pow(Math.max(0.0, rawStrobeL), 2.2) * 0.75) : 0.08;
+            const strobePulseR = (rawStrobeR > -0.20) ? (0.65 + Math.pow(Math.max(0.0, rawStrobeR), 2.2) * 0.75) : 0.08;
 
-            // Left and Right change in intensity independently, swelling, dipping, and cross-fading smoothly
-            const beamLeftPower = Math.max(0.5, (2.6 + leftWave * 1.6 + leftHit * 1.8 + musicSurge * 1.2 + pumpkinDeadOnFlashPulse * 1.8));
-            const beamRightPower = Math.max(0.5, (2.6 + rightWave * 1.6 + rightHit * 1.8 + musicSurge * 1.2 + pumpkinDeadOnFlashPulse * 1.8));
+            const musicSurge = (audio.smoothedBass || 0) * 0.55 + (audio.transientImpulse || 0) * 0.45 + (audio.isOnset ? 0.50 : 0.0);
+            const strobeMultiL = strobePulseL * (1.0 + (audio.smoothedBass || 0) * 0.50 + (isStrobeBurst ? 0.65 : 0.0));
+            const strobeMultiR = strobePulseR * (1.0 + (audio.smoothedBass || 0) * 0.50 + (isStrobeBurst ? 0.65 : 0.0));
 
-            // Update Fixture Lens & Status LED Colors and Intensity
-            pLeftFixture.lensMat.color.copy(leftColor);
+            // Dynamic intensity with strobe modulation
+            const beamLeftPower = Math.max(0.4, (2.8 + leftHit * 2.0 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.2) * strobeMultiL);
+            const beamRightPower = Math.max(0.4, (2.8 + rightHit * 2.0 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 2.2) * strobeMultiR);
+
+            // Update Fixture Lens & Status LED Colors and Intensity with Strobe Flashes
+            pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(strobeMultiL > 0.4 ? 1.6 : 0.3);
             pLeftFixture.ledRingMat.color.copy(leftColor);
-            pRightFixture.lensMat.color.copy(rightColor);
+            pRightFixture.lensMat.color.copy(rightColor).multiplyScalar(strobeMultiR > 0.4 ? 1.6 : 0.3);
             pRightFixture.ledRingMat.color.copy(rightColor);
 
-            // The Pumpkin and Stalk change colors in accordance with the Halloween lights!
+            // The Pumpkin and Stalk change colors and catch the rhythmic strobe flashes!
             const pumpkinThemeCol = new THREE.Color().lerpColors(leftColor, rightColor, 0.5);
             const pumpkinEmissiveCol = new THREE.Color().lerpColors(leftSample.emissive, rightSample.emissive, 0.5);
 
             dPumpkinMat.color.copy(pumpkinThemeCol);
             dPumpkinMat.emissive.copy(pumpkinEmissiveCol);
-            dPumpkinMat.emissiveIntensity = 0.20 + totalGlareScore * 0.45 + pumpkinDeadOnFlashPulse * 0.75;
+            dPumpkinMat.emissiveIntensity = (0.15 + (strobeMultiL * 0.45 + strobeMultiR * 0.45) * totalGlareScore + pumpkinDeadOnFlashPulse * 0.85);
             if (pumpkinStem) {
                 pumpkinStem.traverse((child) => {
                     if (child.isMesh && child.material && child.material.color) {
@@ -9518,14 +9469,14 @@ export function createVFXScene(container) {
                 });
             }
 
-            // Spotlights intensity scales in sync with each beam's individual dynamic intensity
+            // Spotlights strobing intensely onto the pumpkin
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = Math.max(1.5, 6.5 + leftWave * 4.0 + leftHit * 5.5 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0);
+            pBottomLeftSpot.intensity = Math.max(1.0, (7.0 + leftHit * 6.0 + musicSurge * 4.5 + pumpkinDeadOnFlashPulse * 8.0) * strobeMultiL);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = Math.max(1.5, 6.5 + rightWave * 4.0 + rightHit * 5.5 + musicSurge * 4.0 + pumpkinDeadOnFlashPulse * 8.0);
+            pBottomRightSpot.intensity = Math.max(1.0, (7.0 + rightHit * 6.0 + musicSurge * 4.5 + pumpkinDeadOnFlashPulse * 8.0) * strobeMultiR);
 
-            // Volumetric shaded incoming god rays uniforms with dynamic individual intensity
+            // Volumetric shaded incoming god rays uniforms with strobe flashes
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
             pLeftBeamMat.uniforms.uCoreColor.value.copy(leftCore);
             pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
@@ -9546,42 +9497,28 @@ export function createVFXScene(container) {
             pRightCoreBeamMat.uniforms.uIntensity.value = beamRightPower * 1.35;
             pRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
 
-            // Specular reflected light beams bouncing off the glass facets into the room
-            pLeftReflectMat.uniforms.uColor.value.copy(leftColor);
-            pLeftReflectMat.uniforms.uCoreColor.value.copy(leftCore);
-            pLeftReflectMat.uniforms.uIntensity.value = beamLeftPower * 0.90;
-            pLeftReflectMat.uniforms.uTime.value = elapsedTime;
-            pLeftReflectMat.uniforms.uPulse.value = pumpkinDeadOnFlashPulse;
-            pLeftReflectMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
-
-            pRightReflectMat.uniforms.uColor.value.copy(rightColor);
-            pRightReflectMat.uniforms.uCoreColor.value.copy(rightCore);
-            pRightReflectMat.uniforms.uIntensity.value = beamRightPower * 0.90;
-            pRightReflectMat.uniforms.uTime.value = elapsedTime;
-            pRightReflectMat.uniforms.uPulse.value = pumpkinDeadOnFlashPulse;
-            pRightReflectMat.uniforms.uTreble.value = (audio.smoothedTreble || 0);
-
-            // Front surface impact flares at the exact beam landing coordinates on the pumpkin front
+            // Front surface impact flares strobing at the exact beam landing coordinates on the pumpkin front
             pLeftHitFlare.position.copy(targetLeftPos);
             pLeftHitFlare.material.color.copy(leftColor);
-            pLeftHitFlare.material.opacity = Math.min(1.0, 0.65 + leftHit * 0.35 + musicSurge * 0.25 + pumpkinDeadOnFlashPulse * 0.40);
-            const flareScaleL = 3.5 + leftHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5;
+            pLeftHitFlare.material.opacity = Math.min(1.0, (0.50 + leftHit * 0.40 + musicSurge * 0.30 + pumpkinDeadOnFlashPulse * 0.40) * strobeMultiL);
+            const flareScaleL = (3.5 + leftHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.75 + strobeMultiL * 0.35);
             pLeftHitFlare.scale.set(flareScaleL, flareScaleL, 1.0);
 
             pRightHitFlare.position.copy(targetRightPos);
             pRightHitFlare.material.color.copy(rightColor);
-            pRightHitFlare.material.opacity = Math.min(1.0, 0.65 + rightHit * 0.35 + musicSurge * 0.25 + pumpkinDeadOnFlashPulse * 0.40);
-            const flareScaleR = 3.5 + rightHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5;
+            pRightHitFlare.material.opacity = Math.min(1.0, (0.50 + rightHit * 0.40 + musicSurge * 0.30 + pumpkinDeadOnFlashPulse * 0.40) * strobeMultiR);
+            const flareScaleR = (3.5 + rightHit * 2.5 + musicSurge * 1.5 + pumpkinDeadOnFlashPulse * 3.5) * (0.75 + strobeMultiR * 0.35);
             pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
             // Front Key Light & Pumpkin Flame
+            const avgStrobe = (strobeMultiL + strobeMultiR) * 0.5;
             pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.45));
-            pKeyLight.intensity = (3.0 + totalGlareScore * 4.5 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 6.0) * liveIntensity;
+            pKeyLight.intensity = (3.0 + totalGlareScore * 4.5 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 6.0) * (0.8 + avgStrobe * 0.4);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (3.2 + totalGlareScore * 4.0 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 5.0) * liveIntensity;
+            pumpkinFlameLight.intensity = (3.2 + totalGlareScore * 4.0 + musicSurge * 2.0 + pumpkinDeadOnFlashPulse * 5.0) * (0.8 + avgStrobe * 0.4);
 
-            // 5. Update Central Bright Specular Glare (Reflection back to viewer position in center)
+            // 5. Update Central Bright Specular Glare (Flash on direct hit and strobe peaks)
             const glareTint = (pumpkinDeadOnFlashPulse > 0.3) ? new THREE.Color(0xffffff) : (leftGlare > rightGlare ? leftColor : rightColor);
             pCenterGlareSprite.material.color.copy(glareTint);
             pCenterStarburstSprite.material.color.copy(glareTint);
@@ -9590,8 +9527,8 @@ export function createVFXScene(container) {
             pCenterGlareSprite.scale.set(baseGlareScale * 1.9, baseGlareScale * 0.8, 1.0);
             pCenterStarburstSprite.scale.set(baseGlareScale * 1.25, baseGlareScale * 1.25, 1.0);
 
-            pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(1.0, totalGlareScore * 0.98 + pumpkinDeadOnFlashPulse * 0.95));
-            pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(1.0, totalGlareScore * 0.92 + pumpkinDeadOnFlashPulse * 0.95));
+            pCenterGlareSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.98 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgStrobe * 0.5)));
+            pCenterStarburstSprite.material.opacity = Math.max(0.0, Math.min(1.0, (totalGlareScore * 0.92 + pumpkinDeadOnFlashPulse * 0.95) * (0.5 + avgStrobe * 0.5)));
 
             // 6. Floor & Room Caustic Reflection Spots (Brighter on direct hit)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.05;
