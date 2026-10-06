@@ -8498,6 +8498,10 @@ export function createVFXScene(container) {
         setStationLogoBassPulse,
         setStationLogoContrast,
         setStationLogoBrightness,
+        setStationLogoBlendMode,
+        setStationLogoShieldVisible,
+        setStationLogoSpinMode,
+        setStationLogoSpinSpeed,
         // Layer Transition & Pop Setters
         setLogoTransitionEffect,
         setStationLogoTransitionEffect,
