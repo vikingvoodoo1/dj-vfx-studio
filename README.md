@@ -1,4 +1,8 @@
-# ⚡ DJ VFX Studio — Professional Stage Visual Engine & Multi-Platform DJ Bridge
+# ⚡ DJ VFX Studio v2.0.0 — Professional Stage Visual Engine & Multi-Platform DJ Bridge
+
+[![Version](https://img.shields.io/badge/version-2.0.0-orange.svg)](https://github.com/vikingvoodoo1/dj-vfx-studio/releases/tag/v2.0.0)
+[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Platform](https://img.shields.io/badge/platform-macOS%20%7C%20Windows%20%7C%20Linux%20%7C%20Web-green.svg)](https://github.com/vikingvoodoo1/dj-vfx-studio)
 
 A high-performance, GPU-accelerated 3D visual engine, reactive lighting controller, and multi-platform DJ telemetry bridge designed for live nightclub performances, festival stage visualizers, and OBS Studio live streams.
 

@@ -53,14 +53,16 @@ jobs:
           body: |
             ## 🎛️ DJ VFX Studio ${{ github.ref_name }} Release
             
-            ### ✨ Highlights
-            - **22 Audio-Reactive 3D/GLSL Stage Visual Engines** (including Cyberpunk Matrix, VHS Dreamlover, LED Wall, Neural Lattice, and more).
-            - **Philips Hue Smart Lighting Integration** (Dynamic Bass Kick White Strobe, Energy-mapped room color palettes, LAN autodiscovery).
-            - **Live StageLinq / Denon DJ / Rekordbox / Traktor DJ Engine Bridge** with real-time BPM, deck telemetry & dynamic broadcast lower thirds.
-            - **OBS Studio Live Production Feed** (Transparent Stage Camera Overlay + Solid Visual Stage modes).
-            - **High-Precision VU & Loudness Telemetry** (-48dB to 0dBFS True Peak, Integrated LUFS & Headroom Metering).
-            - **macOS System & VLC Headphone Audio Capture** with full multi-channel routing support.
-            - **Multi-Theme Dynamic UI Switcher** (`Cyber Glass`, `Cyberpunk Matrix`, `Obsidian Stealth`, `Titanium Pioneer Pro`, `Analog Synthwave Studio`).
+            ### ✨ Highlights in v2.0.0
+            - **Pioneer CDJ-3000 Phrase Meter & CDJ-2000 Phase Visualizer**: Real-time Rekordbox structural phrase analysis, 8-segment bar progress tracks, countdown to drop, 4-beat phase grid with 60FPS needle sweep, DUAL stacked mode, and hardware Pro DJ Link / beat clock sync.
+            - **3-Layer 3D Branding & Event Promo Engine**: Dedicated GPU-accelerated layers for DJ Logo (MP4 video/images), Station Logo, and Event Flyer/Promo Graphics with 9-way directional anchoring, 6 display modes, and 10 cinematic transition effects.
+            - **Multi-Layer Automation & Pop-Up Scheduler**: Automated periodic pop-ups with configurable intervals (`30s` to `30m`), display durations (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
+            - **Shazam AI Live Audio Recognition & Album Art**: 1-click live audio sampling with Shazam fingerprint matching, high-res Apple Music artwork retrieval, and live broadcast lower-third banners.
+            - **22 GPU-Accelerated 3D Stage Visual Engines**: Moving-head godray fixtures, Protean volumetric fog, retro 70s illuminated disco dancefloors, VHS glitch typography, 3D stadium equalizers, starfields, and laser arrays.
+            - **Philips Hue Smart Club Lighting Integration**: Real-time 4-mode beat sync, wide-gamut HSV color mapping, independent lamp power toggle, and instantaneous Xenon-white Kick Pop Strobes.
+            - **6 Curated UI Console Themes**: `Cyber Glass`, `Studio Hardware Pro` (Universal Audio skeuomorphic console), `Cyberpunk Matrix`, `Obsidian Stealth`, `Titanium Pioneer Pro`, and `Analog Synthwave Studio`.
+            - **Universal Multi-Platform DJ Bridge**: Zero-latency companion bridge for Denon DJ StageLinq, Pioneer Pro DJ Link, Native Instruments Traktor Pro, Serato DJ, and VirtualDJ.
+            - **Multi-Screen, Projector & OBS Live Suite**: Detached master control console (`?mode=controller`), 2nd screen stage projector output (`?mode=obs`), and alpha-blended transparent OBS browser sources (`?overlay=true`).
             
             ### 📦 Download Instructions:
             - **macOS (Apple Silicon & Intel)**: Download the `.dmg` or `.zip` file below. Drag into your Applications folder.
