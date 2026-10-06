@@ -45,10 +45,10 @@ export function setupStageLinqClient({
                     const data = JSON.parse(event.data);
                     switch (data.type) {
                         case 'bpm':
-                            if (onBPM) onBPM(data.bpm, data.deck);
+                            if (onBPM) onBPM(data.bpm, data.deck, data);
                             break;
                         case 'beat':
-                            if (onBeat) onBeat(data.deck, data.count);
+                            if (onBeat) onBeat(data.deck, data.count, data);
                             break;
                         case 'track':
                             if (onTrack) onTrack(data);

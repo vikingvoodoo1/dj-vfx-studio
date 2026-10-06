@@ -21,10 +21,10 @@ let activeEcosystem = 'auto'; // 'auto', 'stagelinq', 'pioneer', 'traktor', 'lin
 const globalSyncState = new Map();
 const connectedDevices = new Map();
 const deckStatuses = new Map([
-    [1, { deck: 1, bpm: 126.0, play: false, artist: 'Eric Prydz', title: 'Opus (Live Intro Mix)', ecosystem: 'none' }],
-    [2, { deck: 2, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }],
-    [3, { deck: 3, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }],
-    [4, { deck: 4, bpm: 126.0, play: false, artist: '', title: '', ecosystem: 'none' }]
+    [1, { deck: 1, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }],
+    [2, { deck: 2, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }],
+    [3, { deck: 3, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }],
+    [4, { deck: 4, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }]
 ]);
 
 // Initialize Philips Hue Lighting Service
@@ -63,34 +63,41 @@ function handleIncomingTrack(trackData) {
     currentDeck.bpm = trackData.bpm || currentDeck.bpm;
     currentDeck.play = true;
     currentDeck.ecosystem = trackData.ecosystem || 'auto';
+    currentDeck.isHardware = true;
     deckStatuses.set(deckNum, currentDeck);
 
     broadcast({
         type: 'track',
+        isHardware: true,
         ...trackData
     });
 }
 
-function handleIncomingBPM(bpm, deckNum = 1) {
+function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
     if (bpm > 40 && bpm < 300) {
         lastBpm = bpm;
         const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
         currentDeck.bpm = bpm;
+        currentDeck.isHardware = true;
         deckStatuses.set(deckNum, currentDeck);
 
         broadcast({
             type: 'bpm',
             deck: deckNum,
-            bpm
+            bpm,
+            isHardware: true,
+            ecosystem
         });
     }
 }
 
-function handleIncomingBeat(deckNum, count) {
+function handleIncomingBeat(deckNum, count, ecosystem = 'auto') {
     broadcast({
         type: 'beat',
         deck: deckNum || 1,
-        count: count || 1
+        count: count || 1,
+        isHardware: true,
+        ecosystem
     });
 }
 
@@ -322,16 +329,18 @@ wss.on('connection', (ws) => {
         ...hueService.getStatus()
     }));
 
-    if (lastTrackData) {
+    if (lastTrackData && (lastTrackData.title || lastTrackData.artist)) {
         ws.send(JSON.stringify({
             type: 'track',
+            isHardware: true,
             ...lastTrackData
         }));
     }
-    if (lastBpm) {
+    if (lastBpm && connectedDevices.size > 0) {
         ws.send(JSON.stringify({
             type: 'bpm',
-            bpm: lastBpm
+            bpm: lastBpm,
+            isHardware: true
         }));
     }
     if (lastActiveFX !== null && lastActiveFX !== undefined) {
@@ -561,7 +570,10 @@ async function startStageLinq() {
     } catch (err) {
         console.warn('[StageLinq] Hardware discovery note:', err.message);
         console.log('[StageLinq] Standby mode active while awaiting hardware connections.');
-        runSimulationLoop();
+        if (isForceSim) {
+            console.log('[StageLinq] 🧪 Simulation mode active (--sim flag provided)');
+            runSimulationLoop();
+        }
     }
 }
 

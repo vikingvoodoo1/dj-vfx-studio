@@ -24,7 +24,7 @@ export class NowPlayingService {
     ensureWatchFile() {
         if (!fs.existsSync(this.watchFilePath)) {
             try {
-                fs.writeFileSync(this.watchFilePath, 'Eric Prydz - Opus (Live Intro Mix)\n', 'utf8');
+                fs.writeFileSync(this.watchFilePath, '', 'utf8');
                 console.log('[Universal API] 📄 Created nowplaying.txt in workspace root.');
             } catch (e) {}
         }

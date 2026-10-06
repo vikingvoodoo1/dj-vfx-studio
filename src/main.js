@@ -816,15 +816,28 @@ async function init() {
     function showTrackBanner(trackData, options = {}) {
         if (!trackBanner) return;
 
-        const { force = false, immediate = false, duration = null } = options;
+        const { force = false, immediate = false, duration = null, fromShazamAcceptance = false, fromManualInject = false } = options;
 
         if (!isTrackBannerEnabled && !force) {
             hideTrackBanner();
             return;
         }
 
-        const title = trackData?.title || (trackTitle ? trackTitle.textContent : 'Live Track');
-        const artist = trackData?.artist || (trackArtist ? trackArtist.textContent.split(' • ')[0] : '');
+        const title = trackData?.title || (force ? (trackTitle ? trackTitle.textContent : '') : '');
+        const artist = trackData?.artist || (force ? (trackArtist ? trackArtist.textContent.split(' • ')[0] : '') : '');
+
+        // If not explicitly forced by user action (e.g. manual injection or Shazam acceptance)
+        // AND not actively receiving real hardware deck packets on the wire with valid title, do not show!
+        if (!force && (!title || title.trim() === '' || title === 'Live Track' || title === 'No Track Loaded' || title === 'Opus (Live Intro Mix)' || title === '—')) {
+            hideTrackBanner();
+            return;
+        }
+
+        if (!force && !isHardwareDeckStreaming && !fromShazamAcceptance && !fromManualInject) {
+            hideTrackBanner();
+            return;
+        }
+
         const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
         const deckLabel = String(rawDeck).toUpperCase().startsWith('DECK') ? String(rawDeck).toUpperCase() : `DECK ${rawDeck}`;
         const bpm = (trackData?.bpm && trackData.bpm > 40 && trackData.bpm < 300) 
@@ -1174,7 +1187,7 @@ async function init() {
                 deck: lastDisplayedTrackDeck || 1,
                 bpm: Number(bpmVal?.textContent) || 126.0
             };
-            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
+            showTrackBanner(currentTrack, { force: true, immediate: true, fromShazamAcceptance: true, duration: trackDurationSec });
             showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
 
             broadcastSync({
@@ -3836,6 +3849,7 @@ async function init() {
     const cdjDualView = document.getElementById('cdjdual-view');
     const phraseSyncSource = document.getElementById('phrase-sync-source');
     const cdjMeterContainer = document.getElementById('cdj-meter-container');
+    const bpmSubbeatDots = document.getElementById('bpm-subbeat-dots');
 
     const cdj3000PhraseTag = document.getElementById('cdj3000-phrase-tag');
     const cdj3000BarText = document.getElementById('cdj3000-bar-text');
@@ -3870,6 +3884,12 @@ async function init() {
         document.getElementById('beat-pip-4')
     ];
 
+    // Ensure phase meters and beat counters start hidden by default unless reading straight off live decks
+    if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
+    if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
+    if (phraseModeSelector) phraseModeSelector.style.display = 'none';
+    if (phraseSyncSource) phraseSyncSource.style.display = 'none';
+
     // Standard Electronic / Club Song Structure Model (Rekordbox / CDJ-3000 Phrase Matrix)
     const CDJ_PHRASE_STRUCT = [
         { name: 'INTRO 1', type: 'intro', bars: 8, label: 'INTRO', nextAction: 'UP BUILD' },
@@ -3897,6 +3917,7 @@ async function init() {
         lastHardwarePacketTimestamp = performance.now();
         if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
         if (phraseModeSelector) phraseModeSelector.style.display = 'flex';
+        if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'flex';
         if (phraseSyncSource) {
             phraseSyncSource.style.display = 'inline-block';
             phraseSyncSource.textContent = source;
@@ -4053,9 +4074,11 @@ async function init() {
     // 6. Connect to Universal DJ Hardware & Software Bridge via WebSocket
     stagelinqClient = setupStageLinqClient({
         onSync: (msg) => handleSyncMessage(msg),
-        onBPM: (bpm, deck) => {
+        onBPM: (bpm, deck, packet = {}) => {
             if (bpm && bpm > 40 && bpm < 300) {
-                notifyHardwareDeckPacket('PRO DJ LINK');
+                if (packet.isHardware) {
+                    notifyHardwareDeckPacket(packet.ecosystem ? packet.ecosystem.toUpperCase() : 'PRO DJ LINK');
+                }
                 bpmVal.textContent = Number(bpm).toFixed(1);
                 vfx.setBPM(bpm);
                 if (vfx.setDeckData) vfx.setDeckData({ deck: deck || 1, bpm: Number(bpm) });
@@ -4067,12 +4090,13 @@ async function init() {
                 }
             }
         },
-        onBeat: (deck, beatCount) => {
-            notifyHardwareDeckPacket('PRO DJ LINK');
+        onBeat: (deck, beatCount, packet = {}) => {
+            if (packet.isHardware || isHardwareDeckStreaming) {
+                notifyHardwareDeckPacket(packet.ecosystem ? packet.ecosystem.toUpperCase() : 'PRO DJ LINK');
+                advanceCDJBeat(beatCount, true);
+            }
             vfx.triggerBeatPulse();
             broadcastSync({ type: 'beat_pulse', deck, beatCount });
-
-            advanceCDJBeat(beatCount, true);
 
             bpmVal.style.transform = 'scale(1.2)';
             setTimeout(() => {
@@ -4107,7 +4131,9 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
-            notifyHardwareDeckPacket('PRO DJ LINK');
+            if (data && data.isHardware) {
+                notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'PRO DJ LINK');
+            }
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
                 if (deckCards[dIdx].bpm && data.bpm) deckCards[dIdx].bpm.textContent = Number(data.bpm).toFixed(1);
@@ -4115,7 +4141,13 @@ async function init() {
             }
         },
         onTrack: (trackData) => {
-            notifyHardwareDeckPacket('PRO DJ LINK');
+            if (!trackData) return;
+            const hasRealTitle = trackData.title && trackData.title.trim() !== '' && trackData.title !== 'Live Track' && trackData.title !== 'Opus (Live Intro Mix)' && trackData.title !== 'No Track Loaded';
+            if (!hasRealTitle && !trackData.isHardware) return;
+
+            if (trackData.isHardware) {
+                notifyHardwareDeckPacket(trackData.ecosystem ? trackData.ecosystem.toUpperCase() : 'PRO DJ LINK');
+            }
             if (trackData.title) trackTitle.textContent = trackData.title;
             if (trackData.artist) trackArtist.textContent = `${trackData.artist} • Deck ${trackData.deck || 1}`;
             if (trackData.bpm && trackData.bpm > 40 && trackData.bpm < 300) {
@@ -4140,18 +4172,20 @@ async function init() {
                 }
             });
 
-            // Display Now Playing Track Banner overlay with auto-fadeout
-            showTrackBanner(trackData, { force: false });
+            // Display Now Playing Track Banner overlay only if there is a real title and real deck streaming
+            if (hasRealTitle && isHardwareDeckStreaming) {
+                showTrackBanner(trackData, { force: false });
+            }
 
             // Trigger fresh scene on track change if Auto-VJ active
-            if (isAutoVJ) {
+            if (isAutoVJ && hasRealTitle) {
                 const nextFX = (vfx.getCurrentFX() + 1) % TOTAL_FX;
                 selectFX(nextFX);
             }
         },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
-                const hasActivePlaying = decks.some(d => d.play || (d.bpm && d.bpm > 40));
+                const hasActivePlaying = decks.some(d => d.play && d.isHardware && (d.title || d.artist));
                 if (hasActivePlaying) {
                     notifyHardwareDeckPacket('PRO DJ LINK');
                 }
@@ -4724,6 +4758,7 @@ async function init() {
                 if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
                 if (phraseModeSelector) phraseModeSelector.style.display = 'none';
                 if (phraseSyncSource) phraseSyncSource.style.display = 'none';
+                if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
             } else if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
                 const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
                 const beatPeriodMs = 60000 / liveBpm;
@@ -4731,17 +4766,6 @@ async function init() {
                 const subBeatFraction = Math.min(1.0, Math.max(0, elapsed / beatPeriodMs));
                 const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
                 phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
-            }
-        }
-
-        // If no hardware decks are connected and internet is available, allow Shazam to attempt recognition
-        if (!isHardwareDeckStreaming && navigator.onLine && !isShazaming && !stagedShazamTrack) {
-            const currentAudioEnergy = (data.overall || 0) + (data.smoothedBass || 0);
-            if (currentAudioEnergy > 0.12) {
-                if (now - lastAutoShazamAttemptTime > 60000) {
-                    lastAutoShazamAttemptTime = now;
-                    triggerShazamRecognition(true);
-                }
             }
         }
 

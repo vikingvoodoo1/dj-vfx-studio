@@ -2499,8 +2499,8 @@
                                 <span class="bpm-display" id="bpm-val" style="font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
                                 <span class="bpm-unit" style="font-size: 8px; color: #00ffcc; font-weight: 800;">BPM</span>
                             </div>
-                            <!-- Downbeat Flash Dot (Beat 1-4) -->
-                            <div style="display:flex; justify-content:center; gap:3px; margin-top:2px;" id="bpm-subbeat-dots">
+                            <!-- Downbeat Flash Dot (Beat 1-4) - Hidden by default unless reading straight off live decks -->
+                            <div style="display:none; justify-content:center; gap:3px; margin-top:2px;" id="bpm-subbeat-dots">
                                 <span class="beat-pip active" id="beat-pip-1">1</span>
                                 <span class="beat-pip" id="beat-pip-2">2</span>
                                 <span class="beat-pip" id="beat-pip-3">3</span>
@@ -3706,8 +3706,8 @@
                                 <span class="hud-badge" id="nowplaying-pane-deck" style="font-size:7.5px; padding:1px 5px;">DECK 1</span>
                                 <span class="hud-badge" id="nowplaying-pane-bpm" style="font-size:7.5px; padding:1px 5px; color:#ffaa00; border-color:#ffaa00;">126.0 BPM</span>
                             </div>
-                            <div id="nowplaying-pane-title" style="font-size:12px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Opus (Live Intro Mix)</div>
-                            <div id="nowplaying-pane-artist" style="font-size:9.5px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Eric Prydz</div>
+                            <div id="nowplaying-pane-title" style="font-size:12px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">No Track Loaded</div>
+                            <div id="nowplaying-pane-artist" style="font-size:9.5px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Awaiting live decks or Shazam</div>
                         </div>
                     </div>
                 </div>
@@ -3768,8 +3768,8 @@
                                 </div>
                             </div>
                             <div style="flex:1; overflow:hidden;">
-                                <div id="shazam-match-title" style="font-size:11px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Opus</div>
-                                <div id="shazam-match-artist" style="font-size:9px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">Eric Prydz</div>
+                                <div id="shazam-match-title" style="font-size:11px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">—</div>
+                                <div id="shazam-match-artist" style="font-size:9px; color:#ffaa00; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono',monospace;">—</div>
                             </div>
                         </div>
 
@@ -4196,8 +4196,8 @@
                 <span class="track-deck-badge" id="track-deck-badge">DECK 1</span>
                 <span class="track-bpm-badge" id="track-bpm-badge">126.0 BPM</span>
             </div>
-            <div class="track-title" id="track-title">Opus (Live Intro Mix)</div>
-            <div class="track-artist" id="track-artist">Eric Prydz</div>
+            <div class="track-title" id="track-title">Live Track</div>
+            <div class="track-artist" id="track-artist">Live Performance</div>
         </div>
     </div>
 
