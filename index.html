@@ -108,7 +108,36 @@
             --hud-icon-filter: drop-shadow(0 0 3px rgba(255, 170, 0, 0.5));
         }
 
-
+        /* 🎃 HALLOWEEN SPOOKY GLOW & PUMPKIN CYBER THEME */
+        body.theme-halloween, [data-theme="halloween"] {
+            --hud-bg: linear-gradient(180deg, #1e0e29 0%, #13081c 25%, #0b0412 65%, #060209 100%), repeating-linear-gradient(90deg, rgba(255,102,0,0.035) 0px, rgba(255,102,0,0.035) 1px, transparent 1px, transparent 3px);
+            --hud-border: 2px solid #5e247e;
+            --hud-border-dim: #3a1550;
+            --hud-accent: #ff6600;
+            --hud-accent-glow: 0 0 16px rgba(255, 102, 0, 0.85), 0 0 4px #ffaa00;
+            --hud-accent-sec: #39ff14;
+            --hud-text: #f4e8f8;
+            --hud-text-dim: #a88eb6;
+            --hud-card-bg: linear-gradient(180deg, #180a24 0%, #0d0414 100%);
+            --hud-card-border: #4a1968;
+            --hud-sidebar-bg: linear-gradient(180deg, #150820 0%, #0a0310 100%);
+            --hud-sidebar-border: #3d1356;
+            --hud-slider-thumb: #ff6600;
+            --hud-slider-glow: 0 0 14px rgba(255, 102, 0, 0.9);
+            --hud-tab-active-bg: linear-gradient(180deg, #12041a 0%, #240d38 100%);
+            --hud-tab-active-border: #ff6600;
+            --hud-badge-bg: linear-gradient(180deg, #3d1303 0%, #220900 100%);
+            --hud-badge-border: #ff6600;
+            --hud-badge-color: #ff8800;
+            --hud-btn-bg: linear-gradient(180deg, #2e123d 0%, #1e0a29 50%, #14051d 100%);
+            --hud-btn-border: #5f2380;
+            --hud-btn-color: #f8e8ff;
+            --hud-btn-hover-bg: linear-gradient(180deg, #421958 0%, #2c0e3d 50%, #220a30 100%);
+            --hud-fx-active-bg: linear-gradient(180deg, #190626 0%, #301004 100%);
+            --hud-fx-active-border: #ff6600;
+            --hud-fx-active-glow: 0 0 16px rgba(255, 102, 0, 0.8);
+            --hud-icon-filter: drop-shadow(0 0 4px rgba(255, 102, 0, 0.7));
+        }
 
         /* Top-Left Hardware Skeuomorphic Rack Unit HUD */
         #hud {
@@ -2407,8 +2436,11 @@
                 </button>
             </div>
 
-            <!-- Bottom Action: Show All Panes / Compact Toggle -->
+            <!-- Bottom Action: Halloween Theme & Show All Panes / Compact Toggle -->
             <div class="activity-bottom">
+                <button class="activity-tab" id="btn-theme-halloween" title="🎃 Toggle Halloween Spooky Glow UI Theme" style="font-size:13px; display:flex; align-items:center; justify-content:center; margin-bottom:4px;">
+                    🎃
+                </button>
                 <button class="activity-tab" id="btn-act-all" title="Toggle Show All Panels (Scroll View) [Alt+A]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <rect x="3" y="3" width="7" height="7" />
@@ -2707,17 +2739,17 @@
                             <circle cx="11" cy="11" r="8"></circle>
                             <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                         </svg>
-                        <input type="text" id="fx-search-input" class="fx-search-input" placeholder="Search 22 shaders (e.g. laser, disco, grid, eq)..." autocomplete="off" spellcheck="false">
+                        <input type="text" id="fx-search-input" class="fx-search-input" placeholder="Search 23 shaders (e.g. laser, disco, pumpkin, grid, eq)..." autocomplete="off" spellcheck="false">
                         <button class="fx-search-clear" id="btn-fx-search-clear" title="Clear Search">✕</button>
                     </div>
-                    <span class="fx-search-count" id="fx-search-count">22 / 22</span>
+                    <span class="fx-search-count" id="fx-search-count">23 / 23</span>
                 </div>
 
                 <!-- Category Filter Segmented Tabs (Browser-Style Multi-Row) -->
                 <div class="fx-category-bar" id="fx-pane-cat-pills">
-                    <button class="fx-category-btn active" data-fxcat="all" title="View all 22 visual scenes">
+                    <button class="fx-category-btn active" data-fxcat="all" title="View all 23 visual scenes">
                         <span class="tab-led"></span>
-                        <span>⚡ ALL (22)</span>
+                        <span>⚡ ALL (23)</span>
                     </button>
                     <button class="fx-category-btn" data-fxcat="eq" title="Equalizers & Audio Decks">
                         <span class="tab-led"></span>
@@ -2725,7 +2757,11 @@
                     </button>
                     <button class="fx-category-btn" data-fxcat="laser" title="Lasers, Disco & Lighting">
                         <span class="tab-led"></span>
-                        <span>⚡ LASERS (7)</span>
+                        <span>⚡ LASERS (8)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="spooky" title="🎃 Halloween & Spooky Special">
+                        <span class="tab-led"></span>
+                        <span>🎃 SPOOKY (1)</span>
                     </button>
                     <button class="fx-category-btn" data-fxcat="wire" title="Cyber, Retro & Matrix">
                         <span class="tab-led"></span>
@@ -2845,6 +2881,13 @@
                             <span class="fx-pane-cat-tag">Lasers & Disco</span>
                         </div>
                         <div class="fx-pane-card-title">🪩 Disco Floor & Godrays</div>
+                    </div>
+                    <div class="fx-pane-card" data-fx="22" data-fxcat="laser spooky" title="Hot key: [">
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">[</span>
+                            <span class="fx-pane-cat-tag">🎃 Spooky & Special</span>
+                        </div>
+                        <div class="fx-pane-card-title">🎃 Pumpkin Disco Ball</div>
                     </div>
 
                     <!-- 🕸️ Cyber & Retro -->
@@ -4086,6 +4129,8 @@
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">N</strong> : Now Playing</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">Space</strong> : Strobe Burst</div>
                         <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#00ffcc;">1..0, -, =</strong> : Switch FX</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ff6600;">[</strong> : 🎃 Pumpkin Disco</div>
+                        <div style="background:#090a0d; padding:3px 5px; border-radius:3px; color:#d8dbe2;"><strong style="color:#ff6600;">🎃</strong> : Spooky Theme</div>
                     </div>
                 </div>
 
@@ -4152,9 +4197,10 @@
         <!-- Category Filter Tabs -->
         <div class="category-tabs">
             <div class="cat-tab-group">
-                <button class="cat-tab active" data-category="all">⚡ All (22)</button>
+                <button class="cat-tab active" data-category="all">⚡ All (23)</button>
                 <button class="cat-tab" data-category="eq">📊 Equalizers & Decks</button>
                 <button class="cat-tab" data-category="laser">⚡ Lasers & Disco</button>
+                <button class="cat-tab" data-category="spooky">🎃 Halloween Spooky</button>
                 <button class="cat-tab" data-category="wire">🕸️ Cyber & Retro</button>
                 <button class="cat-tab" data-category="space">🌌 Space & Galaxy</button>
             </div>
@@ -4164,7 +4210,7 @@
             </div>
         </div>
 
-        <!-- FX Preset Buttons Row (22 Presets - 2-Row Hardware Rack) -->
+        <!-- FX Preset Buttons Row (23 Presets - 2-Row Hardware Rack) -->
         <div class="fx-presets-row all-mode" id="fx-presets-row">
             <!-- 📊 Equalizers & Decks -->
             <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
@@ -4182,6 +4228,7 @@
             <button class="fx-btn" data-fx="18" data-cat="laser"><span class="fx-key">U</span> 🔦 Sweeping Godrays</button>
             <button class="fx-btn" data-fx="19" data-cat="laser"><span class="fx-key">I</span> ☁️ White Godrays & Fog</button>
             <button class="fx-btn" data-fx="20" data-cat="laser"><span class="fx-key">O</span> 🪩 Disco Floor & Godrays</button>
+            <button class="fx-btn" data-fx="22" data-cat="laser spooky"><span class="fx-key">[</span> 🎃 Pumpkin Disco</button>
 
             <!-- 🕸️ Cyber & Retro -->
             <button class="fx-btn" data-fx="10" data-cat="wire"><span class="fx-key">-</span> 🌅 Synthwave Grid</button>

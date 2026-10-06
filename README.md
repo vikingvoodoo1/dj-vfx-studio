@@ -10,12 +10,12 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ## 🌟 Key Highlights
 
-- **22 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **23 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, spinning pumpkin disco balls with volumetric blue godrays, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
 - **🖼️ 3-Layer 3D Branding & Promo System**: Independent hardware-accelerated layers for **DJ Logo / Media (MP4/PNG)**, **Station / Broadcast Logo**, and **Event Flyer / Promo Graphics** with 9-way directional grid positioning, 3D spin/orbit/freeroam physics, custom display modes, and dark contrast shields.
 - **⏱️ Multi-Layer Automation & Pop-Up Scheduler**: Interval scheduling for branding layers with customizable frequency (`30s` to `30m`), display duration (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
 - **🎬 10 Cinematic Transition Effects**: Smooth Exponential Fade, Scale Zoom & Spring Pop, Slide In/Down/Up, Neon Strobe Multi-Burst, Cyber Hologram Glitch, 3D Spin Vortex, 3D Perspective Flip Card, and Instant Cut.
 - **🎵 Shazam AI Live Audio Recognition & Album Art**: Instant 1-click live audio listening and Shazam fingerprint matching, with high-resolution Apple Music / iTunes album artwork retrieval, manual track injection, and animated vinyl broadcast banners.
-- **🎨 Dynamic UI Theme & Aesthetic Switcher**: 6 curated visual themes (**Cyber Glass**, **Studio Hardware Pro 🎛️**, **Cyberpunk Matrix**, **Obsidian Stealth**, **Titanium Pioneer Pro**, and **Analog Synthwave Studio**) with custom SVG icon sets, zero-FOUC persistence, and CSS variable styling.
+- **🎨 Dynamic UI Theme & Aesthetic Switcher**: 7 curated visual themes (**Cyber Glass**, **Studio Hardware Pro 🎛️**, **Halloween Spooky Nightclub 🎃**, **Cyberpunk Matrix**, **Obsidian Stealth**, **Titanium Pioneer Pro**, and **Analog Synthwave Studio**) with custom SVG icon sets, zero-FOUC persistence, and CSS variable styling.
 - **Universal Multi-Platform DJ Hardware Bridge**: Zero-latency companion bridge supporting **Denon DJ StageLinq** (Prime/Engine OS), **Pioneer Pro DJ Link / Rekordbox** (CDJ/XDJ UDP beat packets), **Native Instruments Traktor Pro** (session watcher & port 8001 metadata), and **Universal REST / File Drop API** (Serato & VirtualDJ).
 - **💡 Philips Hue Smart Lighting Engine**: Ultra-low-latency lighting synchronization with 4 dedicated reaction modes, high-dynamic-range punch, independent physical room power toggle (`💡 LIGHTS: ON / OFF`), multi-room discovery, and the **⚡ Kick Pop White Strobe** burst system.
 - **Studio-Grade Audio & Loudness Metering**: High-resolution FFT spectrum analysis (Bass, Mid, Treble), transient onset detection, ITU-R BS.1770 LUFS loudness metering, dBFS true-peak gauges, peak-hold needles, and clip alerts.
@@ -24,7 +24,7 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ---
 
-## 🗂️ VFX Scene Bank (22 Distinct Modes)
+## 🗂️ VFX Scene Bank (23 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: 3D Studio LED Equalizer Wall** — Segmented stadium LED towers with peak-hold physics and dynamic hue cascades.
@@ -32,10 +32,11 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 - **FX 2: Geometric Disco Spectrum** — Concentric faceted polygon rings undulating with transient beat impacts.
 - **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with deck telemetry.
 
-### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 18–20)
+### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 18–20, FX 22)
 - **FX 18: Sweeping Godray Disco Lights** — 8 concert moving-head fixtures mounted across a top stadium truss with saturated neon beams, Mie forward scattering, staggered bass chase, and floor reflection pools.
 - **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop.
 - **FX 20: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic 70s *Saturday Night Fever* illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays with floor reflection pools and lens glow.
+- **FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays** — Sapphire-blue metallic glass faceted mirror ball sphere with top hanging link chain, carved glowing Jack-o'-Lantern face with incandescent internal flame gradients, 14 fanned deep blue volumetric light rays bouncing off mirror tiles with Mie atmospheric haze, dedicated multi-angle pinspot lighting, 1,200 specular facet glints, orbiting floor caustic reflection spots, and drifting fire embers.
 
 ### 🕸️ Category 3: Cyber, Retro & Typography (FX 10–13, FX 21)
 - **FX 10: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.

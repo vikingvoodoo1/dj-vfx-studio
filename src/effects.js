@@ -280,6 +280,82 @@ const VolumetricPinspotShader = {
 };
 
 // -------------------------------------------------------------------------
+// Volumetric Shaded Blue Light Rays & Mie Scattering Shader (FX 22: Pumpkin Disco)
+// -------------------------------------------------------------------------
+const PumpkinVolumetricRaysShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0x0044ff) },
+        uCoreColor: { value: new THREE.Color(0x88ddff) },
+        uIntensity: { value: 1.0 },
+        uTime: { value: 0.0 },
+        uTimeSpeed: { value: 0.20 },
+        uNoiseScale: { value: 3.2 },
+        uPulse: { value: 0.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            vUv = uv;
+            vNormalLocal = normal;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vPositionWorld = worldPos.xyz;
+            vViewDir = normalize(cameraPosition - worldPos.xyz);
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uTime;
+        uniform float uTimeSpeed;
+        uniform float uNoiseScale;
+        uniform float uPulse;
+
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            // 1. Angular blade striations radiating along ray cone
+            float angle = atan(vNormalLocal.z, vNormalLocal.x);
+            float rayShafts = 0.70 + 0.30 * sin(angle * 8.0 + uTime * uTimeSpeed);
+
+            // 2. Transverse edge softness (Fresnel limb integration for realistic beam haze)
+            float limb = 1.0 - abs(dot(vViewDir, normalize(vNormalLocal)));
+            float edgeSoft = pow(limb, 1.8);
+            float hotCore = pow(limb, 5.5);
+
+            // 3. Longitudinal attenuation along beam length (0.0 apex at source -> 1.0 far field)
+            float y = vUv.y;
+            float sourceGlow = exp(-y * 3.5) * 2.5;
+            float beamSpread = pow(1.0 - y * 0.75, 1.2);
+            float longProfile = sourceGlow + beamSpread;
+
+            // 4. Subtle atmospheric smoke drift
+            float smoke = sin(vPositionWorld.x * 0.15 + vPositionWorld.y * 0.20 + uTime * 0.35) * 
+                          cos(vPositionWorld.z * 0.15 - uTime * 0.25);
+            float hazeDensity = 0.85 + 0.15 * smoke;
+
+            // 5. Total Alpha
+            float alpha = (edgeSoft * 0.65 + hotCore * 0.85) * longProfile * rayShafts * hazeDensity * (0.45 + uPulse * 0.55) * uIntensity;
+            if (alpha < 0.003) discard;
+
+            // 6. Color Gradient: Deep sapphire blue at edges, electric cyan/white-hot at core
+            float coreBlend = clamp(hotCore * 0.85 + sourceGlow * 0.4 + uPulse * 0.3, 0.0, 1.0);
+            vec3 finalColor = mix(uColor, uCoreColor, coreBlend) * (1.0 + uPulse * 0.8);
+
+            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
 // Wawa Sensei Godray Volumetric Shader (Silky Smooth Striations, Mie Forward Scattering & Hyper-Vibrant Neon)
 // -------------------------------------------------------------------------
 const WawaSenseiGodrayShader = {
@@ -3425,6 +3501,130 @@ function createDiscoTileTexture() {
             ctx.fillRect(x + tileW - 2, y + 1, 1, tileH - 2);
         }
     }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Offscreen Jack-o'-Lantern Carved Pumpkin Face Texture for Disco Ball
+function createPumpkinJackFaceTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Transparent background
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Front center of equirectangular projection is at (512, 256)
+    const cx = 512;
+    const cy = 256;
+
+    // Outer flame glow filter for intense luminous pumpkin fire
+    ctx.shadowColor = '#ff6600';
+    ctx.shadowBlur = 24;
+
+    // Glowing flame gradient fill (White/Yellow core -> Vibrant Orange -> Crimson Red edge)
+    const createFlameGrad = (x, y, r) => {
+        const g = ctx.createRadialGradient(x, y, 2, x, y, r);
+        g.addColorStop(0, '#ffffff');
+        g.addColorStop(0.22, '#ffee55');
+        g.addColorStop(0.58, '#ff7700');
+        g.addColorStop(0.86, '#ff3300');
+        g.addColorStop(1.0, '#cc1100');
+        return g;
+    };
+
+    // 1. Left Eye (Angled triangular carving with steep outer tilt)
+    ctx.fillStyle = createFlameGrad(cx - 75, cy - 65, 70);
+    ctx.beginPath();
+    ctx.moveTo(cx - 145, cy - 90); // outer top corner
+    ctx.lineTo(cx - 20, cy - 55);  // inner corner
+    ctx.lineTo(cx - 100, cy - 20); // bottom point
+    ctx.closePath();
+    ctx.fill();
+
+    // 2. Right Eye (Matching angled triangle mirrored on the right)
+    ctx.fillStyle = createFlameGrad(cx + 75, cy - 65, 70);
+    ctx.beginPath();
+    ctx.moveTo(cx + 145, cy - 90); // outer top corner
+    ctx.lineTo(cx + 20, cy - 55);  // inner corner
+    ctx.lineTo(cx + 100, cy - 20); // bottom point
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Nose (Central sharp triangle pointing upwards)
+    ctx.fillStyle = createFlameGrad(cx, cy - 12, 40);
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 48);       // top apex
+    ctx.lineTo(cx + 32, cy + 8);   // bottom right
+    ctx.lineTo(cx - 32, cy + 8);   // bottom left
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Jagged Pumpkin Smile (Wide menacing toothy grin matching reference)
+    ctx.fillStyle = createFlameGrad(cx, cy + 75, 175);
+    ctx.beginPath();
+    // Top lip curve with tooth notches
+    ctx.moveTo(cx - 175, cy + 30);  // left mouth corner
+    ctx.quadraticCurveTo(cx - 110, cy + 65, cx - 65, cy + 65); // left curve
+    ctx.lineTo(cx - 65, cy + 42);   // left upper tooth top
+    ctx.lineTo(cx - 35, cy + 42);   // left upper tooth flat
+    ctx.lineTo(cx - 35, cy + 68);   // left upper tooth down
+    ctx.quadraticCurveTo(cx, cy + 74, cx + 35, cy + 68); // center dip
+    ctx.lineTo(cx + 35, cy + 42);   // right upper tooth top
+    ctx.lineTo(cx + 65, cy + 42);   // right upper tooth flat
+    ctx.lineTo(cx + 65, cy + 65);   // right upper tooth down
+    ctx.quadraticCurveTo(cx + 110, cy + 65, cx + 175, cy + 30); // right mouth corner
+
+    // Bottom lip curve with lower tooth notches
+    ctx.quadraticCurveTo(cx + 130, cy + 110, cx + 85, cy + 120);
+    ctx.lineTo(cx + 85, cy + 94);   // right bottom tooth up
+    ctx.lineTo(cx + 55, cy + 94);   // right bottom tooth flat
+    ctx.lineTo(cx + 55, cy + 126);  // right bottom tooth down
+    ctx.quadraticCurveTo(cx, cy + 135, cx - 15, cy + 128); // center bottom
+    ctx.lineTo(cx - 15, cy + 100);  // center bottom tooth up
+    ctx.lineTo(cx - 42, cy + 100);  // center bottom tooth flat
+    ctx.lineTo(cx - 42, cy + 124);  // center bottom tooth down
+    ctx.quadraticCurveTo(cx - 115, cy + 115, cx - 175, cy + 30); // back to left corner
+    ctx.closePath();
+    ctx.fill();
+
+    // High-heat white core highlights in centers of eyes & mouth
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+    ctx.shadowColor = '#ffffff';
+    ctx.shadowBlur = 14;
+
+    // Left eye core
+    ctx.beginPath();
+    ctx.moveTo(cx - 118, cy - 72);
+    ctx.lineTo(cx - 45, cy - 54);
+    ctx.lineTo(cx - 90, cy - 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // Right eye core
+    ctx.beginPath();
+    ctx.moveTo(cx + 118, cy - 72);
+    ctx.lineTo(cx + 45, cy - 54);
+    ctx.lineTo(cx + 90, cy - 32);
+    ctx.closePath();
+    ctx.fill();
+
+    // Nose core
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 36);
+    ctx.lineTo(cx + 18, cy);
+    ctx.lineTo(cx - 18, cy);
+    ctx.closePath();
+    ctx.fill();
+
+    // Mouth center glow streak
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 86, 95, 20, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.RepeatWrapping;
@@ -6960,7 +7160,277 @@ export function createVFXScene(container) {
         smokeMesh.position.set(0, h, -5.0 + (idx % 3) * 2.5);
         vhsSmokeGroup.add(smokeMesh);
     });
-    gVhsGlitchWords.add(vhsSmokeGroup);
+    // -------------------------------------------------------------------------
+    // FX 22: 🎃 SPINNING PUMPKIN DISCO BALL & VOLUMETRIC BLUE GODRAYS
+    // -------------------------------------------------------------------------
+    const gPumpkinDiscoBall = createFXGroup();
+
+    // 1. Textures & Procedural Maps
+    const pumpkinFaceTex = createPumpkinJackFaceTexture();
+    const pumpkinTileTex = discoTileTex;
+    const pumpkinNormalTex = discoNormalTex;
+    const pumpkinRoughnessTex = discoRoughnessTex;
+    const pumpkinMetalnessTex = discoMetalnessTex;
+
+    // 2. Pumpkin Disco Ball Pivot & Faceted Sapphire Blue Metallic Glass Mesh
+    const pumpkinPivot = new THREE.Group();
+    pumpkinPivot.position.set(0, 0.0, 0.0);
+    gPumpkinDiscoBall.add(pumpkinPivot);
+
+    const dPumpkinGeo = new THREE.SphereGeometry(5.2, 96, 48);
+    const dPumpkinMat = new THREE.MeshPhysicalMaterial({
+        color: 0x143c78, // Deep reflective sapphire blue glass tiles
+        metalness: 0.95,
+        roughness: 0.04,
+        normalMap: pumpkinNormalTex,
+        normalScale: new THREE.Vector2(0.85, 0.85),
+        roughnessMap: pumpkinRoughnessTex,
+        metalnessMap: pumpkinMetalnessTex,
+        bumpMap: pumpkinTileTex,
+        bumpScale: 0.035,
+        emissiveMap: pumpkinFaceTex,
+        emissive: new THREE.Color(0xff6600),
+        emissiveIntensity: 2.6,
+        envMap: clubEnvMap,
+        envMapIntensity: 3.2,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.01,
+        reflectivity: 1.0
+    });
+    const pumpkinMesh = new THREE.Mesh(dPumpkinGeo, dPumpkinMat);
+    pumpkinPivot.add(pumpkinMesh);
+
+    // 3. Top Hanging Metal Chain & Ceiling Mount
+    const pumpkinChainGroup = new THREE.Group();
+    const chainLinkGeo = new THREE.TorusGeometry(0.28, 0.075, 12, 18);
+    const chainMat = new THREE.MeshStandardMaterial({
+        color: 0x8899aa,
+        metalness: 0.9,
+        roughness: 0.2
+    });
+    const numLinks = 14;
+    for (let l = 0; l < numLinks; l++) {
+        const linkMesh = new THREE.Mesh(chainLinkGeo, chainMat);
+        linkMesh.position.set(0, 5.2 + l * 0.48, 0);
+        linkMesh.rotation.y = (l % 2 === 0) ? 0 : Math.PI / 2;
+        pumpkinChainGroup.add(linkMesh);
+    }
+    const ceilingMountGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.25, 24);
+    const ceilingMountMesh = new THREE.Mesh(ceilingMountGeo, chainMat);
+    ceilingMountMesh.position.set(0, 12.0, 0);
+    pumpkinChainGroup.add(ceilingMountMesh);
+    gPumpkinDiscoBall.add(pumpkinChainGroup);
+
+    // 4. Internal Jack-o'-Lantern Flame & Forward Projecting Light
+    const pumpkinFlameLight = new THREE.PointLight(0xff7700, 3.5, 28.0, 1.2);
+    pumpkinFlameLight.position.set(0, 0, 0);
+    pumpkinPivot.add(pumpkinFlameLight);
+
+    const pumpkinSpotTarget = new THREE.Object3D();
+    pumpkinSpotTarget.position.set(0, -1.0, 15.0);
+    pumpkinPivot.add(pumpkinSpotTarget);
+
+    const pumpkinForwardSpot = new THREE.SpotLight(0xffaa00, 4.5, 42.0, Math.PI / 3.8, 0.45, 1.0);
+    pumpkinForwardSpot.position.set(0, 0.5, 1.5);
+    pumpkinForwardSpot.target = pumpkinSpotTarget;
+    pumpkinPivot.add(pumpkinForwardSpot);
+
+    // 5. Volumetric Shaded Deep Blue Light Ray Fan (Radiating behind and around the ball)
+    const pumpkinRayFanGroup = new THREE.Group();
+    pumpkinRayFanGroup.position.set(0, 0.0, -2.5);
+    gPumpkinDiscoBall.add(pumpkinRayFanGroup);
+
+    const pumpkinRayConeGeo = new THREE.CylinderGeometry(0.22, 4.8, 42.0, 36, 1, true);
+    pumpkinRayConeGeo.translate(0, -21.0, 0);
+
+    const pumpkinRayColors = [
+        0x0033ff, 0x0066ff, 0x0088ff, 0x00aaff, 0x0022cc,
+        0x1144ff, 0x0077ff, 0x0099ff, 0x0055ee, 0x00aacc,
+        0x0044ee, 0x0088ff, 0x0033dd, 0x00aaff
+    ];
+
+    const pumpkinRayMeshes = [];
+    const numPumpkinRays = 14;
+    for (let r = 0; r < numPumpkinRays; r++) {
+        const norm = (r / (numPumpkinRays - 1)) - 0.5; // -0.5 to +0.5
+        const yaw = norm * 1.55; // Spread fan horizontally (~88 degrees)
+        const pitch = Math.sin(r * 1.2) * 0.35 + 0.12; // Slight vertical stagger
+
+        const rayMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(pumpkinRayColors[r % pumpkinRayColors.length]) },
+                uCoreColor: { value: new THREE.Color(0x99eeff) },
+                uIntensity: { value: 1.0 },
+                uTime: { value: 0.0 },
+                uTimeSpeed: { value: 0.22 },
+                uNoiseScale: { value: 3.2 },
+                uPulse: { value: 0.0 }
+            },
+            vertexShader: PumpkinVolumetricRaysShader.vertexShader,
+            fragmentShader: PumpkinVolumetricRaysShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+
+        const rayMesh = new THREE.Mesh(pumpkinRayConeGeo, rayMat);
+        rayMesh.rotation.z = yaw + Math.PI / 2; // Fan out radially
+        rayMesh.rotation.x = pitch;
+        pumpkinRayFanGroup.add(rayMesh);
+
+        pumpkinRayMeshes.push({
+            mesh: rayMesh,
+            mat: rayMat,
+            baseYaw: yaw,
+            basePitch: pitch,
+            phase: r * 0.45
+        });
+    }
+
+    // 6. Dedicated Multi-Angle Stage Pinspots (Light Bouncing off Glass Tiles)
+    const pKeyLight = new THREE.DirectionalLight(0x88ddff, 2.6);
+    pKeyLight.position.set(-8.0, 9.0, 8.0);
+    pKeyLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pKeyLight);
+
+    const pCyanLight = new THREE.DirectionalLight(0x00ffff, 2.2);
+    pCyanLight.position.set(8.0, 9.0, 8.0);
+    pCyanLight.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pCyanLight);
+
+    const pDeepBlueRim = new THREE.DirectionalLight(0x0022aa, 1.8);
+    pDeepBlueRim.position.set(0.0, -7.0, -6.0);
+    pDeepBlueRim.target = pumpkinMesh;
+    gPumpkinDiscoBall.add(pDeepBlueRim);
+
+    const pOrangeFill = new THREE.PointLight(0xff6600, 2.0, 20.0, 1.2);
+    pOrangeFill.position.set(0.0, -3.0, 7.0);
+    gPumpkinDiscoBall.add(pOrangeFill);
+
+    // 7. 1,200 Specular Starburst Reflection Glints
+    const pGlintCount = 1200;
+    const pGlintGeo = new THREE.BufferGeometry();
+    const pGlintPos = new Float32Array(pGlintCount * 3);
+    const pGlintCol = new Float32Array(pGlintCount * 3);
+    const pGlintThetas = new Float32Array(pGlintCount);
+    const pGlintPhis = new Float32Array(pGlintCount);
+    const pGlintBaseRads = new Float32Array(pGlintCount);
+
+    const pHues = [
+        new THREE.Color(0xffffff),
+        new THREE.Color(0x88ffff),
+        new THREE.Color(0x00ffff),
+        new THREE.Color(0x44aaff),
+        new THREE.Color(0xffaa00),
+        new THREE.Color(0xff6600),
+        new THREE.Color(0x0088ff)
+    ];
+
+    for (let i = 0; i < pGlintCount; i++) {
+        const theta = Math.random() * Math.PI * 2;
+        const phi = Math.acos((Math.random() * 2) - 1);
+        const r = 5.8 + Math.random() * 22.0;
+
+        pGlintThetas[i] = theta;
+        pGlintPhis[i] = phi;
+        pGlintBaseRads[i] = r;
+
+        pGlintPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+        pGlintPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+        pGlintPos[i * 3 + 2] = r * Math.cos(phi);
+
+        const c = pHues[i % pHues.length];
+        pGlintCol[i * 3] = c.r; pGlintCol[i * 3 + 1] = c.g; pGlintCol[i * 3 + 2] = c.b;
+    }
+    pGlintGeo.setAttribute('position', new THREE.BufferAttribute(pGlintPos, 3));
+    pGlintGeo.setAttribute('color', new THREE.BufferAttribute(pGlintCol, 3));
+    const pGlintMat = new THREE.PointsMaterial({
+        size: 0.38,
+        map: starburstTex,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false
+    });
+    const glintSystemPumpkin = new THREE.Points(pGlintGeo, pGlintMat);
+    gPumpkinDiscoBall.add(glintSystemPumpkin);
+
+    // 8. 450 Floor & Room Mirror Reflection Sparkle Spots
+    const pFloorSpotCount = 450;
+    const pFloorGeo = new THREE.BufferGeometry();
+    const pFloorPos = new Float32Array(pFloorSpotCount * 3);
+    const pFloorCol = new Float32Array(pFloorSpotCount * 3);
+    const pFloorRads = new Float32Array(pFloorSpotCount);
+    const pFloorAngles = new Float32Array(pFloorSpotCount);
+    const pFloorSpeeds = new Float32Array(pFloorSpotCount);
+
+    for (let f = 0; f < pFloorSpotCount; f++) {
+        const rad = 3.0 + Math.random() * 32.0;
+        const angle = Math.random() * Math.PI * 2;
+        const spd = (0.5 + Math.random() * 0.8) * (Math.random() > 0.5 ? 1 : -1);
+
+        pFloorRads[f] = rad;
+        pFloorAngles[f] = angle;
+        pFloorSpeeds[f] = spd;
+
+        pFloorPos[f * 3] = Math.cos(angle) * rad;
+        pFloorPos[f * 3 + 1] = -10.5 + Math.random() * 1.5; // On stage floor
+        pFloorPos[f * 3 + 2] = Math.sin(angle) * rad;
+
+        const isOrange = Math.random() < 0.35;
+        const col = isOrange ? new THREE.Color(0xff8800) : new THREE.Color(0x00ffff);
+        pFloorCol[f * 3] = col.r;
+        pFloorCol[f * 3 + 1] = col.g;
+        pFloorCol[f * 3 + 2] = col.b;
+    }
+    pFloorGeo.setAttribute('position', new THREE.BufferAttribute(pFloorPos, 3));
+    pFloorGeo.setAttribute('color', new THREE.BufferAttribute(pFloorCol, 3));
+    const pFloorMat = new THREE.PointsMaterial({
+        size: 0.55,
+        map: starburstTex,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false
+    });
+    const pumpkinFloorSpots = new THREE.Points(pFloorGeo, pFloorMat);
+    gPumpkinDiscoBall.add(pumpkinFloorSpots);
+
+    // 9. 250 Floating Glowing Jack-o'-Lantern Fire Embers
+    const pEmberCount = 250;
+    const pEmberGeo = new THREE.BufferGeometry();
+    const pEmberPos = new Float32Array(pEmberCount * 3);
+    const pEmberCol = new Float32Array(pEmberCount * 3);
+    const pEmberVel = new Float32Array(pEmberCount * 3);
+
+    for (let e = 0; e < pEmberCount; e++) {
+        pEmberPos[e * 3] = (Math.random() - 0.5) * 28.0;
+        pEmberPos[e * 3 + 1] = -9.0 + Math.random() * 22.0;
+        pEmberPos[e * 3 + 2] = (Math.random() - 0.5) * 20.0;
+
+        pEmberVel[e * 3] = (Math.random() - 0.5) * 0.4;
+        pEmberVel[e * 3 + 1] = 0.4 + Math.random() * 0.8; // Upward drift
+        pEmberVel[e * 3 + 2] = (Math.random() - 0.5) * 0.4;
+
+        const isHot = Math.random() > 0.4;
+        const eCol = isHot ? new THREE.Color(0xff9900) : new THREE.Color(0xff3300);
+        pEmberCol[e * 3] = eCol.r;
+        pEmberCol[e * 3 + 1] = eCol.g;
+        pEmberCol[e * 3 + 2] = eCol.b;
+    }
+    pEmberGeo.setAttribute('position', new THREE.BufferAttribute(pEmberPos, 3));
+    pEmberGeo.setAttribute('color', new THREE.BufferAttribute(pEmberCol, 3));
+    const pEmberMat = new THREE.PointsMaterial({
+        size: 0.32,
+        map: starburstTex,
+        vertexColors: true,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false
+    });
+    const pumpkinEmbers = new THREE.Points(pEmberGeo, pEmberMat);
+    gPumpkinDiscoBall.add(pumpkinEmbers);
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -8411,11 +8881,84 @@ export function createVFXScene(container) {
                 fix.lensDiscMesh.material.opacity = Math.min(0.80, 0.30 + fix.bassSurge * 0.25 + (audio.smoothedBass || 0) * 0.12);
             });
         }
-        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20 && currentFXIndex !== 21) {
+        // ---------------------------------------------------------------------
+        // FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 22) {
+            const rawBassVal = audio.bass || 0;
+            const bassPopVal = audio.bassImpact || audio.bass || 0;
+            const transientVal = audio.transientImpulse || 0;
+            const isKickHit = audio.isOnset || transientVal > 0.35 || bassPopVal > 0.28 || rawBassVal > 0.30;
+
+            // 1. Motorized Motor Spin (Y-axis) scaled by BPM & Music Energy
+            const spinVelocity = 0.42 * (currentBPM / 126.0) * (1.0 + (audio.smoothedBass || 0) * 0.40);
+            pumpkinPivot.rotation.y += delta * spinVelocity;
+
+            // Subtle natural pendulum sway
+            pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.65) * 0.035;
+            pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.50) * 0.025;
+
+            // Subtle beat scale bounce on heavy kicks
+            const targetScale = 1.0 + (audio.smoothedBass || 0) * 0.035 + (audio.isOnset ? 0.045 : 0.0);
+            pumpkinMesh.scale.set(targetScale, targetScale, targetScale);
+
+            // 2. Realistic Jack-o'-Lantern Flame Flicker & Core Heat
+            const flameFlicker = Math.sin(elapsedTime * 19.5) * 0.18 + Math.sin(elapsedTime * 33.2) * 0.12 + Math.sin(elapsedTime * 8.4) * 0.25;
+            const bassSurge = (audio.smoothedBass || 0) * 2.8 + (audio.bassImpact || 0) * 3.5;
+            const flameIntensity = Math.max(1.8, 3.4 + flameFlicker + bassSurge);
+
+            pumpkinFlameLight.intensity = flameIntensity;
+            pumpkinForwardSpot.intensity = flameIntensity * 1.45;
+            dPumpkinMat.emissiveIntensity = 2.4 + flameFlicker * 0.6 + bassSurge * 0.8;
+
+            // 3. Volumetric Shaded Deep Blue Light Ray Fan Animation
+            const rayPulseVal = isKickHit ? 1.0 : (pumpkinRayMeshes[0]?.mat.uniforms.uPulse.value * Math.exp(-delta * 3.8) || 0.0);
+            pumpkinRayMeshes.forEach((rObj) => {
+                rObj.mat.uniforms.uTime.value = elapsedTime;
+                rObj.mat.uniforms.uPulse.value = rayPulseVal;
+                rObj.mat.uniforms.uIntensity.value = 0.85 + (audio.smoothedBass || 0) * 0.45 + (audio.bassImpact || 0) * 0.65;
+
+                // Gentle floating breath in the ray fan
+                const raySway = Math.sin(elapsedTime * 0.40 + rObj.phase) * 0.06;
+                rObj.mesh.rotation.z = rObj.baseYaw + Math.PI / 2 + raySway;
+                rObj.mesh.rotation.x = rObj.basePitch + Math.cos(elapsedTime * 0.35 + rObj.phase) * 0.04;
+            });
+
+            // 4. Pinspot Lights & Tile Specular Reflections
+            pKeyLight.intensity = 2.4 + (audio.smoothedTreble || 0) * 1.5 + (audio.smoothedBass || 0) * 1.0;
+            pCyanLight.intensity = 2.0 + (audio.smoothedMid || 0) * 1.2;
+
+            // Rotate Specular Glints synchronously with the Faceted Pumpkin Ball
+            glintSystemPumpkin.rotation.y = pumpkinPivot.rotation.y;
+            glintSystemPumpkin.rotation.z = pumpkinPivot.rotation.z;
+            pGlintMat.size = 0.38 + (audio.smoothedTreble || 0) * 0.30 + (audio.isOnset ? 0.25 : 0.0);
+
+            // 5. Orbiting Floor & Room Caustic Reflection Spots
+            pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.05;
+            pFloorMat.size = 0.55 + (audio.smoothedBass || 0) * 0.30;
+
+            // 6. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
+            const emberPosAttr = pEmberGeo.attributes.position;
+            const emberArray = emberPosAttr.array;
+            for (let e = 0; e < pEmberCount; e++) {
+                emberArray[e * 3 + 1] += (pEmberVel[e * 3 + 1] + (audio.smoothedBass || 0) * 0.8) * delta * 5.0;
+                emberArray[e * 3] += pEmberVel[e * 3] * delta * 4.0;
+                emberArray[e * 3 + 2] += pEmberVel[e * 3 + 2] * delta * 4.0;
+
+                // Recycle embers when reaching top
+                if (emberArray[e * 3 + 1] > 14.0) {
+                    emberArray[e * 3] = (Math.random() - 0.5) * 16.0;
+                    emberArray[e * 3 + 1] = -8.0;
+                    emberArray[e * 3 + 2] = (Math.random() - 0.5) * 16.0;
+                }
+            }
+            emberPosAttr.needsUpdate = true;
+        }
+        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20 && currentFXIndex !== 21 && currentFXIndex !== 22) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) {
+        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -8429,14 +8972,14 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -8552,6 +9095,9 @@ export function createVFXScene(container) {
             applyFlyerPlacement();
         },
         getCurrentScenePalette: () => {
+            if (currentFXIndex === 22) {
+                return ['#0044ff', '#ff6600', '#00aaff', '#ffaa00', '#0022aa', '#ffffff'];
+            }
             if (currentFXIndex === 18 || currentFXIndex === 20) {
                 return ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
             }
@@ -8580,6 +9126,7 @@ export function createVFXScene(container) {
                 15: ['#9900ff', '#0044ff', '#ff00aa', '#00ffff', '#ff0055', '#ffff00'], // Deep Space Galaxy
                 16: ['#00e1ff', '#ff0055', '#00ff66', '#ffcc00', '#9900ff', '#ff0033'], // Laser Vortex
                 17: ['#00ffcc', '#ffaa00', '#ff007f', '#0088ff', '#00ff66', '#ff0033'], // Time Clock
+                22: ['#0044ff', '#ff6600', '#00aaff', '#ffaa00', '#0022aa', '#ffffff'], // Pumpkin Disco Ball
             };
             return scenePalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
         },
@@ -8588,6 +9135,11 @@ export function createVFXScene(container) {
             const bps = currentBPM / 60.0;
             const beatStep = Math.floor(time * bps);
 
+            // FX 22: 🎃 Pumpkin Disco Ball -> Sapphire Blue, Flame Orange & Electric Cyan
+            if (currentFXIndex === 22) {
+                const pumpkinPalette = ['#0055ff', '#ff6600', '#00aaff', '#ffaa00'];
+                return pumpkinPalette[beatStep % pumpkinPalette.length];
+            }
             // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
             if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number') {
                 const hexNum = godrayPalette[godrayChaseIndex % godrayPalette.length];

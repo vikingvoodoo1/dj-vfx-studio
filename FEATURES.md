@@ -74,15 +74,16 @@ This document tracks all features, architectural components, lighting integratio
 ---
 
 ### 5. 🎨 Dynamic UI Theme & Control Panel Aesthetic Engine
-- [x] **6 Curated Visual Themes**:
+- [x] **7 Curated Visual Themes**:
   1. **Cyber Glass (Default)**: Sleek frosted glassmorphism (`rgba(8,9,20,0.92)`), cyan neon (`#00ffcc`), soft diffuse drop shadows, and modern vector stroke icons.
   2. **Studio Hardware Pro (Universal Audio Skeuomorphic)**: Full analog mixing console & rack unit skeuomorphism, brushed dark charcoal metallic chassis, 3D rack bolted bezel, milled mixing console faders with recessed grooves, dual-stage physical 3D push buttons with mechanical inset press, debossed screen-printed labels, and analog warm instrument LEDs.
-  3. **Cyberpunk Matrix**: Deep dark violet-obsidian chassis, high-voltage hot magenta (`#ff007f`) & electric cyan (`#00ffff`), chamfered razor borders, and chromatic laser-glow icons.
-  4. **Obsidian Stealth**: Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents, minimalist monochromatic geometric icons.
-  5. **Titanium Pioneer Pro Hardware**: Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks, and recessed illuminated keypads.
-  6. **Analog Synthwave Studio**: Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges, and warm vintage glowing icons.
+  3. **Halloween Spooky Nightclub 🎃**: Deep eerie obsidian/dark purple chassis, glowing pumpkin orange (`#ff6600`) and toxic slime green (`#39ff14`) accents, Jack-o'-Lantern glowing icon set, and high-contrast haunting nightclub aesthetic.
+  4. **Cyberpunk Matrix**: Deep dark violet-obsidian chassis, high-voltage hot magenta (`#ff007f`) & electric cyan (`#00ffff`), chamfered razor borders, and chromatic laser-glow icons.
+  5. **Obsidian Stealth**: Ultra-matte OLED black (`#050508`), crisp razor hairline borders, pure ice-white (`#ffffff`) & titanium teal accents, minimalist monochromatic geometric icons.
+  6. **Titanium Pioneer Pro Hardware**: Brushed metallic carbon chassis, Pioneer DJ amber orange (`#ff8800`), CDJ green LEDs, tactile fader tracks, and recessed illuminated keypads.
+  7. **Analog Synthwave Studio**: Warm 80s studio dark walnut tone, amber/sunset gold CRT phosphor (`#ffaa00`), retro synth badges, and warm vintage glowing icons.
 - [x] **Zero-FOUC Theme Persistence**: Instant `localStorage` loading before DOM rendering to eliminate theme flicker upon page refresh.
-- [x] **1-Click Theme Switcher & Hotkeys**: Integrated Theme Selector card grid in the **Calibration & Glow** tab (`#pane-glow`), quick header button (`🎨 THEME`), and **`Alt + T`** hotkey.
+- [x] **1-Click Theme Switcher & Hotkeys**: Integrated Theme Selector card grid in the **Calibration & Glow** tab (`#pane-glow`), quick header button (`🎨 THEME`), activity bar shortcut (`🎃`), and **`Alt + T`** hotkey.
 
 ---
 
@@ -101,7 +102,7 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
-### 7. 🗂️ 22 GPU-Accelerated 3D VFX Scenes
+### 7. 🗂️ 23 GPU-Accelerated 3D VFX Scenes
 
 #### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: 3D Studio LED Equalizer Wall** — Segmented stadium LED towers with peak-hold physics and dynamic hue cascades.
@@ -109,10 +110,11 @@ This document tracks all features, architectural components, lighting integratio
 - **FX 2: Geometric Disco Spectrum** — Concentric faceted polygon rings undulating with transient beat impacts.
 - **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with deck telemetry.
 
-#### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 18–20)
+#### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 18–20, FX 22)
 - **FX 18: Sweeping Godray Disco Lights** — 8 concert moving-head fixtures mounted across a top stadium truss with saturated neon beams, Mie forward scattering, staggered bass chase, and floor reflection pools.
 - **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop.
 - **FX 20: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic 70s *Saturday Night Fever* illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays with floor reflection pools and lens glow.
+- **FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays** — Sapphire-blue metallic glass faceted mirror ball sphere with top hanging link chain, carved glowing Jack-o'-Lantern face with incandescent internal flame gradients, 14 fanned deep blue volumetric light rays bouncing off mirror tiles with Mie atmospheric haze, dedicated multi-angle pinspot lighting, 1,200 specular facet glints, orbiting floor caustic reflection spots, and drifting fire embers.
 
 #### 🕸️ Category 3: Cyber, Retro & Typography (FX 10–13, FX 21)
 - **FX 10: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.

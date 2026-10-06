@@ -450,7 +450,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 22;
+    const TOTAL_FX = 23;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -589,6 +589,28 @@ async function init() {
             } else {
                 switchTab(tabOrder[currentTabIndex] || 'perform');
             }
+        });
+    }
+
+    // Halloween Spooky UI Theme Toggle
+    const btnThemeHalloween = document.getElementById('btn-theme-halloween');
+    let isHalloweenTheme = false;
+    try {
+        isHalloweenTheme = localStorage.getItem('dj_vfx_theme') === 'halloween';
+        if (isHalloweenTheme) {
+            document.body.classList.add('theme-halloween');
+            if (btnThemeHalloween) btnThemeHalloween.classList.add('active');
+        }
+    } catch (e) {}
+
+    if (btnThemeHalloween) {
+        btnThemeHalloween.addEventListener('click', () => {
+            isHalloweenTheme = document.body.classList.toggle('theme-halloween');
+            btnThemeHalloween.classList.toggle('active', isHalloweenTheme);
+            try {
+                localStorage.setItem('dj_vfx_theme', isHalloweenTheme ? 'halloween' : 'default');
+            } catch (e) {}
+            showToast(isHalloweenTheme ? '🎃 Halloween Spooky Glow Theme Enabled' : '⚡ Studio Hardware Theme Restored');
         });
     }
 
@@ -4334,7 +4356,8 @@ async function init() {
         'u': 18, 'U': 18,
         'i': 19, 'I': 19,
         'o': 20, 'O': 20,
-        'p': 21, 'P': 21
+        'p': 21, 'P': 21,
+        '[': 22
     };
 
     window.addEventListener('keydown', (e) => {
