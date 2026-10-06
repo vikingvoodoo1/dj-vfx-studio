@@ -9562,13 +9562,30 @@ export function createVFXScene(container) {
             }
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 4.2);
 
-            // 2. Motorized Motor Spin (Y-axis) - Graceful disco spin
-            const spinVelocity = 0.15 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.20 + pumpkinKickThump * 0.10);
+            // 2. Motorized Disco Spin (Y-axis) with Organic Gyroscopic Pumpkin Wobble
+            const spinVelocity = 0.16 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.20 + pumpkinKickThump * 0.10);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Subtle natural pendulum sway
-            pumpkinPivot.rotation.z = Math.sin(elapsedTime * 0.40) * 0.015;
-            pumpkinPivot.rotation.x = Math.cos(elapsedTime * 0.35) * 0.012;
+            // Charming natural hanging wobble that rotates dynamically with the pumpkin's spin
+            const rotY = pumpkinPivot.rotation.y;
+            const wobbleAmount = 0.055 + smoothedBass * 0.020 + pumpkinKickThump * 0.030; // ~3.5° to 6° organic tilt
+            
+            // Nutation and precession tilt synchronized with rotation + subtle pendulum oscillation
+            pumpkinPivot.rotation.z = Math.sin(rotY) * wobbleAmount + Math.sin(elapsedTime * 1.5) * 0.018;
+            pumpkinPivot.rotation.x = Math.cos(rotY) * wobbleAmount * 0.85 + Math.cos(elapsedTime * 1.2) * 0.015;
+
+            // Elastic natural chain link flex along the hanging suspension stack
+            if (pumpkinChainGroup && pumpkinChainGroup.children.length > 0) {
+                const numLinksTotal = 16;
+                for (let l = 0; l < numLinksTotal; l++) {
+                    const link = pumpkinChainGroup.children[l];
+                    if (link) {
+                        const flexFactor = Math.pow(Math.max(0.0, 1.0 - (l / numLinksTotal)), 1.4);
+                        link.position.x = Math.sin(rotY) * wobbleAmount * 2.8 * flexFactor;
+                        link.position.z = Math.cos(rotY) * wobbleAmount * 2.8 * flexFactor;
+                    }
+                }
+            }
 
             // 3. 🎃 Visible Beat & Bass Pulse (Rhythmic elastic scale bounce on beats, kicks, and 8-bar drops)
             const pulseScale = (pumpkinKickThump * 0.07 + beatPulse * 0.04 + smoothedBass * 0.03 + pumpkin8BarFlashPulse * 0.12);
@@ -9822,6 +9839,7 @@ export function createVFXScene(container) {
                 pumpkinHaloMat.uniforms.uHaloIntensity.value = 0.0;
             }
             pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
+            pumpkinHaloMesh.rotation.z = pumpkinPivot.rotation.z;
 
             // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25;
