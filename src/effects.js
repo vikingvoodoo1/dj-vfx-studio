@@ -5644,6 +5644,60 @@ export function createVFXScene(container) {
     let deck1Data = { artist: 'ERIC PRYDZ', title: 'OPUS (LIVE MIX)', bpm: 126.0, key: '8A' };
     let deck2Data = { artist: 'BICEP', title: 'GLUE (CLUB EDIT)', bpm: 126.0, key: '8A' };
 
+    // 4. 3D Full-Spectrum Particle Equalizer Across All Frequency Bands (64 Bins x 28 Particles = 1,792 Particles)
+    const specBands = 64;
+    const specParticlesPerBand = 28;
+    const totalSpecParticles = specBands * specParticlesPerBand;
+    const specParticleGeo = new THREE.BufferGeometry();
+    const specParticlePos = new Float32Array(totalSpecParticles * 3);
+    const specParticleCol = new Float32Array(totalSpecParticles * 3);
+    const specParticleBaseX = new Float32Array(totalSpecParticles);
+    const specParticleBandIdx = new Float32Array(totalSpecParticles);
+    const specParticleLayer = new Float32Array(totalSpecParticles);
+    const specParticleSpeed = new Float32Array(totalSpecParticles);
+
+    for (let b = 0; b < specBands; b++) {
+        const normBand = b / (specBands - 1);
+        const xPos = (normBand - 0.5) * 34.0; // Spans full wide stage width [-17, +17]
+
+        // Harmonious spectral color mapping across audible spectrum
+        let hue = 0.52 - normBand * 0.65; // Cyan (0.52) -> Emerald (0.38) -> Gold (0.12) -> Crimson/Magenta (0.90)
+        if (hue < 0.0) hue += 1.0;
+        const col = new THREE.Color().setHSL(hue, 1.0, 0.60);
+
+        for (let p = 0; p < specParticlesPerBand; p++) {
+            const idx = b * specParticlesPerBand + p;
+            const layerNorm = p / (specParticlesPerBand - 1);
+
+            specParticleBaseX[idx] = xPos + (Math.random() - 0.5) * 0.45;
+            specParticleBandIdx[idx] = b;
+            specParticleLayer[idx] = layerNorm;
+            specParticleSpeed[idx] = 0.5 + Math.random() * 1.2;
+
+            specParticlePos[idx * 3]     = specParticleBaseX[idx];
+            specParticlePos[idx * 3 + 1] = -7.5 + layerNorm * 0.4;
+            specParticlePos[idx * 3 + 2] = -1.2 + (Math.random() - 0.5) * 1.5;
+
+            specParticleCol[idx * 3]     = col.r;
+            specParticleCol[idx * 3 + 1] = col.g;
+            specParticleCol[idx * 3 + 2] = col.b;
+        }
+    }
+
+    specParticleGeo.setAttribute('position', new THREE.BufferAttribute(specParticlePos, 3));
+    specParticleGeo.setAttribute('color', new THREE.BufferAttribute(specParticleCol, 3));
+
+    const specParticleMat = new THREE.PointsMaterial({
+        size: 0.28,
+        vertexColors: true,
+        transparent: true,
+        opacity: 0.88,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const specParticleField = new THREE.Points(specParticleGeo, specParticleMat);
+    gDJWaveforms.add(specParticleField);
+
     // =========================================================================
     // CATEGORY 2: ⚡ LASERS & DISCO (FX 4-9)
     // =========================================================================
@@ -8616,6 +8670,35 @@ export function createVFXScene(container) {
             djAudioHistoryTex.needsUpdate = true;
             djHistoryHead = (djHistoryHead + 1) % 512;
 
+            // Update 3D Particle Spectrum Field Across All 64 Frequency Bands
+            const posArr = specParticleGeo.attributes.position.array;
+            const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
+
+            for (let i = 0; i < totalSpecParticles; i++) {
+                const b = specParticleBandIdx[i];
+                const layer = specParticleLayer[i];
+                const spd = specParticleSpeed[i];
+                
+                // Map to actual live FFT bin
+                const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
+                const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
+                
+                // Active height target for this particle in the frequency fountain
+                const targetY = -7.5 + (rawAmp * 14.5 * (0.3 + layer * 0.7)) + Math.sin(elapsedTime * 3.0 * spd + b * 0.2) * 0.25 * rawAmp;
+                
+                // Physics interpolation: rapid rise on audio transient, smooth gravity descent
+                const currentY = posArr[i * 3 + 1];
+                if (targetY > currentY) {
+                    posArr[i * 3 + 1] = THREE.MathUtils.lerp(currentY, targetY, 0.45);
+                } else {
+                    posArr[i * 3 + 1] = Math.max(-7.5, currentY - delta * (3.5 + layer * 2.0));
+                }
+
+                // Subtle lateral turbulence
+                posArr[i * 3] = specParticleBaseX[i] + Math.sin(elapsedTime * 2.0 + layer * Math.PI) * (0.15 * rawAmp);
+            }
+            specParticleGeo.attributes.position.needsUpdate = true;
+
             // Advance track progress smoothly
             deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
             deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
@@ -9540,24 +9623,6 @@ export function createVFXScene(container) {
             const bps = currentBPM / 60.0;
             const beatTime = elapsedTime * bps;
             const beatFract = beatTime % 1.0; // 0.0 -> 1.0 on every musical quarter-note beat
-            
-            // Musical quarter-note beat pulse envelope (spikes to 1.0 on every kick downbeat)
-            const beatPulse = Math.pow(Math.max(0.0, 1.0 - beatFract), 2.8);
-
-            // 8-Bar Musical Phrase Flash Engine (8 bars = 32 beats in 4/4 DJ timing)
-            const currentPhraseIndex = Math.floor(beatTime / 32.0);
-            if (pumpkinLastPhraseIndex === -1) {
-                pumpkinLastPhraseIndex = currentPhraseIndex;
-            } else if (currentPhraseIndex !== pumpkinLastPhraseIndex) {
-                pumpkinLastPhraseIndex = currentPhraseIndex;
-                pumpkin8BarFlashPulse = 1.0; // Trigger dramatic 8-bar phrase drop flash!
-            }
-            // Smooth musical decay for 8-bar phrase flash (~0.28s snappy drop)
-            pumpkin8BarFlashPulse = Math.max(0.0, pumpkin8BarFlashPulse - delta * 3.6);
-
-            // Rhythmic alternating head swings (left pumps on 1 & 3, right on 2 & 4)
-            const swingL = Math.pow(Math.max(0.0, Math.sin(beatTime * Math.PI)), 2.0);
-            const swingR = Math.pow(Math.max(0.0, -Math.sin(beatTime * Math.PI)), 2.0);
 
             // Multi-frequency audio signals
             const rawBass = audio.bass || 0;
@@ -9567,15 +9632,40 @@ export function createVFXScene(container) {
             const treblePop = audio.smoothedTreble || audio.treble || 0;
             const midSurge = audio.smoothedMid || 0;
 
-            // Kick & Beat Detection: high-sensitivity audio trigger + BPM beat pulse sync
-            const isAudioActive = (rawBass > 0.02 || bassImpact > 0.02 || (audio.overall || 0) > 0.02);
-            const audioKick = Math.max(
+            // Audio presence check: ONLY react if there is an actual live beat / music playing!
+            const isAudioActive = (rawBass > 0.04 || bassImpact > 0.04 || (audio.overall || 0) > 0.03);
+            const hasLiveBeat = isAudioActive && (audio.isOnset || bassImpact > 0.15 || rawBass > 0.15);
+
+            // Musical quarter-note beat pulse envelope (ONLY spikes if audio is active / has live beat)
+            const beatPulse = hasLiveBeat ? Math.pow(Math.max(0.0, 1.0 - beatFract), 2.8) : 0.0;
+
+            // 8-Bar Musical Phrase Flash Engine (8 bars = 32 beats in 4/4 DJ timing)
+            const currentPhraseIndex = Math.floor(beatTime / 32.0);
+            if (pumpkinLastPhraseIndex === -1) {
+                pumpkinLastPhraseIndex = currentPhraseIndex;
+            } else if (currentPhraseIndex !== pumpkinLastPhraseIndex) {
+                pumpkinLastPhraseIndex = currentPhraseIndex;
+                // ONLY trigger 8-bar drop flash if music is actively playing!
+                if (isAudioActive) {
+                    pumpkin8BarFlashPulse = 1.0;
+                }
+            }
+            // Smooth musical decay for 8-bar phrase flash (~0.28s snappy drop)
+            pumpkin8BarFlashPulse = Math.max(0.0, pumpkin8BarFlashPulse - delta * 3.6);
+
+            // Rhythmic alternating head swings (only active during music playback)
+            const swingL = isAudioActive ? Math.pow(Math.max(0.0, Math.sin(beatTime * Math.PI)), 2.0) : 0.0;
+            const swingR = isAudioActive ? Math.pow(Math.max(0.0, -Math.sin(beatTime * Math.PI)), 2.0) : 0.0;
+
+            // Kick & Beat Detection: ONLY trigger thump if there is real audio energy / beat!
+            const audioKick = isAudioActive ? Math.max(
                 audio.isOnset ? 1.0 : 0.0,
                 bassImpact * 2.2,
                 rawBass * 1.8,
                 transient * 1.5
-            );
-            const beatKickTrigger = Math.max(audioKick, beatPulse * (isAudioActive ? 0.40 : 0.85));
+            ) : 0.0;
+            
+            const beatKickTrigger = audioKick;
 
             if (beatKickTrigger > 0.18) {
                 pumpkinKickThump = Math.min(1.0, pumpkinKickThump + beatKickTrigger * 0.80);
@@ -9583,26 +9673,26 @@ export function createVFXScene(container) {
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 4.2);
 
             // 2. Motorized Disco Spin (Y-axis) with Distinct Organic Gyroscopic Pumpkin Wobble
-            const spinVelocity = 0.16 * (currentBPM / 126.0) * (1.0 + smoothedBass * 0.20 + pumpkinKickThump * 0.10);
+            const spinVelocity = 0.16 * (currentBPM / 126.0) * (1.0 + (isAudioActive ? (smoothedBass * 0.20 + pumpkinKickThump * 0.10) : 0.0));
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
             // Distinct, noticeable natural hanging wobble that precesses dynamically with the pumpkin's spin
             const rotY = pumpkinPivot.rotation.y;
-            // Increased wobble amplitude for clearly noticeable, lively organic disco sway (~6.5° to 10.5°):
-            const wobbleAmount = 0.110 + smoothedBass * 0.035 + pumpkinKickThump * 0.055;
+            // Wobble amplitude for clearly noticeable, lively organic disco sway:
+            const wobbleAmount = 0.110 + (isAudioActive ? (smoothedBass * 0.035 + pumpkinKickThump * 0.055) : 0.0);
             
             // Nutation and precession tilt synchronized with rotation + dynamic pendulum sway
             pumpkinPivot.rotation.z = Math.sin(rotY) * wobbleAmount + Math.sin(elapsedTime * 1.5) * 0.028;
             pumpkinPivot.rotation.x = Math.cos(rotY) * wobbleAmount * 0.85 + Math.cos(elapsedTime * 1.2) * 0.022;
 
-            // 3. 🎃 Visible Beat & Bass Pulse (Rhythmic elastic scale bounce on beats, kicks, and 8-bar drops)
-            const pulseScale = (pumpkinKickThump * 0.07 + beatPulse * 0.04 + smoothedBass * 0.03 + pumpkin8BarFlashPulse * 0.12);
+            // 3. 🎃 Visible Beat & Bass Pulse (ONLY pulses when audio is active)
+            const pulseScale = isAudioActive ? (pumpkinKickThump * 0.07 + beatPulse * 0.04 + smoothedBass * 0.03 + pumpkin8BarFlashPulse * 0.12) : 0.0;
             pumpkinMesh.scale.set(1.0 + pulseScale, 1.0 + pulseScale, 1.0 + pulseScale);
             if (pumpkinStem) {
                 pumpkinStem.scale.set(1.0 + pulseScale, 1.0 + pulseScale, 1.0 + pulseScale);
             }
-            // Vertical bounce on ceiling chain
-            pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.30;
+            // Vertical bounce on ceiling chain (zero when quiet)
+            pumpkinPivot.position.y = isAudioActive ? Math.sin(pumpkinKickThump * Math.PI) * 0.30 : 0.0;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
             // Calculate exact world position of the stalk top eyelet ring (tracks tilt and vertical bounce)
@@ -9730,17 +9820,17 @@ export function createVFXScene(container) {
             const rightColor = rightSample.color;
             const rightCore = rightSample.core;
 
-            // Multi-frequency lighting surge
-            const audioSurge = smoothedBass * 0.65 + midSurge * 0.35 + pumpkinKickThump * 0.65;
+            // Multi-frequency lighting surge (strictly zero when audio is silent)
+            const audioSurge = isAudioActive ? (smoothedBass * 0.65 + midSurge * 0.35 + pumpkinKickThump * 0.65) : 0.0;
             const kickHitBoost = pumpkinKickThump * 0.60;
 
-            const pulseMultiL = Math.min(1.6, 0.15 + swingL * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
-            const pulseMultiR = Math.min(1.6, 0.15 + swingR * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
+            const pulseMultiL = Math.min(1.6, (isAudioActive ? 0.15 : 0.0) + swingL * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
+            const pulseMultiR = Math.min(1.6, (isAudioActive ? 0.15 : 0.0) + swingR * 0.60 + beatPulse * 0.35 + kickHitBoost + audioSurge * 0.30);
             const avgPulse = (pulseMultiL + pulseMultiR) * 0.5;
 
             // Beams power - atmospheric concert plumes (no blowout)
-            const beamLeftPower = Math.max(0.12, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * pulseMultiL);
-            const beamRightPower = Math.max(0.12, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * pulseMultiR);
+            const beamLeftPower = Math.max(0.18, (0.45 + leftHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * (0.65 + pulseMultiL * 0.35));
+            const beamRightPower = Math.max(0.18, (0.45 + rightHit * 0.65 + audioSurge * 0.50 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 0.90 + convergencePower * 0.85) * (0.65 + pulseMultiR * 0.35));
 
             // Update Fixture Lens & Status LED Colors and Intensity with Musical Beat Pulse
             pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(0.20 + pulseMultiL * 0.70);

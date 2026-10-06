@@ -2696,54 +2696,21 @@
                     <select id="audio-device-select" class="hud-select" title="Select DJ Deck Sound Card / USB Audio / Line-In">
                         <option value="default">Default Audio Input</option>
                     </select>
-                    <!-- 🎛️ 3-Band Pro Graphic Spectrum EQ -->
+                    <!-- 🎛️ Real-Time Particle Spectrum EQ across all frequency bands -->
                     <div class="pro-eq-card">
                         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <span style="font-size:8px; font-weight:800; letter-spacing:0.8px; color:#8c91a0; font-family:'JetBrains Mono',monospace;">🎛️ 3-BAND SPECTRUM EQ</span>
-                            <span id="eq-energy-badge" style="font-size:7.5px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3);">LIVE 3-WAY</span>
+                            <span style="font-size:8px; font-weight:800; letter-spacing:0.8px; color:#8c91a0; font-family:'JetBrains Mono',monospace;">🎛️ PARTICLE SPECTRUM EQ</span>
+                            <span id="eq-energy-badge" style="font-size:7.5px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3);">FULL SPECTRUM</span>
                         </div>
-                        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:6px; height:64px; background:#08090d; border-radius:4px; padding:5px 6px 4px 6px; border:1px solid #1f222b; box-shadow:inset 0 2px 6px rgba(0,0,0,0.85);">
-                            <!-- LOW / SUB-BASS -->
-                            <div style="display:flex; flex-direction:column; height:100%; position:relative;">
-                                <div style="display:flex; justify-content:space-between; font-size:7.5px; font-family:'JetBrains Mono',monospace; font-weight:700; color:#ff3366; margin-bottom:2px;">
-                                    <span>LOW</span>
-                                    <span id="eq-val-bass">0%</span>
-                                </div>
-                                <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid #20232c; border-radius:3px; position:relative; overflow:hidden;">
-                                    <div class="pro-eq-grid-lines"></div>
-                                    <div class="eq-fill" id="eq-bass"></div>
-                                    <div id="eq-peak-needle-bass" style="position:absolute; bottom:0%; left:0; width:100%; height:2px; background:#ffffff; box-shadow:0 0 6px #ff3377; z-index:4; transition:bottom 0.05s ease-out;"></div>
-                                </div>
-                                <div style="font-size:6.5px; color:#6b7280; font-family:'JetBrains Mono',monospace; text-align:center; margin-top:2px;">20-250Hz</div>
-                            </div>
-
-                            <!-- MID RANGE -->
-                            <div style="display:flex; flex-direction:column; height:100%; position:relative;">
-                                <div style="display:flex; justify-content:space-between; font-size:7.5px; font-family:'JetBrains Mono',monospace; font-weight:700; color:#00ffcc; margin-bottom:2px;">
-                                    <span>MID</span>
-                                    <span id="eq-val-mid">0%</span>
-                                </div>
-                                <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid #20232c; border-radius:3px; position:relative; overflow:hidden;">
-                                    <div class="pro-eq-grid-lines"></div>
-                                    <div class="eq-fill" id="eq-mid"></div>
-                                    <div id="eq-peak-needle-mid" style="position:absolute; bottom:0%; left:0; width:100%; height:2px; background:#ffffff; box-shadow:0 0 6px #00ffcc; z-index:4; transition:bottom 0.05s ease-out;"></div>
-                                </div>
-                                <div style="font-size:6.5px; color:#6b7280; font-family:'JetBrains Mono',monospace; text-align:center; margin-top:2px;">250-4kHz</div>
-                            </div>
-
-                            <!-- HI / TREBLE -->
-                            <div style="display:flex; flex-direction:column; height:100%; position:relative;">
-                                <div style="display:flex; justify-content:space-between; font-size:7.5px; font-family:'JetBrains Mono',monospace; font-weight:700; color:#c084fc; margin-bottom:2px;">
-                                    <span>HI</span>
-                                    <span id="eq-val-treble">0%</span>
-                                </div>
-                                <div style="flex:1; background:rgba(255,255,255,0.03); border:1px solid #20232c; border-radius:3px; position:relative; overflow:hidden;">
-                                    <div class="pro-eq-grid-lines"></div>
-                                    <div class="eq-fill" id="eq-treble"></div>
-                                    <div id="eq-peak-needle-treble" style="position:absolute; bottom:0%; left:0; width:100%; height:2px; background:#ffffff; box-shadow:0 0 6px #c084fc; z-index:4; transition:bottom 0.05s ease-out;"></div>
-                                </div>
-                                <div style="font-size:6.5px; color:#6b7280; font-family:'JetBrains Mono',monospace; text-align:center; margin-top:2px;">4k-20kHz</div>
-                            </div>
+                        <div style="position:relative; width:100%; height:76px; background:#08090d; border-radius:4px; overflow:hidden; border:1px solid #1f222b; box-shadow:inset 0 2px 6px rgba(0,0,0,0.85);">
+                            <canvas id="particle-spectrum-eq-canvas" width="360" height="76" style="width:100%; height:100%; display:block;"></canvas>
+                        </div>
+                        <div style="display:flex; justify-content:space-between; font-size:6.5px; color:#6b7280; font-family:'JetBrains Mono',monospace; margin-top:3px; padding:0 2px;">
+                            <span>20Hz (SUB)</span>
+                            <span>120Hz (BASS)</span>
+                            <span>1kHz (MID)</span>
+                            <span>4kHz (HI-MID)</span>
+                            <span>16kHz (AIR)</span>
                         </div>
                     </div>
                     <div style="display:flex; gap:6px; margin-top:6px;">
