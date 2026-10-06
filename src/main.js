@@ -18,8 +18,8 @@ window.__DJ_VFX_BUILD__ = {
     buildNumber: BUILD_NUMBER,
     buildTime: BUILD_TIME,
     timestamp: '2026-09-28T14:50:00+01:00',
-    copyright: '© 2026 JK McLaren',
-    email: 'info@jkmcalren.com'
+    copyright: '© 2026 jkmclaren',
+    email: 'info@jkmclaren.com'
 };
 
 async function init() {
@@ -49,16 +49,16 @@ async function init() {
     if (btnCopyAboutEmail) {
         btnCopyAboutEmail.addEventListener('click', async () => {
             try {
-                await navigator.clipboard.writeText('info@jkmcalren.com');
+                await navigator.clipboard.writeText('info@jkmclaren.com');
                 const origText = btnCopyAboutEmail.innerHTML;
-                btnCopyAboutEmail.innerHTML = '✓ Copied: info@jkmcalren.com';
+                btnCopyAboutEmail.innerHTML = '✓ Copied: info@jkmclaren.com';
                 btnCopyAboutEmail.style.background = 'rgba(0,255,204,0.3)';
                 setTimeout(() => {
                     btnCopyAboutEmail.innerHTML = origText;
                     btnCopyAboutEmail.style.background = '';
                 }, 2000);
             } catch (err) {
-                showToast('Email: info@jkmcalren.com');
+                showToast('Email: info@jkmclaren.com');
             }
         });
     }
@@ -311,7 +311,7 @@ async function init() {
     const dropZone = document.getElementById('drop-zone');
 
     let currentDjLogoUrl = '/images/logo/jkmclaren_shock.mp4';
-    let currentDjLogoTitle = 'JK McLaren Shock';
+    let currentDjLogoTitle = 'jkmclaren Shock';
     let isCurrentDjVideo = true;
 
     // Station Logo Layer DOM References & State
@@ -428,7 +428,7 @@ async function init() {
     const vfx = createVFXScene(container);
     vfx.setBloomMultiplier(0.35);
 
-    // Load Default Animated Logo Video (JK McLaren Shock MP4)
+    // Load Default Animated Logo Video (jkmclaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
 
     // Load Default Station Logo (4TM Radio)
@@ -1953,7 +1953,7 @@ async function init() {
                 card.remove();
                 showToast(`🗑️ Removed ${title}`);
                 if (currentDjLogoUrl === url) {
-                    selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, true);
+                    selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'jkmclaren Shock', true, true);
                 }
             });
             card.appendChild(delBtn);
@@ -2006,8 +2006,8 @@ async function init() {
 
     if (btnResetShock) {
         btnResetShock.addEventListener('click', () => {
-            selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, true);
-            showToast('↺ Restored JK McLaren Shock MP4');
+            selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'jkmclaren Shock', true, true);
+            showToast('↺ Restored jkmclaren Shock MP4');
         });
     }
 
@@ -3215,8 +3215,8 @@ async function init() {
             vfx.setLogoShieldVisible(true);
         }
 
-        // Reset Media to default JK McLaren Shock
-        selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'JK McLaren Shock', true, false);
+        // Reset Media to default jkmclaren Shock
+        selectDjLogo('/images/logo/jkmclaren_shock.mp4', 'jkmclaren Shock', true, false);
 
         // 3. Station Logo Reset
         updateStationLogoVisibility(false, false);

@@ -61,7 +61,7 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 The **Branding & Overlays** panel provides full multi-layer graphic management:
 
 ### 1. Layers & Media Storage
-- **🎧 DJ Logo / Animated Video**: Supports MP4 video loops (e.g. JK McLaren Shock) and PNG/JPG graphics with persistent IndexedDB storage (`dj_logos` store).
+- **🎧 DJ Logo / Animated Video**: Supports MP4 video loops (e.g. jkmclaren Shock) and PNG/JPG graphics with persistent IndexedDB storage (`dj_logos` store).
 - **📻 Station / Broadcast Logo**: Dedicated radio/station watermark layer with persistent IndexedDB storage (`station_logos` store).
 - **🖼️ Event Flyer / Promo Graphics**: High-impact event posters and video flyers with auto-scanning from `public/images/flyers/` and persistent IndexedDB storage (`flyers` store).
 

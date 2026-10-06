@@ -3,7 +3,7 @@
   "productName": "DJ VFX Studio",
   "version": "1.0.0",
   "description": "Professional Stage Visual Engine, Reactive Smart Lighting Controller & Multi-Platform DJ Bridge",
-  "author": "JK McLaren <info@jkmcalren.com>",
+  "author": "jkmclaren <info@jkmclaren.com>",
   "license": "MIT",
   "private": true,
   "type": "module",

@@ -8,7 +8,7 @@ This document tracks all features, architectural components, lighting integratio
 
 ### 1. 🖼️ 3-Layer 3D Branding & Event Promo Engine *(NEW & ENHANCED)*
 - [x] **3 Independent Hardware-Accelerated 3D Layers**:
-  1. **🎧 DJ Logo & Animated Video Layer**: Supports MP4 video loops (e.g. JK McLaren Shock) and PNG/JPG images with IndexedDB persistence (`dj_logos` store).
+  1. **🎧 DJ Logo & Animated Video Layer**: Supports MP4 video loops (e.g. jkmclaren Shock) and PNG/JPG images with IndexedDB persistence (`dj_logos` store).
   2. **📻 Radio & Station Logo Layer**: Dedicated broadcasting watermark layer with folder auto-scanning (`public/images/station_logos/`) and IndexedDB storage (`station_logos` store).
   3. **🖼️ Event Flyer & Promo Graphics Layer**: Dedicated event flyer and promotional poster layer with folder auto-scanning (`public/images/flyers/`) and IndexedDB storage (`flyers` store).
 - [x] **9-Way Directional Grid Positioning**: Precise anchor snapping (Top-Left, Top-Center, Top-Right, Center-Left, Center, Center-Right, Bottom-Left, Bottom-Center, Bottom-Right) with proportional screen aspect margin scaling.
