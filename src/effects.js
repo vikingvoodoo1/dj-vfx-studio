@@ -52,8 +52,8 @@ const NightclubPostFX = {
             float vignette = smoothstep(1.35, 0.42, dist);
             color *= vignette;
 
-            // Smooth full-screen whiteout blend on light flash
-            color = mix(color, vec3(1.0, 0.98, 1.0), clamp(uFlash, 0.0, 1.0));
+            // Smooth additive full-screen flash on light hit (preserves 3D depth and prevents blank washouts)
+            color += vec3(clamp(uFlash, 0.0, 1.0) * 0.75);
 
             gl_FragColor = vec4(color, 1.0);
         }
@@ -7230,59 +7230,6 @@ export function createVFXScene(container) {
         return geo;
     }
 
-    // Organic Curved Pumpkin Stalk / Stem with Fluted Ridges and Eyelet Ring
-    function createPumpkinStemMesh() {
-        const stemGroup = new THREE.Group();
-
-        const curve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 3.8, 0),         // Stem base in the top dimple
-            new THREE.Vector3(0.12, 4.4, 0.08),   // Lower stalk
-            new THREE.Vector3(0.35, 5.0, 0.22),   // Mid stalk curving out
-            new THREE.Vector3(0.65, 5.5, 0.38),   // Upper stalk curve
-            new THREE.Vector3(0.85, 5.8, 0.45)    // Stalk tip
-        ]);
-
-        const stemGeo = new THREE.TubeGeometry(curve, 32, 0.36, 16, false);
-        const stemPos = stemGeo.attributes.position;
-        const v = new THREE.Vector3();
-        for (let i = 0; i < stemPos.count; i++) {
-            v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 3.8) / 2.0));
-            const taper = 1.30 * (1.0 - t * 0.60);
-            const angle = Math.atan2(v.x, v.z);
-            const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
-            v.x = v.x * taper * ridge;
-            v.z = v.z * taper * ridge;
-            stemPos.setXYZ(i, v.x, v.y, v.z);
-        }
-        stemGeo.computeVertexNormals();
-
-        const stemMat = new THREE.MeshStandardMaterial({
-            color: 0x554425,       // Woody bronze / gold stalk
-            roughness: 0.55,
-            metalness: 0.50,
-            envMap: clubEnvMap,
-            envMapIntensity: 1.8
-        });
-
-        const stemMesh = new THREE.Mesh(stemGeo, stemMat);
-        stemGroup.add(stemMesh);
-
-        // Metal suspension eyelet at top of stem
-        const eyeletGeo = new THREE.TorusGeometry(0.30, 0.075, 12, 20);
-        const eyeletMat = new THREE.MeshStandardMaterial({
-            color: 0x8899aa,
-            metalness: 0.9,
-            roughness: 0.2
-        });
-        const eyeletMesh = new THREE.Mesh(eyeletGeo, eyeletMat);
-        eyeletMesh.position.set(0.85, 5.95, 0.45);
-        eyeletMesh.rotation.y = Math.PI / 4;
-        stemGroup.add(eyeletMesh);
-
-        return stemGroup;
-    }
-
     // 1. Textures & Procedural Maps
     const pumpkinTileTex = discoTileTex;
     const pumpkinNormalTex = discoNormalTex;
@@ -7399,22 +7346,30 @@ export function createVFXScene(container) {
     ];
 
     function sampleHalloweenPalette(t) {
+        if (!HALLOWEEN_PALETTE || HALLOWEEN_PALETTE.length === 0) {
+            const fallback = new THREE.Color(0xffffff);
+            return { color: fallback, core: fallback, emissive: fallback };
+        }
         const n = HALLOWEEN_PALETTE.length;
-        const progress = (t % n + n) % n;
-        const idx0 = Math.floor(progress);
+        const progress = ((t % n) + n) % n;
+        const idx0 = Math.min(n - 1, Math.max(0, Math.floor(progress)));
         const idx1 = (idx0 + 1) % n;
-        const frac = progress - idx0;
+        const frac = Math.max(0.0, Math.min(1.0, progress - idx0));
         const smoothFrac = 0.5 - 0.5 * Math.cos(frac * Math.PI);
 
-        const color = new THREE.Color().lerpColors(HALLOWEEN_PALETTE[idx0].color, HALLOWEEN_PALETTE[idx1].color, smoothFrac);
-        const core = new THREE.Color().lerpColors(HALLOWEEN_PALETTE[idx0].core, HALLOWEEN_PALETTE[idx1].core, smoothFrac);
-        const emissive = new THREE.Color().lerpColors(HALLOWEEN_PALETTE[idx0].emissive, HALLOWEEN_PALETTE[idx1].emissive, smoothFrac);
+        const p0 = HALLOWEEN_PALETTE[idx0] || HALLOWEEN_PALETTE[0];
+        const p1 = HALLOWEEN_PALETTE[idx1] || HALLOWEEN_PALETTE[0];
+
+        const color = new THREE.Color().lerpColors(p0.color, p1.color, smoothFrac);
+        const core = new THREE.Color().lerpColors(p0.core, p1.core, smoothFrac);
+        const emissive = new THREE.Color().lerpColors(p0.emissive, p1.emissive, smoothFrac);
         return { color, core, emissive };
     }
 
     let pumpkinScreenFlash = 0.0;
     let pumpkinLastFlashTime = 0.0;
     let pumpkinDeadOnFlashPulse = 0.0;
+    let pumpkinWasDeadOn = false;
 
     // 4. Two Bottom-Front DJ Moving-Head Fixtures (Bottom-Left & Bottom-Right)
     const pLeftFixturePos = new THREE.Vector3(-8.8, -6.8, 6.5);
@@ -8274,9 +8229,10 @@ export function createVFXScene(container) {
 
         // 2. Animate Active Scene
         // ---------------------------------------------------------------------
-        // FX 0: 📊 3D Studio LED Equalizer Wall
-        // ---------------------------------------------------------------------
-        if (currentFXIndex === 0) {
+        try {
+            // FX 0: 📊 3D Studio LED Equalizer Wall
+            // ---------------------------------------------------------------------
+            if (currentFXIndex === 0) {
             for (let c = 0; c < eqCols; c++) {
                 const binIdx = Math.floor(Math.pow(c / (eqCols - 1), 1.2) * 56) + 1;
                 const amp = dataArr[binIdx] ? dataArr[binIdx] / 255 : 0;
@@ -9359,17 +9315,18 @@ export function createVFXScene(container) {
             const rightGlare = Math.pow(rightHit, 1.6);
             const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
 
-            // Dead-on Hit Detection: When beam hits pumpkin dead-on, trigger a temporary whiteout screen flash!
+            // Dead-on Hit Detection: When beam hits pumpkin dead-on, trigger a temporary flash!
             const isDeadOn = (leftHit > 0.82 || rightHit > 0.82 || (leftHit > 0.68 && rightHit > 0.68));
-            if (isDeadOn && (elapsedTime - pumpkinLastFlashTime > 0.40)) {
+            if (isDeadOn && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 1.2)) {
                 pumpkinLastFlashTime = elapsedTime;
-                pumpkinScreenFlash = (leftHit > 0.68 && rightHit > 0.68) ? 1.0 : 0.85;
+                pumpkinScreenFlash = (leftHit > 0.68 && rightHit > 0.68) ? 0.90 : 0.75;
                 pumpkinDeadOnFlashPulse = 1.0;
             }
+            pumpkinWasDeadOn = isDeadOn;
 
             // Smooth flash decay
-            pumpkinScreenFlash = Math.max(0.0, pumpkinScreenFlash - delta * 2.2);
-            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 2.8);
+            pumpkinScreenFlash = Math.max(0.0, pumpkinScreenFlash - delta * 3.5);
+            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 3.5);
             manualFlash = Math.max(manualFlash, pumpkinScreenFlash);
 
             // 3. Dynamic Color Transition: Slowly fade between shades of White and Halloween colors
@@ -9410,8 +9367,12 @@ export function createVFXScene(container) {
             dPumpkinMat.color.copy(pumpkinThemeCol);
             dPumpkinMat.emissive.copy(pumpkinEmissiveCol);
             dPumpkinMat.emissiveIntensity = 0.20 + totalGlareScore * 0.45 + pumpkinDeadOnFlashPulse * 0.75;
-            if (pumpkinStem && pumpkinStem.children && pumpkinStem.children[0]) {
-                pumpkinStem.children[0].material.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.65));
+            if (pumpkinStem) {
+                pumpkinStem.traverse((child) => {
+                    if (child.isMesh && child.material && child.material.color) {
+                        child.material.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.65));
+                    }
+                });
             }
 
             // Spotlights intensity scales in sync with each beam's individual dynamic intensity
@@ -9494,6 +9455,9 @@ export function createVFXScene(container) {
                 }
             }
             emberPosAttr.needsUpdate = true;
+        }
+        } catch (err) {
+            console.error('[VFX Frame Animation Error]', err);
         }
         if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20 && currentFXIndex !== 21 && currentFXIndex !== 22) {
             camRecoilZ = -0.32 * audio.bassImpact;
@@ -9636,19 +9600,7 @@ export function createVFXScene(container) {
             applyFlyerPlacement();
         },
         getCurrentScenePalette: () => {
-            if (currentFXIndex === 22) {
-                return ['#0044ff', '#ff6600', '#00aaff', '#ffaa00', '#0022aa', '#ffffff'];
-            }
-            if (currentFXIndex === 18 || currentFXIndex === 20) {
-                return ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
-            }
-            if (currentFXIndex === 19) {
-                return ['#00f0ff', '#ff00aa', '#00ff88', '#ffaa00', '#9900ff', '#00e5ff'];
-            }
-            if (currentFXIndex === 21) {
-                return ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
-            }
-            const scenePalettes = {
+            const SCENE_PALETTES = {
                 0: ['#00ffff', '#ff007f', '#00ff66', '#ffaa00', '#9900ff', '#ff0033'], // Neon Cyber Matrix
                 1: ['#ff007f', '#00ffff', '#ffaa00', '#ff0033', '#9900ff', '#00ff66'], // Audio Waveform EQ
                 2: ['#00ffcc', '#0077ff', '#ff00aa', '#00ff66', '#ffcc00', '#ff0055'], // Circular Spectrum Ring
@@ -9667,9 +9619,13 @@ export function createVFXScene(container) {
                 15: ['#9900ff', '#0044ff', '#ff00aa', '#00ffff', '#ff0055', '#ffff00'], // Deep Space Galaxy
                 16: ['#00e1ff', '#ff0055', '#00ff66', '#ffcc00', '#9900ff', '#ff0033'], // Laser Vortex
                 17: ['#00ffcc', '#ffaa00', '#ff007f', '#0088ff', '#00ff66', '#ff0033'], // Time Clock
+                18: ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'], // Sweeping Godrays
+                19: ['#00f0ff', '#ff00aa', '#00ff88', '#ffaa00', '#9900ff', '#00e5ff'], // White Godrays & Fog
+                20: ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'], // Disco Floor & Godrays
+                21: ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'], // VHS Glitch Words
                 22: ['#0044ff', '#ff6600', '#00aaff', '#ffaa00', '#0022aa', '#ffffff'], // Pumpkin Disco Ball
             };
-            return scenePalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
+            return SCENE_PALETTES[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
         },
         getCurrentSceneColor: () => {
             const time = clock.getElapsedTime();
@@ -9682,12 +9638,12 @@ export function createVFXScene(container) {
                 return pumpkinPalette[beatStep % pumpkinPalette.length];
             }
             // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
-            if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number') {
+            if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number' && godrayPalette) {
                 const hexNum = godrayPalette[godrayChaseIndex % godrayPalette.length];
                 return '#' + hexNum.toString(16).padStart(6, '0');
             }
             // FX 20: 🪩 Disco Floor & Coloured Godrays (O) -> Tracks active disco moving head
-            if (currentFXIndex === 20 && typeof discoGodrayChaseIndex === 'number') {
+            if (currentFXIndex === 20 && typeof discoGodrayChaseIndex === 'number' && godrayPalette) {
                 const hexNum = godrayPalette[discoGodrayChaseIndex % godrayPalette.length];
                 return '#' + hexNum.toString(16).padStart(6, '0');
             }
@@ -9703,7 +9659,15 @@ export function createVFXScene(container) {
             }
 
             // Dynamic Rhythmic Palettes for all scenes (rotates harmonically with tempo & beats)
-            const pal = scenePalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ffffff'];
+            const defaultPalettes = {
+                0: ['#00ffff', '#ff007f', '#00ff66', '#ffaa00', '#9900ff', '#ff0033'],
+                1: ['#ff007f', '#00ffff', '#ffaa00', '#ff0033', '#9900ff', '#00ff66'],
+                2: ['#00ffcc', '#0077ff', '#ff00aa', '#00ff66', '#ffcc00', '#ff0055'],
+                3: ['#ffaa00', '#ff3300', '#00e5ff', '#ff007f', '#00ff66', '#9900ff'],
+                4: ['#ffd700', '#ff00ff', '#00ffff', '#ff0055', '#00ffaa', '#9900ff'],
+                5: ['#ff007f', '#00ffff', '#ffee00', '#00ff66', '#ff00aa', '#0088ff']
+            };
+            const pal = defaultPalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ffffff'];
             const idx = Math.floor((time * bps) % pal.length);
             return pal[idx] || '#00ffff';
         }
