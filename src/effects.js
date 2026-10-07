@@ -7824,7 +7824,8 @@ export function createVFXScene(container) {
     let pumpkinDeadOnFlashPulse = 0.0;
     let pumpkinWasDeadOn = false;
     let pumpkinKickThump = 0.0;
-    let pumpkinVuNeedle = 0.0;
+    let pumpkinWhiteLightLastBeat = -1;
+    let pumpkinWhiteLightOnTime = -10.0;
     let pumpkinLastPhraseIndex = -1;
     let pumpkin8BarFlashPulse = 0.0;
     let pumpkinGlimpsePulse = 0.0;
@@ -10032,7 +10033,10 @@ export function createVFXScene(container) {
         else if (currentFXIndex === 22) {
             // 1. 🎵 MUSICAL TIMING & EXCLUSIVE DEEP BASS KICK DRUM DETECTION
             const bps = currentBPM / 60.0;
+            const beatDuration = 60.0 / currentBPM;
             const beatTime = elapsedTime * bps;
+            const curBeatIdx = Math.floor(beatTime);
+            const beatFrac = beatTime % 1.0;
 
             // Multi-frequency audio signals
             const rawBass = audio.bass || 0;
@@ -10053,19 +10057,30 @@ export function createVFXScene(container) {
             // Fast, snappy elastic recovery from kick
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // Audio VU Meter needle ballistics: Instant attack on peaks/kicks, smooth ~300ms decay
-            const rawVuAudio = Math.max(
-                (audio.vuPercent || 0) / 100.0,
-                (audio.transientImpulse || 0) * 1.30,
-                (audio.bassImpact || 0) * 1.25,
-                (audio.bass || 0) * 1.05,
-                pumpkinKickThump * 1.15
-            );
-            if (rawVuAudio > pumpkinVuNeedle) {
-                pumpkinVuNeedle = Math.min(1.0, rawVuAudio * 1.15); // Fast instant rise
-            } else {
-                pumpkinVuNeedle = Math.max(0.0, pumpkinVuNeedle - delta * 2.8); // Smooth falloff
+            // CRISP BEAT TRIGGER: Turn the two white lights ON on each beat, and OFF between beats!
+            // Fires on either an incoming kick drum hit OR the start of each musical beat
+            const isNewBeat = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.25);
+            if (isDeepKick || isNewBeat) {
+                pumpkinWhiteLightLastBeat = curBeatIdx;
+                pumpkinWhiteLightOnTime = elapsedTime;
             }
+
+            // High-contrast ON vs OFF envelope:
+            // Snaps instantly ON (100%) on the beat, holds for ~190ms, then snaps OFF to complete 0.0 darkness
+            const timeSinceBeat = elapsedTime - pumpkinWhiteLightOnTime;
+            const onDuration = Math.min(0.22, Math.max(0.14, beatDuration * 0.40));
+            const shutterCloseDuration = 0.04;
+
+            let whiteLightFactor = 0.0;
+            if (timeSinceBeat >= 0.0 && timeSinceBeat < onDuration) {
+                whiteLightFactor = 1.0; // Full crisp 100% ON
+            } else if (timeSinceBeat >= onDuration && timeSinceBeat < onDuration + shutterCloseDuration) {
+                // Ultra-fast 40ms shutter snap to zero
+                whiteLightFactor = 1.0 - ((timeSinceBeat - onDuration) / shutterCloseDuration);
+            } else {
+                whiteLightFactor = 0.0; // Total 100% OFF between beats
+            }
+            const isWhiteLightActive = whiteLightFactor > 0.001;
 
 
             // 2. Motorized Disco Spin (Y-axis) with Natural Steady Hanging Sway
@@ -10278,7 +10293,7 @@ export function createVFXScene(container) {
             pumpkinUniforms.uSpot2Intensity.value = 0.85 + pulseMultiR * 0.35;
             pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetMini1Pos);
             pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetMini2Pos);
-            pumpkinUniforms.uWhiteSpotIntensity.value = Math.max(0.0, pumpkinVuNeedle * 1.30 + pumpkinKickThump * 0.40);
+            pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactor * 1.8;
             pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
             pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
             pumpkinUniforms.uFlash.value = Math.max(leftSunGlare, rightSunGlare) * 0.60 + convergencePower * 0.40;
@@ -10368,54 +10383,99 @@ export function createVFXScene(container) {
             const flareScaleR = (0.9 + rightSunGlare * 0.6 + convergencePower * 0.4);
             pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
-            // Mini Volumetric Beams with VU Meter Ladder Shaders & White Beat Pulses
-            const miniBeamPower = Math.max(0.15, 0.35 + pumpkinVuNeedle * 1.65 + pumpkinKickThump * 0.75);
+            // -----------------------------------------------------------------
+            // Dual White Center Spotlights: ON and OFF to the Beat!
+            // -----------------------------------------------------------------
+            if (isWhiteLightActive) {
+                const beamPower = 2.4 * whiteLightFactor;
+                const spotPower = 3.8 * whiteLightFactor;
 
-            pMiniLeftBeamMat.uniforms.uIntensity.value = miniBeamPower;
-            pMiniLeftBeamMat.uniforms.uTime.value = elapsedTime;
-            pMiniLeftBeamMat.uniforms.uVuLevel.value = pumpkinVuNeedle;
-            pMiniLeftBeamMat.uniforms.uPulse.value = pumpkinKickThump;
-            pMiniLeftBeamMat.uniforms.uTreble.value = treblePop;
+                // High-power crisp Xenon spotlights hitting underneath pumpkin
+                pMiniLeftSpot.intensity = spotPower;
+                pMiniRightSpot.intensity = spotPower;
 
-            pMiniLeftCoreBeamMat.uniforms.uIntensity.value = miniBeamPower * 1.35;
-            pMiniLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
-            pMiniLeftCoreBeamMat.uniforms.uVuLevel.value = pumpkinVuNeedle;
-            pMiniLeftCoreBeamMat.uniforms.uPulse.value = pumpkinKickThump;
-            pMiniLeftCoreBeamMat.uniforms.uTreble.value = treblePop;
+                // Volumetric beam meshes active & fully illuminated
+                pMiniLeftBeamMesh.visible = true;
+                pMiniLeftCoreBeamMesh.visible = true;
+                pMiniRightBeamMesh.visible = true;
+                pMiniRightCoreBeamMesh.visible = true;
 
-            pMiniRightBeamMat.uniforms.uIntensity.value = miniBeamPower;
-            pMiniRightBeamMat.uniforms.uTime.value = elapsedTime;
-            pMiniRightBeamMat.uniforms.uVuLevel.value = pumpkinVuNeedle;
-            pMiniRightBeamMat.uniforms.uPulse.value = pumpkinKickThump;
-            pMiniRightBeamMat.uniforms.uTreble.value = treblePop;
+                pMiniLeftBeamMat.uniforms.uIntensity.value = beamPower;
+                pMiniLeftBeamMat.uniforms.uVuLevel.value = 1.0;
+                pMiniLeftBeamMat.uniforms.uPulse.value = whiteLightFactor;
+                pMiniLeftBeamMat.uniforms.uTime.value = elapsedTime;
+                pMiniLeftBeamMat.uniforms.uHit.value = 1.0;
 
-            pMiniRightCoreBeamMat.uniforms.uIntensity.value = miniBeamPower * 1.35;
-            pMiniRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
-            pMiniRightCoreBeamMat.uniforms.uVuLevel.value = pumpkinVuNeedle;
-            pMiniRightCoreBeamMat.uniforms.uPulse.value = pumpkinKickThump;
-            pMiniRightCoreBeamMat.uniforms.uTreble.value = treblePop;
+                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.35;
+                pMiniLeftCoreBeamMat.uniforms.uVuLevel.value = 1.0;
+                pMiniLeftCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
+                pMiniLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
+                pMiniLeftCoreBeamMat.uniforms.uHit.value = 1.0;
 
-            // Mini Spotlights pulsing upward in white to the beat
-            pMiniLeftSpot.intensity = Math.max(0.20, (0.50 + pumpkinVuNeedle * 3.5 + pumpkinKickThump * 1.8));
-            pMiniRightSpot.intensity = Math.max(0.20, (0.50 + pumpkinVuNeedle * 3.5 + pumpkinKickThump * 1.8));
+                pMiniRightBeamMat.uniforms.uIntensity.value = beamPower;
+                pMiniRightBeamMat.uniforms.uVuLevel.value = 1.0;
+                pMiniRightBeamMat.uniforms.uPulse.value = whiteLightFactor;
+                pMiniRightBeamMat.uniforms.uTime.value = elapsedTime;
+                pMiniRightBeamMat.uniforms.uHit.value = 1.0;
 
-            // Lens discs pulse in crisp pure Xenon white
-            const miniLensBrightness = Math.min(1.0, 0.40 + pumpkinVuNeedle * 0.60);
-            pMiniLeftFixture.lensMat.color.setRGB(miniLensBrightness, miniLensBrightness, miniLensBrightness);
-            pMiniLeftFixture.lensCoronaMat.color.setRGB(miniLensBrightness, miniLensBrightness, miniLensBrightness);
-            pMiniRightFixture.lensMat.color.setRGB(miniLensBrightness, miniLensBrightness, miniLensBrightness);
-            pMiniRightFixture.lensCoronaMat.color.setRGB(miniLensBrightness, miniLensBrightness, miniLensBrightness);
+                pMiniRightCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.35;
+                pMiniRightCoreBeamMat.uniforms.uVuLevel.value = 1.0;
+                pMiniRightCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
+                pMiniRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
+                pMiniRightCoreBeamMat.uniforms.uHit.value = 1.0;
 
-            // Underneath front surface delicate sparkle glints on mirror tiles
-            pMiniLeftHitFlare.position.copy(targetMini1Pos);
-            pMiniLeftHitFlare.material.opacity = Math.min(0.85, 0.12 + pumpkinVuNeedle * 0.70);
-            const miniFlareScale1 = 0.8 + pumpkinVuNeedle * 0.8;
-            pMiniLeftHitFlare.scale.set(miniFlareScale1, miniFlareScale1, 1.0);
+                // Lens optics: blazing pure Xenon white arc lamp
+                const lensBright = Math.min(1.0, 0.40 + whiteLightFactor * 0.60);
+                pMiniLeftFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
+                pMiniLeftFixture.lensCoronaMat.color.setRGB(lensBright, lensBright, lensBright);
+                pMiniLeftFixture.lensCoreMat.color.setRGB(1.0, 1.0, 1.0);
+                pMiniRightFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
+                pMiniRightFixture.lensCoronaMat.color.setRGB(lensBright, lensBright, lensBright);
+                pMiniRightFixture.lensCoreMat.color.setRGB(1.0, 1.0, 1.0);
 
-            pMiniRightHitFlare.position.copy(targetMini2Pos);
-            pMiniRightHitFlare.material.opacity = Math.min(0.85, 0.12 + pumpkinVuNeedle * 0.70);
-            const miniFlareScale2 = 0.8 + pumpkinVuNeedle * 0.8;
-            pMiniRightHitFlare.scale.set(miniFlareScale2, miniFlareScale2, 1.0);
+                // Underneath front surface starburst hit flares: bright flash
+                pMiniLeftHitFlare.visible = true;
+                pMiniLeftHitFlare.position.copy(targetMini1Pos);
+                pMiniLeftHitFlare.material.opacity = 0.85 * whiteLightFactor;
+                const flareScale1 = 0.9 + whiteLightFactor * 0.6;
+                pMiniLeftHitFlare.scale.set(flareScale1, flareScale1, 1.0);
+
+                pMiniRightHitFlare.visible = true;
+                pMiniRightHitFlare.position.copy(targetMini2Pos);
+                pMiniRightHitFlare.material.opacity = 0.85 * whiteLightFactor;
+                const flareScale2 = 0.9 + whiteLightFactor * 0.6;
+                pMiniRightHitFlare.scale.set(flareScale2, flareScale2, 1.0);
+            } else {
+                // Completely OFF between beats
+                pMiniLeftSpot.intensity = 0.0;
+                pMiniRightSpot.intensity = 0.0;
+
+                pMiniLeftBeamMesh.visible = false;
+                pMiniLeftCoreBeamMesh.visible = false;
+                pMiniRightBeamMesh.visible = false;
+                pMiniRightCoreBeamMesh.visible = false;
+
+                pMiniLeftBeamMat.uniforms.uIntensity.value = 0.0;
+                pMiniLeftBeamMat.uniforms.uVuLevel.value = 0.0;
+                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = 0.0;
+                pMiniRightBeamMat.uniforms.uIntensity.value = 0.0;
+                pMiniRightBeamMat.uniforms.uVuLevel.value = 0.0;
+                pMiniRightCoreBeamMat.uniforms.uIntensity.value = 0.0;
+
+                // Lens glass idle/dark
+                pMiniLeftFixture.lensMat.color.setRGB(0.04, 0.04, 0.04);
+                pMiniLeftFixture.lensCoronaMat.color.setRGB(0.0, 0.0, 0.0);
+                pMiniLeftFixture.lensCoreMat.color.setRGB(0.0, 0.0, 0.0);
+                pMiniRightFixture.lensMat.color.setRGB(0.04, 0.04, 0.04);
+                pMiniRightFixture.lensCoronaMat.color.setRGB(0.0, 0.0, 0.0);
+                pMiniRightFixture.lensCoreMat.color.setRGB(0.0, 0.0, 0.0);
+
+                pMiniLeftHitFlare.visible = false;
+                pMiniLeftHitFlare.material.opacity = 0.0;
+
+                pMiniRightHitFlare.visible = false;
+                pMiniRightHitFlare.material.opacity = 0.0;
+            }
 
             // Front Key Light & Pumpkin Flame (internal flame reacts with deep kicks and convergence)
             pKeyLight.color.copy(pumpkinThemeCol);
