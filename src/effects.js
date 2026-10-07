@@ -4485,8 +4485,8 @@ function createHauntedForestTreesTexture() {
     return tex;
 }
 
-// 5. Open Wrought-Iron Cemetery Gates & Weathered Stone Pillars (1024x1024)
-function createHauntedGatesTexture() {
+// 5a. Extended Wrought-Iron Cemetery Perimeter Fencing (Replaces stone pillars with iron fencing) (1024x1024)
+function createHauntedFenceTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 1024;
@@ -4494,150 +4494,216 @@ function createHauntedGatesTexture() {
 
     ctx.clearRect(0, 0, 1024, 1024);
 
-    const stoneDark = '#080c14';
-    const stoneMid = '#121824';
-    const stoneHighlight = '#202c3e';
     const ironDark = '#04060a';
-    const ironMid = '#0c1018';
-    const ivyDark = '#06140e';
-    const ivyLight = '#0e2c1c';
+    const ironMid = '#0d131d';
+    const ironHighlight = '#1c2636';
 
-    // Helper: Draw Weathered Ashlar Stone Gatepost Pillar
-    function drawStonePillar(x, w) {
-        // Base plinth
-        ctx.fillStyle = stoneDark;
-        ctx.fillRect(x - 12, 880, w + 24, 144);
-        ctx.fillStyle = stoneMid;
-        ctx.fillRect(x, 260, w, 620);
+    // Horizontal structural rails spanning the full width
+    ctx.fillStyle = ironDark;
+    ctx.strokeStyle = ironDark;
 
-        // Stone block horizontal mortar joints
-        ctx.fillStyle = stoneDark;
-        for (let y = 320; y <= 860; y += 65) {
-            ctx.fillRect(x, y, w, 5);
-        }
+    // Bottom structural rail
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.moveTo(0, 860); ctx.lineTo(950, 860);
+    ctx.stroke();
 
-        // Stepped Pillar Capital Cap
-        ctx.fillStyle = stoneDark;
-        ctx.fillRect(x - 16, 230, w + 32, 30);
-        ctx.fillRect(x - 8, 195, w + 16, 35);
-        // Pyramidal stone top
+    // Middle structural rail
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(0, 580); ctx.lineTo(950, 580);
+    ctx.stroke();
+
+    // Upper structural rail
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, 360); ctx.lineTo(950, 360);
+    ctx.stroke();
+
+    // Vertical Iron Pickets with Sharp Spear Finials
+    const picketSpacing = 38;
+    for (let px = 18; px < 940; px += picketSpacing) {
+        // Vertical picket shaft
+        ctx.lineWidth = 5;
         ctx.beginPath();
-        ctx.moveTo(x - 8, 195);
-        ctx.lineTo(x + w / 2, 130);
-        ctx.lineTo(x + w + 8, 195);
+        ctx.moveTo(px, 920); ctx.lineTo(px, 280);
+        ctx.stroke();
+
+        // Sharp Gothic Spearhead Finial
+        ctx.beginPath();
+        ctx.moveTo(px, 240);
+        ctx.lineTo(px - 7, 275);
+        ctx.lineTo(px + 7, 275);
         ctx.closePath();
         ctx.fill();
 
-        // Stone corner highlight
-        ctx.fillStyle = stoneHighlight;
-        ctx.fillRect(x, 260, 6, 620);
-        ctx.fillRect(x - 16, 230, 6, 30);
-
-        // Hanging Ivy foliage tendrils creeping down stone
-        ctx.fillStyle = ivyDark;
-        for (let iv = 0; iv < 18; iv++) {
-            const ivX = x + Math.random() * w;
-            const ivY = 200 + Math.random() * 520;
-            const ivR = 6 + Math.random() * 14;
-            ctx.beginPath();
-            ctx.arc(ivX, ivY, ivR, 0, Math.PI * 2);
-            ctx.fill();
-        }
-    }
-
-    // Left and Right Stone Gateposts
-    drawStonePillar(30, 160);
-    drawStonePillar(834, 160);
-
-    // Helper: Draw Open Wrought-Iron Gate Wing
-    // (Open inward towards center, drawn with authentic foreshortened perspective)
-    function drawIronGate(hingeX, tipX, isLeft = true) {
-        ctx.fillStyle = ironDark;
-        ctx.strokeStyle = ironDark;
-
-        const gateW = Math.abs(tipX - hingeX);
-        const numPickets = 14;
-
-        // Horizontal structural rails (Arched top, middle, bottom)
-        ctx.lineWidth = 6;
-        // Bottom rail
-        ctx.beginPath();
-        ctx.moveTo(hingeX, 860); ctx.lineTo(tipX, 820);
-        ctx.stroke();
-        // Lower cross rail
-        ctx.beginPath();
-        ctx.moveTo(hingeX, 720); ctx.lineTo(tipX, 690);
-        ctx.stroke();
-        // Middle rail
-        ctx.beginPath();
-        ctx.moveTo(hingeX, 540); ctx.lineTo(tipX, 520);
-        ctx.stroke();
-        // Arched Upper Rail
-        ctx.beginPath();
-        ctx.moveTo(hingeX, 360);
-        ctx.quadraticCurveTo((hingeX + tipX) / 2, 280, tipX, 320);
-        ctx.stroke();
-
-        // Vertical Iron Pickets with Spear Finials
-        for (let p = 0; p < numPickets; p++) {
-            const t = p / (numPickets - 1);
-            const px = hingeX + (tipX - hingeX) * t;
-            const baseY = 860 + (820 - 860) * t;
-            // Arch top Y calculation
-            const topY = (360 + (320 - 360) * t) - Math.sin(t * Math.PI) * 45;
-
-            // Vertical picket shaft
-            ctx.lineWidth = 4.5;
-            ctx.beginPath();
-            ctx.moveTo(px, baseY);
-            ctx.lineTo(px, topY);
-            ctx.stroke();
-
-            // Sharp Spearhead / Fleur-de-lis Finial
-            ctx.beginPath();
-            ctx.moveTo(px, topY - 26);
-            ctx.lineTo(px - 6, topY - 10);
-            ctx.lineTo(px + 6, topY - 10);
-            ctx.closePath();
-            ctx.fill();
-
-            // Intermediate spear cross bar
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(px - 8, topY - 10); ctx.lineTo(px + 8, topY - 10);
-            ctx.stroke();
-        }
-
-        // Ornamental forged scrollwork curls in upper arches
+        // Finial collar
         ctx.lineWidth = 3;
-        for (let sc = 0; sc < 6; sc++) {
-            const scT = (sc + 0.5) / 6;
-            const scX = hingeX + (tipX - hingeX) * scT;
-            const scY = (540 + (520 - 540) * scT) - 50;
+        ctx.beginPath();
+        ctx.moveTo(px - 9, 275); ctx.lineTo(px + 9, 275);
+        ctx.stroke();
+
+        // Forged decorative iron circles between top and middle rail
+        if (px + picketSpacing / 2 < 930) {
+            ctx.lineWidth = 2.5;
             ctx.beginPath();
-            ctx.arc(scX, scY, 14, 0, Math.PI * 1.6);
+            ctx.arc(px + picketSpacing / 2, 470, 14, 0, Math.PI * 2);
             ctx.stroke();
         }
-
-        // Heavy Iron Hinge Brackets connecting to stone pillar
-        ctx.fillRect(hingeX - 14, 350, 20, 16);
-        ctx.fillRect(hingeX - 14, 530, 20, 16);
-        ctx.fillRect(hingeX - 14, 850, 20, 16);
     }
 
-    // Left gate swinging open inward (from x: 190 to x: 440)
-    drawIronGate(190, 440, true);
-    // Right gate swinging open inward (from x: 834 to x: 584)
-    drawIronGate(834, 584, false);
+    // Terminal Wrought-Iron Gatepost (Inner edge where gate hinges attach)
+    ctx.fillStyle = ironDark;
+    ctx.fillRect(944, 200, 32, 720);
+    // Post metallic corner highlight
+    ctx.fillStyle = ironHighlight;
+    ctx.fillRect(946, 200, 4, 720);
 
-    // Overgrown dead weeds, briars and wild grass clumps at pillar bases
-    ctx.fillStyle = stoneDark;
-    for (let gx = 0; gx < 1024; gx += 6) {
-        if (gx > 340 && gx < 684) continue; // Keep open gate driveway clear!
-        const gh = 70 + Math.sin(gx * 0.1) * 35;
+    // Decorative stepped post collar caps
+    ctx.fillStyle = ironDark;
+    ctx.fillRect(936, 185, 48, 18);
+    ctx.fillRect(940, 160, 40, 25);
+
+    // Terminal Gothic Spire / Finial atop gatepost
+    ctx.beginPath();
+    ctx.moveTo(960, 80);
+    ctx.lineTo(942, 160);
+    ctx.lineTo(978, 160);
+    ctx.closePath();
+    ctx.fill();
+
+    // Heavy iron hinge barrels facing left toward gate opening
+    ctx.fillRect(928, 340, 20, 24);
+    ctx.fillRect(928, 560, 20, 24);
+    ctx.fillRect(928, 840, 20, 24);
+
+    // Tangled dead briars, overgrown weeds and creeping ivy along base
+    ctx.fillStyle = ironDark;
+    for (let bx = 0; bx < 1024; bx += 6) {
+        const bh = 75 + Math.sin(bx * 0.08) * 35 + Math.cos(bx * 0.15) * 20;
+        ctx.beginPath();
+        ctx.moveTo(bx - 4, 1024);
+        ctx.lineTo(bx + Math.sin(bx) * 6, 1024 - bh);
+        ctx.lineTo(bx + 4, 1024);
+        ctx.fill();
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// 5b. Articulated Wrought-Iron Swinging Gate Wing (512x1024)
+function createHauntedGateWingTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, 512, 1024);
+
+    const ironDark = '#04060a';
+    const ironMid = '#0c1018';
+    const ironHighlight = '#1e2838';
+
+    ctx.fillStyle = ironDark;
+    ctx.strokeStyle = ironDark;
+
+    // Left upright hinge bar (x: 10 to 30)
+    ctx.fillRect(12, 280, 20, 640);
+    ctx.fillStyle = ironHighlight;
+    ctx.fillRect(14, 280, 3, 640);
+
+    // Hinge mounting straps with rivet details
+    ctx.fillStyle = ironDark;
+    ctx.fillRect(0, 335, 36, 24);
+    ctx.fillRect(0, 555, 36, 24);
+    ctx.fillRect(0, 835, 36, 24);
+
+    // Right meeting upright bar (x: 480 to 500)
+    ctx.fillRect(480, 220, 20, 700);
+    ctx.fillStyle = ironHighlight;
+    ctx.fillRect(482, 220, 3, 700);
+
+    // Drop latch plate and ring handle
+    ctx.fillStyle = ironDark;
+    ctx.fillRect(468, 550, 36, 30);
+    ctx.lineWidth = 3.5;
+    ctx.beginPath();
+    ctx.arc(486, 600, 16, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Horizontal bottom rail
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(20, 860); ctx.lineTo(490, 860);
+    ctx.stroke();
+
+    // Horizontal middle rail
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(20, 580); ctx.lineTo(490, 580);
+    ctx.stroke();
+
+    // Gracefully sweeping arched upper rail (rising toward meeting post)
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(20, 360);
+    ctx.quadraticCurveTo(240, 280, 490, 240);
+    ctx.stroke();
+
+    // Diagonal structural cross brace
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(24, 860); ctx.lineTo(486, 580);
+    ctx.stroke();
+
+    // Decorative forged scrollwork curls along cross brace
+    for (let sc = 0; sc < 3; sc++) {
+        const scX = 140 + sc * 120;
+        const scY = 780 - sc * 70;
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(scX, scY, 16, 0, Math.PI * 1.6);
+        ctx.stroke();
+    }
+
+    // 12 Vertical Iron Pickets with Spear Finials
+    const numPickets = 12;
+    for (let p = 0; p < numPickets; p++) {
+        const t = (p + 0.5) / numPickets;
+        const px = 28 + (480 - 28) * t;
+        const archTopY = (360 + (240 - 360) * t) - Math.sin(t * Math.PI) * 28;
+
+        // Vertical picket shaft
+        ctx.lineWidth = 4.5;
+        ctx.beginPath();
+        ctx.moveTo(px, 880); ctx.lineTo(px, archTopY);
+        ctx.stroke();
+
+        // Sharp Spearhead Finial
+        ctx.beginPath();
+        ctx.moveTo(px, archTopY - 32);
+        ctx.lineTo(px - 7, archTopY - 12);
+        ctx.lineTo(px + 7, archTopY - 12);
+        ctx.closePath();
+        ctx.fill();
+
+        // Spear cross collar
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(px - 9, archTopY - 12); ctx.lineTo(px + 9, archTopY - 12);
+        ctx.stroke();
+    }
+
+    // Overgrown tangled weeds and creeping ivy along base
+    ctx.fillStyle = ironDark;
+    for (let gx = 0; gx < 512; gx += 6) {
+        const gh = 55 + Math.sin(gx * 0.12) * 30;
         ctx.beginPath();
         ctx.moveTo(gx - 4, 1024);
-        ctx.lineTo(gx + Math.sin(gx) * 6, 1024 - gh);
+        ctx.lineTo(gx + Math.sin(gx) * 5, 1024 - gh);
         ctx.lineTo(gx + 4, 1024);
         ctx.fill();
     }
@@ -9385,7 +9451,8 @@ export function createVFXScene(container) {
     const hauntedSkyTex = createHauntedSkyCloudsTexture();
     const hauntedManorTex = createHauntedManorTexture();
     const hauntedTreesTex = createHauntedForestTreesTexture();
-    const hauntedGatesTex = createHauntedGatesTexture();
+    const hauntedFenceTex = createHauntedFenceTexture();
+    const hauntedGateWingTex = createHauntedGateWingTexture();
     const hauntedPathTex = createHauntedDirtPathTexture();
     const hauntedBatTex = createHauntedBatTexture();
     const hauntedMistTex = createHauntedMistPuffTexture();
@@ -9490,16 +9557,49 @@ export function createVFXScene(container) {
     hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.16; // Tilted towards camera
     gHauntedManor.add(hauntedPathMesh);
 
-    // 6. Layer 6: Open Wrought-Iron Cemetery Gates & Weathered Stone Pillars (Foreground z = -1.2)
-    const hauntedGatesGeo = new THREE.PlaneGeometry(26.0, 16.5);
-    const hauntedGatesMat = new THREE.MeshBasicMaterial({
-        map: hauntedGatesTex,
+    // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Foreground z = -1.2)
+    // A. Left Perimeter Fence Railings (spanning from left screen edge to gate hinge post)
+    const hauntedFenceGeo = new THREE.PlaneGeometry(10.5, 13.0);
+    const hauntedFenceMat = new THREE.MeshBasicMaterial({
+        map: hauntedFenceTex,
         transparent: true,
         depthWrite: false
     });
-    const hauntedGatesMesh = new THREE.Mesh(hauntedGatesGeo, hauntedGatesMat);
-    hauntedGatesMesh.position.set(0.0, -1.8, -1.2);
-    gHauntedManor.add(hauntedGatesMesh);
+    const hauntedFenceLeftMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
+    hauntedFenceLeftMesh.position.set(-8.8, -2.0, -1.2);
+    gHauntedManor.add(hauntedFenceLeftMesh);
+
+    // B. Right Perimeter Fence Railings (mirrored so terminal gatepost faces the driveway)
+    const hauntedFenceRightMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
+    hauntedFenceRightMesh.position.set(8.8, -2.0, -1.2);
+    hauntedFenceRightMesh.scale.set(-1.0, 1.0, 1.0);
+    gHauntedManor.add(hauntedFenceRightMesh);
+
+    // C. Left Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = -3.8)
+    const hauntedLeftGatePivot = new THREE.Group();
+    hauntedLeftGatePivot.position.set(-3.8, -2.0, -1.2);
+
+    const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 12.0);
+    const hauntedGateWingMat = new THREE.MeshBasicMaterial({
+        map: hauntedGateWingTex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+    const hauntedLeftGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
+    hauntedLeftGateMesh.position.set(2.1, 0, 0); // Offset so hinge is at pivot origin
+    hauntedLeftGatePivot.add(hauntedLeftGateMesh);
+    gHauntedManor.add(hauntedLeftGatePivot);
+
+    // D. Right Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = +3.8)
+    const hauntedRightGatePivot = new THREE.Group();
+    hauntedRightGatePivot.position.set(3.8, -2.0, -1.2);
+
+    const hauntedRightGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
+    hauntedRightGateMesh.position.set(-2.1, 0, 0); // Offset so hinge is at pivot origin
+    hauntedRightGateMesh.scale.set(-1.0, 1.0, 1.0);
+    hauntedRightGatePivot.add(hauntedRightGateMesh);
+    gHauntedManor.add(hauntedRightGatePivot);
 
     // 7. Layer 7: Flocks of 3D Flying Vampire Bats (32 dynamic bat instances)
     const hauntedBatCount = 32;
@@ -9624,6 +9724,13 @@ export function createVFXScene(container) {
 
     let hauntedLightningTimer = 0.0;
     let hauntedLastLightningTime = 0.0;
+
+    // Random Haunted Manor Window Light Flicker State ("flicker randomly every now and then")
+    let hauntedFlickerActive = false;
+    let hauntedFlickerStartTime = 0.0;
+    let hauntedFlickerDuration = 0.0;
+    let hauntedNextFlickerTime = 3.5;
+    let hauntedFlickerType = 0;
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -11814,10 +11921,62 @@ export function createVFXScene(container) {
             // 1. Slow, atmospheric moonlit cloud drift
             hauntedCloudMesh1.position.x = Math.sin(elapsedTime * 0.08) * 3.5;
 
-            // 2. Flickering candlelight in haunted manor windows
-            const candleFlicker = Math.sin(elapsedTime * 14.0) * 0.15 + Math.cos(elapsedTime * 8.5) * 0.12 + Math.sin(elapsedTime * 22.0) * 0.08;
-            hauntedCandleLight.intensity = Math.max(1.2, 2.2 + candleFlicker * 1.5 + (audio.smoothedTreble || 0) * 0.8);
-            hauntedWindowsMat.opacity = Math.min(1.0, 0.65 + candleFlicker * 0.35 + (audio.smoothedTreble || 0) * 0.25);
+            // 1b. Organic slow gate swinging creak in the wind
+            const windTime = elapsedTime * 0.42;
+            const windGust = Math.sin(windTime) * 0.22 + Math.sin(windTime * 2.1 + 0.5) * 0.08 + Math.sin(windTime * 0.35 + 1.2) * 0.12;
+
+            // Left gate swings open inward (~ -42 deg) with gentle wind creaking
+            hauntedLeftGatePivot.rotation.y = -0.72 + windGust;
+
+            // Right gate swings open inward (~ +44 deg) with slightly resisted phase
+            const windGustRight = Math.sin(windTime * 0.95 + 0.8) * 0.20 + Math.sin(windTime * 1.8 + 1.1) * 0.07;
+            hauntedRightGatePivot.rotation.y = 0.76 - windGustRight;
+
+            // 2. Random eerie haunted manor window light flicker ("flicker randomly every now and then")
+            if (!hauntedFlickerActive && elapsedTime > hauntedNextFlickerTime) {
+                hauntedFlickerActive = true;
+                hauntedFlickerStartTime = elapsedTime;
+                hauntedFlickerDuration = 0.5 + Math.random() * 1.2; // 0.5s to 1.7s duration
+                hauntedFlickerType = Math.floor(Math.random() * 3);
+                hauntedNextFlickerTime = elapsedTime + 4.0 + Math.random() * 7.0; // Random interval: every 4 to 11s!
+            }
+
+            let candleIntensity = 2.4;
+            let windowOpacity = 0.85;
+
+            if (hauntedFlickerActive) {
+                const fProgress = (elapsedTime - hauntedFlickerStartTime) / hauntedFlickerDuration;
+                if (fProgress >= 1.0) {
+                    hauntedFlickerActive = false;
+                } else {
+                    const noise = Math.sin(elapsedTime * 48.0) * Math.cos(elapsedTime * 32.0);
+                    if (hauntedFlickerType === 0) {
+                        // Rapid erratic electrical / candle stutter
+                        const stutter = noise > 0.05 ? (0.2 + 0.8 * Math.random()) : 0.04;
+                        candleIntensity = 2.4 * stutter;
+                        windowOpacity = 0.85 * stutter;
+                    } else if (hauntedFlickerType === 1) {
+                        // Sudden blackout / brownout dip (house goes almost pitch dark!)
+                        const dip = (fProgress > 0.15 && fProgress < 0.70) ? 0.05 : (0.35 + 0.65 * Math.random());
+                        candleIntensity = 2.4 * dip;
+                        windowOpacity = 0.85 * dip;
+                    } else {
+                        // Ghostly eerie surge followed by rapid drop
+                        const surge = Math.sin(fProgress * Math.PI);
+                        const stutter = (Math.random() > 0.2) ? (1.0 + surge * 0.9) : 0.1;
+                        candleIntensity = 2.4 * stutter;
+                        windowOpacity = Math.min(1.0, 0.85 * stutter);
+                    }
+                }
+            } else {
+                // Gentle living candle warmth between random flicker events
+                const gentleSway = Math.sin(elapsedTime * 3.2) * 0.07 + Math.cos(elapsedTime * 4.8) * 0.04;
+                candleIntensity = 2.4 * (1.0 + gentleSway) + (audio.smoothedTreble || 0) * 0.35;
+                windowOpacity = 0.85 * (1.0 + gentleSway * 0.5);
+            }
+
+            hauntedCandleLight.intensity = Math.max(0.08, candleIntensity);
+            hauntedWindowsMat.opacity = Math.max(0.05, Math.min(1.0, windowOpacity));
 
             // 3. Flocks of 3D flying vampire bats with dynamic wing flaps & flocking
             const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.6 : 1.0;
