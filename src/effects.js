@@ -5769,148 +5769,110 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Matching Console Engine)
+    // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Faithful Hardware Console Engine)
     // -------------------------------------------------------------------------
     const gEQBars = createFXGroup();
     gEQBars.visible = true;
 
-    const eqCols = 36; // 36 Spectral Frequency Bands matching console EQ
-    const eqRows = 24; // 24-step high-resolution LED tower segments
-    const totalLEDs = eqCols * eqRows;
+    // High-Resolution 2D Dynamic Studio Console Canvas (Matching Console UI)
+    const studioEqW = 1280;
+    const studioEqH = 540;
+    const studioEqCanvas = document.createElement('canvas');
+    studioEqCanvas.width = studioEqW;
+    studioEqCanvas.height = studioEqH;
+    const studioEqCtx = studioEqCanvas.getContext('2d');
 
-    const brickGeo = new THREE.BoxGeometry(0.42, 0.22, 0.36);
-    const brickMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.95 });
-    const ledInstancedMesh = new THREE.InstancedMesh(brickGeo, brickMat, totalLEDs);
-    ledInstancedMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-    gEQBars.add(ledInstancedMesh);
+    const studioEqTex = new THREE.CanvasTexture(studioEqCanvas);
+    studioEqTex.minFilter = THREE.LinearFilter;
+    studioEqTex.magFilter = THREE.LinearFilter;
 
-    // Precompute spectral gradient color mappings across audible bands (matching console):
-    // 0: Cyan (Sub) -> Emerald (Bass/LowMid) -> Amber (Mid) -> Rose/Magenta (Treble/Air)
-    const eqColBaseColors = [];
-    const eqGridBlockColors = [];
-    for (let c = 0; c < eqCols; c++) {
-        const freqNorm = c / (eqCols - 1);
-        let hue = 185 - freqNorm * 220;
-        if (hue < 0) hue += 360;
-        const colHueNorm = hue / 360.0;
+    // 3D Floating Console Screen (Cinema Wide 2.37:1 ratio)
+    const screenGeo = new THREE.PlaneGeometry(24.0, 10.125);
+    const screenMat = new THREE.MeshBasicMaterial({ map: studioEqTex, transparent: true, side: THREE.DoubleSide });
+    const studioEqScreen = new THREE.Mesh(screenGeo, screenMat);
+    studioEqScreen.position.set(0, 0.25, 0.5);
+    gEQBars.add(studioEqScreen);
 
-        const baseCol = new THREE.Color().setHSL(colHueNorm, 1.0, 0.58);
-        eqColBaseColors.push(baseCol);
-
-        const rowCols = [];
-        for (let r = 0; r < eqRows; r++) {
-            const rowFrac = r / (eqRows - 1);
-            // Vertical luminance gradient matching console's linear gradient:
-            // Base rows: deeper saturated tone -> Top rows: intense luminous white-hot crest
-            const lightness = THREE.MathUtils.lerp(0.36, 0.85, rowFrac);
-            const saturation = THREE.MathUtils.lerp(0.96, 0.82, rowFrac);
-            rowCols.push(new THREE.Color().setHSL(colHueNorm, saturation, lightness));
-        }
-        eqGridBlockColors.push(rowCols);
-    }
-
-    const dummy = new THREE.Object3D();
-    const ledBaseY = -4.5;
-    const eqArcRadius = 18.0;
-    const eqArcAngle = Math.PI * 0.95;
-    const colDark = new THREE.Color(0x060814); // Sleek unlit dark LED segment
-    const eqPeakCaps = [];
-
-    for (let c = 0; c < eqCols; c++) {
-        const angle = ((c / (eqCols - 1)) - 0.5) * eqArcAngle;
-        const posX = Math.sin(angle) * eqArcRadius;
-        const posZ = -Math.cos(angle) * eqArcRadius + 14.5;
-
-        for (let r = 0; r < eqRows; r++) {
-            const idx = c * eqRows + r;
-            const posY = ledBaseY + r * 0.32;
-            dummy.position.set(posX, posY, posZ);
-            dummy.rotation.y = angle;
-            dummy.scale.set(1, 1, 1);
-            dummy.updateMatrix();
-            ledInstancedMesh.setMatrixAt(idx, dummy.matrix);
-            ledInstancedMesh.setColorAt(idx, colDark);
-        }
-
-        // Peak Hold Needle with matching bright spectral hue (matching console)
-        const capHueNorm = (185 - (c / (eqCols - 1)) * 220 < 0 ? 185 - (c / (eqCols - 1)) * 220 + 360 : 185 - (c / (eqCols - 1)) * 220) / 360.0;
-        const capColor = new THREE.Color().setHSL(capHueNorm, 1.0, 0.88);
-        const capMesh = new THREE.Mesh(
-            new THREE.BoxGeometry(0.48, 0.08, 0.40),
-            new THREE.MeshBasicMaterial({ color: capColor })
-        );
-        capMesh.position.set(posX, ledBaseY + 0.15, posZ);
-        capMesh.rotation.y = angle;
-        gEQBars.add(capMesh);
-        eqPeakCaps.push({ mesh: capMesh, peakY: ledBaseY + 0.15, peakVel: 0, posX, posZ, angle, color: capColor });
-    }
-    ledInstancedMesh.instanceMatrix.needsUpdate = true;
-
-    // Subtle studio logarithmic reference grid lines behind the towers (matching console background grid)
-    const eqGridGroup = new THREE.Group();
-    [0.25, 0.50, 0.75, 1.0].forEach((level) => {
-        const gridPoints = [];
-        for (let c = 0; c < eqCols; c++) {
-            const angle = ((c / (eqCols - 1)) - 0.5) * eqArcAngle;
-            const px = Math.sin(angle) * (eqArcRadius + 0.25);
-            const pz = -Math.cos(angle) * (eqArcRadius + 0.25) + 14.5;
-            const py = ledBaseY + level * (eqRows * 0.32);
-            gridPoints.push(new THREE.Vector3(px, py, pz));
-        }
-        const gridGeo = new THREE.BufferGeometry().setFromPoints(gridPoints);
-        const gridMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.08 });
-        eqGridGroup.add(new THREE.Line(gridGeo, gridMat));
+    // Beveled Studio Hardware Chassis Behind Screen
+    const chassisGeo = new THREE.BoxGeometry(24.7, 10.825, 0.45);
+    const chassisMat = new THREE.MeshStandardMaterial({
+        color: 0x0c0f18,
+        roughness: 0.70,
+        metalness: 0.60
     });
-    gEQBars.add(eqGridGroup);
+    const chassisMesh = new THREE.Mesh(chassisGeo, chassisMat);
+    chassisMesh.position.set(0, 0.25, 0.26);
+    gEQBars.add(chassisMesh);
 
-    // 3D Floating Spectrum Particles (Emitted from active peaks, matching console engine)
-    const MAX_3D_EQ_PARTICLES = 320;
-    const eq3DParticles = [];
-    const eqPartGeo = new THREE.BufferGeometry();
-    const eqPartPos = new Float32Array(MAX_3D_EQ_PARTICLES * 3);
-    const eqPartCol = new Float32Array(MAX_3D_EQ_PARTICLES * 3);
+    // Subtle Neon Bezel Border around Chassis
+    const bezelPoints = [
+        new THREE.Vector3(-12.35, -5.41, 0.52),
+        new THREE.Vector3(12.35, -5.41, 0.52),
+        new THREE.Vector3(12.35, 5.41, 0.52),
+        new THREE.Vector3(-12.35, 5.41, 0.52),
+        new THREE.Vector3(-12.35, -5.41, 0.52)
+    ];
+    const bezelLineGeo = new THREE.BufferGeometry().setFromPoints(bezelPoints);
+    const bezelLineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.35 });
+    const bezelLine = new THREE.Line(bezelLineGeo, bezelLineMat);
+    bezelLine.position.set(0, 0.25, 0);
+    gEQBars.add(bezelLine);
 
-    for (let p = 0; p < MAX_3D_EQ_PARTICLES; p++) {
-        eqPartPos[p * 3 + 1] = -999.0; // Initially hidden beneath stage
+    // Dark Stage Floor beneath Console
+    const eqStageFloor = new THREE.Mesh(
+        new THREE.PlaneGeometry(50, 30),
+        new THREE.MeshStandardMaterial({ color: 0x030408, roughness: 0.35, metalness: 0.85 })
+    );
+    eqStageFloor.rotation.x = -Math.PI / 2;
+    eqStageFloor.position.set(0, -5.6, 0);
+    gEQBars.add(eqStageFloor);
+
+    // Console EQ Engine State
+    const STUDIO_EQ_BARS = 36;
+    const studioEqPeakLevels = new Float32Array(STUDIO_EQ_BARS);
+    const studioEqPeakVels = new Float32Array(STUDIO_EQ_BARS);
+    const studioEq2DParticles = [];
+    const MAX_STUDIO_2D_PARTICLES = 160;
+
+    // 3D Floating Volume Sparks (Hovering into the 3D room in front of console)
+    const MAX_3D_VOL_PARTICLES = 120;
+    const eq3DVolParticles = [];
+    const eq3DVolGeo = new THREE.BufferGeometry();
+    const eq3DVolPos = new Float32Array(MAX_3D_VOL_PARTICLES * 3);
+    const eq3DVolCol = new Float32Array(MAX_3D_VOL_PARTICLES * 3);
+    for (let p = 0; p < MAX_3D_VOL_PARTICLES; p++) {
+        eq3DVolPos[p * 3 + 1] = -999.0;
     }
-    eqPartGeo.setAttribute('position', new THREE.BufferAttribute(eqPartPos, 3));
-    eqPartGeo.setAttribute('color', new THREE.BufferAttribute(eqPartCol, 3));
+    eq3DVolGeo.setAttribute('position', new THREE.BufferAttribute(eq3DVolPos, 3));
+    eq3DVolGeo.setAttribute('color', new THREE.BufferAttribute(eq3DVolCol, 3));
 
     // Procedural soft glowing radial particle texture
-    const eqPartCanvas = document.createElement('canvas');
-    eqPartCanvas.width = 64;
-    eqPartCanvas.height = 64;
-    const eqPartCtx = eqPartCanvas.getContext('2d');
-    const eqPartGrad = eqPartCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    eqPartGrad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)');
-    eqPartGrad.addColorStop(0.25, 'rgba(255, 255, 255, 0.95)');
-    eqPartGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.35)');
-    eqPartGrad.addColorStop(1.00, 'rgba(255, 255, 255, 0.0)');
-    eqPartCtx.fillStyle = eqPartGrad;
-    eqPartCtx.beginPath();
-    eqPartCtx.arc(32, 32, 32, 0, Math.PI * 2);
-    eqPartCtx.fill();
-    const eqGlowTex = new THREE.CanvasTexture(eqPartCanvas);
+    const eqGlowCanvas = document.createElement('canvas');
+    eqGlowCanvas.width = 64;
+    eqGlowCanvas.height = 64;
+    const eqGlowCtx = eqGlowCanvas.getContext('2d');
+    const eqGlowGrad = eqGlowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    eqGlowGrad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)');
+    eqGlowGrad.addColorStop(0.25, 'rgba(255, 255, 255, 0.95)');
+    eqGlowGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.35)');
+    eqGlowGrad.addColorStop(1.00, 'rgba(255, 255, 255, 0.0)');
+    eqGlowCtx.fillStyle = eqGlowGrad;
+    eqGlowCtx.beginPath();
+    eqGlowCtx.arc(32, 32, 32, 0, Math.PI * 2);
+    eqGlowCtx.fill();
+    const eqGlowTex = new THREE.CanvasTexture(eqGlowCanvas);
 
-    const eqPartMat = new THREE.PointsMaterial({
-        size: 0.45,
+    const eq3DVolMat = new THREE.PointsMaterial({
+        size: 0.55,
         map: eqGlowTex,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         transparent: true,
         depthWrite: false
     });
-    const eqParticleSystem = new THREE.Points(eqPartGeo, eqPartMat);
-    eqParticleSystem.renderOrder = 24;
-    gEQBars.add(eqParticleSystem);
-
-    const eqStageFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(50, 30),
-        new THREE.MeshBasicMaterial({ color: 0x03040a, side: THREE.DoubleSide })
-    );
-    eqStageFloor.rotation.x = -Math.PI / 2;
-    eqStageFloor.position.set(0, ledBaseY - 0.05, 0);
-    gEQBars.add(eqStageFloor);
+    const eq3DVolMesh = new THREE.Points(eq3DVolGeo, eq3DVolMat);
+    eq3DVolMesh.renderOrder = 28;
+    gEQBars.add(eq3DVolMesh);
 
     // -------------------------------------------------------------------------
     // FX 1: 🎯 CIRCULAR SPECTRUM MANDALA
@@ -9345,94 +9307,244 @@ export function createVFXScene(container) {
         // 2. Animate Active Scene
         // ---------------------------------------------------------------------
         try {
-            // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Matching Console Engine)
+            // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Faithful Match to Console)
             // ---------------------------------------------------------------------
             if (currentFXIndex === 0) {
-                const isAudioActive = (audio.bass > 0.03 || (audio.smoothedMid || audio.mid || 0) > 0.03 || (audio.smoothedTreble || audio.treble || 0) > 0.03 || (audio.overall || 0) > 0.02);
+                const ctx = studioEqCtx;
+                const W = studioEqW;
+                const H = studioEqH;
 
-                for (let c = 0; c < eqCols; c++) {
-                    const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(c / eqCols, 1.25) * 54) + 1);
+                const isAudioActive = (audio.bass > 0.02 || (audio.smoothedMid || audio.mid || 0) > 0.02 || (audio.smoothedTreble || audio.treble || 0) > 0.02 || (audio.overall || 0) > 0.02);
+
+                // 1. Clear & Outer Panel Background
+                ctx.fillStyle = '#0a0d14';
+                ctx.fillRect(0, 0, W, H);
+
+                // Outer Card Bevel & Border
+                ctx.strokeStyle = '#1e2433';
+                ctx.lineWidth = 2;
+                if (ctx.roundRect) {
+                    ctx.roundRect(4, 4, W - 8, H - 8, 8);
+                } else {
+                    ctx.rect(4, 4, W - 8, H - 8);
+                }
+                ctx.stroke();
+
+                // 2. Header Bar: Icon, "PARTICLE SPECTRUM EQ", "[ LIVE SPECTRUM ]"
+                // 4-Dot LED Grid Icon
+                ctx.fillStyle = '#64748b';
+                const iconX = 28;
+                const iconY = 22;
+                const dotSize = 5;
+                const dotGap = 4;
+                ctx.fillRect(iconX, iconY, dotSize, dotSize);
+                ctx.fillRect(iconX + dotSize + dotGap, iconY, dotSize, dotSize);
+                ctx.fillRect(iconX, iconY + dotSize + dotGap, dotSize, dotSize);
+                ctx.fillRect(iconX + dotSize + dotGap, iconY + dotSize + dotGap, dotSize, dotSize);
+
+                // Title
+                ctx.font = '800 15px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#8c95a8';
+                ctx.textAlign = 'left';
+                ctx.fillText('PARTICLE SPECTRUM EQ', iconX + 22, iconY + 11);
+
+                // Live Spectrum Pill Badge (Right aligned)
+                const badgeW = 118;
+                const badgeH = 24;
+                const badgeX = W - badgeW - 28;
+                const badgeY = 14;
+
+                ctx.fillStyle = 'rgba(0, 255, 204, 0.12)';
+                ctx.strokeStyle = 'rgba(0, 255, 204, 0.45)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
+                } else {
+                    ctx.rect(badgeX, badgeY, badgeW, badgeH);
+                }
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.font = '800 11.5px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#00ffcc';
+                ctx.textAlign = 'center';
+                ctx.fillText('LIVE SPECTRUM', badgeX + badgeW * 0.5, badgeY + 16.5);
+
+                // 3. Inner Display Window
+                const dispX = 22;
+                const dispY = 46;
+                const dispW = W - 44;
+                const dispH = 435;
+
+                ctx.fillStyle = '#05070c';
+                ctx.beginPath();
+                if (ctx.roundRect) {
+                    ctx.roundRect(dispX, dispY, dispW, dispH, 6);
+                } else {
+                    ctx.rect(dispX, dispY, dispW, dispH);
+                }
+                ctx.fill();
+
+                ctx.strokeStyle = '#181b25';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                // Subtle Horizontal Grid Lines
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                for (let level of [0.25, 0.50, 0.75]) {
+                    const gy = dispY + dispH * level;
+                    ctx.moveTo(dispX + 4, gy);
+                    ctx.lineTo(dispX + dispW - 4, gy);
+                }
+                ctx.stroke();
+
+                // 4. 36 Spectrum Bars
+                const barSpacing = 4.5;
+                const barWidth = (dispW - (barSpacing * (STUDIO_EQ_BARS + 1))) / STUDIO_EQ_BARS;
+                const maxBarHeight = dispH - 45;
+
+                for (let i = 0; i < STUDIO_EQ_BARS; i++) {
+                    const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(i / STUDIO_EQ_BARS, 1.25) * 54) + 1);
                     const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
-                    const targetActiveRows = Math.min(eqRows, Math.floor(rawAmp * (eqRows + 2) + (c < 8 ? bassPop * 2.8 : 0)));
+                    const boostAmp = rawAmp + (i < 6 ? bassPop * 0.18 : 0);
+                    const barHeight = Math.max(4.0, Math.min(maxBarHeight, boostAmp * maxBarHeight));
 
-                    const colColors = eqGridBlockColors[c];
-                    for (let r = 0; r < eqRows; r++) {
-                        const idx = c * eqRows + r;
-                        if (r < targetActiveRows) {
-                            ledInstancedMesh.setColorAt(idx, colColors[r]);
-                        } else {
-                            ledInstancedMesh.setColorAt(idx, colDark);
-                        }
+                    const bx = dispX + barSpacing + i * (barWidth + barSpacing);
+                    const by = dispY + dispH - barHeight - 4;
+
+                    // Harmonious spectral color gradient across audible bands:
+                    // 0: Cyan (Sub) -> Emerald (Bass) -> Lime/Yellow (Mid) -> Orange -> Rose/Magenta (Treble/Air)
+                    const freqNorm = i / STUDIO_EQ_BARS;
+                    let hue = 185 - freqNorm * 220;
+                    if (hue < 0) hue += 360;
+
+                    const grad = ctx.createLinearGradient(0, dispY + dispH, 0, by);
+                    grad.addColorStop(0.0, `hsla(${hue}, 95%, 45%, 0.22)`);
+                    grad.addColorStop(0.68, `hsla(${hue}, 100%, 55%, 0.85)`);
+                    grad.addColorStop(1.0, `hsla(${hue}, 100%, 78%, 1.0)`);
+
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    if (ctx.roundRect) {
+                        ctx.roundRect(bx, by, barWidth, barHeight, [4, 4, 0, 0]);
+                    } else {
+                        ctx.rect(bx, by, barWidth, barHeight);
                     }
+                    ctx.fill();
 
                     // Peak Hold needle with gravity physics (matching console)
-                    const cap = eqPeakCaps[c];
-                    const currentTopY = ledBaseY + targetActiveRows * 0.32 + 0.12;
-                    if (currentTopY >= cap.peakY) {
-                        cap.peakY = currentTopY;
-                        cap.peakVel = 0;
+                    if (barHeight >= studioEqPeakLevels[i]) {
+                        studioEqPeakLevels[i] = barHeight;
+                        studioEqPeakVels[i] = 0;
                     } else {
-                        cap.peakVel += delta * 14.0;
-                        cap.peakY -= cap.peakVel * delta;
-                        if (cap.peakY < ledBaseY + 0.15) cap.peakY = ledBaseY + 0.15;
+                        studioEqPeakVels[i] += delta * 24.0;
+                        studioEqPeakLevels[i] = Math.max(4.0, studioEqPeakLevels[i] - studioEqPeakVels[i] * delta * 60.0);
                     }
-                    cap.mesh.position.y = cap.peakY;
 
-                    // Spawn floating spectrum particles from active peaks (matching console engine!)
-                    if (isAudioActive && rawAmp > 0.22 && Math.random() < (rawAmp * 0.45) && eq3DParticles.length < MAX_3D_EQ_PARTICLES) {
-                        const baseCol = eqColBaseColors[c];
-                        eq3DParticles.push({
-                            x: cap.posX + (Math.random() - 0.5) * 0.35,
-                            y: currentTopY,
-                            z: cap.posZ + (Math.random() - 0.5) * 0.35,
-                            vx: (Math.random() - 0.5) * 0.8,
-                            vy: 1.2 + rawAmp * 3.8 + Math.random() * 1.6,
-                            vz: (Math.random() - 0.5) * 0.8,
+                    const peakY = dispY + dispH - studioEqPeakLevels[i] - 5;
+                    ctx.fillStyle = `hsla(${hue}, 100%, 92%, 0.95)`;
+                    ctx.fillRect(bx, peakY, barWidth, 3);
+
+                    // Spawn floating spectrum particles from active peaks (matching console!)
+                    if (isAudioActive && rawAmp > 0.20 && Math.random() < (rawAmp * 0.55) && studioEq2DParticles.length < MAX_STUDIO_2D_PARTICLES) {
+                        studioEq2DParticles.push({
+                            x: bx + barWidth * 0.5 + (Math.random() - 0.5) * 8,
+                            y: by,
+                            vx: (Math.random() - 0.5) * 1.2,
+                            vy: -(1.6 + rawAmp * 3.8 + Math.random() * 2.2),
                             life: 1.0,
-                            decay: 0.018 + Math.random() * 0.026,
-                            color: baseCol
+                            decay: 0.015 + Math.random() * 0.022,
+                            size: 3.2 + Math.random() * 5.5,
+                            hue: hue
                         });
+
+                        // Also spawn 3D volume sparks emerging forward toward camera
+                        if (eq3DVolParticles.length < MAX_3D_VOL_PARTICLES && Math.random() < 0.35) {
+                            const screenNormX = ((bx + barWidth * 0.5) / W - 0.5) * 23.5;
+                            const screenNormY = ((H - by) / H - 0.5) * 9.8 + 0.25;
+                            const hslCol = new THREE.Color().setHSL(hue / 360.0, 1.0, 0.65);
+                            eq3DVolParticles.push({
+                                x: screenNormX,
+                                y: screenNormY,
+                                z: 0.6,
+                                vx: (Math.random() - 0.5) * 0.6,
+                                vy: 0.8 + rawAmp * 2.5,
+                                vz: 0.8 + Math.random() * 1.5,
+                                life: 1.0,
+                                decay: 0.02 + Math.random() * 0.03,
+                                color: hslCol
+                            });
+                        }
                     }
                 }
-                if (ledInstancedMesh.instanceColor) ledInstancedMesh.instanceColor.needsUpdate = true;
 
-                // Update & Render floating spectrum particles in 3D
-                const pPos = eqPartGeo.attributes.position.array;
-                const pCol = eqPartGeo.attributes.color.array;
+                // 5. Update & Render Floating Spectrum Particles (Bubbles / Dots matching screenshot)
+                for (let p = studioEq2DParticles.length - 1; p >= 0; p--) {
+                    const part = studioEq2DParticles[p];
+                    part.x += part.vx;
+                    part.y += part.vy;
+                    part.vy += 0.035; // gentle upward drag
+                    part.life -= part.decay;
 
-                let activeCount = 0;
-                for (let p = eq3DParticles.length - 1; p >= 0; p--) {
-                    const part = eq3DParticles[p];
-                    part.x += part.vx * delta;
-                    part.y += part.vy * delta;
-                    part.z += part.vz * delta;
-                    part.vy *= 0.985; // slight air drag
-                    part.life -= part.decay * (delta * 60.0);
-
-                    if (part.life <= 0 || part.y > (ledBaseY + 18.0)) {
-                        eq3DParticles.splice(p, 1);
+                    if (part.life <= 0 || part.y < dispY) {
+                        studioEq2DParticles.splice(p, 1);
                         continue;
                     }
 
-                    pPos[activeCount * 3] = part.x;
-                    pPos[activeCount * 3 + 1] = part.y;
-                    pPos[activeCount * 3 + 2] = part.z;
-
-                    const pBrightness = part.life * 0.95;
-                    pCol[activeCount * 3] = part.color.r * pBrightness;
-                    pCol[activeCount * 3 + 1] = part.color.g * pBrightness;
-                    pCol[activeCount * 3 + 2] = part.color.b * pBrightness;
-
-                    activeCount++;
+                    ctx.fillStyle = `hsla(${part.hue}, 100%, 75%, ${part.life * 0.92})`;
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, Math.max(1.5, part.size * (0.35 + part.life * 0.65)), 0, Math.PI * 2);
+                    ctx.fill();
                 }
 
-                // Hide inactive particle slots
-                for (let i = activeCount; i < MAX_3D_EQ_PARTICLES; i++) {
-                    pPos[i * 3 + 1] = -999.0;
+                // 6. Frequency Axis Footer Labels
+                ctx.font = '800 12.5px "JetBrains Mono", monospace';
+                ctx.fillStyle = '#64748b';
+                ctx.textAlign = 'left';
+                ctx.fillText('20Hz (SUB)', dispX + 4, H - 12);
+                ctx.fillText('120Hz (BASS)', dispX + dispW * 0.22, H - 12);
+                ctx.fillText('1kHz (MID)', dispX + dispW * 0.46, H - 12);
+                ctx.fillText('4kHz (HI-MID)', dispX + dispW * 0.70, H - 12);
+                ctx.fillText('16kHz (AIR)', dispX + dispW * 0.91, H - 12);
+
+                studioEqTex.needsUpdate = true;
+
+                // 7. Update 3D Volume Sparks
+                const vPos = eq3DVolGeo.attributes.position.array;
+                const vCol = eq3DVolCol.attributes.color.array;
+                let active3DCount = 0;
+                for (let p = eq3DVolParticles.length - 1; p >= 0; p--) {
+                    const vp = eq3DVolParticles[p];
+                    vp.x += vp.vx * delta;
+                    vp.y += vp.vy * delta;
+                    vp.z += vp.vz * delta;
+                    vp.life -= vp.decay * (delta * 60.0);
+
+                    if (vp.life <= 0 || vp.z > 8.0) {
+                        eq3DVolParticles.splice(p, 1);
+                        continue;
+                    }
+
+                    vPos[active3DCount * 3] = vp.x;
+                    vPos[active3DCount * 3 + 1] = vp.y;
+                    vPos[active3DCount * 3 + 2] = vp.z;
+
+                    const br = vp.life * 0.9;
+                    vCol[active3DCount * 3] = vp.color.r * br;
+                    vCol[active3DCount * 3 + 1] = vp.color.g * br;
+                    vCol[active3DCount * 3 + 2] = vp.color.b * br;
+
+                    active3DCount++;
                 }
-                eqPartGeo.attributes.position.needsUpdate = true;
-                eqPartGeo.attributes.color.needsUpdate = true;
-                eqPartGeo.setDrawRange(0, activeCount);
+                for (let i = active3DCount; i < MAX_3D_VOL_PARTICLES; i++) {
+                    vPos[i * 3 + 1] = -999.0;
+                }
+                eq3DVolGeo.attributes.position.needsUpdate = true;
+                eq3DVolGeo.attributes.color.needsUpdate = true;
+                eq3DVolGeo.setDrawRange(0, active3DCount);
             }
         // ---------------------------------------------------------------------
         // FX 1: 🎯 Circular Spectrum Mandala
