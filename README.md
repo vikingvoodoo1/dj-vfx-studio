@@ -217,6 +217,13 @@ npm run preview
 
 ---
 
+## 📚 Technical Documentation
+
+- **[Lighting Architecture & Engineering Guide (LIGHTING_GUIDE.md)](LIGHTING_GUIDE.md)** — Comprehensive architectural blueprint covering all virtual WebGL fixtures (moving heads, volumetric ray shaders, dual-group bottom strobe rigs, caustics) and physical smart lighting (Philips Hue hardware bridge).
+- **[Feature Breakdown (FEATURES.md)](FEATURES.md)** — Detailed specification of all visualizer engines, branding layers, Shazam recognition, and DJ hardware bridges.
+
+---
+
 ## 📄 License
 
 This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
