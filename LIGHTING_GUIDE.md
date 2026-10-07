@@ -258,18 +258,26 @@ Both the traditional **Mirror Disco Ball** (FX 4) and the **Pumpkin Mirror Ball*
 * **Interlocking Silver Suspension Chain (`discoChainGroup`)**: 17 individually articulated torus chain links (`TorusGeometry(0.28, 0.075)`) forged from polished chrome (`0xdce8fa`, metalness `0.98`, roughness `0.10`).
 * **Catenary Suspension Dynamics**: Each link interpolates dynamically between the ball's top eyelet world coordinate and the ceiling flange at $y = 13.5$, maintaining alternating $90^\circ$ link orientations and natural catenary sag (`sagFactor = sin(t0 * PI) * 0.12`).
 
-### Optical Silver / Glass Mirror Model (`MeshPhysicalMaterial`)
-* **Refractive Glass Surface**: Optical crown glass clearcoat ($IOR = 1.52$, `clearcoat = 1.0`, `clearcoatRoughness = 0.01`) over silver mirror backing (`color = 0xf0f6ff`, metalness `0.98`, roughness `0.02`).
-* **Prismatic Glint & Edge Sheen**: Iridescence coat (`iridescence = 0.22`, $IOR = 1.33$) for subtle rainbow chromatic glints at glancing angles, combined with silver velvet rim sheen (`sheen = 0.30`, `sheenColor = 0xe6f2ff`).
-* **Brilliant Stage Pinspots & Steady Concert Illumination**:
-  * Dual focused cool-white / diamond-white pinspots (`dBallKeyLight` at intensity $2.5$, `dBallPinLeft` at intensity $2.3$) striking the facet normals directly.
-  * Specular core point emitter (`dBallPointSilver`, steady intensity $3.6$) creating crisp mirror facet reflections without color bleed.
-  * Side neon washes (`dBallCyanLight`, `dBallMagentaLight`) providing subtle ambient fills.
-  * **Decoupled Motion & Lighting**: Audio reactivity on the ball rotation and stage pinspots is decoupled, providing a constant, graceful motor spin and steady concert illumination.
+### Optical Pure Silver / Glass Mirror Model (`MeshPhysicalMaterial`)
+* **Dedicated Monochrome Studio Environment Map (`createSilverGlassEnvironmentMap`)**:
+  * Offscreen equirectangular PMREM map forged strictly from high-contrast pure diamond white (`#ffffff`) and platinum silver (`#f4f8fc`, `#edf2f8`) softboxes, pinspots, and overhead truss light bars against a dark charcoal studio backdrop.
+  * Completely eliminates all legacy nightclub neon reflections (cyans, magentas, purples, blues, pinks) from the ball's mirror facets.
+* **Refractive Optical Crown Glass & Pure Silver Mirror Backing**:
+  * Pure white base backing (`color = 0xffffff`, `metalness = 1.0`, `roughness = 0.02`) under high-clarity optical crown glass clearcoat (`clearcoat = 1.0`, `clearcoatRoughness = 0.01`, $IOR = 1.52$).
+  * Zero iridescence (`iridescence = 0.0`) and zero sheen (`sheen = 0.0`) to strictly prohibit rainbow chromatic interference or color fringing.
+  * Boosted studio environment reflection gain (`envMapIntensity = 5.0`).
+* **Multi-Directional Pure White & Silver Studio Pinspot Rig**:
+  * **Front Key Pinspot** (`dBallKeyLight`, intensity `2.8`, `#ffffff`): Sharp directional fixture catching face facet bevels.
+  * **Left Pinspot** (`dBallPinLeft`, intensity `2.6`, `#ffffff`): Upper-left high-angle studio fixture.
+  * **Overhead Downlight** (`dBallPinTop`, intensity `2.2`, `#ffffff`): True top-down pinspot accentuating spherical convexity and top collar hardware.
+  * **Specular Core Point Emitter** (`dBallPointSilver`, intensity `4.2`, `#ffffff`): Concentrated specular highlight producing crisp crystal star reflections.
+  * **Rim Backlight & Front Fill** (`dBallRimLight` intensity `1.4`, `dBallFillLight` intensity `1.2`, `#ffffff` / `#f2f6fa`): Clean neutral studio rim and fill without color contamination.
+  * **Zero Colored Lights**: All legacy cyan, magenta, pink, and blue lights have been completely removed.
+  * **Decoupled Motion & Lighting**: Audio reactivity on the ball rotation and stage pinspots is decoupled, providing a constant, graceful motor spin and steady studio illumination.
 
 ### Subtle Sparkling White & Silver Background Starfield (`DiscoSilverStarsShader`)
-* **Pure White & Silver Chromatic Palette**: 1,500 background starburst particles curated in pure diamond white (`#ffffff`), bright platinum silver (`#f5f8fc`), shimmering mirror silver (`#edf3fa`), and ice crystal silver (`#e2ebf5`), with zero saturated color tints.
-* **Per-Particle Sinusoidal Twinkle & Micro-Glint**: Driven by `DiscoSilverStarsShader`, each star evaluates unique randomized twinkle speed and phase attributes (`aSpeed`, `aPhase`), producing delicate shimmering sparkles.
+* **Pure White & Silver Chromatic Palette**: 1,500 background starburst particles curated in pure diamond white (`#ffffff`), bright platinum silver (`#f6f9fc`), shimmering mirror silver (`#edf2f8`), and pale chrome silver (`#f2f6fa`), with strictly zero colored hues.
+* **Per-Particle Sinusoidal Twinkle**: Driven by `DiscoSilverStarsShader`, each star evaluates unique randomized twinkle speed and phase attributes (`aSpeed`, `aPhase`), producing delicate shimmering sparkles.
 * **Decoupled Steady Drift**: Audio-driven scale pumping has been removed; stars drift majestically at a constant scale ($1.0$), framing the disco ball with serene, crystalline elegance.
 
 ### Rotating Floor Fire Pit Hearth Embers (`BonfireFloorEmbersShader`)

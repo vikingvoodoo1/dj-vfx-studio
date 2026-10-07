@@ -3645,8 +3645,8 @@ function createDiscoTileTexture() {
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Clean dark silver-charcoal grout seam
-    ctx.fillStyle = '#161922';
+    // Clean neutral dark charcoal grout seam
+    ctx.fillStyle = '#121316';
     ctx.fillRect(0, 0, 1024, 512);
 
     const numRows = 40; // 40 vertical rings
@@ -3662,24 +3662,22 @@ function createDiscoTileTexture() {
             // Deterministic micro-tilt brightness variation per mirror tile
             const seed = Math.sin(r * 127.1 + c * 311.7) * 43758.5453123;
             const rand = seed - Math.floor(seed);
-            const baseLum = Math.floor(212 + (rand - 0.5) * 58); // 183..241 (bright silver)
+            const baseLum = Math.floor(215 + (rand - 0.5) * 55); // 187..242 (bright pure silver)
 
-            // Distinct cool silver-glass tint (crisp mirror reflection)
-            const rCol = Math.min(255, baseLum);
-            const gCol = Math.min(255, Math.floor(baseLum * 1.02));
-            const bCol = Math.min(255, Math.floor(baseLum * 1.06));
+            // Pure neutral monochrome silver mirror facet (zero color cast)
+            const lum = Math.min(255, baseLum);
 
             // Tile body
-            ctx.fillStyle = `rgb(${rCol}, ${gCol}, ${bCol})`;
+            ctx.fillStyle = `rgb(${lum}, ${lum}, ${lum})`;
             ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
 
-            // Crisp silver-white specular bevel highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+            // Pure white specular bevel highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
             ctx.fillRect(x + 1, y + 1, tileW - 2, 1);
             ctx.fillRect(x + 1, y + 1, 1, tileH - 2);
 
-            // Glass depth edge shadow
-            ctx.fillStyle = 'rgba(12, 18, 30, 0.40)';
+            // Neutral glass depth edge shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
             ctx.fillRect(x + 1, y + tileH - 2, tileW - 2, 1);
             ctx.fillRect(x + tileW - 2, y + 1, 1, tileH - 2);
         }
@@ -3872,6 +3870,78 @@ function createClubEnvironmentMap(renderer) {
 
     ctx.strokeStyle = '#0044ff';
     ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(0, 170); ctx.lineTo(1024, 170);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.mapping = THREE.EquirectangularReflectionMapping;
+    tex.needsUpdate = true;
+
+    const pmremGen = new THREE.PMREMGenerator(renderer);
+    const rt = pmremGen.fromEquirectangular(tex);
+    tex.dispose();
+    pmremGen.dispose();
+    return rt.texture;
+}
+
+// Offscreen Pure Silver / Glass Mirror Studio Equirectangular Environment Map for PMREM Reflections
+function createSilverGlassEnvironmentMap(renderer) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Deep neutral studio ambient backdrop (pure monochrome dark slate / charcoal)
+    const bgGrad = ctx.createLinearGradient(0, 0, 0, 512);
+    bgGrad.addColorStop(0, '#030406');
+    bgGrad.addColorStop(0.25, '#080a0e');
+    bgGrad.addColorStop(0.75, '#06070a');
+    bgGrad.addColorStop(1, '#020204');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, 1024, 512);
+
+    // High-contrast pure diamond white & platinum silver studio light panels & pinspots
+    const silverSources = [
+        { x: 180, y: 130, r: 95, col: '#ffffff', core: '#ffffff' },
+        { x: 820, y: 130, r: 95, col: '#ffffff', core: '#ffffff' },
+        { x: 512, y: 80, r: 120, col: '#f4f8fc', core: '#ffffff' },
+        { x: 340, y: 220, r: 75, col: '#edf2f8', core: '#ffffff' },
+        { x: 680, y: 220, r: 75, col: '#edf2f8', core: '#ffffff' },
+        { x: 100, y: 280, r: 65, col: '#ffffff', core: '#ffffff' },
+        { x: 920, y: 280, r: 65, col: '#ffffff', core: '#ffffff' },
+        { x: 512, y: 290, r: 140, col: '#ffffff', core: '#ffffff' },
+        { x: 260, y: 380, r: 55, col: '#e8eff6', core: '#ffffff' },
+        { x: 760, y: 380, r: 55, col: '#e8eff6', core: '#ffffff' }
+    ];
+
+    silverSources.forEach(s => {
+        const grad = ctx.createRadialGradient(s.x, s.y, 1, s.x, s.y, s.r);
+        grad.addColorStop(0, s.core);
+        grad.addColorStop(0.25, s.col);
+        grad.addColorStop(0.65, 'rgba(235, 242, 250, 0.35)');
+        grad.addColorStop(1, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Overhead truss pure white studio light strip bars
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(0, 50); ctx.lineTo(1024, 50);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#e6eff8';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(0, 110); ctx.lineTo(1024, 110);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#f2f7fc';
+    ctx.lineWidth = 5;
     ctx.beginPath();
     ctx.moveTo(0, 170); ctx.lineTo(1024, 170);
     ctx.stroke();
@@ -5746,15 +5816,15 @@ export function createVFXScene(container) {
     const discoRoughnessTex = createDiscoRoughnessMap();
     const discoMetalnessTex = createDiscoMetalnessMap();
     const discoTileTex = createDiscoTileTexture();
-    const clubEnvMap = createClubEnvironmentMap(renderer);
+    const silverGlassEnvMap = createSilverGlassEnvironmentMap(renderer);
     const volumetricBeamTex = createVolumetricBeamTexture();
     const floorTileTex = createFloorTileTexture();
 
-    // 2. Big Faceted Chrome & Mirror Glass Disco Ball (Refractive Glass Clearcoat + Silver Backing)
+    // 2. Big Faceted Chrome & Mirror Glass Disco Ball (Refractive Glass Clearcoat + Pure Silver Backing)
     const dBallGeo = new THREE.SphereGeometry(5.2, 96, 48);
     const dBallMat = new THREE.MeshPhysicalMaterial({
-        color: 0xf0f6ff, // Luminous pristine silver / crystal-glass mirror
-        metalness: 0.98, // Mirror-silver reflective backing
+        color: 0xffffff, // Pure silver-white mirror
+        metalness: 1.0, // Mirror-silver reflective backing
         roughness: 0.02, // Ultra-sharp crystal mirror glass facets
         normalMap: discoNormalTex,
         normalScale: new THREE.Vector2(1.15, 1.15),
@@ -5762,16 +5832,14 @@ export function createVFXScene(container) {
         metalnessMap: discoMetalnessTex,
         bumpMap: discoTileTex,
         bumpScale: 0.035, // Crisp glass facet bevels
-        envMap: clubEnvMap,
-        envMapIntensity: 4.6, // High-intensity nightclub HDRI glass reflections
-        clearcoat: 1.0, // Clear glass protective coat
+        envMap: silverGlassEnvMap, // Pure monochrome silver & white studio reflections (zero colored lights)
+        envMapIntensity: 5.0, // High-intensity silver glass reflections
+        clearcoat: 1.0, // Clear optical glass protective coat
         clearcoatRoughness: 0.01,
         reflectivity: 1.0,
         ior: 1.52, // Authentic crown glass refractive index
-        iridescence: 0.22, // Subtle glass prism rainbow sheen at glancing angles
-        iridescenceIOR: 1.33,
-        sheen: 0.30, // Silver glass edge sheen
-        sheenColor: new THREE.Color(0xe6f2ff),
+        iridescence: 0.0, // Strictly ZERO rainbow color interference (no pinks, purples, cyans)
+        sheen: 0.0, // Strictly ZERO colored sheen
         specularIntensity: 1.0,
         specularColor: new THREE.Color(0xffffff)
     });
@@ -5781,10 +5849,10 @@ export function createVFXScene(container) {
 
     // 3. Top Mounting Cap & Eyelet Loop (Directly attached to the top pole of the disco ball)
     const discoChainMat = new THREE.MeshStandardMaterial({
-        color: 0xdce8fa, // Polished silver chrome chain links & hardware
+        color: 0xf2f7fc, // Polished silver chrome chain links & hardware
         metalness: 0.98,
-        roughness: 0.10,
-        envMap: clubEnvMap,
+        roughness: 0.08,
+        envMap: silverGlassEnvMap,
         envMapIntensity: 3.2
     });
 
@@ -5817,43 +5885,35 @@ export function createVFXScene(container) {
     discoChainGroup.add(discoCeilingMountMesh);
     gDiscoBall.add(discoChainGroup);
 
-    // 5. Dedicated Multi-Directional Concert Stage Pinspots & Stage Lights (Dual Silver Pinspots + Accent Washes)
-    const dBallKeyLight = new THREE.DirectionalLight(0xffffff, 2.4); // Brilliant pure-white key pinspot
+    // 5. Dedicated Multi-Directional Pure White & Silver Studio Pinspots (Zero Colored Lights)
+    const dBallKeyLight = new THREE.DirectionalLight(0xffffff, 2.8); // Brilliant pure-white key pinspot
     dBallKeyLight.position.set(4.0, 7.5, 8.5);
     dBallKeyLight.target = dBallMesh;
     gDiscoBall.add(dBallKeyLight);
 
-    const dBallPinLeft = new THREE.DirectionalLight(0xf0f7ff, 2.2); // Cool-white glass pinspot
+    const dBallPinLeft = new THREE.DirectionalLight(0xffffff, 2.6); // Pure-white left pinspot
     dBallPinLeft.position.set(-6.0, 8.0, 8.0);
     dBallPinLeft.target = dBallMesh;
     gDiscoBall.add(dBallPinLeft);
 
-    const dBallPointSilver = new THREE.PointLight(0xffffff, 3.2, 24.0, 1.2); // Core silver specular highlight
-    dBallPointSilver.position.set(0.0, 4.5, 7.5);
-    gDiscoBall.add(dBallPointSilver);
+    const dBallPinTop = new THREE.DirectionalLight(0xffffff, 2.2); // Pure-white overhead downlight
+    dBallPinTop.position.set(0.0, 9.5, 3.0);
+    dBallPinTop.target = dBallMesh;
+    gDiscoBall.add(dBallPinTop);
 
-    const dBallCyanLight = new THREE.DirectionalLight(0x00ffff, 0.9);
-    dBallCyanLight.position.set(-8.0, 2.0, 4.0);
-    dBallCyanLight.target = dBallMesh;
-    gDiscoBall.add(dBallCyanLight);
-
-    const dBallMagentaLight = new THREE.DirectionalLight(0xff007f, 0.9);
-    dBallMagentaLight.position.set(8.0, -2.0, 4.0);
-    dBallMagentaLight.target = dBallMesh;
-    gDiscoBall.add(dBallMagentaLight);
-
-    const dBallRimLight = new THREE.DirectionalLight(0x5599ff, 1.0);
+    const dBallRimLight = new THREE.DirectionalLight(0xffffff, 1.4); // Pure-white rim backlight
     dBallRimLight.position.set(0.0, -6.0, -5.0);
     dBallRimLight.target = dBallMesh;
     gDiscoBall.add(dBallRimLight);
 
-    const dBallPointCyan = new THREE.PointLight(0x00ffff, 1.6, 20.0, 1.2);
-    dBallPointCyan.position.set(-7.0, 3.0, 5.0);
-    gDiscoBall.add(dBallPointCyan);
+    const dBallFillLight = new THREE.DirectionalLight(0xf2f6fa, 1.2); // Neutral silver-white front fill
+    dBallFillLight.position.set(-5.0, -2.0, 6.0);
+    dBallFillLight.target = dBallMesh;
+    gDiscoBall.add(dBallFillLight);
 
-    const dBallPointMagenta = new THREE.PointLight(0xff007f, 1.6, 20.0, 1.2);
-    dBallPointMagenta.position.set(7.0, 3.0, 5.0);
-    gDiscoBall.add(dBallPointMagenta);
+    const dBallPointSilver = new THREE.PointLight(0xffffff, 4.2, 26.0, 1.2); // High-specular pure white center highlight
+    dBallPointSilver.position.set(0.0, 4.5, 7.5);
+    gDiscoBall.add(dBallPointSilver);
 
     // 6. 1,500 Floating 3D Specular Starburst Stars & Sparkles (Subtle Sparkling White & Silver)
     const glintCount = 1500;
@@ -5864,14 +5924,14 @@ export function createVFXScene(container) {
     const glintSpeed = new Float32Array(glintCount);
     const glintBaseSize = new Float32Array(glintCount);
 
-    // Pure white and silver palette (zero colored hues)
+    // Pure monochrome white and silver palette (strictly zero colors)
     const silverHues = [
         new THREE.Color(0xffffff), // Diamond Pure White
-        new THREE.Color(0xf5f8fc), // Bright Platinum Silver
-        new THREE.Color(0xedf3fa), // Shimmering Mirror Silver
-        new THREE.Color(0xe2ebf5), // Ice Crystal Silver
-        new THREE.Color(0xfcfdff), // Luminous White Star
-        new THREE.Color(0xdce6f2)  // Cool Chrome Silver
+        new THREE.Color(0xf6f9fc), // Brilliant Platinum Silver
+        new THREE.Color(0xedf2f8), // Pure Mirror Silver
+        new THREE.Color(0xffffff), // Pure White
+        new THREE.Color(0xf2f6fa), // Pale Chrome Silver
+        new THREE.Color(0xffffff)  // Pure White
     ];
 
     for (let i = 0; i < glintCount; i++) {
@@ -9267,14 +9327,13 @@ export function createVFXScene(container) {
                 );
             }
 
-            // Steady, elegant stage illumination (100% decoupled from music)
-            dBallKeyLight.intensity = 2.5;
-            dBallPinLeft.intensity = 2.3;
-            dBallPointSilver.intensity = 3.6;
-            dBallCyanLight.intensity = 0.8;
-            dBallMagentaLight.intensity = 0.8;
-            dBallPointCyan.intensity = 1.2;
-            dBallPointMagenta.intensity = 1.2;
+            // Steady, elegant pure white & silver studio illumination (zero colored lights)
+            dBallKeyLight.intensity = 2.8;
+            dBallPinLeft.intensity = 2.6;
+            dBallPinTop.intensity = 2.2;
+            dBallRimLight.intensity = 1.4;
+            dBallFillLight.intensity = 1.2;
+            dBallPointSilver.intensity = 4.2;
 
             // Subtle sparkling white & silver background stars (steady drift, zero music reaction)
             glintMat.uniforms.uTime.value = elapsedTime;
