@@ -1008,11 +1008,9 @@ const DiscoSilverStarsShader = {
         void main() {
             vColor = color;
             
-            // Gentle organic sinusoidal twinkle per star
-            float twinkle = sin(uTime * aSpeed + aPhase);
-            // Delicate glint shimmer pulse
-            float glint = pow(max(0.0, sin(uTime * (aSpeed * 0.75) + aPhase * 1.3)), 6.0) * 0.40;
-            vSparkle = 0.65 + 0.35 * twinkle + glint;
+            // Gentle, smooth organic sinusoidal twinkle per star
+            float twinkle = sin(uTime * (aSpeed * 0.6) + aPhase);
+            vSparkle = 0.70 + 0.30 * twinkle;
 
             vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
             gl_PointSize = (aBaseSize * vSparkle) * (260.0 / -mvPosition.z);
@@ -9236,11 +9234,10 @@ export function createVFXScene(container) {
         // FX 4: 🪩 Authentic Nightclub Mirror Ball Rig [Top Pinspots & Floor Reflections]
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 4) {
-            // Constant, graceful ball rotation (music reactivity decoupled for now)
-            const ballSpinSpeed = 0.24 * speed;
-            dBallMesh.rotation.y += ballSpinSpeed * delta * 1.8;
-            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.5) * 0.02;
-            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.35) * 0.015;
+            // Constant, graceful ball rotation (100% decoupled from music & BPM)
+            dBallMesh.rotation.y += 0.32 * delta;
+            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.4) * 0.02;
+            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.3) * 0.015;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
             // Calculate world position of the top eyelet ring attached to the disco ball
@@ -9270,7 +9267,7 @@ export function createVFXScene(container) {
                 );
             }
 
-            // Steady, elegant stage illumination (music reactivity decoupled for now)
+            // Steady, elegant stage illumination (100% decoupled from music)
             dBallKeyLight.intensity = 2.5;
             dBallPinLeft.intensity = 2.3;
             dBallPointSilver.intensity = 3.6;
@@ -9279,10 +9276,10 @@ export function createVFXScene(container) {
             dBallPointCyan.intensity = 1.2;
             dBallPointMagenta.intensity = 1.2;
 
-            // Subtle sparkling white & silver background stars (steady rotation, zero music scale pop)
+            // Subtle sparkling white & silver background stars (steady drift, zero music reaction)
             glintMat.uniforms.uTime.value = elapsedTime;
             glintSystem.position.set(0, 0, 0);
-            glintSystem.rotation.y += 0.04 * speed * delta;
+            glintSystem.rotation.y += 0.05 * delta;
             glintSystem.rotation.x = Math.sin(elapsedTime * 0.25) * 0.02;
             glintSystem.scale.set(1.0, 1.0, 1.0);
         }
@@ -10709,11 +10706,12 @@ export function createVFXScene(container) {
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
         }
-        if (audio.isOnset && (currentFXIndex < 16 || currentFXIndex > 20)) {
+        // Camera Recoil: strictly disabled for FX 4 (Disco Ball) and FX 16-20
+        if (audio.isOnset && currentFXIndex !== 4 && (currentFXIndex < 16 || currentFXIndex > 20)) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex >= 16 && currentFXIndex <= 20) {
+        } else if (currentFXIndex === 4 || (currentFXIndex >= 16 && currentFXIndex <= 20)) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -10727,14 +10725,17 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || (currentFXIndex >= 16 && currentFXIndex <= 20)) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
-        const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
+        // Strictly disable audio bloom boost, glitch and aberration for FX 4
+        const fxBloomBoost = (currentFXIndex === 4) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
+        const targetBloom = (currentFXIndex === 4)
+            ? 0.22 * bloomMultiplier
+            : Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex >= 16 && currentFXIndex <= 20) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 4 || (currentFXIndex >= 16 && currentFXIndex <= 20)) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex >= 16 && currentFXIndex <= 20) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 4 || (currentFXIndex >= 16 && currentFXIndex <= 20)) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -10746,13 +10747,19 @@ export function createVFXScene(container) {
 
         nightclubPass.uniforms.uTime.value = elapsedTime;
 
-        lightCyan.position.x = Math.sin(elapsedTime * 1.5) * 9;
-        lightCyan.position.y = Math.cos(elapsedTime * 1.2) * 7;
-        lightCyan.intensity = Math.min(1.5, (0.7 + bassPop * 0.5) * (bloomMultiplier + 0.5));
+        // Global Scene Lights: Disabled for FX 4 so they don't pulse on the disco ball
+        if (currentFXIndex === 4) {
+            lightCyan.intensity = 0.0;
+            lightMagenta.intensity = 0.0;
+        } else {
+            lightCyan.position.x = Math.sin(elapsedTime * 1.5) * 9;
+            lightCyan.position.y = Math.cos(elapsedTime * 1.2) * 7;
+            lightCyan.intensity = Math.min(1.5, (0.7 + bassPop * 0.5) * (bloomMultiplier + 0.5));
 
-        lightMagenta.position.x = -Math.sin(elapsedTime * 1.3) * 9;
-        lightMagenta.position.y = -Math.cos(elapsedTime * 1.1) * 7;
-        lightMagenta.intensity = Math.min(1.5, (0.7 + (audio.smoothedMid || 0) * 0.5) * (bloomMultiplier + 0.5));
+            lightMagenta.position.x = -Math.sin(elapsedTime * 1.3) * 9;
+            lightMagenta.position.y = -Math.cos(elapsedTime * 1.1) * 7;
+            lightMagenta.intensity = Math.min(1.5, (0.7 + (audio.smoothedMid || 0) * 0.5) * (bloomMultiplier + 0.5));
+        }
 
         composer.render();
     }
