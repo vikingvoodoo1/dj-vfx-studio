@@ -257,11 +257,19 @@ Both the traditional **Mirror Disco Ball** (FX 13) and the **Pumpkin Mirror Ball
 * **Key Light** (`pKeyLight`, intensity `2.2`): Positions at downstage front center to catch the convex curvature of mirror facets.
 * **Internal Flame** (`pumpkinFlameLight`, PointLight): Anchored inside the hollow carved pumpkin center, providing warm internal flicker through carved facial features.
 
-### Floor & Wall Caustic Sparkles
-Floor caustics are created via rotating particle arrays (`pumpkinFloorSpots`):
-* Geometry: Multi-point buffer mapped with radial soft-disk textures.
-* Motion: Revolves on $Y$-axis slightly faster than the ball rotation ($1.25\times$) to simulate refractive light speed.
-* Reactivity: Particle size and opacity swell on bass thumps and sun-glare specular alignment.
+### Rotating Floor Fire Pit Hearth Embers (`BonfireFloorEmbersShader`)
+Replacing disco floor stars with an authentic glowing fire pit bed that rotates gracefully across the stage floor:
+* **Fire Pit Geometry & Clustering**:
+  * 500 ember coals distributed across a radial power curve ($r = 1.4 + \text{rand}^{1.35} \times 24.0$), concentrating a dense glowing hearth directly beneath the pumpkin while scattering glowing coals across the stage.
+  * Driven by [`BonfireFloorEmbersShader`](src/effects.js): uses the shared procedural `bonfireEmberTex` rather than harsh starburst sprites.
+* **Palette & Dynamic Heat Shimmer**:
+  * Curated fire pit palette: molten gold-amber (`#ffbb33`), vivid flame orange (`#ff8500`), burning ember orange (`#ff5500`), deep fiery orange-red (`#ff3d00`), and smoldering red-amber coals (`#ee2800`).
+  * Individual subtle breathing flicker (`aFlickerSpeed`, `aFlickerPhase`) simulating coals glowing gently with natural oxygen flow.
+* **Varying Particle Sizes**:
+  * Distributed across three natural tiers matching real embers: small glowing sparks (`0.36 - 0.52`), medium fire pit embers (`0.54 - 0.76`), and larger glowing coals (`0.78 - 1.00`).
+* **Motion & Beat Reactivity**:
+  * Revolves smoothly on the $Y$-axis (`pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25`), creating a mesmerizing swirling fire pit hearth effect.
+  * Uniforms `uBass` and `uKick` gently expand ember size and luminance on bass drops (`sizePulse = 1.0 + uBass * 0.18 + uKick * 0.22`).
 
 ### Bonfire Night Floating Fire Embers (`BonfireNightEmbersShader`)
 Designed for Halloween and November 5th (Bonfire Night / Guy Fawkes) stage atmospheres, replacing generic stars/dots with an authentic, physical bonfire ember simulation:
@@ -277,8 +285,9 @@ Designed for Halloween and November 5th (Bonfire Night / Guy Fawkes) stage atmos
   * **Gentle Loft Speed**: Tuned to subtle buoyancy ($1.35\times$ convection rate instead of rapid bullet particles).
   * **Meandering Draft Swirl**: Each ember possesses unique drift frequency and phase offsets, undulating horizontally along smooth sine/cosine warm air drafts.
   * **Thermal Bass Updraft**: Deep kick transients deliver a subtle convective lift surge (`smoothedBass * 0.25 + pumpkinKickThump * 0.35`), simulating hot air expanding above the firebed.
-* **Particle Sizes & Independent Shimmer**:
-  * Log-normal distribution of particle sizes (`0.28` fine sparks, `0.48` medium cinders, `0.72` large glowing wood flakes).
+* **Enlarged Particle Sizes & Independent Shimmer**:
+  * Scaled-up particle size tiers for prominent visual presence: fine flying sparks (`0.46 - 0.70`), medium burning cinders (`0.78 - 1.13`), and large glowing flakes of burning wood (`1.18 - 1.66`).
+  * Perspective depth attenuation (`clamp(170.0 / distToCam, 0.45, 5.0)`) ensuring substantial 3D volume.
   * Independent oxygen-draft flicker rates (`aFlickerSpeed`, `aFlickerPhase`) simulating air turbulence stoking individual coals.
 
 ---

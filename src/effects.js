@@ -708,7 +708,7 @@ const BonfireNightEmbersShader = {
 
             // Perspective distance attenuation: closer embers look substantial, distant ones look subtle
             float distToCam = max(-mvPosition.z, 0.1);
-            float depthScale = clamp(130.0 / distToCam, 0.35, 4.0);
+            float depthScale = clamp(170.0 / distToCam, 0.45, 5.0);
 
             // Subtle organic thermal flicker (oxygen pocket flare)
             float flicker = 0.80 + 0.20 * sin(uTime * aFlickerSpeed + aFlickerPhase);
@@ -763,6 +763,71 @@ const BonfireNightEmbersShader = {
             // Modulate with ember temperature color and thermal flicker
             vec3 finalRgb = vColor * texCol.rgb * vFlicker * 1.35;
             float finalAlpha = texCol.a * vAlpha;
+
+            gl_FragColor = vec4(finalRgb, finalAlpha);
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
+// Bonfire Floor Hearth Embers Shader (Subtle Glowing Coals in a Fire Pit Bed)
+// -------------------------------------------------------------------------
+const BonfireFloorEmbersShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uKick: { value: 0.0 },
+        uTexture: { value: null }
+    },
+    vertexShader: `
+        attribute float aSize;
+        attribute float aFlickerSpeed;
+        attribute float aFlickerPhase;
+        attribute vec3 aColor;
+
+        uniform float uTime;
+        uniform float uBass;
+        uniform float uKick;
+
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+
+        void main() {
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // Perspective distance attenuation
+            float distToCam = max(-mvPosition.z, 0.1);
+            float depthScale = clamp(150.0 / distToCam, 0.35, 4.0);
+
+            // Subtle gentle ember heat shimmer in fire pit bed
+            float flicker = 0.82 + 0.18 * sin(uTime * aFlickerSpeed + aFlickerPhase);
+            vFlicker = flicker;
+
+            // Gentle responsive swell with bass / kick
+            float sizePulse = 1.0 + (uBass * 0.18 + uKick * 0.22);
+            gl_PointSize = aSize * depthScale * flicker * sizePulse;
+
+            vColor = aColor;
+
+            // Subtle, elegant glowing opacity (subtly breathing)
+            vAlpha = 0.65 + 0.25 * sin(uTime * (aFlickerSpeed * 0.6) + aFlickerPhase * 1.5);
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D uTexture;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+
+        void main() {
+            vec4 texCol = texture2D(uTexture, gl_PointCoord);
+            if (texCol.a < 0.01) discard;
+
+            // Subtle glowing fire pit ember
+            vec3 finalRgb = vColor * texCol.rgb * vFlicker * 1.30;
+            float finalAlpha = texCol.a * vAlpha * 0.85;
 
             gl_FragColor = vec4(finalRgb, finalAlpha);
         }
@@ -8606,57 +8671,7 @@ export function createVFXScene(container) {
     pumpkinHaloMesh.renderOrder = 18;
     gPumpkinDiscoBall.add(pumpkinHaloMesh);
 
-    // 7. 450 Floor & Room Mirror Reflection Sparkle Spots
-    const pFloorSpotCount = 450;
-    const pFloorGeo = new THREE.BufferGeometry();
-    const pFloorPos = new Float32Array(pFloorSpotCount * 3);
-    const pFloorCol = new Float32Array(pFloorSpotCount * 3);
-    const pFloorRads = new Float32Array(pFloorSpotCount);
-    const pFloorAngles = new Float32Array(pFloorSpotCount);
-    const pFloorSpeeds = new Float32Array(pFloorSpotCount);
-
-    for (let f = 0; f < pFloorSpotCount; f++) {
-        const rad = 3.0 + Math.random() * 32.0;
-        const angle = Math.random() * Math.PI * 2;
-        const spd = (0.5 + Math.random() * 0.8) * (Math.random() > 0.5 ? 1 : -1);
-
-        pFloorRads[f] = rad;
-        pFloorAngles[f] = angle;
-        pFloorSpeeds[f] = spd;
-
-        pFloorPos[f * 3] = Math.cos(angle) * rad;
-        pFloorPos[f * 3 + 1] = -10.5 + Math.random() * 1.5; // On stage floor
-        pFloorPos[f * 3 + 2] = Math.sin(angle) * rad;
-
-        const floorPalette = [
-            new THREE.Color(0x00e5ff), // Electric Cyan
-            new THREE.Color(0xff4400), // Pumpkin Orange
-            new THREE.Color(0x00ff22), // Toxic Green
-            new THREE.Color(0x9400d3), // Witch Purple
-            new THREE.Color(0xff007f), // Neon Pink
-            new THREE.Color(0x0044ff), // Cobalt Blue
-            new THREE.Color(0xff8c00)  // Molten Amber
-        ];
-        const col = floorPalette[Math.floor(Math.random() * floorPalette.length)];
-        pFloorCol[f * 3] = col.r;
-        pFloorCol[f * 3 + 1] = col.g;
-        pFloorCol[f * 3 + 2] = col.b;
-    }
-    pFloorGeo.setAttribute('position', new THREE.BufferAttribute(pFloorPos, 3));
-    pFloorGeo.setAttribute('color', new THREE.BufferAttribute(pFloorCol, 3));
-    const pFloorMat = new THREE.PointsMaterial({
-        size: 0.55,
-        map: starburstTex,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false
-    });
-    const pumpkinFloorSpots = new THREE.Points(pFloorGeo, pFloorMat);
-    gPumpkinDiscoBall.add(pumpkinFloorSpots);
-
-    // 9. Authentic Bonfire Night Glowing Fire Embers (Subtly floating upwards)
-    // Procedural soft incandescent ember particle texture (hot core + smooth thermal halo)
+    // 7 & 9. Procedural Soft Incandescent Ember Texture (Shared by floor hearth and floating embers)
     const emberCanvas = document.createElement('canvas');
     emberCanvas.width = 64;
     emberCanvas.height = 64;
@@ -8673,6 +8688,79 @@ export function createVFXScene(container) {
     emberCtx.fill();
     const bonfireEmberTex = new THREE.CanvasTexture(emberCanvas);
 
+    // 7. Rotating Floor Fire Pit Hearth Embers (Varying sizes, subtle glowing orange embers)
+    const pFloorSpotCount = 500;
+    const pFloorGeo = new THREE.BufferGeometry();
+    const pFloorPos = new Float32Array(pFloorSpotCount * 3);
+    const pFloorCol = new Float32Array(pFloorSpotCount * 3);
+    const pFloorSize = new Float32Array(pFloorSpotCount);
+    const pFloorFlickerSpeed = new Float32Array(pFloorSpotCount);
+    const pFloorFlickerPhase = new Float32Array(pFloorSpotCount);
+
+    const firePitPalette = [
+        new THREE.Color(0xffbb33), // Molten Bright Gold-Amber
+        new THREE.Color(0xff8500), // Vivid Bonfire Flame Orange
+        new THREE.Color(0xff5500), // Rich Burning Ember Orange
+        new THREE.Color(0xff3d00), // Deep Fiery Orange-Red
+        new THREE.Color(0xee2800), // Smoldering Red-Amber Coal
+        new THREE.Color(0xffc247), // Golden Hearth Spark
+        new THREE.Color(0xd43800)  // Darker Smoldering Charcoal Edge
+    ];
+
+    for (let f = 0; f < pFloorSpotCount; f++) {
+        // Clustered like a fire pit hearth bed (denser under pumpkin, scattered outwards)
+        const rad = 1.4 + Math.pow(Math.random(), 1.35) * 24.0;
+        const angle = Math.random() * Math.PI * 2;
+
+        pFloorPos[f * 3] = Math.cos(angle) * rad;
+        pFloorPos[f * 3 + 1] = -10.5 + Math.random() * 0.35; // Lying flat on hearth floor
+        pFloorPos[f * 3 + 2] = Math.sin(angle) * rad;
+
+        // Rich fire pit glowing ember color
+        const col = firePitPalette[Math.floor(Math.random() * firePitPalette.length)];
+        pFloorCol[f * 3] = col.r;
+        pFloorCol[f * 3 + 1] = col.g;
+        pFloorCol[f * 3 + 2] = col.b;
+
+        // Varying sizes similar to previous star sizes (~0.35 to 0.95)
+        const sizeR = Math.random();
+        if (sizeR < 0.50) {
+            pFloorSize[f] = 0.36 + Math.random() * 0.16; // Small glowing sparks
+        } else if (sizeR < 0.85) {
+            pFloorSize[f] = 0.54 + Math.random() * 0.22; // Medium fire pit embers
+        } else {
+            pFloorSize[f] = 0.78 + Math.random() * 0.22; // Larger glowing coals
+        }
+
+        // Independent subtle breathing flicker rates
+        pFloorFlickerSpeed[f] = 1.5 + Math.random() * 3.2;
+        pFloorFlickerPhase[f] = Math.random() * Math.PI * 2.0;
+    }
+
+    pFloorGeo.setAttribute('position', new THREE.BufferAttribute(pFloorPos, 3));
+    pFloorGeo.setAttribute('aColor', new THREE.BufferAttribute(pFloorCol, 3));
+    pFloorGeo.setAttribute('aSize', new THREE.BufferAttribute(pFloorSize, 1));
+    pFloorGeo.setAttribute('aFlickerSpeed', new THREE.BufferAttribute(pFloorFlickerSpeed, 1));
+    pFloorGeo.setAttribute('aFlickerPhase', new THREE.BufferAttribute(pFloorFlickerPhase, 1));
+
+    const pFloorMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uKick: { value: 0.0 },
+            uTexture: { value: bonfireEmberTex }
+        },
+        vertexShader: BonfireFloorEmbersShader.vertexShader,
+        fragmentShader: BonfireFloorEmbersShader.fragmentShader,
+        blending: THREE.AdditiveBlending,
+        transparent: true,
+        depthWrite: false
+    });
+    const pumpkinFloorSpots = new THREE.Points(pFloorGeo, pFloorMat);
+    pumpkinFloorSpots.renderOrder = 19;
+    gPumpkinDiscoBall.add(pumpkinFloorSpots);
+
+    // 8. Authentic Bonfire Night Glowing Fire Embers (Bigger, subtly floating upwards)
     const pEmberCount = 380;
     const pEmberGeo = new THREE.BufferGeometry();
     const pEmberPos = new Float32Array(pEmberCount * 3);
@@ -8696,14 +8784,14 @@ export function createVFXScene(container) {
         pEmberVel[e * 3 + 1] = 0.35 + Math.random() * 0.55; // gentle upward loft
         pEmberVel[e * 3 + 2] = 0.0;
 
-        // Natural ember size distribution: mostly fine sparks, some medium cinders, a few glowing flakes
+        // Bigger ember size distribution (fine sparks, medium cinders, large glowing flakes)
         const sizeRand = Math.random();
-        if (sizeRand < 0.65) {
-            pEmberSize[e] = 0.28 + Math.random() * 0.18; // Fine sparks
-        } else if (sizeRand < 0.90) {
-            pEmberSize[e] = 0.48 + Math.random() * 0.22; // Medium burning cinders
+        if (sizeRand < 0.60) {
+            pEmberSize[e] = 0.46 + Math.random() * 0.24; // Fine sparks (0.46 - 0.70)
+        } else if (sizeRand < 0.88) {
+            pEmberSize[e] = 0.78 + Math.random() * 0.35; // Medium burning cinders (0.78 - 1.13)
         } else {
-            pEmberSize[e] = 0.72 + Math.random() * 0.28; // Large glowing flakes of burning wood
+            pEmberSize[e] = 1.18 + Math.random() * 0.48; // Large glowing flakes of burning wood (1.18 - 1.66)
         }
 
         // Independent flicker rates simulating oxygen drafts stoking the ember
@@ -10766,10 +10854,11 @@ export function createVFXScene(container) {
             pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
             pumpkinHaloMesh.rotation.z = pumpkinPivot.rotation.z;
 
-            // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
+            // 7. Rotating Floor Fire Pit Hearth Embers (Rotating on floor, subtly glowing like coals in a fire pit)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25;
-            pFloorMat.size = 0.45 + (leftSunGlare + rightSunGlare) * 0.25 + smoothedBass * 0.30 + treblePop * 0.25 + pumpkinKickThump * 0.35;
-            pFloorMat.opacity = Math.min(0.90, 0.35 + avgPulse * 0.35 + pumpkinKickThump * 0.25);
+            pFloorMat.uniforms.uTime.value = elapsedTime;
+            pFloorMat.uniforms.uBass.value = smoothedBass;
+            pFloorMat.uniforms.uKick.value = pumpkinKickThump;
 
             // 8. Authentic Bonfire Fire Embers (Subtly drifting upwards on warm convective currents)
             const emberPosAttr = pEmberGeo.attributes.position;
