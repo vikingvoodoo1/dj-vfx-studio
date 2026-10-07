@@ -7484,7 +7484,7 @@ export function createVFXScene(container) {
         emissiveIntensity: 0.0
     });
 
-    // Custom Shader Injection: Facet glints aligned to UV segments & bass kick grout glow
+    // Custom Shader Injection: Glass tiles dynamically change to beaming light color & facet sparkle
     dPumpkinMat.onBeforeCompile = (shader) => {
         shader.uniforms.uSpot1Pos = pumpkinUniforms.uSpot1Pos;
         shader.uniforms.uSpot2Pos = pumpkinUniforms.uSpot2Pos;
@@ -7530,40 +7530,76 @@ export function createVFXScene(container) {
             varying vec3 vCustomWorldPos;
         ` + shader.fragmentShader;
 
+        // Dynamic Glass Tile Absorption: mirror tiles shift to the beam's color and return when beam moves off
+        shader.fragmentShader = shader.fragmentShader.replace(
+            '#include <color_fragment>',
+            `
+            #include <color_fragment>
+
+            // Mirror tile grid aligned to 10 lobes (80 columns, 40 rings)
+            vec2 tileGridCol = vPumpkinUv * vec2(80.0, 40.0);
+            vec2 tileIdCol = floor(tileGridCol);
+            vec2 tileLocalCol = fract(tileGridCol) - 0.5;
+            float tileFaceCol = smoothstep(0.48, 0.36, max(abs(tileLocalCol.x), abs(tileLocalCol.y)));
+
+            // Spotlight distances on pumpkin surface
+            float hitDist1 = length(vCustomWorldPos - uSpot1Pos);
+            float hitDist2 = length(vCustomWorldPos - uSpot2Pos);
+
+            // Active spotlight beam footprint on glass tiles
+            float beamHit1 = exp(-pow(hitDist1 / 2.7, 2.0)) * clamp(uSpot1Intensity, 0.0, 1.4);
+            float beamHit2 = exp(-pow(hitDist2 / 2.7, 2.0)) * clamp(uSpot2Intensity, 0.0, 1.4);
+            float totalBeamHit = clamp(beamHit1 + beamHit2, 0.0, 1.0);
+
+            vec3 beamColorBlend = (beamHit1 * uSpot1Color + beamHit2 * uSpot2Color) / max(0.001, beamHit1 + beamHit2);
+
+            // Resting state: dark smoked obsidian crystal glass
+            vec3 restingGlass = vec3(0.08, 0.05, 0.03);
+
+            // Glass tiles dynamically absorb and change to the beaming light color, then return when beam moves off!
+            diffuseColor.rgb = mix(restingGlass, beamColorBlend, totalBeamHit * (0.85 * tileFaceCol + 0.15));
+            `
+        );
+
         shader.fragmentShader = shader.fragmentShader.replace(
             '#include <emissivemap_fragment>',
             `
             #include <emissivemap_fragment>
             
-            // 1. Facet coordinate aligned to the 10 pumpkin lobes (80 columns = 8 per lobe, 40 rings)
+            // 1. Facet coordinate aligned to the 10 pumpkin lobes (80 columns, 40 rings)
             vec2 tileGrid = vPumpkinUv * vec2(80.0, 40.0);
             vec2 tileId = floor(tileGrid);
             vec2 tileLocal = fract(tileGrid) - 0.5;
-            float tileInterior = smoothstep(0.48, 0.38, max(abs(tileLocal.x), abs(tileLocal.y)));
+            float tileInterior = smoothstep(0.48, 0.36, max(abs(tileLocal.x), abs(tileLocal.y)));
             
             // 2. Facet sparkle glints on individual glass mirror tiles
             float facetHash = sin(dot(tileId, vec2(12.9898, 78.233))) * 43758.5453;
-            float facetShimmer = pow(clamp(sin(facetHash * 6.283 + uTime * 3.8 + uTreble * 5.0), 0.0, 1.0), 12.0) * tileInterior;
+            float facetShimmer = pow(clamp(sin(facetHash * 6.283 + uTime * 3.8 + uTreble * 5.0), 0.0, 1.0), 10.0) * tileInterior;
             
-            // 3. Spotlight landing intensity on front facets
+            // 3. Spotlight landing intensity on front mirror facets
             float dist1 = length(vCustomWorldPos - uSpot1Pos);
             float dist2 = length(vCustomWorldPos - uSpot2Pos);
-            float spotMask1 = exp(-pow(dist1 / 2.8, 2.0)) * uSpot1Intensity;
-            float spotMask2 = exp(-pow(dist2 / 2.8, 2.0)) * uSpot2Intensity;
-            float totalSpot = clamp(spotMask1 + spotMask2, 0.0, 2.0);
+            float spotMask1 = exp(-pow(dist1 / 2.7, 2.0)) * clamp(uSpot1Intensity, 0.0, 1.4);
+            float spotMask2 = exp(-pow(dist2 / 2.7, 2.0)) * clamp(uSpot2Intensity, 0.0, 1.4);
+            float totalSpot = spotMask1 + spotMask2;
             
-            vec3 spotMixColor = (spotMask1 * uSpot1Color + spotMask2 * uSpot2Color) / max(0.001, spotMask1 + spotMask2);
+            // Tile illuminates in the specific beam's color hitting it:
+            // Left beam turns tile into left light color, Right beam turns tile into right light color
+            vec3 spotTileColor = (spotMask1 * uSpot1Color + spotMask2 * uSpot2Color) / max(0.001, totalSpot);
             
-            // Dazzling disco mirror sparkle flares catching the spotlight beams
-            vec3 facetSparkles = spotMixColor * (facetShimmer * totalSpot * (1.6 + uTreble * 2.2));
+            // Active glass tile illumination: glowing in the true color of the light beam while it hits
+            vec3 activeTileIllum = spotTileColor * (clamp(totalSpot, 0.0, 1.3) * (0.85 * tileInterior + 0.15));
+            
+            // Facet sparkle flares reflecting the spotlight beam
+            vec3 facetSparkles = spotTileColor * (facetShimmer * clamp(totalSpot, 0.0, 1.5) * (1.2 + uTreble * 1.8));
             
             // Bass kick seam pulse between tiles (glowing grout seams on heavy drops)
-            vec3 kickGrout = uEmissiveThemeColor * (uBassPunch * 0.95 * (1.0 - tileInterior * 0.7));
+            vec3 kickGrout = uEmissiveThemeColor * (uBassPunch * 0.70 * (1.0 - tileInterior * 0.75));
             
-            // Direct dead-on hit flash
-            vec3 flashGlow = uEmissiveThemeColor * (uFlash * 0.85 * tileInterior);
+            // Smooth specular glare highlight on direct front hit (sun-through-window feel)
+            vec3 sunGlareGlow = spotTileColor * (uFlash * 0.35 * tileInterior);
             
-            totalEmissiveRadiance += facetSparkles + kickGrout + flashGlow;
+            totalEmissiveRadiance += activeTileIllum + facetSparkles + kickGrout + sunGlareGlow;
             `
         );
     };
@@ -8048,12 +8084,15 @@ export function createVFXScene(container) {
     pumpkinFlameLight.position.set(0, 0, 0);
     pumpkinPivot.add(pumpkinFlameLight);
 
-    // 6. Hyper-Vivid, Wider & Brighter Halo Corona Flare Mesh framing the pumpkin silhouette (only visible during reflection flash)
+    // 6. Softened, Elegant Luminous Halo Corona Flare Mesh framing the pumpkin silhouette
     const pumpkinHaloGeo = new THREE.PlaneGeometry(42.0, 42.0);
     const pumpkinHaloMat = new THREE.ShaderMaterial({
         uniforms: {
-            uHaloColor: { value: new THREE.Color(0xff7700) },
-            uHaloIntensity: { value: 0.0 },
+            uHaloLeftColor: { value: new THREE.Color(0x00e5ff) },
+            uHaloRightColor: { value: new THREE.Color(0xff4400) },
+            uLeftIntensity: { value: 0.0 },
+            uRightIntensity: { value: 0.0 },
+            uConvergenceGlow: { value: 0.0 },
             uTime: { value: 0.0 }
         },
         vertexShader: `
@@ -8064,42 +8103,50 @@ export function createVFXScene(container) {
             }
         `,
         fragmentShader: `
-            uniform vec3 uHaloColor;
-            uniform float uHaloIntensity;
+            uniform vec3 uHaloLeftColor;
+            uniform vec3 uHaloRightColor;
+            uniform float uLeftIntensity;
+            uniform float uRightIntensity;
+            uniform float uConvergenceGlow;
             uniform float uTime;
             varying vec2 vUv;
 
             void main() {
-                if (uHaloIntensity <= 0.001) discard;
-                
                 // Elliptical contour framing the authentic pumpkin silhouette (0.88 height ratio)
                 vec2 p = (vUv - 0.5) * 2.0;
                 p.y /= 0.88;
                 float dist = length(p);
                 
-                // Wide, Vivid & Bright outer perimeter halo:
-                // Clear cut-out inside the pumpkin silhouette (dist < 0.24) so mirror facets stay crystal clear
-                // Ultra-dense glowing corona rim (dist 0.25 to 0.45)
-                // Expansive multi-layer ambient halo spreading wide across stage (dist 0.35 to 0.98)
+                // Outer perimeter halo geometry:
+                // Clear inside the pumpkin (dist < 0.24) so mirror facets stay crystal clear
+                // Soft, silky corona rim (non-harsh, elegant concert glow)
                 float innerCut = smoothstep(0.24, 0.29, dist);
-                float rimGlow = smoothstep(0.25, 0.38, dist) * (1.0 - smoothstep(0.38, 0.70, dist));
-                float wideAura = (1.0 - smoothstep(0.28, 0.98, dist));
-                float ring = innerCut * (rimGlow * 1.8 + wideAura * 0.95);
+                float rimGlow = smoothstep(0.25, 0.36, dist) * (1.0 - smoothstep(0.36, 0.65, dist));
+                float softAura = 1.0 - smoothstep(0.28, 0.88, dist);
+                float haloRing = innerCut * (rimGlow * 1.35 + softAura * 0.65);
                 
-                // Vivid multi-frequency diffraction spikes, diamond starburst & anamorphic flare rays
+                // Gentle organic shimmer (smooth, calm, non-harsh)
                 float angle = atan(p.y, p.x);
-                float rays1 = 0.75 + 0.25 * sin(angle * 16.0 + uTime * 6.0);
-                float rays2 = pow(abs(sin(angle * 4.0 + uTime * 3.0)), 6.0) * 0.85; // 8-point high-energy diamond spikes
-                float rays3 = pow(abs(sin(angle * 12.0 - uTime * 4.0)), 3.0) * 0.40; // Dense micro-streaks
-                float rays = rays1 + rays2 + rays3;
+                float shimmer = 0.88 + 0.12 * sin(angle * 12.0 + uTime * 2.2);
                 
-                float alpha = ring * rays * uHaloIntensity;
+                // Color mapping: Left side matches left light colour, Right side matches right light colour!
+                // p.x goes from -1.0 on left to +1.0 on right
+                float sideT = smoothstep(-0.40, 0.40, p.x);
+                vec3 haloSideColor = mix(uHaloLeftColor, uHaloRightColor, sideT);
+                
+                // Side-specific gradual intensity (like sun shining through a window)
+                float sideIntensity = mix(uLeftIntensity, uRightIntensity, sideT);
+                // When both lights meet, add a gentle convergence warmth (soft, non-harsh)
+                float totalIntensity = sideIntensity + uConvergenceGlow * 0.35;
+                
+                if (totalIntensity <= 0.001) discard;
+                
+                float alpha = haloRing * shimmer * totalIntensity;
                 if (alpha < 0.002) discard;
 
-                // Refined, softer luminous halo flare (non-harsh, balanced intensity)
-                vec3 saturatedTint = normalize(uHaloColor + vec3(0.08, 0.04, 0.0)) * 1.5;
-                vec3 vividColor = mix(saturatedTint, vec3(1.0, 1.0, 1.0), clamp(ring * 1.2 + uHaloIntensity * 0.25 - 0.25, 0.0, 1.0));
-                gl_FragColor = vec4(vividColor * alpha * 1.4, clamp(alpha * 0.80, 0.0, 0.80));
+                // Rich, soft true-color emission (NO white blowout or harsh spikes)
+                vec3 finalGlow = haloSideColor * (1.10 + uConvergenceGlow * 0.15);
+                gl_FragColor = vec4(finalGlow * alpha, clamp(alpha * 0.65, 0.0, 0.65));
             }
         `,
         transparent: true,
@@ -9703,19 +9750,6 @@ export function createVFXScene(container) {
             // Fast, snappy elastic recovery from kick
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // 8-Bar Musical Phrase Flash Engine (8 bars = 32 beats in 4/4 DJ timing)
-            const currentPhraseIndex = Math.floor(beatTime / 32.0);
-            if (pumpkinLastPhraseIndex === -1) {
-                pumpkinLastPhraseIndex = currentPhraseIndex;
-            } else if (currentPhraseIndex !== pumpkinLastPhraseIndex) {
-                pumpkinLastPhraseIndex = currentPhraseIndex;
-                // Only trigger 8-bar drop flash if music is actively playing with deep bass
-                if (rawBass > 0.20 || bassImpact > 0.20) {
-                    pumpkin8BarFlashPulse = 0.80;
-                }
-            }
-            // Smooth musical decay for 8-bar phrase flash
-            pumpkin8BarFlashPulse = Math.max(0.0, pumpkin8BarFlashPulse - delta * 4.0);
 
             // 2. Motorized Disco Spin (Y-axis) with Natural Steady Hanging Sway
             // Smooth, constant rotation speed that stays calm and steady
@@ -9814,45 +9848,27 @@ export function createVFXScene(container) {
             pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
-            // Detect specular reflection directly towards the viewer/camera (front center sweet spot)
-            const leftDistFromCenter = Math.sqrt(txL * txL + tyL * tyL);
-            const leftHit = Math.max(0.0, 1.0 - (leftDistFromCenter / 2.8));
-            const rightDistFromCenter = Math.sqrt(txR * txR + tyR * tyR);
-            const rightHit = Math.max(0.0, 1.0 - (rightDistFromCenter / 2.8));
+            // Gradual specular sun-glare geometry:
+            // "a gradual intensity like the sun glaring through a window hitting your face temporarily as you move past it"
+            // Front-facing sweet spot on convex pumpkin facing the viewer/camera (centered around x=0, y=0, z=5.2)
+            const leftDistFromFrontCenter = Math.sqrt(txL * txL + (tyL * 1.1) * (tyL * 1.1));
+            // Raised-cosine window (smooth entry, gentle crest, smooth exit with zero pop)
+            const leftSunGlare = leftDistFromFrontCenter < 2.6
+                ? (0.5 + 0.5 * Math.cos((leftDistFromFrontCenter / 2.6) * Math.PI))
+                : 0.0;
 
-            // Nonlinear power curve for sudden dazzling flare bloom on direct hit
-            const leftGlare = Math.pow(leftHit, 1.6);
-            const rightGlare = Math.pow(rightHit, 1.6);
-            const totalGlareScore = Math.min(1.0, leftGlare + rightGlare);
+            const rightDistFromFrontCenter = Math.sqrt(txR * txR + (tyR * 1.1) * (tyR * 1.1));
+            const rightSunGlare = rightDistFromFrontCenter < 2.6
+                ? (0.5 + 0.5 * Math.cos((rightDistFromFrontCenter / 2.6) * Math.PI))
+                : 0.0;
 
-            // Dual-Beam Convergence on Pumpkin Surface (When both lights meet at the same spot)
+            // Dual-Beam Convergence on Pumpkin Surface (When both lights meet on front)
             const meetDist = targetLeftPos.distanceTo(targetRightPos);
-            const meetProximity = Math.max(0.0, 1.0 - (meetDist / 3.0));
-            const bothHit = Math.min(leftHit, rightHit);
-            // Convergence comes on strong (power curve) and fades out smoothly as lights move off
-            const convergencePower = Math.pow(meetProximity, 1.5) * Math.min(1.0, bothHit * 1.6);
-
-            // Light Glimpse: When a beam newly hits the pumpkin, trigger a brief halo glimpse that backs off quickly
-            const isHittingL = (leftHit > 0.28);
-            const isHittingR = (rightHit > 0.28);
-            if ((isHittingL && !pumpkinWasHitL) || (isHittingR && !pumpkinWasHitR)) {
-                pumpkinGlimpsePulse = Math.max(pumpkinGlimpsePulse, 0.85); // Glimpse the light as it hits
-            }
-            pumpkinWasHitL = isHittingL;
-            pumpkinWasHitR = isHittingR;
-            // Rapid smooth decay so the glimpse backs off quickly
-            pumpkinGlimpsePulse = Math.max(0.0, pumpkinGlimpsePulse - delta * 6.5);
-
-            // Specular reflection to viewer: when beam sweeps through the front center facing camera
-            const isReflectingToViewer = (leftDistFromCenter < 1.30 || rightDistFromCenter < 1.30);
-            if (isReflectingToViewer && !pumpkinWasDeadOn && (elapsedTime - pumpkinLastFlashTime > 0.40)) {
-                pumpkinLastFlashTime = elapsedTime;
-                pumpkinDeadOnFlashPulse = 1.0;
-            }
-            pumpkinWasDeadOn = isReflectingToViewer;
-
-            // Ultra-quick flash decay so the reflection flare is a snappy, brilliant burst
-            pumpkinDeadOnFlashPulse = Math.max(0.0, pumpkinDeadOnFlashPulse - delta * 7.5);
+            const meetProximity = meetDist < 3.2
+                ? (0.5 + 0.5 * Math.cos((meetDist / 3.2) * Math.PI))
+                : 0.0;
+            // Gentle, smooth convergence glow (soft, non-harsh)
+            const convergencePower = meetProximity * Math.min(1.0, (leftSunGlare + rightSunGlare) * 0.70);
 
             // 5. Dynamic Color Transition: Fade between vibrant shades of White and deep Halloween colors
             const colorSpeed = 0.08; // Smooth, rich color progression (~80s full cycle)
@@ -9871,9 +9887,9 @@ export function createVFXScene(container) {
             const pulseMultiR = Math.min(1.3, 0.20 + pumpkinKickThump * 0.45 + audioSurge * 0.25);
             const avgPulse = (pulseMultiL + pulseMultiR) * 0.5;
 
-            // Beams power - atmospheric concert plumes (moderate, clear, no blowout)
-            const beamLeftPower = Math.max(0.20, (0.45 + leftHit * 0.50 + audioSurge * 0.35 + pumpkinDeadOnFlashPulse * 0.50 + pumpkin8BarFlashPulse * 0.60 + convergencePower * 0.60) * (0.70 + pulseMultiL * 0.30));
-            const beamRightPower = Math.max(0.20, (0.45 + rightHit * 0.50 + audioSurge * 0.35 + pumpkinDeadOnFlashPulse * 0.50 + pumpkin8BarFlashPulse * 0.60 + convergencePower * 0.60) * (0.70 + pulseMultiR * 0.30));
+            // Beams power - atmospheric concert plumes (moderate, clear, gentle swells, no blowout)
+            const beamLeftPower = Math.max(0.25, (0.45 + leftSunGlare * 0.40 + audioSurge * 0.25 + convergencePower * 0.35) * (0.75 + pulseMultiL * 0.25));
+            const beamRightPower = Math.max(0.25, (0.45 + rightSunGlare * 0.40 + audioSurge * 0.25 + convergencePower * 0.35) * (0.75 + pulseMultiR * 0.25));
 
             // Update Fixture Lens Optics & Status LED Colors: True saturated colors matching the beam
             pLeftFixture.lensMat.color.copy(leftColor);
@@ -9897,11 +9913,11 @@ export function createVFXScene(container) {
             pumpkinUniforms.uSpot2Pos.value.copy(targetRightPos);
             pumpkinUniforms.uSpot1Color.value.copy(leftColor);
             pumpkinUniforms.uSpot2Color.value.copy(rightColor);
-            pumpkinUniforms.uSpot1Intensity.value = pulseMultiL * (0.65 + leftHit * 0.45 + convergencePower * 0.85);
-            pumpkinUniforms.uSpot2Intensity.value = pulseMultiR * (0.65 + rightHit * 0.45 + convergencePower * 0.85);
+            pumpkinUniforms.uSpot1Intensity.value = 0.85 + pulseMultiL * 0.35;
+            pumpkinUniforms.uSpot2Intensity.value = 0.85 + pulseMultiR * 0.35;
             pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
             pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
-            pumpkinUniforms.uFlash.value = Math.max(pumpkinDeadOnFlashPulse * 0.40, pumpkin8BarFlashPulse * 0.50, convergencePower * 0.55);
+            pumpkinUniforms.uFlash.value = Math.max(leftSunGlare, rightSunGlare) * 0.60 + convergencePower * 0.40;
             pumpkinUniforms.uTime.value = elapsedTime;
             pumpkinUniforms.uTreble.value = treblePop;
             pumpkinUniforms.uBassPunch.value = pumpkinKickThump;
@@ -9916,10 +9932,10 @@ export function createVFXScene(container) {
 
             // Spotlights dip down between pulses to create dramatic stage lighting shadows
             pBottomLeftSpot.color.copy(leftColor);
-            pBottomLeftSpot.intensity = Math.max(0.15, (0.50 + leftHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + convergencePower * 3.0 + pumpkinKickThump * 1.8) * pulseMultiL);
+            pBottomLeftSpot.intensity = Math.max(0.30, (0.65 + leftSunGlare * 1.6 + audioSurge * 0.8 + convergencePower * 1.1 + pumpkinKickThump * 1.2) * pulseMultiL);
 
             pBottomRightSpot.color.copy(rightColor);
-            pBottomRightSpot.intensity = Math.max(0.15, (0.50 + rightHit * 2.2 + audioSurge * 1.4 + pumpkinDeadOnFlashPulse * 2.2 + pumpkin8BarFlashPulse * 3.0 + convergencePower * 3.0 + pumpkinKickThump * 1.8) * pulseMultiR);
+            pBottomRightSpot.intensity = Math.max(0.30, (0.65 + rightSunGlare * 1.6 + audioSurge * 0.8 + convergencePower * 1.1 + pumpkinKickThump * 1.2) * pulseMultiR);
 
             // Volumetric shaded incoming god rays uniforms with high-contrast beat pulsing and uHit modulation
             pLeftBeamMat.uniforms.uColor.value.copy(leftColor);
@@ -9927,31 +9943,31 @@ export function createVFXScene(container) {
             pLeftBeamMat.uniforms.uIntensity.value = beamLeftPower;
             pLeftBeamMat.uniforms.uTime.value = elapsedTime;
             pLeftBeamMat.uniforms.uTreble.value = treblePop;
-            pLeftBeamMat.uniforms.uHit.value = leftHit;
+            pLeftBeamMat.uniforms.uHit.value = Math.max(0.20, leftSunGlare);
 
             pLeftCoreBeamMat.uniforms.uColor.value.copy(leftColor);
             pLeftCoreBeamMat.uniforms.uCoreColor.value.copy(leftCore);
             pLeftCoreBeamMat.uniforms.uIntensity.value = beamLeftPower * 1.25;
             pLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
             pLeftCoreBeamMat.uniforms.uTreble.value = treblePop;
-            pLeftCoreBeamMat.uniforms.uHit.value = leftHit;
+            pLeftCoreBeamMat.uniforms.uHit.value = Math.max(0.20, leftSunGlare);
 
             pRightBeamMat.uniforms.uColor.value.copy(rightColor);
             pRightBeamMat.uniforms.uCoreColor.value.copy(rightCore);
             pRightBeamMat.uniforms.uIntensity.value = beamRightPower;
             pRightBeamMat.uniforms.uTime.value = elapsedTime;
             pRightBeamMat.uniforms.uTreble.value = treblePop;
-            pRightBeamMat.uniforms.uHit.value = rightHit;
+            pRightBeamMat.uniforms.uHit.value = Math.max(0.20, rightSunGlare);
 
             pRightCoreBeamMat.uniforms.uColor.value.copy(rightColor);
             pRightCoreBeamMat.uniforms.uCoreColor.value.copy(rightCore);
             pRightCoreBeamMat.uniforms.uIntensity.value = beamRightPower * 1.25;
             pRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
             pRightCoreBeamMat.uniforms.uTreble.value = treblePop;
-            pRightCoreBeamMat.uniforms.uHit.value = rightHit;
+            pRightCoreBeamMat.uniforms.uHit.value = Math.max(0.20, rightSunGlare);
 
-            // Convergence Reflection Flare (Softened, refined bloom when lights meet)
-            if (convergencePower > 0.01) {
+            // Convergence Reflection Flare (Softened, refined bloom when lights meet on front)
+            if (convergencePower > 0.02) {
                 const midHitPos = targetLeftPos.clone().lerp(targetRightPos, 0.5);
                 midHitPos.z += 0.12; // Float right on front mirror facets
 
@@ -9960,15 +9976,15 @@ export function createVFXScene(container) {
 
                 pMeetFlare.position.copy(midHitPos);
                 pMeetFlare.material.color.copy(meetColor);
-                pMeetFlare.material.opacity = Math.min(0.70, convergencePower * 0.90);
-                const meetScale = (1.2 + convergencePower * 2.2);
+                pMeetFlare.material.opacity = Math.min(0.35, convergencePower * 0.50);
+                const meetScale = (1.0 + convergencePower * 1.3);
                 pMeetFlare.scale.set(meetScale, meetScale, 1.0);
                 pMeetFlare.visible = true;
 
                 pMeetAnamorphicFlare.position.copy(midHitPos);
                 pMeetAnamorphicFlare.material.color.copy(meetColor);
-                pMeetAnamorphicFlare.material.opacity = Math.min(0.60, Math.pow(convergencePower, 1.2) * 0.85);
-                pMeetAnamorphicFlare.scale.set(meetScale * 2.0, meetScale * 0.60, 1.0);
+                pMeetAnamorphicFlare.material.opacity = Math.min(0.25, Math.pow(convergencePower, 1.3) * 0.38);
+                pMeetAnamorphicFlare.scale.set(meetScale * 1.6, meetScale * 0.35, 1.0);
                 pMeetAnamorphicFlare.visible = true;
             } else {
                 pMeetFlare.visible = false;
@@ -9978,48 +9994,47 @@ export function createVFXScene(container) {
             // Front surface delicate sparkle glints on mirror facets (smoothly zeroed out when off pumpkin)
             pLeftHitFlare.position.copy(targetLeftPos);
             pLeftHitFlare.material.color.copy(leftColor);
-            pLeftHitFlare.material.opacity = Math.min(0.75, (0.15 * leftHit + treblePop * 0.15 * leftHit + convergencePower * 0.35) * (0.4 + pulseMultiL * 0.6));
-            const flareScaleL = (1.0 + leftHit * 0.6 + treblePop * 0.4 + convergencePower * 1.0 + pumpkinDeadOnFlashPulse * 0.6 + pumpkin8BarFlashPulse * 0.8) * (0.8 + pulseMultiL * 0.2);
-            pLeftHitFlare.scale.set(flareScaleL * leftHit, flareScaleL * leftHit, 1.0);
+            pLeftHitFlare.material.opacity = Math.min(0.50, (0.15 + leftSunGlare * 0.35 + convergencePower * 0.15) * (0.6 + pulseMultiL * 0.4));
+            const flareScaleL = (0.9 + leftSunGlare * 0.6 + convergencePower * 0.4);
+            pLeftHitFlare.scale.set(flareScaleL, flareScaleL, 1.0);
 
             pRightHitFlare.position.copy(targetRightPos);
             pRightHitFlare.material.color.copy(rightColor);
-            pRightHitFlare.material.opacity = Math.min(0.75, (0.15 * rightHit + treblePop * 0.15 * rightHit + convergencePower * 0.35) * (0.4 + pulseMultiR * 0.6));
-            const flareScaleR = (1.0 + rightHit * 0.6 + treblePop * 0.4 + convergencePower * 1.0 + pumpkinDeadOnFlashPulse * 0.6 + pumpkin8BarFlashPulse * 0.8) * (0.8 + pulseMultiR * 0.2);
-            pRightHitFlare.scale.set(flareScaleR * rightHit, flareScaleR * rightHit, 1.0);
+            pRightHitFlare.material.opacity = Math.min(0.50, (0.15 + rightSunGlare * 0.35 + convergencePower * 0.15) * (0.6 + pulseMultiR * 0.4));
+            const flareScaleR = (0.9 + rightSunGlare * 0.6 + convergencePower * 0.4);
+            pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
             // Front Key Light & Pumpkin Flame (internal flame reacts with deep kicks and convergence)
             pKeyLight.color.copy(pumpkinThemeCol);
-            pKeyLight.intensity = (0.75 + totalGlareScore * 0.60 + convergencePower * 1.4 + pumpkinDeadOnFlashPulse * 0.70 + pumpkin8BarFlashPulse * 0.90 + pumpkinKickThump * 0.80);
+            pKeyLight.intensity = (0.80 + (leftSunGlare + rightSunGlare) * 0.35 + convergencePower * 0.50 + pumpkinKickThump * 0.60);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
-            pumpkinFlameLight.intensity = (1.10 + totalGlareScore * 0.60 + convergencePower * 1.5 + pumpkinDeadOnFlashPulse * 0.80 + pumpkin8BarFlashPulse * 1.10 + pumpkinKickThump * 1.40);
+            pumpkinFlameLight.intensity = (1.10 + (leftSunGlare + rightSunGlare) * 0.40 + convergencePower * 0.50 + pumpkinKickThump * 1.10);
 
-            // 6. Halo flash around pumpkin: Softened, elegant luminous corona flare
-            const totalHaloFlash = Math.max(
-                pumpkinDeadOnFlashPulse * 0.65,
-                pumpkin8BarFlashPulse * 0.80,
-                pumpkinGlimpsePulse * 0.40,
-                convergencePower * 0.75
-            );
-
-            if (totalHaloFlash > 0.005) {
+            // 6. Halo corona around pumpkin: Softened, elegant luminous dual-color flare
+            // Matches the relevant light color on each side, with gradual sun-glare intensity
+            const haloActive = (leftSunGlare > 0.005 || rightSunGlare > 0.005 || convergencePower > 0.005);
+            if (haloActive) {
                 pumpkinHaloMesh.visible = true;
-                const haloTint = pumpkinThemeCol;
-                pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
+                pumpkinHaloMat.uniforms.uHaloLeftColor.value.copy(leftColor);
+                pumpkinHaloMat.uniforms.uHaloRightColor.value.copy(rightColor);
+                pumpkinHaloMat.uniforms.uLeftIntensity.value = leftSunGlare * 0.75;
+                pumpkinHaloMat.uniforms.uRightIntensity.value = rightSunGlare * 0.75;
+                pumpkinHaloMat.uniforms.uConvergenceGlow.value = convergencePower * 0.40;
                 pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
-                pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.pow(totalHaloFlash, 1.2) * 1.75;
             } else {
                 pumpkinHaloMesh.visible = false;
-                pumpkinHaloMat.uniforms.uHaloIntensity.value = 0.0;
+                pumpkinHaloMat.uniforms.uLeftIntensity.value = 0.0;
+                pumpkinHaloMat.uniforms.uRightIntensity.value = 0.0;
+                pumpkinHaloMat.uniforms.uConvergenceGlow.value = 0.0;
             }
             pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
             pumpkinHaloMesh.rotation.z = pumpkinPivot.rotation.z;
 
             // 7. Floor & Room Disco Caustic Reflection Sparkles (Rotating with pumpkin, dancing to beat)
             pumpkinFloorSpots.rotation.y = pumpkinPivot.rotation.y * 1.25;
-            pFloorMat.size = 0.45 + totalGlareScore * 0.35 + smoothedBass * 0.35 + treblePop * 0.30 + pumpkinKickThump * 0.40;
-            pFloorMat.opacity = Math.min(0.95, 0.35 + avgPulse * 0.35 + (audio.isOnset ? 0.25 : 0.0) + pumpkinKickThump * 0.30);
+            pFloorMat.size = 0.45 + (leftSunGlare + rightSunGlare) * 0.25 + smoothedBass * 0.30 + treblePop * 0.25 + pumpkinKickThump * 0.35;
+            pFloorMat.opacity = Math.min(0.90, 0.35 + avgPulse * 0.35 + pumpkinKickThump * 0.25);
 
             // 8. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
             const emberPosAttr = pEmberGeo.attributes.position;
