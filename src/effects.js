@@ -581,9 +581,9 @@ const PumpkinWhiteFoggyRaysShader = {
             
             float longProfile = (originGlow * 0.85 + shaftBody + impactGlow * 0.75);
 
-            // 5. Bright Foggy Opacity with Shaded Falloff
-            float rawAlpha = beamCross * mieScattering * longProfile * uIntensity * 0.58;
-            float alpha = clamp(rawAlpha, 0.0, 0.55);
+            // 5. Soft Shaded Foggy Opacity
+            float rawAlpha = beamCross * mieScattering * longProfile * uIntensity * 0.40;
+            float alpha = clamp(rawAlpha, 0.0, 0.36);
             if (alpha < 0.001) discard;
 
             // Luminous, pristine bright Xenon white fog color
@@ -8309,7 +8309,7 @@ export function createVFXScene(container) {
         // Upward-shining directional spotlight (wider cone angle & softer penumbra for Group B)
         const spotAngle = isWideFoggy ? (Math.PI / 3.4) : (Math.PI / 6.0);
         const spotPenumbra = isWideFoggy ? 0.90 : 0.75;
-        const spot = new THREE.SpotLight(0xffffff, isWideFoggy ? 2.4 : 2.0, 38.0, spotAngle, spotPenumbra, 1.0);
+        const spot = new THREE.SpotLight(0xffffff, isWideFoggy ? 1.4 : 2.0, 38.0, spotAngle, spotPenumbra, 1.0);
         spot.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
         spot.target = targetObj;
         gPumpkinDiscoBall.add(spot);
@@ -8323,7 +8323,7 @@ export function createVFXScene(container) {
             uniforms: {
                 uColor: { value: new THREE.Color(0xffffff) },
                 uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: isWideFoggy ? 2.0 : 1.5 },
+                uIntensity: { value: isWideFoggy ? 1.2 : 1.5 },
                 uTime: { value: 0.0 },
                 uVuLevel: { value: 0.0 },
                 uPulse: { value: 0.0 },
@@ -8346,7 +8346,7 @@ export function createVFXScene(container) {
             uniforms: {
                 uColor: { value: new THREE.Color(0xffffff) },
                 uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: isWideFoggy ? 2.6 : 2.0 },
+                uIntensity: { value: isWideFoggy ? 1.5 : 2.0 },
                 uTime: { value: 0.0 },
                 uVuLevel: { value: 0.0 },
                 uPulse: { value: 0.0 },
@@ -10425,7 +10425,7 @@ export function createVFXScene(container) {
             } else if (whiteLightFactorB > 0.001) {
                 pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetFarLeftPos);
                 pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetFarRightPos);
-                pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactorB * 0.50;
+                pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactorB * 0.32;
             } else {
                 pumpkinUniforms.uWhiteSpotIntensity.value = 0.0;
             }
@@ -10540,8 +10540,8 @@ export function createVFXScene(container) {
 
                 if (whiteFactor > 0.001) {
                     const isFoggy = item.isWideFoggy;
-                    const beamPower = (isFoggy ? 1.45 : 0.90) * whiteFactor;
-                    const spotPower = (isFoggy ? 2.20 : 1.40) * whiteFactor;
+                    const beamPower = (isFoggy ? 0.75 : 0.90) * whiteFactor;
+                    const spotPower = (isFoggy ? 1.10 : 1.40) * whiteFactor;
 
                     item.spot.intensity = spotPower;
 
@@ -10554,22 +10554,22 @@ export function createVFXScene(container) {
                     item.beamMat.uniforms.uTime.value = elapsedTime;
                     item.beamMat.uniforms.uHit.value = 1.0;
 
-                    item.coreBeamMat.uniforms.uIntensity.value = beamPower * 1.15;
+                    item.coreBeamMat.uniforms.uIntensity.value = beamPower * (isFoggy ? 1.05 : 1.15);
                     item.coreBeamMat.uniforms.uVuLevel.value = 1.0;
                     item.coreBeamMat.uniforms.uPulse.value = whiteFactor;
                     item.coreBeamMat.uniforms.uTime.value = elapsedTime;
                     item.coreBeamMat.uniforms.uHit.value = 1.0;
 
-                    const lensBright = (isFoggy ? 0.95 : 0.70) * whiteFactor;
+                    const lensBright = (isFoggy ? 0.58 : 0.70) * whiteFactor;
                     item.fixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
                     item.fixture.lensCoronaMat.color.setRGB(lensBright * 0.75, lensBright * 0.75, lensBright * 0.75);
                     item.fixture.lensCoreMat.color.setRGB(lensBright, lensBright, lensBright);
 
                     item.hitFlare.visible = true;
                     item.hitFlare.position.copy(targetPos);
-                    const flareOpacity = (isFoggy ? 0.45 : 0.30) * whiteFactor;
+                    const flareOpacity = (isFoggy ? 0.22 : 0.30) * whiteFactor;
                     item.hitFlare.material.opacity = flareOpacity;
-                    const flareScale = isFoggy ? (1.6 + whiteFactor * 0.9) : (0.8 + whiteFactor * 0.30);
+                    const flareScale = isFoggy ? (1.1 + whiteFactor * 0.4) : (0.8 + whiteFactor * 0.30);
                     item.hitFlare.scale.set(flareScale, flareScale, 1.0);
                 } else {
                     item.spot.intensity = 0.0;
