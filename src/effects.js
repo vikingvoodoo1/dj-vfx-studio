@@ -4389,14 +4389,14 @@ function createHauntedManorTexture() {
     return tex;
 }
 
-// 4. Spooky Gnarled Bare Forest Trees & Overhanging Twisted Branches (1024x1024)
+// 4. Spooky Gnarled Bare Forest Trees & Overhanging Twisted Branches (2048x1024 - Full Screen Span)
 function createHauntedForestTreesTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
+    canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    ctx.clearRect(0, 0, 1024, 1024);
+    ctx.clearRect(0, 0, 2048, 1024);
 
     const barkDark = '#060910';
     const barkHighlight = '#121926';
@@ -4414,64 +4414,64 @@ function createHauntedForestTreesTexture() {
     }
 
     // =========================================================================
-    // GIANT TWISTED GNARLED OAK TREE ON LEFT (Framing the moon in upper center)
+    // GIANT TWISTED GNARLED OAK TREE ON FAR LEFT (Reaching from off-screen across upper sky)
     // =========================================================================
-    // Massive base trunk
-    drawBranch(40, 1024, 120, 600, 70, 800, 160, 95);
-    drawBranch(120, 600, 150, 440, 130, 510, 95, 68);
+    // Massive base trunk growing in from far left edge
+    drawBranch(80, 1024, 240, 600, 140, 800, 280, 160);
+    drawBranch(240, 600, 300, 440, 260, 510, 160, 115);
 
-    // Giant Upper Crooked Limb (Arching over to frame the moon across x: 150 -> 650, y: 440 -> 120)
-    drawBranch(150, 440, 280, 300, 190, 360, 68, 48);
-    drawBranch(280, 300, 440, 220, 360, 250, 48, 34);
-    drawBranch(440, 220, 600, 160, 520, 180, 34, 22);
-    drawBranch(600, 160, 720, 120, 660, 130, 22, 12);
+    // Giant Upper Crooked Limb (Arching over to frame the moon across x: 300 -> 1400, y: 440 -> 100)
+    drawBranch(300, 440, 560, 300, 380, 360, 115, 80);
+    drawBranch(560, 300, 880, 210, 720, 240, 80, 55);
+    drawBranch(880, 210, 1200, 150, 1040, 170, 55, 36);
+    drawBranch(1200, 150, 1480, 110, 1340, 120, 36, 18);
 
-    // Sub-branches reaching across the top
-    drawBranch(440, 220, 480, 130, 450, 170, 20, 8);
-    drawBranch(480, 130, 520, 80, 490, 100, 8, 3);
-    drawBranch(360, 260, 410, 160, 380, 200, 22, 9);
-    drawBranch(410, 160, 430, 90, 415, 120, 9, 3);
-    drawBranch(600, 160, 660, 90, 625, 120, 15, 6);
-    drawBranch(660, 90, 700, 50, 675, 65, 6, 2);
+    // Sub-branches reaching across the top canopy
+    drawBranch(880, 210, 960, 120, 900, 160, 32, 14);
+    drawBranch(960, 120, 1050, 60, 1000, 85, 14, 5);
+    drawBranch(720, 250, 820, 150, 760, 190, 36, 15);
+    drawBranch(820, 150, 860, 70, 830, 105, 15, 5);
+    drawBranch(1200, 150, 1320, 80, 1250, 110, 24, 10);
+    drawBranch(1320, 80, 1420, 35, 1370, 50, 10, 3);
 
     // Mid-level twisted reaching branch
-    drawBranch(150, 440, 260, 410, 200, 430, 42, 26);
-    drawBranch(260, 410, 380, 390, 320, 395, 26, 16);
-    drawBranch(380, 390, 480, 360, 430, 370, 16, 8);
-    drawBranch(480, 360, 540, 330, 510, 340, 8, 3);
+    drawBranch(300, 440, 520, 400, 400, 420, 68, 42);
+    drawBranch(520, 400, 760, 370, 640, 380, 42, 26);
+    drawBranch(760, 370, 980, 340, 870, 350, 26, 14);
+    drawBranch(980, 340, 1120, 300, 1050, 315, 14, 5);
 
     // Lower twisted branch extending across middle ground
-    drawBranch(120, 600, 240, 580, 180, 600, 55, 32);
-    drawBranch(240, 580, 360, 560, 300, 565, 32, 18);
-    drawBranch(360, 560, 450, 540, 410, 545, 18, 8);
+    drawBranch(240, 600, 480, 570, 360, 590, 90, 52);
+    drawBranch(480, 570, 720, 545, 600, 555, 52, 28);
+    drawBranch(720, 545, 920, 520, 820, 530, 28, 12);
 
-    // Leftward gnarled branches
-    drawBranch(120, 600, 30, 500, 70, 560, 48, 26);
-    drawBranch(30, 500, -10, 420, 5, 450, 26, 14);
-    drawBranch(150, 440, 40, 340, 90, 380, 38, 18);
-    drawBranch(40, 340, 10, 240, 20, 280, 18, 8);
+    // Far-left branches branching off screen edge
+    drawBranch(240, 600, 60, 490, 140, 550, 75, 42);
+    drawBranch(60, 490, -20, 410, 10, 440, 42, 22);
+    drawBranch(300, 440, 80, 330, 180, 370, 60, 28);
+    drawBranch(80, 330, -30, 220, 20, 270, 28, 12);
 
     // =========================================================================
-    // RIGHT SIDE SPOOKY TREES & TWISTED BRANCHES
+    // RIGHT SIDE SPOOKY TREES (Reaching from far right edge past the screen)
     // =========================================================================
-    drawBranch(980, 1024, 910, 620, 950, 820, 130, 75);
-    drawBranch(910, 620, 870, 440, 895, 520, 75, 48);
+    drawBranch(1960, 1024, 1820, 610, 1900, 810, 220, 125);
+    drawBranch(1820, 610, 1740, 430, 1790, 510, 125, 80);
 
-    // Leftward reaching limbs from right tree
-    drawBranch(870, 440, 780, 340, 820, 380, 48, 28);
-    drawBranch(780, 340, 700, 280, 735, 300, 28, 16);
-    drawBranch(700, 280, 640, 220, 665, 240, 16, 7);
-    drawBranch(640, 220, 590, 170, 610, 190, 7, 2);
+    // Leftward reaching limbs framing the manor roof from the right
+    drawBranch(1740, 430, 1560, 330, 1640, 370, 80, 48);
+    drawBranch(1560, 330, 1400, 270, 1470, 290, 48, 26);
+    drawBranch(1400, 270, 1280, 205, 1330, 230, 26, 12);
+    drawBranch(1280, 205, 1180, 155, 1220, 175, 12, 4);
 
-    // Upward spires from right tree
-    drawBranch(870, 440, 920, 310, 900, 370, 38, 20);
-    drawBranch(920, 310, 950, 190, 930, 240, 20, 9);
-    drawBranch(950, 190, 970, 110, 955, 140, 9, 3);
+    // High upward spires on right
+    drawBranch(1740, 430, 1840, 300, 1800, 360, 65, 34);
+    drawBranch(1840, 300, 1900, 170, 1860, 230, 34, 15);
+    drawBranch(1900, 170, 1950, 80, 1920, 120, 15, 5);
 
-    // Overgrown dead weeds, brambles and briars along base
+    // Overgrown dead weeds, brambles and briars spanning entire base width
     ctx.fillStyle = barkDark;
-    for (let bx = 0; bx < 1024; bx += 8) {
-        const h = 60 + Math.sin(bx * 0.05) * 45 + Math.cos(bx * 0.12) * 25;
+    for (let bx = 0; bx < 2048; bx += 8) {
+        const h = 70 + Math.sin(bx * 0.03) * 45 + Math.cos(bx * 0.08) * 28;
         ctx.beginPath();
         ctx.moveTo(bx - 4, 1024);
         ctx.lineTo(bx + Math.sin(bx) * 8, 1024 - h);
@@ -4485,45 +4485,43 @@ function createHauntedForestTreesTexture() {
     return tex;
 }
 
-// 5a. Extended Wrought-Iron Cemetery Perimeter Fencing (Replaces stone pillars with iron fencing) (1024x1024)
+// 5a. Extended Wrought-Iron Cemetery Perimeter Fencing (2048x1024 - Spans off screen edges)
 function createHauntedFenceTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
+    canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    ctx.clearRect(0, 0, 1024, 1024);
+    ctx.clearRect(0, 0, 2048, 1024);
 
     const ironDark = '#04060a';
     const ironMid = '#0d131d';
     const ironHighlight = '#1c2636';
 
-    // Horizontal structural rails spanning the full width
     ctx.fillStyle = ironDark;
     ctx.strokeStyle = ironDark;
 
-    // Bottom structural rail
-    ctx.lineWidth = 9;
+    // Bottom structural rail spanning entire width
+    ctx.lineWidth = 10;
     ctx.beginPath();
-    ctx.moveTo(0, 860); ctx.lineTo(950, 860);
+    ctx.moveTo(0, 860); ctx.lineTo(1960, 860);
     ctx.stroke();
 
     // Middle structural rail
     ctx.lineWidth = 7;
     ctx.beginPath();
-    ctx.moveTo(0, 580); ctx.lineTo(950, 580);
+    ctx.moveTo(0, 580); ctx.lineTo(1960, 580);
     ctx.stroke();
 
     // Upper structural rail
     ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.moveTo(0, 360); ctx.lineTo(950, 360);
+    ctx.moveTo(0, 360); ctx.lineTo(1960, 360);
     ctx.stroke();
 
-    // Vertical Iron Pickets with Sharp Spear Finials
+    // Vertical Iron Pickets with Sharp Spear Finials (Spanning all 1940px)
     const picketSpacing = 38;
-    for (let px = 18; px < 940; px += picketSpacing) {
-        // Vertical picket shaft
+    for (let px = 18; px < 1950; px += picketSpacing) {
         ctx.lineWidth = 5;
         ctx.beginPath();
         ctx.moveTo(px, 920); ctx.lineTo(px, 280);
@@ -4537,14 +4535,13 @@ function createHauntedFenceTexture() {
         ctx.closePath();
         ctx.fill();
 
-        // Finial collar
         ctx.lineWidth = 3;
         ctx.beginPath();
         ctx.moveTo(px - 9, 275); ctx.lineTo(px + 9, 275);
         ctx.stroke();
 
         // Forged decorative iron circles between top and middle rail
-        if (px + picketSpacing / 2 < 930) {
+        if (px + picketSpacing / 2 < 1940) {
             ctx.lineWidth = 2.5;
             ctx.beginPath();
             ctx.arc(px + picketSpacing / 2, 470, 14, 0, Math.PI * 2);
@@ -4552,35 +4549,34 @@ function createHauntedFenceTexture() {
         }
     }
 
-    // Terminal Wrought-Iron Gatepost (Inner edge where gate hinges attach)
+    // Terminal Wrought-Iron Gatepost on inner edge (x = 1950 to 2010)
     ctx.fillStyle = ironDark;
-    ctx.fillRect(944, 200, 32, 720);
-    // Post metallic corner highlight
+    ctx.fillRect(1954, 200, 38, 720);
     ctx.fillStyle = ironHighlight;
-    ctx.fillRect(946, 200, 4, 720);
+    ctx.fillRect(1956, 200, 4, 720);
 
     // Decorative stepped post collar caps
     ctx.fillStyle = ironDark;
-    ctx.fillRect(936, 185, 48, 18);
-    ctx.fillRect(940, 160, 40, 25);
+    ctx.fillRect(1944, 185, 58, 20);
+    ctx.fillRect(1950, 160, 46, 26);
 
     // Terminal Gothic Spire / Finial atop gatepost
     ctx.beginPath();
-    ctx.moveTo(960, 80);
-    ctx.lineTo(942, 160);
-    ctx.lineTo(978, 160);
+    ctx.moveTo(1973, 75);
+    ctx.lineTo(1950, 160);
+    ctx.lineTo(1996, 160);
     ctx.closePath();
     ctx.fill();
 
-    // Heavy iron hinge barrels facing left toward gate opening
-    ctx.fillRect(928, 340, 20, 24);
-    ctx.fillRect(928, 560, 20, 24);
-    ctx.fillRect(928, 840, 20, 24);
+    // Heavy iron hinge barrels facing toward gate opening
+    ctx.fillRect(1934, 340, 24, 24);
+    ctx.fillRect(1934, 560, 24, 24);
+    ctx.fillRect(1934, 840, 24, 24);
 
-    // Tangled dead briars, overgrown weeds and creeping ivy along base
+    // Tangled dead briars and weeds along base
     ctx.fillStyle = ironDark;
-    for (let bx = 0; bx < 1024; bx += 6) {
-        const bh = 75 + Math.sin(bx * 0.08) * 35 + Math.cos(bx * 0.15) * 20;
+    for (let bx = 0; bx < 2048; bx += 6) {
+        const bh = 80 + Math.sin(bx * 0.05) * 35 + Math.cos(bx * 0.1) * 20;
         ctx.beginPath();
         ctx.moveTo(bx - 4, 1024);
         ctx.lineTo(bx + Math.sin(bx) * 6, 1024 - bh);
@@ -4714,51 +4710,70 @@ function createHauntedGateWingTexture() {
     return tex;
 }
 
-// 6. Winding Overgrown Estate Dirt Path with Moonlit Puddle Reflections (512x1024)
+// 6. Winding Overgrown Estate Dirt Path with Moonlit Puddle Reflections (2048x1024 - Full Ground Span)
 function createHauntedDirtPathTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
+    canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Dark desolate earth background
+    // Dark desolate earth background spanning entire ground
     ctx.fillStyle = '#05080e';
-    ctx.fillRect(0, 0, 512, 1024);
+    ctx.fillRect(0, 0, 2048, 1024);
 
-    // Dirt road perspective corridor narrowing towards the top
+    // Subtle dark soil grain and ground variation
+    for (let g = 0; g < 400; g++) {
+        const gx = Math.random() * 2048;
+        const gy = Math.random() * 1024;
+        const gr = 2 + Math.random() * 6;
+        ctx.fillStyle = Math.random() > 0.5 ? '#080d16' : '#030509';
+        ctx.beginPath();
+        ctx.arc(gx, gy, gr, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Dirt road perspective corridor: wide at foreground bottom (600 -> 1448),
+    // funneling through gates at y: 512 (880 -> 1168), curving to manor on right at top (1250 -> 1500)
     ctx.beginPath();
-    ctx.moveTo(10, 1024);
-    ctx.quadraticCurveTo(140, 500, 210, 0);
-    ctx.lineTo(310, 0);
-    ctx.quadraticCurveTo(380, 500, 502, 1024);
+    ctx.moveTo(600, 1024);
+    ctx.quadraticCurveTo(840, 750, 880, 512);
+    ctx.quadraticCurveTo(920, 250, 1250, 0);
+    ctx.lineTo(1500, 0);
+    ctx.quadraticCurveTo(1240, 250, 1168, 512);
+    ctx.quadraticCurveTo(1220, 750, 1448, 1024);
     ctx.closePath();
     ctx.fillStyle = '#0a101c';
     ctx.fill();
 
     // Wheel Rut 1 (Left Track)
     ctx.beginPath();
-    ctx.moveTo(90, 1024);
-    ctx.quadraticCurveTo(180, 500, 230, 0);
-    ctx.lineWidth = 36;
+    ctx.moveTo(760, 1024);
+    ctx.quadraticCurveTo(910, 750, 930, 512);
+    ctx.quadraticCurveTo(960, 250, 1310, 0);
+    ctx.lineWidth = 42;
     ctx.strokeStyle = '#070b14';
     ctx.stroke();
 
     // Wheel Rut 2 (Right Track)
     ctx.beginPath();
-    ctx.moveTo(420, 1024);
-    ctx.quadraticCurveTo(340, 500, 290, 0);
-    ctx.lineWidth = 36;
+    ctx.moveTo(1280, 1024);
+    ctx.quadraticCurveTo(1140, 750, 1118, 512);
+    ctx.quadraticCurveTo(1180, 250, 1440, 0);
+    ctx.lineWidth = 42;
     ctx.strokeStyle = '#070b14';
     ctx.stroke();
 
     // Cold Silver Moonlit Puddle Reflections along wheel ruts
     const puddles = [
-        { x: 140, y: 780, rx: 45, ry: 18, rot: 0.15 },
-        { x: 370, y: 740, rx: 40, ry: 16, rot: -0.1 },
-        { x: 200, y: 520, rx: 32, ry: 12, rot: 0.12 },
-        { x: 310, y: 460, rx: 28, ry: 10, rot: -0.08 },
-        { x: 220, y: 260, rx: 20, ry: 7, rot: 0.05 },
-        { x: 280, y: 220, rx: 18, ry: 6, rot: -0.05 }
+        { x: 820, y: 840, rx: 65, ry: 24, rot: 0.12 },
+        { x: 1240, y: 810, rx: 60, ry: 22, rot: -0.1 },
+        { x: 920, y: 620, rx: 48, ry: 18, rot: 0.14 },
+        { x: 1130, y: 580, rx: 44, ry: 16, rot: -0.09 },
+        { x: 960, y: 440, rx: 36, ry: 13, rot: 0.10 },
+        { x: 1110, y: 400, rx: 32, ry: 11, rot: -0.07 },
+        { x: 1040, y: 280, rx: 26, ry: 9, rot: 0.05 },
+        { x: 1200, y: 230, rx: 24, ry: 8, rot: -0.05 },
+        { x: 1320, y: 120, rx: 20, ry: 7, rot: 0.04 }
     ];
 
     puddles.forEach(p => {
@@ -4766,8 +4781,8 @@ function createHauntedDirtPathTexture() {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
         const pGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, p.rx);
-        pGrad.addColorStop(0.0, 'rgba(215, 235, 255, 0.45)');
-        pGrad.addColorStop(0.5, 'rgba(140, 185, 240, 0.22)');
+        pGrad.addColorStop(0.0, 'rgba(220, 238, 255, 0.48)');
+        pGrad.addColorStop(0.5, 'rgba(145, 190, 242, 0.22)');
         pGrad.addColorStop(1.0, 'transparent');
         ctx.fillStyle = pGrad;
         ctx.beginPath();
@@ -4845,23 +4860,40 @@ function createHauntedBatTexture() {
     return tex;
 }
 
-// 8. Soft Volumetric Graveyard Fog / Mist Particle Puff (256x256)
+// 8. Soft Volumetric Graveyard Fog / Mist Particle Puff (512x512 - Ultra-Soft Feathered Falloff)
 function createHauntedMistPuffTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 256;
-    canvas.height = 256;
+    canvas.width = 512;
+    canvas.height = 512;
     const ctx = canvas.getContext('2d');
-    const cx = 128, cy = 128;
+    const cx = 256, cy = 256;
 
-    const radGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 120);
-    radGrad.addColorStop(0.0, 'rgba(215, 235, 255, 0.70)');
-    radGrad.addColorStop(0.35, 'rgba(160, 200, 240, 0.40)');
-    radGrad.addColorStop(0.70, 'rgba(90, 130, 180, 0.14)');
+    // Multi-layered soft Gaussian radial gradient
+    const radGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, 240);
+    radGrad.addColorStop(0.0, 'rgba(225, 240, 255, 0.75)');
+    radGrad.addColorStop(0.25, 'rgba(180, 215, 250, 0.45)');
+    radGrad.addColorStop(0.55, 'rgba(110, 155, 210, 0.20)');
+    radGrad.addColorStop(0.80, 'rgba(60, 95, 145, 0.06)');
     radGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = radGrad;
     ctx.beginPath();
-    ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+    ctx.arc(cx, cy, 240, 0, Math.PI * 2);
     ctx.fill();
+
+    // Wispy organic noise puffs inside for natural smoke texture
+    for (let p = 0; p < 14; p++) {
+        const px = cx + (Math.random() - 0.5) * 140;
+        const py = cy + (Math.random() - 0.5) * 80;
+        const pr = 45 + Math.random() * 85;
+        const pGrad = ctx.createRadialGradient(px, py, 4, px, py, pr);
+        pGrad.addColorStop(0.0, 'rgba(215, 238, 255, 0.28)');
+        pGrad.addColorStop(0.5, 'rgba(150, 195, 240, 0.12)');
+        pGrad.addColorStop(1.0, 'transparent');
+        ctx.fillStyle = pGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -9457,14 +9489,14 @@ export function createVFXScene(container) {
     const hauntedBatTex = createHauntedBatTexture();
     const hauntedMistTex = createHauntedMistPuffTexture();
 
-    // 2. Layer 1: Gothic Night Sky Backdrop & Glowing Full Moon (z = -26.0)
-    const hauntedSkyGeo = new THREE.PlaneGeometry(64.0, 38.0);
+    // 2. Layer 1: Gothic Night Sky Backdrop & Glowing Full Moon (z = -28.0, 160x95 full-screen span)
+    const hauntedSkyGeo = new THREE.PlaneGeometry(160.0, 95.0);
     const hauntedSkyMat = new THREE.MeshBasicMaterial({
         map: hauntedSkyTex,
         depthWrite: false
     });
     const hauntedSkyMesh = new THREE.Mesh(hauntedSkyGeo, hauntedSkyMat);
-    hauntedSkyMesh.position.set(0, 3.0, -26.0);
+    hauntedSkyMesh.position.set(0, 4.0, -28.0);
     gHauntedManor.add(hauntedSkyMesh);
 
     // Glowing Full Moon Disc (Left-Center in the stormy sky)
@@ -9493,8 +9525,8 @@ export function createVFXScene(container) {
     hauntedCoronaMesh.position.set(hauntedMoonPos.x, hauntedMoonPos.y, hauntedMoonPos.z - 0.2);
     gHauntedManor.add(hauntedCoronaMesh);
 
-    // Drifting Stormy Moonlit Cloud Plane (Layer 2: z = -22.0)
-    const hauntedCloudGeo = new THREE.PlaneGeometry(56.0, 26.0);
+    // Drifting Stormy Moonlit Cloud Plane (Layer 2: z = -22.0, 160x65 full-screen span)
+    const hauntedCloudGeo = new THREE.PlaneGeometry(160.0, 65.0);
     const hauntedCloudMat1 = new THREE.MeshBasicMaterial({
         map: hauntedSkyTex,
         transparent: true,
@@ -9503,12 +9535,12 @@ export function createVFXScene(container) {
         blending: THREE.AdditiveBlending
     });
     const hauntedCloudMesh1 = new THREE.Mesh(hauntedCloudGeo, hauntedCloudMat1);
-    hauntedCloudMesh1.position.set(0, 4.5, -22.0);
+    hauntedCloudMesh1.position.set(0, 6.0, -22.0);
     gHauntedManor.add(hauntedCloudMesh1);
 
     // 3. Layer 3: Victorian Gothic Haunted Mansion Facade (z = -14.5)
     // Sits in the right-middle ground exactly like in the reference photo!
-    const hauntedManorGeo = new THREE.PlaneGeometry(17.5, 16.0);
+    const hauntedManorGeo = new THREE.PlaneGeometry(18.5, 16.8);
     const hauntedManorMat = new THREE.MeshBasicMaterial({
         map: hauntedManorTex,
         transparent: true,
@@ -9516,7 +9548,7 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
     const hauntedManorMesh = new THREE.Mesh(hauntedManorGeo, hauntedManorMat);
-    hauntedManorMesh.position.set(3.8, 1.2, -14.5);
+    hauntedManorMesh.position.set(4.0, 1.3, -14.5);
     gHauntedManor.add(hauntedManorMesh);
 
     // Separate Candlelight Windows Glow Overlay (flickering candle glow & lightning reaction)
@@ -9528,23 +9560,23 @@ export function createVFXScene(container) {
         opacity: 0.65
     });
     const hauntedWindowsMesh = new THREE.Mesh(hauntedManorGeo, hauntedWindowsMat);
-    hauntedWindowsMesh.position.set(3.8, 1.2, -14.46);
+    hauntedWindowsMesh.position.set(4.0, 1.3, -14.46);
     gHauntedManor.add(hauntedWindowsMesh);
 
-    // 4. Layer 4: Spooky Gnarled Bare Forest Trees & Overhanging Twisted Limbs (z = -9.2)
-    // Heavy gnarled oak on the left framing the glowing moon!
-    const hauntedTreesGeo = new THREE.PlaneGeometry(28.0, 22.0);
+    // 4. Layer 4: Spooky Gnarled Bare Forest Trees & Overhanging Twisted Limbs (z = -9.2, 68x34 full-screen span)
+    // Heavy gnarled oak branches framing the glowing moon and spanning completely across the top and sides!
+    const hauntedTreesGeo = new THREE.PlaneGeometry(68.0, 34.0);
     const hauntedTreesMat = new THREE.MeshBasicMaterial({
         map: hauntedTreesTex,
         transparent: true,
         depthWrite: false
     });
     const hauntedTreesMesh = new THREE.Mesh(hauntedTreesGeo, hauntedTreesMat);
-    hauntedTreesMesh.position.set(-0.5, 2.5, -9.2);
+    hauntedTreesMesh.position.set(0.0, 3.8, -9.2);
     gHauntedManor.add(hauntedTreesMesh);
 
-    // 5. Layer 5: Winding Estate Dirt Road / Driveway (Ground Plane)
-    const hauntedPathGeo = new THREE.PlaneGeometry(22.0, 26.0);
+    // 5. Layer 5: Winding Estate Dirt Road / Driveway (Ground Plane: 110x75 full terrain span)
+    const hauntedPathGeo = new THREE.PlaneGeometry(110.0, 75.0);
     const hauntedPathMat = new THREE.MeshStandardMaterial({
         map: hauntedPathTex,
         roughness: 0.35,
@@ -9553,31 +9585,31 @@ export function createVFXScene(container) {
         depthWrite: false
     });
     const hauntedPathMesh = new THREE.Mesh(hauntedPathGeo, hauntedPathMat);
-    hauntedPathMesh.position.set(0.6, -6.6, -9.5);
+    hauntedPathMesh.position.set(0.0, -6.8, -9.5);
     hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.16; // Tilted towards camera
     gHauntedManor.add(hauntedPathMesh);
 
     // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Foreground z = -1.2)
-    // A. Left Perimeter Fence Railings (spanning from left screen edge to gate hinge post)
-    const hauntedFenceGeo = new THREE.PlaneGeometry(10.5, 13.0);
+    // A. Left Perimeter Fence Railings (spanning 22 units wide, from screen edge to gate hinge post at x = -3.8)
+    const hauntedFenceGeo = new THREE.PlaneGeometry(22.0, 13.5);
     const hauntedFenceMat = new THREE.MeshBasicMaterial({
         map: hauntedFenceTex,
         transparent: true,
         depthWrite: false
     });
     const hauntedFenceLeftMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceLeftMesh.position.set(-8.8, -2.0, -1.2);
+    hauntedFenceLeftMesh.position.set(-14.8, -1.8, -1.2);
     gHauntedManor.add(hauntedFenceLeftMesh);
 
-    // B. Right Perimeter Fence Railings (mirrored so terminal gatepost faces the driveway)
+    // B. Right Perimeter Fence Railings (mirrored so terminal gatepost faces the driveway at x = +3.8)
     const hauntedFenceRightMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceRightMesh.position.set(8.8, -2.0, -1.2);
+    hauntedFenceRightMesh.position.set(14.8, -1.8, -1.2);
     hauntedFenceRightMesh.scale.set(-1.0, 1.0, 1.0);
     gHauntedManor.add(hauntedFenceRightMesh);
 
     // C. Left Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = -3.8)
     const hauntedLeftGatePivot = new THREE.Group();
-    hauntedLeftGatePivot.position.set(-3.8, -2.0, -1.2);
+    hauntedLeftGatePivot.position.set(-3.8, -1.8, -1.2);
 
     const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 12.0);
     const hauntedGateWingMat = new THREE.MeshBasicMaterial({
@@ -9593,7 +9625,7 @@ export function createVFXScene(container) {
 
     // D. Right Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = +3.8)
     const hauntedRightGatePivot = new THREE.Group();
-    hauntedRightGatePivot.position.set(3.8, -2.0, -1.2);
+    hauntedRightGatePivot.position.set(3.8, -1.8, -1.2);
 
     const hauntedRightGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
     hauntedRightGateMesh.position.set(-2.1, 0, 0); // Offset so hinge is at pivot origin
@@ -9667,8 +9699,41 @@ export function createVFXScene(container) {
     }
     gHauntedManor.add(hauntedBatGroup);
 
-    // 8. Layer 8: Low-Lying Rolling Graveyard Fog Particles (120 volumetric mist puffs)
-    const hauntedMistCount = 120;
+    // 8. Layer 8: Flowing Ground Fog Across Path & Through Gates (52 Volumetric Rolling Fog Puffs)
+    const hauntedPathFogPuffs = [];
+    const hauntedPathFogGroup = new THREE.Group();
+    const hauntedPathFogGeo = new THREE.PlaneGeometry(9.0, 5.5);
+    const hauntedPathFogMat = new THREE.MeshBasicMaterial({
+        map: hauntedMistTex,
+        transparent: true,
+        opacity: 0.32,
+        depthWrite: false,
+        blending: THREE.NormalBlending,
+        color: 0x9ec7f5
+    });
+
+    const numPathFogPuffs = 52;
+    for (let f = 0; f < numPathFogPuffs; f++) {
+        const puffMesh = new THREE.Mesh(hauntedPathFogGeo, hauntedPathFogMat.clone());
+        puffMesh.rotation.x = -Math.PI / 2 + 0.16; // Hugging tilted ground
+        const scale = 0.85 + Math.random() * 0.55;
+        puffMesh.scale.set(scale, scale * 0.75, 1.0);
+        hauntedPathFogGroup.add(puffMesh);
+
+        hauntedPathFogPuffs.push({
+            mesh: puffMesh,
+            progress: f / numPathFogPuffs, // Staggered evenly from deep estate path to foreground
+            speed: 0.028 + Math.random() * 0.022,
+            rotSpeed: (Math.random() - 0.5) * 0.045,
+            xOffset: (Math.random() - 0.5) * 1.8,
+            baseScale: scale,
+            phase: Math.random() * Math.PI * 2.0
+        });
+    }
+    gHauntedManor.add(hauntedPathFogGroup);
+
+    // Ambient Rolling Graveyard Lawn Mist Particles (80 distant mist puffs)
+    const hauntedMistCount = 80;
     const hauntedMistGeo = new THREE.BufferGeometry();
     const hauntedMistPos = new Float32Array(hauntedMistCount * 3);
     const hauntedMistSize = new Float32Array(hauntedMistCount);
@@ -9676,12 +9741,11 @@ export function createVFXScene(container) {
     const hauntedMistPhase = new Float32Array(hauntedMistCount);
 
     for (let m = 0; m < hauntedMistCount; m++) {
-        // Hugging the ground along the driveway and between gate pillars
-        hauntedMistPos[m * 3] = (Math.random() - 0.5) * 28.0;
-        hauntedMistPos[m * 3 + 1] = -5.8 + Math.random() * 3.2; // Low elevation (-5.8 to -2.6)
-        hauntedMistPos[m * 3 + 2] = -2.0 - Math.random() * 18.0; // Spanning deep along path
+        hauntedMistPos[m * 3] = (Math.random() - 0.5) * 48.0;
+        hauntedMistPos[m * 3 + 1] = -5.8 + Math.random() * 3.0;
+        hauntedMistPos[m * 3 + 2] = -4.0 - Math.random() * 22.0;
 
-        hauntedMistSize[m] = 4.5 + Math.random() * 5.5; // Big soft billowing puffs
+        hauntedMistSize[m] = 5.0 + Math.random() * 6.5;
         hauntedMistSpeed[m] = 0.2 + Math.random() * 0.4;
         hauntedMistPhase[m] = Math.random() * Math.PI * 2.0;
     }
@@ -9692,12 +9756,12 @@ export function createVFXScene(container) {
 
     const hauntedMistMat = new THREE.PointsMaterial({
         map: hauntedMistTex,
-        size: 8.0,
+        size: 14.0,
         transparent: true,
-        opacity: 0.38,
+        opacity: 0.28,
         depthWrite: false,
         blending: THREE.NormalBlending,
-        color: 0x98b8dc
+        color: 0x90b4dc
     });
     const hauntedMistParticles = new THREE.Points(hauntedMistGeo, hauntedMistMat);
     gHauntedManor.add(hauntedMistParticles);
@@ -12013,13 +12077,59 @@ export function createVFXScene(container) {
                 b.mesh.scale.x = b.baseScale * (wingFlap > 0 ? 1.05 : 0.95);
             });
 
-            // 4. Low-lying graveyard ground mist drift
+            // 4. Flowing ground fog effect slowly moving across the floor of the path through the gates
+            hauntedPathFogPuffs.forEach((fp) => {
+                fp.progress += fp.speed * delta;
+                if (fp.progress > 1.0) fp.progress -= 1.0;
+
+                const p = fp.progress;
+                // Z position moves forward along path: from deep forest (z = -18.0) forward through the gates (z = -1.2) to foreground (z = +5.5)
+                const pZ = -18.0 + p * 23.5;
+
+                // X position follows the winding driveway and gates opening
+                let pX = 0.0;
+                if (pZ < -1.2) {
+                    // Estate approach: curves from manor driveway on right (x = +2.0) towards the center gates
+                    const approachT = (pZ - (-18.0)) / ((-1.2) - (-18.0));
+                    pX = (2.0 * (1.0 - approachT)) + fp.xOffset;
+                    // Channel tightly through gate opening as it arrives at gates
+                    if (pZ > -4.5) {
+                        pX *= 0.65;
+                    }
+                } else {
+                    // Spilling through the gates into the foreground: billows and fans out across the entire screen floor!
+                    const spillT = (pZ - (-1.2)) / (5.5 - (-1.2));
+                    pX = fp.xOffset * (1.0 + spillT * 5.5) + Math.sin(p * 5.0 + fp.phase) * (1.8 * spillT);
+                }
+
+                // Y position hugs the sloping floor, with gentle breathing undulation
+                const pY = -5.8 + p * 0.45 + Math.sin(elapsedTime * 1.5 + fp.phase) * 0.12;
+
+                fp.mesh.position.set(pX, pY, pZ);
+                fp.mesh.rotation.z += fp.rotSpeed * delta;
+
+                // Opacity: smooth bell curve (peaks at 0.35 while flowing through gates, fades at ends)
+                let alpha = 0.32;
+                if (p < 0.12) {
+                    alpha = 0.32 * (p / 0.12);
+                } else if (p > 0.80) {
+                    alpha = 0.32 * ((1.0 - p) / 0.20);
+                }
+
+                // Lightning flash surge: ground fog lights up radiantly in silver-white
+                if (hauntedLightningTimer > 0.0) {
+                    alpha = Math.min(0.85, alpha * 2.4);
+                }
+                fp.mesh.material.opacity = alpha;
+            });
+
+            // Ambient background graveyard lawn mist drift
             const mistPosAttr = hauntedMistGeo.attributes.position;
             const mistCount = hauntedMistPos.length / 3;
             for (let m = 0; m < mistCount; m++) {
                 let mx = mistPosAttr.getX(m);
-                mx += (0.45 + (m % 3) * 0.15) * delta;
-                if (mx > 15.0) mx = -15.0;
+                mx += (0.35 + (m % 3) * 0.12) * delta;
+                if (mx > 24.0) mx = -24.0;
                 mistPosAttr.setX(m, mx);
             }
             mistPosAttr.needsUpdate = true;
