@@ -27,7 +27,7 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 ## 🗂️ VFX Scene Bank (23 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
-- **FX 0: 3D Studio Particle Spectrum Equalizer** — 36-band curved studio equalizer towers with frequency-mapped spectral gradients (Cyan to Magenta), peak-hold needle physics, studio grid reference lines, and live floating spectrum particles bursting from energetic peaks (matching the hardware console EQ engine).
+- **FX 0: Full-Screen Particle Spectrum Visualizer** — Pure, borderless edge-to-edge 36-band visualizer with frequency-mapped spectral gradients (Cyan to Magenta), peak-hold needle physics, and glowing spectrum particles floating seamlessly from active bar crests all the way to the top of the screen.
 - **FX 1: Cylindrical Spectrum Tunnel** — 360-degree holographic frequency ring tunnel with relativistic speed progression.
 - **FX 2: Geometric Disco Spectrum** — Concentric faceted polygon rings undulating with transient beat impacts.
 - **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with deck telemetry.

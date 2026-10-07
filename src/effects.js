@@ -5769,14 +5769,14 @@ export function createVFXScene(container) {
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Faithful Hardware Console Engine)
+    // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Full-Screen Borderless Visualizer)
     // -------------------------------------------------------------------------
     const gEQBars = createFXGroup();
     gEQBars.visible = true;
 
-    // High-Resolution 2D Dynamic Studio Console Canvas (Matching Console UI)
-    const studioEqW = 1280;
-    const studioEqH = 540;
+    // High-Resolution Full-Screen Canvas (16:9 Widescreen)
+    const studioEqW = 1600;
+    const studioEqH = 900;
     const studioEqCanvas = document.createElement('canvas');
     studioEqCanvas.width = studioEqW;
     studioEqCanvas.height = studioEqH;
@@ -5786,93 +5786,19 @@ export function createVFXScene(container) {
     studioEqTex.minFilter = THREE.LinearFilter;
     studioEqTex.magFilter = THREE.LinearFilter;
 
-    // 3D Floating Console Screen (Cinema Wide 2.37:1 ratio)
-    const screenGeo = new THREE.PlaneGeometry(24.0, 10.125);
+    // Borderless Full-Screen Mesh (Unit plane dynamically scaled to camera viewport)
+    const screenGeo = new THREE.PlaneGeometry(1.0, 1.0);
     const screenMat = new THREE.MeshBasicMaterial({ map: studioEqTex, transparent: true, side: THREE.DoubleSide });
     const studioEqScreen = new THREE.Mesh(screenGeo, screenMat);
-    studioEqScreen.position.set(0, 0.25, 0.5);
+    studioEqScreen.position.set(0, 0, 0);
     gEQBars.add(studioEqScreen);
 
-    // Beveled Studio Hardware Chassis Behind Screen
-    const chassisGeo = new THREE.BoxGeometry(24.7, 10.825, 0.45);
-    const chassisMat = new THREE.MeshStandardMaterial({
-        color: 0x0c0f18,
-        roughness: 0.70,
-        metalness: 0.60
-    });
-    const chassisMesh = new THREE.Mesh(chassisGeo, chassisMat);
-    chassisMesh.position.set(0, 0.25, 0.26);
-    gEQBars.add(chassisMesh);
-
-    // Subtle Neon Bezel Border around Chassis
-    const bezelPoints = [
-        new THREE.Vector3(-12.35, -5.41, 0.52),
-        new THREE.Vector3(12.35, -5.41, 0.52),
-        new THREE.Vector3(12.35, 5.41, 0.52),
-        new THREE.Vector3(-12.35, 5.41, 0.52),
-        new THREE.Vector3(-12.35, -5.41, 0.52)
-    ];
-    const bezelLineGeo = new THREE.BufferGeometry().setFromPoints(bezelPoints);
-    const bezelLineMat = new THREE.LineBasicMaterial({ color: 0x00ffcc, transparent: true, opacity: 0.35 });
-    const bezelLine = new THREE.Line(bezelLineGeo, bezelLineMat);
-    bezelLine.position.set(0, 0.25, 0);
-    gEQBars.add(bezelLine);
-
-    // Dark Stage Floor beneath Console
-    const eqStageFloor = new THREE.Mesh(
-        new THREE.PlaneGeometry(50, 30),
-        new THREE.MeshStandardMaterial({ color: 0x030408, roughness: 0.35, metalness: 0.85 })
-    );
-    eqStageFloor.rotation.x = -Math.PI / 2;
-    eqStageFloor.position.set(0, -5.6, 0);
-    gEQBars.add(eqStageFloor);
-
-    // Console EQ Engine State
+    // Spectrum Engine State
     const STUDIO_EQ_BARS = 36;
     const studioEqPeakLevels = new Float32Array(STUDIO_EQ_BARS);
     const studioEqPeakVels = new Float32Array(STUDIO_EQ_BARS);
     const studioEq2DParticles = [];
-    const MAX_STUDIO_2D_PARTICLES = 160;
-
-    // 3D Floating Volume Sparks (Hovering into the 3D room in front of console)
-    const MAX_3D_VOL_PARTICLES = 120;
-    const eq3DVolParticles = [];
-    const eq3DVolGeo = new THREE.BufferGeometry();
-    const eq3DVolPos = new Float32Array(MAX_3D_VOL_PARTICLES * 3);
-    const eq3DVolCol = new Float32Array(MAX_3D_VOL_PARTICLES * 3);
-    for (let p = 0; p < MAX_3D_VOL_PARTICLES; p++) {
-        eq3DVolPos[p * 3 + 1] = -999.0;
-    }
-    eq3DVolGeo.setAttribute('position', new THREE.BufferAttribute(eq3DVolPos, 3));
-    eq3DVolGeo.setAttribute('color', new THREE.BufferAttribute(eq3DVolCol, 3));
-
-    // Procedural soft glowing radial particle texture
-    const eqGlowCanvas = document.createElement('canvas');
-    eqGlowCanvas.width = 64;
-    eqGlowCanvas.height = 64;
-    const eqGlowCtx = eqGlowCanvas.getContext('2d');
-    const eqGlowGrad = eqGlowCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
-    eqGlowGrad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)');
-    eqGlowGrad.addColorStop(0.25, 'rgba(255, 255, 255, 0.95)');
-    eqGlowGrad.addColorStop(0.60, 'rgba(255, 255, 255, 0.35)');
-    eqGlowGrad.addColorStop(1.00, 'rgba(255, 255, 255, 0.0)');
-    eqGlowCtx.fillStyle = eqGlowGrad;
-    eqGlowCtx.beginPath();
-    eqGlowCtx.arc(32, 32, 32, 0, Math.PI * 2);
-    eqGlowCtx.fill();
-    const eqGlowTex = new THREE.CanvasTexture(eqGlowCanvas);
-
-    const eq3DVolMat = new THREE.PointsMaterial({
-        size: 0.55,
-        map: eqGlowTex,
-        vertexColors: true,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        depthWrite: false
-    });
-    const eq3DVolMesh = new THREE.Points(eq3DVolGeo, eq3DVolMat);
-    eq3DVolMesh.renderOrder = 28;
-    gEQBars.add(eq3DVolMesh);
+    const MAX_STUDIO_2D_PARTICLES = 450; // Rich, dense particle canopy reaching the top of the screen
 
     // -------------------------------------------------------------------------
     // FX 1: 🎯 CIRCULAR SPECTRUM MANDALA
@@ -9307,244 +9233,141 @@ export function createVFXScene(container) {
         // 2. Animate Active Scene
         // ---------------------------------------------------------------------
         try {
-            // FX 0: 📊 3D STUDIO PARTICLE SPECTRUM EQUALIZER (Faithful Match to Console)
-            // ---------------------------------------------------------------------
-            if (currentFXIndex === 0) {
+                       if (currentFXIndex === 0) {
                 const ctx = studioEqCtx;
                 const W = studioEqW;
                 const H = studioEqH;
 
+                // Scale the visual plane dynamically to seamlessly fill the camera frustum edge-to-edge
+                const vFovRad = (camera.fov * Math.PI) / 180.0;
+                const camDist = Math.max(1.0, camera.position.z);
+                const frustumH = 2.0 * Math.tan(vFovRad * 0.5) * camDist;
+                const aspect = (camera.aspect && !isNaN(camera.aspect)) ? camera.aspect : (window.innerWidth / window.innerHeight);
+                const frustumW = frustumH * aspect;
+                studioEqScreen.scale.set(frustumW * 1.02, frustumH * 1.02, 1.0);
+                studioEqScreen.position.set(0, 0, 0);
+
                 const isAudioActive = (audio.bass > 0.02 || (audio.smoothedMid || audio.mid || 0) > 0.02 || (audio.smoothedTreble || audio.treble || 0) > 0.02 || (audio.overall || 0) > 0.02);
 
-                // 1. Clear & Outer Panel Background
-                ctx.fillStyle = '#0a0d14';
+                // 1. Pure Borderless Dark Background (No borders, no boxes, no frames)
+                ctx.fillStyle = '#020408';
                 ctx.fillRect(0, 0, W, H);
 
-                // Outer Card Bevel & Border
-                ctx.strokeStyle = '#1e2433';
-                ctx.lineWidth = 2;
-                if (ctx.roundRect) {
-                    ctx.roundRect(4, 4, W - 8, H - 8, 8);
-                } else {
-                    ctx.rect(4, 4, W - 8, H - 8);
-                }
-                ctx.stroke();
-
-                // 2. Header Bar: Icon, "PARTICLE SPECTRUM EQ", "[ LIVE SPECTRUM ]"
-                // 4-Dot LED Grid Icon
-                ctx.fillStyle = '#64748b';
-                const iconX = 28;
-                const iconY = 22;
-                const dotSize = 5;
-                const dotGap = 4;
-                ctx.fillRect(iconX, iconY, dotSize, dotSize);
-                ctx.fillRect(iconX + dotSize + dotGap, iconY, dotSize, dotSize);
-                ctx.fillRect(iconX, iconY + dotSize + dotGap, dotSize, dotSize);
-                ctx.fillRect(iconX + dotSize + dotGap, iconY + dotSize + dotGap, dotSize, dotSize);
-
-                // Title
-                ctx.font = '800 15px "JetBrains Mono", monospace';
-                ctx.fillStyle = '#8c95a8';
-                ctx.textAlign = 'left';
-                ctx.fillText('PARTICLE SPECTRUM EQ', iconX + 22, iconY + 11);
-
-                // Live Spectrum Pill Badge (Right aligned)
-                const badgeW = 118;
-                const badgeH = 24;
-                const badgeX = W - badgeW - 28;
-                const badgeY = 14;
-
-                ctx.fillStyle = 'rgba(0, 255, 204, 0.12)';
-                ctx.strokeStyle = 'rgba(0, 255, 204, 0.45)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(badgeX, badgeY, badgeW, badgeH, 4);
-                } else {
-                    ctx.rect(badgeX, badgeY, badgeW, badgeH);
-                }
-                ctx.fill();
-                ctx.stroke();
-
-                ctx.font = '800 11.5px "JetBrains Mono", monospace';
-                ctx.fillStyle = '#00ffcc';
-                ctx.textAlign = 'center';
-                ctx.fillText('LIVE SPECTRUM', badgeX + badgeW * 0.5, badgeY + 16.5);
-
-                // 3. Inner Display Window
-                const dispX = 22;
-                const dispY = 46;
-                const dispW = W - 44;
-                const dispH = 435;
-
-                ctx.fillStyle = '#05070c';
-                ctx.beginPath();
-                if (ctx.roundRect) {
-                    ctx.roundRect(dispX, dispY, dispW, dispH, 6);
-                } else {
-                    ctx.rect(dispX, dispY, dispW, dispH);
-                }
-                ctx.fill();
-
-                ctx.strokeStyle = '#181b25';
-                ctx.lineWidth = 1.5;
-                ctx.stroke();
-
-                // Subtle Horizontal Grid Lines
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
-                ctx.lineWidth = 1;
-                ctx.beginPath();
-                for (let level of [0.25, 0.50, 0.75]) {
-                    const gy = dispY + dispH * level;
-                    ctx.moveTo(dispX + 4, gy);
-                    ctx.lineTo(dispX + dispW - 4, gy);
-                }
-                ctx.stroke();
-
-                // 4. 36 Spectrum Bars
-                const barSpacing = 4.5;
-                const barWidth = (dispW - (barSpacing * (STUDIO_EQ_BARS + 1))) / STUDIO_EQ_BARS;
-                const maxBarHeight = dispH - 45;
+                // 2. Full-Width Spectrum Bars (36 smooth rounded gradient bars rising from bottom edge)
+                const barMargin = 16;
+                const barSpacing = 5.5;
+                const totalBarSpan = W - barMargin * 2;
+                const barWidth = (totalBarSpan - (barSpacing * (STUDIO_EQ_BARS - 1))) / STUDIO_EQ_BARS;
+                const maxBarHeight = H * 0.62; // Allows dynamic crests up to 62% screen height
+                const baseY = H;
 
                 for (let i = 0; i < STUDIO_EQ_BARS; i++) {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(i / STUDIO_EQ_BARS, 1.25) * 54) + 1);
-                    const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
+                    const idleWave = (Math.sin(elapsedTime * 2.2 + i * 0.28) * 0.5 + 0.5) * 0.07 + 0.03;
+                    const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : idleWave;
                     const boostAmp = rawAmp + (i < 6 ? bassPop * 0.18 : 0);
-                    const barHeight = Math.max(4.0, Math.min(maxBarHeight, boostAmp * maxBarHeight));
+                    const barHeight = Math.max(8.0, Math.min(maxBarHeight, boostAmp * maxBarHeight));
 
-                    const bx = dispX + barSpacing + i * (barWidth + barSpacing);
-                    const by = dispY + dispH - barHeight - 4;
+                    const bx = barMargin + i * (barWidth + barSpacing);
+                    const by = baseY - barHeight;
 
                     // Harmonious spectral color gradient across audible bands:
-                    // 0: Cyan (Sub) -> Emerald (Bass) -> Lime/Yellow (Mid) -> Orange -> Rose/Magenta (Treble/Air)
+                    // Sub (Cyan 185) -> Bass (Emerald 150) -> Mid (Lime/Yellow 75) -> Hi-Mid (Orange 35) -> Air (Magenta 320)
                     const freqNorm = i / STUDIO_EQ_BARS;
                     let hue = 185 - freqNorm * 220;
                     if (hue < 0) hue += 360;
 
-                    const grad = ctx.createLinearGradient(0, dispY + dispH, 0, by);
-                    grad.addColorStop(0.0, `hsla(${hue}, 95%, 45%, 0.22)`);
-                    grad.addColorStop(0.68, `hsla(${hue}, 100%, 55%, 0.85)`);
-                    grad.addColorStop(1.0, `hsla(${hue}, 100%, 78%, 1.0)`);
+                    const grad = ctx.createLinearGradient(0, baseY, 0, by);
+                    grad.addColorStop(0.0, `hsla(${hue}, 95%, 45%, 0.25)`);
+                    grad.addColorStop(0.55, `hsla(${hue}, 100%, 55%, 0.85)`);
+                    grad.addColorStop(0.92, `hsla(${hue}, 100%, 75%, 0.98)`);
+                    grad.addColorStop(1.0, `hsla(${hue}, 100%, 94%, 1.0)`);
 
                     ctx.fillStyle = grad;
                     ctx.beginPath();
                     if (ctx.roundRect) {
-                        ctx.roundRect(bx, by, barWidth, barHeight, [4, 4, 0, 0]);
+                        ctx.roundRect(bx, by, barWidth, barHeight, [6, 6, 0, 0]);
                     } else {
                         ctx.rect(bx, by, barWidth, barHeight);
                     }
                     ctx.fill();
 
-                    // Peak Hold needle with gravity physics (matching console)
+                    // Peak Hold needle with gravity physics
                     if (barHeight >= studioEqPeakLevels[i]) {
                         studioEqPeakLevels[i] = barHeight;
                         studioEqPeakVels[i] = 0;
                     } else {
-                        studioEqPeakVels[i] += delta * 24.0;
-                        studioEqPeakLevels[i] = Math.max(4.0, studioEqPeakLevels[i] - studioEqPeakVels[i] * delta * 60.0);
+                        studioEqPeakVels[i] += delta * 26.0;
+                        studioEqPeakLevels[i] = Math.max(8.0, studioEqPeakLevels[i] - studioEqPeakVels[i] * delta * 60.0);
                     }
 
-                    const peakY = dispY + dispH - studioEqPeakLevels[i] - 5;
+                    const peakY = baseY - studioEqPeakLevels[i] - 5;
                     ctx.fillStyle = `hsla(${hue}, 100%, 92%, 0.95)`;
-                    ctx.fillRect(bx, peakY, barWidth, 3);
+                    if (ctx.roundRect) {
+                        ctx.beginPath();
+                        ctx.roundRect(bx, peakY, barWidth, 3.5, 2);
+                        ctx.fill();
+                    } else {
+                        ctx.fillRect(bx, peakY, barWidth, 3.5);
+                    }
 
-                    // Spawn floating spectrum particles from active peaks (matching console!)
-                    if (isAudioActive && rawAmp > 0.20 && Math.random() < (rawAmp * 0.55) && studioEq2DParticles.length < MAX_STUDIO_2D_PARTICLES) {
+                    // Spawn floating spectrum particles from active bar peaks
+                    const spawnThreshold = isAudioActive ? 0.16 : 0.08;
+                    if (rawAmp > spawnThreshold && Math.random() < (rawAmp * 0.65) && studioEq2DParticles.length < MAX_STUDIO_2D_PARTICLES) {
                         studioEq2DParticles.push({
-                            x: bx + barWidth * 0.5 + (Math.random() - 0.5) * 8,
+                            x: bx + barWidth * 0.5 + (Math.random() - 0.5) * (barWidth * 0.85),
                             y: by,
-                            vx: (Math.random() - 0.5) * 1.2,
-                            vy: -(1.6 + rawAmp * 3.8 + Math.random() * 2.2),
+                            vx: (Math.random() - 0.5) * 1.5,
+                            vy: -(3.0 + rawAmp * 6.5 + Math.random() * 3.0),
                             life: 1.0,
-                            decay: 0.015 + Math.random() * 0.022,
-                            size: 3.2 + Math.random() * 5.5,
+                            decay: 0.0035 + Math.random() * 0.0055, // Long lifespan to float all the way to top of screen
+                            size: 3.0 + Math.random() * 7.5,
+                            seed: Math.random() * 10.0,
                             hue: hue
                         });
-
-                        // Also spawn 3D volume sparks emerging forward toward camera
-                        if (eq3DVolParticles.length < MAX_3D_VOL_PARTICLES && Math.random() < 0.35) {
-                            const screenNormX = ((bx + barWidth * 0.5) / W - 0.5) * 23.5;
-                            const screenNormY = ((H - by) / H - 0.5) * 9.8 + 0.25;
-                            const hslCol = new THREE.Color().setHSL(hue / 360.0, 1.0, 0.65);
-                            eq3DVolParticles.push({
-                                x: screenNormX,
-                                y: screenNormY,
-                                z: 0.6,
-                                vx: (Math.random() - 0.5) * 0.6,
-                                vy: 0.8 + rawAmp * 2.5,
-                                vz: 0.8 + Math.random() * 1.5,
-                                life: 1.0,
-                                decay: 0.02 + Math.random() * 0.03,
-                                color: hslCol
-                            });
-                        }
                     }
                 }
 
-                // 5. Update & Render Floating Spectrum Particles (Bubbles / Dots matching screenshot)
+                // 3. Update & Render Floating Spectrum Particles (Bubbles, Sparks & Orbs floating to top of screen)
                 for (let p = studioEq2DParticles.length - 1; p >= 0; p--) {
                     const part = studioEq2DParticles[p];
-                    part.x += part.vx;
+                    part.x += part.vx + Math.sin(elapsedTime * 2.6 + part.seed) * 0.45;
                     part.y += part.vy;
-                    part.vy += 0.035; // gentle upward drag
+                    part.vy *= 0.994; // Aerodynamic drag
+                    part.vy -= 0.014; // Upward thermal buoyancy lifting them all the way to the top of the screen
                     part.life -= part.decay;
 
-                    if (part.life <= 0 || part.y < dispY) {
+                    // Only cull once decayed or completely floated beyond the top edge of screen
+                    if (part.life <= 0 || part.y < -40 || part.x < -40 || part.x > W + 40) {
                         studioEq2DParticles.splice(p, 1);
                         continue;
                     }
 
-                    ctx.fillStyle = `hsla(${part.hue}, 100%, 75%, ${part.life * 0.92})`;
-                    ctx.beginPath();
-                    ctx.arc(part.x, part.y, Math.max(1.5, part.size * (0.35 + part.life * 0.65)), 0, Math.PI * 2);
-                    ctx.fill();
-                }
+                    const rad = Math.max(1.8, part.size * (0.35 + part.life * 0.65));
+                    const alpha = Math.min(1.0, part.life * 1.25);
 
-                // 6. Frequency Axis Footer Labels
-                ctx.font = '800 12.5px "JetBrains Mono", monospace';
-                ctx.fillStyle = '#64748b';
-                ctx.textAlign = 'left';
-                ctx.fillText('20Hz (SUB)', dispX + 4, H - 12);
-                ctx.fillText('120Hz (BASS)', dispX + dispW * 0.22, H - 12);
-                ctx.fillText('1kHz (MID)', dispX + dispW * 0.46, H - 12);
-                ctx.fillText('4kHz (HI-MID)', dispX + dispW * 0.70, H - 12);
-                ctx.fillText('16kHz (AIR)', dispX + dispW * 0.91, H - 12);
+                    // Soft glowing outer halo
+                    ctx.fillStyle = `hsla(${part.hue}, 100%, 65%, ${alpha * 0.32})`;
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, rad * 1.8, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // Saturated neon core
+                    ctx.fillStyle = `hsla(${part.hue}, 100%, 82%, ${alpha * 0.95})`;
+                    ctx.beginPath();
+                    ctx.arc(part.x, part.y, rad * 0.85, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // White-hot center glint for larger particles
+                    if (part.size > 5.5) {
+                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.85})`;
+                        ctx.beginPath();
+                        ctx.arc(part.x, part.y, rad * 0.35, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
 
                 studioEqTex.needsUpdate = true;
-
-                // 7. Update 3D Volume Sparks
-                const vPos = eq3DVolGeo.attributes.position.array;
-                const vCol = eq3DVolCol.attributes.color.array;
-                let active3DCount = 0;
-                for (let p = eq3DVolParticles.length - 1; p >= 0; p--) {
-                    const vp = eq3DVolParticles[p];
-                    vp.x += vp.vx * delta;
-                    vp.y += vp.vy * delta;
-                    vp.z += vp.vz * delta;
-                    vp.life -= vp.decay * (delta * 60.0);
-
-                    if (vp.life <= 0 || vp.z > 8.0) {
-                        eq3DVolParticles.splice(p, 1);
-                        continue;
-                    }
-
-                    vPos[active3DCount * 3] = vp.x;
-                    vPos[active3DCount * 3 + 1] = vp.y;
-                    vPos[active3DCount * 3 + 2] = vp.z;
-
-                    const br = vp.life * 0.9;
-                    vCol[active3DCount * 3] = vp.color.r * br;
-                    vCol[active3DCount * 3 + 1] = vp.color.g * br;
-                    vCol[active3DCount * 3 + 2] = vp.color.b * br;
-
-                    active3DCount++;
-                }
-                for (let i = active3DCount; i < MAX_3D_VOL_PARTICLES; i++) {
-                    vPos[i * 3 + 1] = -999.0;
-                }
-                eq3DVolGeo.attributes.position.needsUpdate = true;
-                eq3DVolGeo.attributes.color.needsUpdate = true;
-                eq3DVolGeo.setDrawRange(0, active3DCount);
             }
         // ---------------------------------------------------------------------
         // FX 1: 🎯 Circular Spectrum Mandala
