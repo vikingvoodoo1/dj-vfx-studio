@@ -7824,6 +7824,7 @@ export function createVFXScene(container) {
     let pumpkinKickThump = 0.0;
     let pumpkinWhiteLightLastBeat = -1;
     let pumpkinWhiteLightOnTime = -10.0;
+    let pumpkinMiniSweepPhase = 0.0;
     let pumpkinPrevBass = 0.0;
     let pumpkinPrevMid = 0.0;
     let pumpkinPrevTreble = 0.0;
@@ -10067,67 +10068,69 @@ export function createVFXScene(container) {
                 const maxBin = Math.min(dataArr.length, 96);
                 for (let i = 2; i < maxBin; i += 2) {
                     const diff = dataArr[i] - pumpkinPrevSpectrum[i];
-                    if (diff > 14) flux += diff;
+                    if (diff > 10) flux += diff;
                     pumpkinPrevSpectrum[i] = dataArr[i];
                     fluxBins++;
                 }
             }
             const normFlux = fluxBins > 0 ? (flux / (fluxBins * 255)) : 0;
 
-            // C. True Drum Strike Criteria (Triggers strictly on sudden acoustic transients)
-            // - Kick Drum: hardware onset flag OR sudden bass jump above smoothed floor
-            const isKickDrum = (!!audio.isOnset) || (deltaBass > 0.16 && rawBass > smoothedBass * 1.15 + 0.06);
-            // - Snare / Clap / Rimshot: sudden crack in mid band above smoothed floor
-            const isSnareOrClap = (deltaMid > 0.12 && rawMid > smoothedMid * 1.18 + 0.05);
-            // - Toms / Low Percussion: sudden surge in mid-low band
-            const isTomOrPerc = (deltaMidLow > 0.14 && midLow > (smoothedBass + smoothedMid) * 0.58 + 0.05);
-            // - Cymbals / Hi-Hats: sharp treble attack above smoothed floor
-            const isCymbalOrHat = (deltaTreble > 0.13 && rawTreble > smoothedTreble * 1.20 + 0.05);
-            // - Broadband Percussion Attack (Spectral Flux surge)
-            const isBroadbandHit = (normFlux > 0.050);
+            // C. Robust Percussion Drum Trigger (Kicks, Snares, Claps, Toms, Hi-Hats)
+            // 1. Dance Track 4-on-the-Floor Kick on Tempo Beat
+            const isDanceKick = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.22) &&
+                                (rawBass > 0.08 || bassImpact > 0.08 || rawMid > 0.12 || (audio.overall || 0) > 0.10);
+            // 2. Hardware Bass Onset or Sudden Bass Punch
+            const isSubKick = (!!audio.isOnset) || (deltaBass > 0.035 && rawBass > smoothedBass * 1.05 + 0.02);
+            // 3. Snare Drum / Clap / Rimshot (Mid-frequency transient crack)
+            const isSnareOrClap = (deltaMid > 0.025 && rawMid > smoothedMid * 1.06 + 0.02) || (deltaMid > 0.035 && rawMid > 0.18);
+            // 4. Toms / Mid-Low Percussion
+            const isTomOrPerc = (deltaMidLow > 0.030 && midLow > (smoothedBass + smoothedMid) * 0.52 + 0.02);
+            // 5. Cymbals / Hi-Hats (Offbeat treble attack)
+            const isCymbalOrHat = (deltaTreble > 0.025 && rawTreble > smoothedTreble * 1.06 + 0.02) || (deltaTreble > 0.035 && rawTreble > 0.18);
+            // 6. Spectral Flux Surge (instant broadband acoustic transient)
+            const isSpectralHit = (normFlux > 0.016);
 
-            const isAnyDrum = isKickDrum || isSnareOrClap || isTomOrPerc || isCymbalOrHat || isBroadbandHit;
+            const isAnyDrum = isDanceKick || isSubKick || isSnareOrClap || isTomOrPerc || isCymbalOrHat || isSpectralHit;
 
             // Save current levels for next frame's delta comparison
             pumpkinPrevBass = rawBass;
             pumpkinPrevMid = rawMid;
             pumpkinPrevTreble = rawTreble;
 
-            if (isKickDrum || (audio.isOnset && rawBass > 0.30)) {
+            if (isSubKick || isDanceKick || (audio.isOnset && rawBass > 0.30)) {
                 pumpkinKickThump = 1.0;
             }
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // D. Drum Pulse Trigger & Refractory Lockout
-            // When music is playing, NEVER pulse on continuous tempo beat (only on actual drums!)
+            // D. Drum Pulse Trigger & Lockout
             const hasAudioStream = (rawBass > 0.02 || rawMid > 0.02 || rawTreble > 0.02 || (audio.overall || 0) > 0.02);
-            const isFallbackTempoBeat = !hasAudioStream && (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.15);
+            const isFallbackTempoBeat = !hasAudioStream && (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.18);
 
             const timeSinceLastDrum = elapsedTime - pumpkinWhiteLightOnTime;
-            // Minimum refractory lockout (120ms): guarantees lights fade to complete black before next flash
-            const minSpacing = 0.120;
+            // 90ms refractory lockout: allows fast rolls and rapid drum fills up to 150 BPM without double triggering
+            const minSpacing = 0.090;
 
             if ((isAnyDrum || isFallbackTempoBeat) && timeSinceLastDrum >= minSpacing) {
                 pumpkinWhiteLightLastBeat = curBeatIdx;
                 pumpkinWhiteLightOnTime = elapsedTime;
             }
 
-            // Snappy percussive pulse envelope with rapid decay to pure black:
-            // 30ms punchy strike, then 70ms quadratic drop to zero (100ms total flash)
+            // Snappy percussive pulse envelope with natural smooth cosine decay:
+            // 35ms solid punch on drum strike, then 145ms smooth cosine falloff (~180ms total percussive flash)
             const timeSinceBeat = elapsedTime - pumpkinWhiteLightOnTime;
-            const pulseHold = 0.030;
-            const pulseFade = 0.070;
+            const pulseHold = 0.035;
+            const pulseFade = 0.145;
             const totalPulse = pulseHold + pulseFade;
 
             let whiteLightFactor = 0.0;
             if (timeSinceBeat >= 0.0 && timeSinceBeat < pulseHold) {
                 whiteLightFactor = 1.0; // Instant 100% attack on the drum strike
             } else if (timeSinceBeat >= pulseHold && timeSinceBeat < totalPulse) {
-                // Rapid quadratic drop to absolute blackness
+                // Smooth, natural cosine falloff to black
                 const fadeT = (timeSinceBeat - pulseHold) / pulseFade;
-                whiteLightFactor = (1.0 - fadeT) * (1.0 - fadeT);
+                whiteLightFactor = 0.5 + 0.5 * Math.cos(fadeT * Math.PI);
             } else {
-                whiteLightFactor = 0.0; // 100% OFF between drum hits!
+                whiteLightFactor = 0.0; // Completely off between drum hits
             }
             const isWhiteLightActive = whiteLightFactor > 0.001;
 
@@ -10227,21 +10230,27 @@ export function createVFXScene(container) {
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
             // 4b. Two Compact Center-Bottom Spotlights Sweeping Left-to-Right Across Underneath Front
-            const miniSweepSpeed = 0.65;
-            const tSweep = elapsedTime * miniSweepSpeed;
+            // Dynamic tempo-synced sweep rate: active 4-beat cycle that swings with the dance groove
+            const sweepBaseBps = currentBPM / 60.0;
+            const sweepEnergy = 1.0 + Math.min(0.6, (smoothedBass + (audio.bassImpact || 0)) * 0.4);
+            pumpkinMiniSweepPhase += delta * sweepBaseBps * (Math.PI * 0.85) * sweepEnergy;
 
-            // Coordinated sweeping targets on underneath front facets (z > 0, y in [-3.2, -2.1])
-            const txMini1 = Math.sin(tSweep) * 3.0;
-            const tyMini1 = -2.75 + Math.cos(tSweep * 1.4) * 0.45;
+            // Wide, dramatic sweep amplitude covering the entire underneath front (-4.4 to +4.4)
+            // Left fixture sweeps left-to-right
+            const sweep1 = pumpkinMiniSweepPhase;
+            const txMini1 = Math.sin(sweep1) * 4.4;
+            const tyMini1 = -2.70 + Math.cos(sweep1 * 0.8) * 0.60;
             const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.88) * (tyMini1 / 0.88));
-            const tzMini1 = Math.sqrt(Math.max(1.0, 27.0 - rSqMini1));
+            const tzMini1 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini1)));
             const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1);
             pMiniLeftTargetObj.position.copy(targetMini1Pos);
 
-            const txMini2 = Math.sin(tSweep - 0.85) * 3.0;
-            const tyMini2 = -2.60 + Math.sin(tSweep * 1.4) * 0.45;
+            // Right fixture sweeps in counter-direction (crossing beams forming dynamic 'X' pattern!)
+            const sweep2 = -pumpkinMiniSweepPhase;
+            const txMini2 = Math.sin(sweep2) * 4.4;
+            const tyMini2 = -2.70 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.60;
             const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.88) * (tyMini2 / 0.88));
-            const tzMini2 = Math.sqrt(Math.max(1.0, 27.0 - rSqMini2));
+            const tzMini2 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini2)));
             const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2);
             pMiniRightTargetObj.position.copy(targetMini2Pos);
 
