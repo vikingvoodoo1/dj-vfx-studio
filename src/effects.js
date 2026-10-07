@@ -10075,62 +10075,49 @@ export function createVFXScene(container) {
             }
             const normFlux = fluxBins > 0 ? (flux / (fluxBins * 255)) : 0;
 
-            // C. Robust Percussion Drum Trigger (Kicks, Snares, Claps, Toms, Hi-Hats)
-            // 1. Dance Track 4-on-the-Floor Kick on Tempo Beat
-            const isDanceKick = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.22) &&
-                                (rawBass > 0.08 || bassImpact > 0.08 || rawMid > 0.12 || (audio.overall || 0) > 0.10);
-            // 2. Hardware Bass Onset or Sudden Bass Punch
-            const isSubKick = (!!audio.isOnset) || (deltaBass > 0.035 && rawBass > smoothedBass * 1.05 + 0.02);
-            // 3. Snare Drum / Clap / Rimshot (Mid-frequency transient crack)
-            const isSnareOrClap = (deltaMid > 0.025 && rawMid > smoothedMid * 1.06 + 0.02) || (deltaMid > 0.035 && rawMid > 0.18);
-            // 4. Toms / Mid-Low Percussion
-            const isTomOrPerc = (deltaMidLow > 0.030 && midLow > (smoothedBass + smoothedMid) * 0.52 + 0.02);
-            // 5. Cymbals / Hi-Hats (Offbeat treble attack)
-            const isCymbalOrHat = (deltaTreble > 0.025 && rawTreble > smoothedTreble * 1.06 + 0.02) || (deltaTreble > 0.035 && rawTreble > 0.18);
-            // 6. Spectral Flux Surge (instant broadband acoustic transient)
-            const isSpectralHit = (normFlux > 0.016);
+            // -----------------------------------------------------------------
+            // STROBE BEAT & DRUM TRIGGER: Light snaps ON on the beat, and snaps OFF between beats!
+            // -----------------------------------------------------------------
+            // 1. Musical Beat / Kick Drum (fires once per beat on beat index transition)
+            const isNewBeat = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.28);
+            // 2. Heavy kick drop or audio hardware onset
+            const isDeepKick = (audio.isOnset && (rawBass > 0.25 || bassImpact > 0.30)) || (rawBass > 0.55 && (audio.transientImpulse || 0) > 0.35);
 
-            const isAnyDrum = isDanceKick || isSubKick || isSnareOrClap || isTomOrPerc || isCymbalOrHat || isSpectralHit;
+            // 3. Optional offbeat percussion (snare crack / clap) between beats
+            const timeSinceLastStrobe = elapsedTime - pumpkinWhiteLightOnTime;
+            const isSnareCrack = (deltaMid > 0.06 && rawMid > smoothedMid * 1.15 + 0.05);
+            // Crucial: Only allow an offbeat snare flash if the previous beat strobe has ALREADY finished and turned OFF (>200ms)!
+            const isOffbeatDrum = timeSinceLastStrobe > 0.20 && (isDeepKick || isSnareCrack || audio.isOnset);
+
+            if (isNewBeat || isOffbeatDrum) {
+                pumpkinWhiteLightLastBeat = curBeatIdx;
+                pumpkinWhiteLightOnTime = elapsedTime;
+            }
 
             // Save current levels for next frame's delta comparison
             pumpkinPrevBass = rawBass;
             pumpkinPrevMid = rawMid;
             pumpkinPrevTreble = rawTreble;
 
-            if (isSubKick || isDanceKick || (audio.isOnset && rawBass > 0.30)) {
+            if (isDeepKick || (audio.isOnset && rawBass > 0.30)) {
                 pumpkinKickThump = 1.0;
             }
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // D. Drum Pulse Trigger & Lockout
-            const hasAudioStream = (rawBass > 0.02 || rawMid > 0.02 || rawTreble > 0.02 || (audio.overall || 0) > 0.02);
-            const isFallbackTempoBeat = !hasAudioStream && (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.18);
-
-            const timeSinceLastDrum = elapsedTime - pumpkinWhiteLightOnTime;
-            // 90ms refractory lockout: allows fast rolls and rapid drum fills up to 150 BPM without double triggering
-            const minSpacing = 0.090;
-
-            if ((isAnyDrum || isFallbackTempoBeat) && timeSinceLastDrum >= minSpacing) {
-                pumpkinWhiteLightLastBeat = curBeatIdx;
-                pumpkinWhiteLightOnTime = elapsedTime;
-            }
-
-            // Snappy percussive pulse envelope with natural smooth cosine decay:
-            // 35ms solid punch on drum strike, then 145ms smooth cosine falloff (~180ms total percussive flash)
+            // High-Contrast Crisp Strobe Envelope: Snaps ON on the beat, snaps OFF to complete darkness
+            // Strobe duration: ~130ms crisp ON, then 35ms ultra-fast shutter snap to 0.0 pure darkness
             const timeSinceBeat = elapsedTime - pumpkinWhiteLightOnTime;
-            const pulseHold = 0.035;
-            const pulseFade = 0.145;
-            const totalPulse = pulseHold + pulseFade;
+            const onDuration = Math.min(0.16, Math.max(0.11, beatDuration * 0.30));
+            const shutterCloseDuration = 0.035;
 
             let whiteLightFactor = 0.0;
-            if (timeSinceBeat >= 0.0 && timeSinceBeat < pulseHold) {
-                whiteLightFactor = 1.0; // Instant 100% attack on the drum strike
-            } else if (timeSinceBeat >= pulseHold && timeSinceBeat < totalPulse) {
-                // Smooth, natural cosine falloff to black
-                const fadeT = (timeSinceBeat - pulseHold) / pulseFade;
-                whiteLightFactor = 0.5 + 0.5 * Math.cos(fadeT * Math.PI);
+            if (timeSinceBeat >= 0.0 && timeSinceBeat < onDuration) {
+                whiteLightFactor = 1.0; // Crisp 100% ON (Strobe flash on the beat!)
+            } else if (timeSinceBeat >= onDuration && timeSinceBeat < onDuration + shutterCloseDuration) {
+                // Ultra-fast shutter snap to black
+                whiteLightFactor = 1.0 - ((timeSinceBeat - onDuration) / shutterCloseDuration);
             } else {
-                whiteLightFactor = 0.0; // Completely off between drum hits
+                whiteLightFactor = 0.0; // Total 100% OFF (Pure darkness) between beats!
             }
             const isWhiteLightActive = whiteLightFactor > 0.001;
 
@@ -10230,10 +10217,9 @@ export function createVFXScene(container) {
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
             // 4b. Two Compact Center-Bottom Spotlights Sweeping Left-to-Right Across Underneath Front
-            // Dynamic tempo-synced sweep rate: active 4-beat cycle that swings with the dance groove
+            // Musical 4-beat cycle: complete left-right sweep every 2 beats, in sync with the bar
             const sweepBaseBps = currentBPM / 60.0;
-            const sweepEnergy = 1.0 + Math.min(0.6, (smoothedBass + (audio.bassImpact || 0)) * 0.4);
-            pumpkinMiniSweepPhase += delta * sweepBaseBps * (Math.PI * 0.85) * sweepEnergy;
+            pumpkinMiniSweepPhase += delta * sweepBaseBps * (Math.PI * 0.50);
 
             // Wide, dramatic sweep amplitude covering the entire underneath front (-4.4 to +4.4)
             // Left fixture sweeps left-to-right
