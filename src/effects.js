@@ -449,62 +449,60 @@ const PumpkinWhiteVuRaysShader = {
             float y = vUv.y;
             float uDist = abs(vUv.x - 0.5) * 2.0; // 0.0 at beam centerline, 1.0 at lateral edge
 
-            // 1. VU Meter Stepped Ladder Segments along the beam shaft
-            // Emulates an illuminated LED VU meter column climbing towards the ceiling/pumpkin
-            float rungFrequency = 18.0;
+            // 1. Softer VU Meter Stepped Ladder Segments
+            // Subtle, silky division lines with no harsh stark stripes
+            float rungFrequency = 16.0;
             float rungFrac = fract(y * rungFrequency);
-            // Distinct LED bars with dark division lines
-            float rungMask = smoothstep(0.08, 0.16, rungFrac) * (1.0 - smoothstep(0.84, 0.92, rungFrac));
-            // Cohesive ambient shaft glow with sharp stepping rungs
-            float ladderSegment = mix(0.40, 1.45, rungMask);
+            float rungMask = smoothstep(0.12, 0.22, rungFrac) * (1.0 - smoothstep(0.78, 0.88, rungFrac));
+            // Gentle contrast: 0.75 in gaps, 1.15 in bars (smooth & refined)
+            float ladderSegment = mix(0.75, 1.15, rungMask);
 
             // 2. VU Meter Dynamic Height / Reach:
-            // Beam climbs up from bottom fixture (y=0) to pumpkin underside (y=1) as VU level increases!
-            float activeVuHeight = clamp(0.22 + uVuLevel * 0.82, 0.22, 1.0);
-            float vuReach = smoothstep(activeVuHeight + 0.14, activeVuHeight - 0.03, y);
+            float activeVuHeight = clamp(0.35 + uVuLevel * 0.65, 0.35, 1.0);
+            float vuReach = smoothstep(activeVuHeight + 0.16, activeVuHeight - 0.05, y);
 
-            // Peak Overdrive Glow: dynamic incandescent spike at current active VU rung
-            float peakSpike = exp(-pow(abs(y - activeVuHeight) * 8.5, 2.0)) * uVuLevel * 1.9;
+            // Subtle, delicate peak sheen (no harsh incandescence)
+            float peakSpike = exp(-pow(abs(y - activeVuHeight) * 6.5, 2.0)) * uVuLevel * 0.35;
 
-            // 3. Piercing Concentrated Pencil Beam Profile
-            float coreTightness = mix(7.2, 4.0, y);
-            float hotCore = exp(-pow(uDist * coreTightness, 2.0));
-            float lateralHalo = exp(-pow(uDist * 2.6, 2.0));
+            // 3. Wide, Soft Atmospheric Profile (Graceful, silky gaussian envelope)
+            float coreTightness = mix(4.2, 2.2, y);
+            float hotCore = exp(-pow(uDist * coreTightness, 2.0)) * 0.55;
+            float lateralHalo = exp(-pow(uDist * 1.8, 2.0)) * 0.45;
 
-            // Origin lens glow
-            float originGlow = exp(-y * 6.5) * 2.4;
+            // Origin lens glow (gentle, soft)
+            float originGlow = exp(-y * 5.0) * 0.75;
 
-            // Impact landing hotspot when beam strikes underneath pumpkin facets
+            // Soft contact sheen on underneath pumpkin facets
             float hitFactor = clamp(uHit, 0.0, 1.0);
-            float impactHotspot = exp(-pow((1.0 - y) * 5.2, 2.0)) * exp(-pow(uDist * 3.6, 2.0)) * 2.4 * hitFactor;
+            float impactHotspot = exp(-pow((1.0 - y) * 4.0, 2.0)) * exp(-pow(uDist * 2.5, 2.0)) * 0.75 * hitFactor;
 
-            // Fine God-ray micro-striations
-            float rayNoise = sin(vUv.x * 28.0 + uTime * 2.2 + y * 7.0) * 0.5 + 0.5;
-            float striations = 0.82 + 0.18 * rayNoise;
+            // Delicate atmospheric striations
+            float rayNoise = sin(vUv.x * 24.0 + uTime * 1.5 + y * 6.0) * 0.5 + 0.5;
+            float striations = 0.88 + 0.12 * rayNoise;
 
-            float beamCross = (lateralHalo * 0.55 + hotCore * 1.55) * striations * ladderSegment;
+            float beamCross = (lateralHalo + hotCore) * striations * ladderSegment;
 
             // View-facing grazing glow
             float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
-            float viewGlow = 0.82 + 0.18 * (1.0 - viewFacing);
+            float viewGlow = 0.85 + 0.15 * (1.0 - viewFacing);
 
             // Atmospheric smoke motes
-            float motes = 0.92 + 0.08 * sin(vPositionWorld.y * 1.2 + uTime * 0.7);
+            float motes = 0.94 + 0.06 * sin(vPositionWorld.y * 1.2 + uTime * 0.6);
 
-            // Shaft body modulated by VU reach
-            float shaftBody = smoothstep(0.015, 0.08, y) * vuReach;
-            float longProfile = (originGlow + shaftBody * 1.25 + impactHotspot + peakSpike) * motes;
+            // Soft shaft body
+            float shaftBody = smoothstep(0.02, 0.10, y) * vuReach * 0.70;
+            float longProfile = (originGlow + shaftBody + impactHotspot + peakSpike) * motes;
 
-            // Alpha Composition
-            float alpha = beamCross * viewGlow * longProfile * uIntensity;
+            // Controlled, soft atmospheric alpha (capped at 0.50 for silky transparency)
+            float rawAlpha = beamCross * viewGlow * longProfile * uIntensity * 0.50;
+            float alpha = clamp(rawAlpha, 0.0, 0.50);
             if (alpha < 0.001) discard;
 
-            // Pure Xenon Crisp White with subtle electric blue core tint
-            vec3 xenonWhite = vec3(1.0, 1.0, 1.0);
-            vec3 xenonPeak = vec3(0.94, 0.97, 1.0);
-            vec3 finalColor = mix(xenonWhite, xenonPeak, clamp(peakSpike * 0.45, 0.0, 1.0)) * (1.0 + uVuLevel * 0.50 + peakSpike * 0.35 + uPulse * 0.30);
+            // Warm, soft Xenon white with gentle luminance (never harsh or blown out)
+            vec3 softWhite = vec3(0.96, 0.98, 1.0);
+            vec3 finalColor = softWhite * (0.85 + uPulse * 0.20);
 
-            gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
+            gl_FragColor = vec4(finalColor * alpha, alpha);
         }
     `
 };
@@ -10031,7 +10029,7 @@ export function createVFXScene(container) {
         // FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 22) {
-            // 1. 🎵 MUSICAL TIMING & EXCLUSIVE DEEP BASS KICK DRUM DETECTION
+            // 1. 🎵 MUSICAL TIMING & COMPREHENSIVE ANY-DRUM DETECTION
             const bps = currentBPM / 60.0;
             const beatDuration = 60.0 / currentBPM;
             const beatTime = elapsedTime * bps;
@@ -10043,42 +10041,58 @@ export function createVFXScene(container) {
             const smoothedBass = audio.smoothedBass || 0;
             const bassImpact = audio.bassImpact || 0;
             const transient = audio.transientImpulse || 0;
+            const rawMid = audio.mid || 0;
+            const smoothedMid = audio.smoothedMid || 0;
+            const rawTreble = audio.treble || 0;
             const treblePop = audio.smoothedTreble || audio.treble || 0;
             const midSurge = audio.smoothedMid || 0;
 
-            // STRICT DEEP BASS KICK DRUM TRIGGER:
-            // Only fires on heavy, deep sub-bass kick drum hits (low-end frequency impact)
-            // Eliminates constant motion/jitter from vocals, melodies, hi-hats, or baseline music playback
-            const isDeepKick = (audio.isOnset && (rawBass > 0.35 || bassImpact > 0.40)) || (rawBass > 0.60 && transient > 0.45);
+            // COMPREHENSIVE ANY-DRUM TRIGGER:
+            // Pulses on ANY drum hit across the entire percussion spectrum:
+            // - Kick Drum (low sub/bass punch)
+            // - Snare Drum / Claps / Rimshots (crisp mid-frequency transient crack)
+            // - Toms / Percussion (mid-bass percussive strike)
+            // - Cymbals / Hi-Hats (treble percussive transient)
+            // - Spectral Flux Onsets (broadband attack)
+            const isKickDrum = (rawBass > 0.28 && (bassImpact > 0.28 || transient > 0.24)) || (rawBass > 0.48 && transient > 0.20);
+            const isSnareOrClap = (transient > 0.26 && rawMid > 0.22) || (rawMid > 0.38 && transient > 0.20);
+            const isTomOrPerc = (bassImpact > 0.20 || rawMid > 0.30) && transient > 0.24;
+            const isCymbalAccent = rawTreble > 0.40 && transient > 0.28;
+            const isDrumOnset = !!audio.isOnset;
 
-            if (isDeepKick) {
-                pumpkinKickThump = 1.0; // Clean, punchy kick thump
+            const isAnyDrum = isKickDrum || isSnareOrClap || isTomOrPerc || isCymbalAccent || isDrumOnset;
+
+            if (isKickDrum || (audio.isOnset && rawBass > 0.30)) {
+                pumpkinKickThump = 1.0;
             }
-            // Fast, snappy elastic recovery from kick
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // CRISP BEAT TRIGGER: Turn the two white lights ON on each beat, and OFF between beats!
-            // Fires on either an incoming kick drum hit OR the start of each musical beat
-            const isNewBeat = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.25);
-            if (isDeepKick || isNewBeat) {
+            // PULSE ON ANY DRUM:
+            // Fast re-trigger (min 70ms refractory) so fast rolls, kicks, and snares all trigger distinct pulses!
+            const timeSinceLastDrum = elapsedTime - pumpkinWhiteLightOnTime;
+            const isTempoBeat = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.20);
+
+            if ((isAnyDrum && timeSinceLastDrum > 0.07) || (isTempoBeat && timeSinceLastDrum > 0.32)) {
                 pumpkinWhiteLightLastBeat = curBeatIdx;
                 pumpkinWhiteLightOnTime = elapsedTime;
             }
 
-            // High-contrast ON vs OFF envelope:
-            // Snaps instantly ON (100%) on the beat, holds for ~190ms, then snaps OFF to complete 0.0 darkness
+            // Snappy percussive pulse envelope with natural smooth cosine decay:
+            // 65ms solid peak, then 85ms silky shutter fade to black (~150ms total percussive flash)
             const timeSinceBeat = elapsedTime - pumpkinWhiteLightOnTime;
-            const onDuration = Math.min(0.22, Math.max(0.14, beatDuration * 0.40));
-            const shutterCloseDuration = 0.04;
+            const pulseHold = 0.065;
+            const pulseFade = 0.085;
+            const totalPulse = pulseHold + pulseFade;
 
             let whiteLightFactor = 0.0;
-            if (timeSinceBeat >= 0.0 && timeSinceBeat < onDuration) {
-                whiteLightFactor = 1.0; // Full crisp 100% ON
-            } else if (timeSinceBeat >= onDuration && timeSinceBeat < onDuration + shutterCloseDuration) {
-                // Ultra-fast 40ms shutter snap to zero
-                whiteLightFactor = 1.0 - ((timeSinceBeat - onDuration) / shutterCloseDuration);
+            if (timeSinceBeat >= 0.0 && timeSinceBeat < pulseHold) {
+                whiteLightFactor = 1.0; // Instant 100% attack on the drum strike
+            } else if (timeSinceBeat >= pulseHold && timeSinceBeat < totalPulse) {
+                // Smooth cosine falloff to black
+                const fadeT = (timeSinceBeat - pulseHold) / pulseFade;
+                whiteLightFactor = 0.5 + 0.5 * Math.cos(fadeT * Math.PI);
             } else {
-                whiteLightFactor = 0.0; // Total 100% OFF between beats
+                whiteLightFactor = 0.0; // Completely off between drum hits
             }
             const isWhiteLightActive = whiteLightFactor > 0.001;
 
@@ -10293,7 +10307,7 @@ export function createVFXScene(container) {
             pumpkinUniforms.uSpot2Intensity.value = 0.85 + pulseMultiR * 0.35;
             pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetMini1Pos);
             pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetMini2Pos);
-            pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactor * 1.8;
+            pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactor * 0.75;
             pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
             pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
             pumpkinUniforms.uFlash.value = Math.max(leftSunGlare, rightSunGlare) * 0.60 + convergencePower * 0.40;
@@ -10384,17 +10398,17 @@ export function createVFXScene(container) {
             pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
             // -----------------------------------------------------------------
-            // Dual White Center Spotlights: ON and OFF to the Beat!
+            // Dual White Center Spotlights: Soft Luminous Pulse on Any Drum!
             // -----------------------------------------------------------------
             if (isWhiteLightActive) {
-                const beamPower = 2.4 * whiteLightFactor;
-                const spotPower = 3.8 * whiteLightFactor;
+                const beamPower = 1.15 * whiteLightFactor;
+                const spotPower = 1.85 * whiteLightFactor;
 
-                // High-power crisp Xenon spotlights hitting underneath pumpkin
+                // Soft, elegant Xenon spotlights washing underneath pumpkin
                 pMiniLeftSpot.intensity = spotPower;
                 pMiniRightSpot.intensity = spotPower;
 
-                // Volumetric beam meshes active & fully illuminated
+                // Volumetric beam meshes active with soft, silky haze
                 pMiniLeftBeamMesh.visible = true;
                 pMiniLeftCoreBeamMesh.visible = true;
                 pMiniRightBeamMesh.visible = true;
@@ -10406,7 +10420,7 @@ export function createVFXScene(container) {
                 pMiniLeftBeamMat.uniforms.uTime.value = elapsedTime;
                 pMiniLeftBeamMat.uniforms.uHit.value = 1.0;
 
-                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.35;
+                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.25;
                 pMiniLeftCoreBeamMat.uniforms.uVuLevel.value = 1.0;
                 pMiniLeftCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
                 pMiniLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
@@ -10418,35 +10432,35 @@ export function createVFXScene(container) {
                 pMiniRightBeamMat.uniforms.uTime.value = elapsedTime;
                 pMiniRightBeamMat.uniforms.uHit.value = 1.0;
 
-                pMiniRightCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.35;
+                pMiniRightCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.25;
                 pMiniRightCoreBeamMat.uniforms.uVuLevel.value = 1.0;
                 pMiniRightCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
                 pMiniRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
                 pMiniRightCoreBeamMat.uniforms.uHit.value = 1.0;
 
-                // Lens optics: blazing pure Xenon white arc lamp
-                const lensBright = Math.min(1.0, 0.40 + whiteLightFactor * 0.60);
+                // Lens optics: gentle warm white luminance (never glaring)
+                const lensBright = Math.min(0.80, 0.25 + whiteLightFactor * 0.55);
                 pMiniLeftFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
                 pMiniLeftFixture.lensCoronaMat.color.setRGB(lensBright, lensBright, lensBright);
-                pMiniLeftFixture.lensCoreMat.color.setRGB(1.0, 1.0, 1.0);
+                pMiniLeftFixture.lensCoreMat.color.setRGB(lensBright * 1.1, lensBright * 1.1, lensBright * 1.1);
                 pMiniRightFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
                 pMiniRightFixture.lensCoronaMat.color.setRGB(lensBright, lensBright, lensBright);
-                pMiniRightFixture.lensCoreMat.color.setRGB(1.0, 1.0, 1.0);
+                pMiniRightFixture.lensCoreMat.color.setRGB(lensBright * 1.1, lensBright * 1.1, lensBright * 1.1);
 
-                // Underneath front surface starburst hit flares: bright flash
+                // Underneath front surface starburst hit flares: soft sheen
                 pMiniLeftHitFlare.visible = true;
                 pMiniLeftHitFlare.position.copy(targetMini1Pos);
-                pMiniLeftHitFlare.material.opacity = 0.85 * whiteLightFactor;
-                const flareScale1 = 0.9 + whiteLightFactor * 0.6;
+                pMiniLeftHitFlare.material.opacity = 0.40 * whiteLightFactor;
+                const flareScale1 = 0.8 + whiteLightFactor * 0.35;
                 pMiniLeftHitFlare.scale.set(flareScale1, flareScale1, 1.0);
 
                 pMiniRightHitFlare.visible = true;
                 pMiniRightHitFlare.position.copy(targetMini2Pos);
-                pMiniRightHitFlare.material.opacity = 0.85 * whiteLightFactor;
-                const flareScale2 = 0.9 + whiteLightFactor * 0.6;
+                pMiniRightHitFlare.material.opacity = 0.40 * whiteLightFactor;
+                const flareScale2 = 0.8 + whiteLightFactor * 0.35;
                 pMiniRightHitFlare.scale.set(flareScale2, flareScale2, 1.0);
             } else {
-                // Completely OFF between beats
+                // Completely OFF between drum hits
                 pMiniLeftSpot.intensity = 0.0;
                 pMiniRightSpot.intensity = 0.0;
 
