@@ -201,6 +201,96 @@ async function init() {
         });
     }
 
+    // Broadcast Headroom Target Markers & Toggle Controls
+    const btnToggleVuMarkers = document.getElementById('btn-toggle-vu-markers');
+    const btnSettingsVuMarkersToggle = document.getElementById('btn-settings-vu-markers-toggle');
+    const settingsVuStatusBadge = document.getElementById('settings-vu-status-badge');
+    const vuMarkersLayer = document.getElementById('vu-markers-layer');
+    const vuTargetsGuide = document.getElementById('vu-targets-guide');
+
+    let isVuMarkersEnabled = true;
+    try {
+        const savedVuMarkers = localStorage.getItem('dj_vfx_vu_markers_enabled');
+        if (savedVuMarkers !== null) {
+            isVuMarkersEnabled = savedVuMarkers === 'true';
+        }
+    } catch (e) {}
+
+    function updateVuMarkersUI(enabled) {
+        if (vuMarkersLayer) {
+            vuMarkersLayer.style.display = enabled ? 'block' : 'none';
+        }
+        if (vuTargetsGuide) {
+            vuTargetsGuide.style.display = enabled ? 'flex' : 'none';
+        }
+
+        // Update live performance deck micro toggle badge
+        if (btnToggleVuMarkers) {
+            if (enabled) {
+                btnToggleVuMarkers.textContent = '🎯 TARGETS: ON';
+                btnToggleVuMarkers.style.background = 'rgba(0,255,204,0.15)';
+                btnToggleVuMarkers.style.borderColor = 'rgba(0,255,204,0.45)';
+                btnToggleVuMarkers.style.color = '#00ffcc';
+            } else {
+                btnToggleVuMarkers.textContent = '🎯 TARGETS: OFF';
+                btnToggleVuMarkers.style.background = 'rgba(255,255,255,0.06)';
+                btnToggleVuMarkers.style.borderColor = 'rgba(255,255,255,0.15)';
+                btnToggleVuMarkers.style.color = 'rgba(255,255,255,0.45)';
+            }
+        }
+
+        // Update settings tab card controls
+        if (btnSettingsVuMarkersToggle) {
+            if (enabled) {
+                btnSettingsVuMarkersToggle.textContent = '🎯 BROADCAST TARGET MARKERS: ACTIVE ON';
+                btnSettingsVuMarkersToggle.style.background = 'rgba(0,255,204,0.18)';
+                btnSettingsVuMarkersToggle.style.borderColor = '#00ffcc';
+                btnSettingsVuMarkersToggle.style.color = '#00ffcc';
+            } else {
+                btnSettingsVuMarkersToggle.textContent = '🎯 BROADCAST TARGET MARKERS: DISABLED (CLEAN)';
+                btnSettingsVuMarkersToggle.style.background = 'rgba(255,255,255,0.08)';
+                btnSettingsVuMarkersToggle.style.borderColor = 'rgba(255,255,255,0.2)';
+                btnSettingsVuMarkersToggle.style.color = '#9aa0b0';
+            }
+        }
+        if (settingsVuStatusBadge) {
+            if (enabled) {
+                settingsVuStatusBadge.textContent = 'ACTIVE ON';
+                settingsVuStatusBadge.style.borderColor = '#00ffcc';
+                settingsVuStatusBadge.style.color = '#00ffcc';
+            } else {
+                settingsVuStatusBadge.textContent = 'OFF';
+                settingsVuStatusBadge.style.borderColor = 'rgba(255,255,255,0.2)';
+                settingsVuStatusBadge.style.color = 'rgba(255,255,255,0.4)';
+            }
+        }
+    }
+
+    function setVuMarkersEnabled(enabled, shouldBroadcast = true) {
+        isVuMarkersEnabled = !!enabled;
+        try {
+            localStorage.setItem('dj_vfx_vu_markers_enabled', String(isVuMarkersEnabled));
+        } catch (e) {}
+        updateVuMarkersUI(isVuMarkersEnabled);
+        if (shouldBroadcast && typeof broadcastSync === 'function') {
+            broadcastSync({ type: 'set_vu_markers_enabled', enabled: isVuMarkersEnabled });
+        }
+    }
+
+    if (btnToggleVuMarkers) {
+        btnToggleVuMarkers.addEventListener('click', () => {
+            setVuMarkersEnabled(!isVuMarkersEnabled);
+        });
+    }
+    if (btnSettingsVuMarkersToggle) {
+        btnSettingsVuMarkersToggle.addEventListener('click', () => {
+            setVuMarkersEnabled(!isVuMarkersEnabled);
+        });
+    }
+
+    // Apply initial state
+    updateVuMarkersUI(isVuMarkersEnabled);
+
     // Now Playing Track Banner Stream Overlay Elements & State
     const btnToggleTrackBanner = document.getElementById('btn-toggle-track-banner');
     const btnPopTrackBanner = document.getElementById('btn-pop-track-banner');
@@ -2130,10 +2220,13 @@ async function init() {
                 broadcastSync({ type: 'set_track_delay', delay: trackDelaySec });
                 broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
                 broadcastSync({ type: 'set_hue_kick_strobe', active: isHueKickStrobeActive });
+                broadcastSync({ type: 'set_vu_markers_enabled', enabled: isVuMarkersEnabled });
             }
         } else if (msg.type === 'set_hue_kick_strobe') {
             isHueKickStrobeActive = !!msg.active;
             updateKickStrobeBtnState();
+        } else if (msg.type === 'set_vu_markers_enabled') {
+            setVuMarkersEnabled(msg.enabled, false);
         }
     }
 
@@ -5097,7 +5190,21 @@ async function init() {
 
         if (vuValHeadroom && data.headroomDb !== undefined) {
             vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
-            vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+            if (isVuMarkersEnabled) {
+                // Precision broadcast headroom coloring:
+                // >= 3.0 dB: Safe for Web Radio / BUTT (MP3) & Twitch / OBS (Emerald Green)
+                // 1.0 dB to 2.9 dB: Safe for Twitch / OBS (AAC), but hot for Web Radio MP3 (Amber Warning)
+                // < 1.0 dB: Danger / near digital clip for all streaming destinations (Red Alert)
+                if (data.headroomDb < 1.0) {
+                    vuValHeadroom.style.color = '#ff0055';
+                } else if (data.headroomDb < 3.0) {
+                    vuValHeadroom.style.color = '#ffaa00';
+                } else {
+                    vuValHeadroom.style.color = '#00ff88';
+                }
+            } else {
+                vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+            }
         }
 
         // Clip Alert Warning Indicator

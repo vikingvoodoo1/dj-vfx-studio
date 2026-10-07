@@ -145,6 +145,10 @@ This document tracks all features, architectural components, lighting integratio
 - [x] **System & Tab Audio Capture (`🖥️ CAPTURE TAB / SYS`)**: Built-in tab audio capture allowing visualization of Spotify Web, YouTube, Beatport, or system audio while using headphones.
 - [x] **True ITU-R BS.1770 LUFS Loudness Metering**: Real-time integrated loudness and headroom monitoring for broadcast compliance.
 - [x] **Digital Peak dBFS & Peak-Hold Needles**: Professional audio console VU meter with clip alert indicators.
+- [x] **Calibrated Broadcast Headroom Targets & Quick Toggle**: Dual broadcast reference markers on the live VU meter bar with real-time headroom telemetry and color cues:
+  - **Web Radio / BUTT Safe Limit (`-3.0 dBFS` / `+3.0 dB` headroom)**: Calibrated for lossy MP3 web radio encoders (Icecast / Shoutcast) to prevent inter-sample peak distortion.
+  - **Stream Peak Ceiling for OBS (`-1.0 dBFS` / `+1.0 dB` headroom)**: Calibrated for live video broadcasts on Twitch, Mixcloud Live, YouTube, and Kick to maximize sound pressure without AAC compression clipping.
+  - **Quick HUD Micro-Toggle & Settings Sync**: Toggle between calibrated broadcast markers mode (default) and clean mode via a compact badge (`🎯 TARGETS: ON/OFF`) or from the Master Studio Setup console (`Alt+5`), fully persisted in `localStorage` and synchronized across multi-screen windows via `BroadcastChannel`.
 - [x] **Standby Synthetic Audio Simulator**: Built-in animated frequency generator keeping visualizers active when no live audio feed is playing.
 
 ---
