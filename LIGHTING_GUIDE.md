@@ -251,11 +251,20 @@ $$\text{Fade Out } (t_{\text{hold}} \le t < t_{\text{total}}): \quad I(t) = \fra
 
 ## 7. Mirror Disco Ball Refraction & Caustic Lighting
 
-Both the traditional **Mirror Disco Ball** (FX 13) and the **Pumpkin Mirror Ball** (FX 22) utilize dynamic multi-light specular models:
+Both the traditional **Mirror Disco Ball** (FX 4) and the **Pumpkin Mirror Ball** (FX 20) utilize dynamic multi-light specular models:
 
-### Directional Stage Lights
-* **Key Light** (`pKeyLight`, intensity `2.2`): Positions at downstage front center to catch the convex curvature of mirror facets.
-* **Internal Flame** (`pumpkinFlameLight`, PointLight): Anchored inside the hollow carved pumpkin center, providing warm internal flicker through carved facial features.
+### Hanging Hardware & Suspension Architecture
+* **Top Mounting Cap & Swivel Eyelet**: Directly attached to the top pole of the mirror ball sphere ($y = 5.16 - 5.48$), consisting of a polished silver chrome collar disk (`discoCapGeo`, $r = 0.72 - 0.98$) and heavy-duty eyelet loop (`TorusGeometry(0.32, 0.08)`).
+* **Interlocking Silver Suspension Chain (`discoChainGroup`)**: 17 individually articulated torus chain links (`TorusGeometry(0.28, 0.075)`) forged from polished chrome (`0xdce8fa`, metalness `0.98`, roughness `0.10`).
+* **Catenary Suspension Dynamics**: Each link interpolates dynamically between the ball's top eyelet world coordinate and the ceiling flange at $y = 13.5$, maintaining alternating $90^\circ$ link orientations and natural catenary sag (`sagFactor = sin(t0 * PI) * 0.12`).
+
+### Optical Silver / Glass Mirror Model (`MeshPhysicalMaterial`)
+* **Refractive Glass Surface**: Optical crown glass clearcoat ($IOR = 1.52$, `clearcoat = 1.0`, `clearcoatRoughness = 0.01`) over silver mirror backing (`color = 0xf0f6ff`, metalness `0.98`, roughness `0.02`).
+* **Prismatic Glint & Edge Sheen**: Iridescence coat (`iridescence = 0.22`, $IOR = 1.33$) for subtle rainbow chromatic glints at glancing angles, combined with silver velvet rim sheen (`sheen = 0.30`, `sheenColor = 0xe6f2ff`).
+* **Brilliant Stage Pinspots**:
+  * Dual focused cool-white / diamond-white pinspots (`dBallKeyLight` at intensity $2.4$, `dBallPinLeft` at intensity $2.2$) striking the facet normals directly.
+  * Specular core point emitter (`dBallPointSilver`, intensity $3.2 - 8.7$ on bass drops), creating crisp mirror facet reflections without color bleed.
+  * Side neon washes (`dBallCyanLight`, `dBallMagentaLight`) balanced down to subtle ambient fills so the ball maintains its brilliant silver glass identity.
 
 ### Rotating Floor Fire Pit Hearth Embers (`BonfireFloorEmbersShader`)
 Replacing disco floor stars with an authentic glowing fire pit bed that rotates gracefully across the stage floor:

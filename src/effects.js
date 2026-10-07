@@ -3594,15 +3594,15 @@ function createDiscoMetalnessMap() {
     return tex;
 }
 
-// Offscreen Procedural Disco Ball Mirror Tile Normal/Bump Texture
+// Offscreen Procedural Disco Ball Mirror Tile Normal/Bump Texture (Silver / Glass Facets)
 function createDiscoTileTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 1024;
     canvas.height = 512;
     const ctx = canvas.getContext('2d');
 
-    // Base dark grout seam color
-    ctx.fillStyle = '#141418';
+    // Clean dark silver-charcoal grout seam
+    ctx.fillStyle = '#161922';
     ctx.fillRect(0, 0, 1024, 512);
 
     const numRows = 40; // 40 vertical rings
@@ -3618,19 +3618,24 @@ function createDiscoTileTexture() {
             // Deterministic micro-tilt brightness variation per mirror tile
             const seed = Math.sin(r * 127.1 + c * 311.7) * 43758.5453123;
             const rand = seed - Math.floor(seed);
-            const baseLum = Math.floor(190 + (rand - 0.5) * 75); // 150..225
+            const baseLum = Math.floor(212 + (rand - 0.5) * 58); // 183..241 (bright silver)
+
+            // Distinct cool silver-glass tint (crisp mirror reflection)
+            const rCol = Math.min(255, baseLum);
+            const gCol = Math.min(255, Math.floor(baseLum * 1.02));
+            const bCol = Math.min(255, Math.floor(baseLum * 1.06));
 
             // Tile body
-            ctx.fillStyle = `rgb(${baseLum}, ${baseLum}, ${baseLum})`;
+            ctx.fillStyle = `rgb(${rCol}, ${gCol}, ${bCol})`;
             ctx.fillRect(x + 1, y + 1, tileW - 2, tileH - 2);
 
-            // Subtle top/left bevel highlight
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+            // Crisp silver-white specular bevel highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
             ctx.fillRect(x + 1, y + 1, tileW - 2, 1);
             ctx.fillRect(x + 1, y + 1, 1, tileH - 2);
 
-            // Subtle bottom/right bevel shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            // Glass depth edge shadow
+            ctx.fillStyle = 'rgba(12, 18, 30, 0.40)';
             ctx.fillRect(x + 1, y + tileH - 2, tileW - 2, 1);
             ctx.fillRect(x + tileW - 2, y + 1, 1, tileH - 2);
         }
@@ -5701,58 +5706,112 @@ export function createVFXScene(container) {
     const volumetricBeamTex = createVolumetricBeamTexture();
     const floorTileTex = createFloorTileTexture();
 
-    // 2. Big Faceted Chrome Mirror Ball (MeshPhysicalMaterial with sharp glass facets)
+    // 2. Big Faceted Chrome & Mirror Glass Disco Ball (Refractive Glass Clearcoat + Silver Backing)
     const dBallGeo = new THREE.SphereGeometry(5.2, 96, 48);
     const dBallMat = new THREE.MeshPhysicalMaterial({
-        color: 0xffffff,
-        metalness: 1.0,
-        roughness: 0.04, // Mirror-smooth glass facets
+        color: 0xf0f6ff, // Luminous pristine silver / crystal-glass mirror
+        metalness: 0.98, // Mirror-silver reflective backing
+        roughness: 0.02, // Ultra-sharp crystal mirror glass facets
         normalMap: discoNormalTex,
-        normalScale: new THREE.Vector2(0.85, 0.85),
+        normalScale: new THREE.Vector2(1.15, 1.15),
         roughnessMap: discoRoughnessTex,
         metalnessMap: discoMetalnessTex,
         bumpMap: discoTileTex,
-        bumpScale: 0.03,
+        bumpScale: 0.035, // Crisp glass facet bevels
         envMap: clubEnvMap,
-        envMapIntensity: 3.0,
-        clearcoat: 1.0,
+        envMapIntensity: 4.6, // High-intensity nightclub HDRI glass reflections
+        clearcoat: 1.0, // Clear glass protective coat
         clearcoatRoughness: 0.01,
-        reflectivity: 1.0
+        reflectivity: 1.0,
+        ior: 1.52, // Authentic crown glass refractive index
+        iridescence: 0.22, // Subtle glass prism rainbow sheen at glancing angles
+        iridescenceIOR: 1.33,
+        sheen: 0.30, // Silver glass edge sheen
+        sheenColor: new THREE.Color(0xe6f2ff),
+        specularIntensity: 1.0,
+        specularColor: new THREE.Color(0xffffff)
     });
     const dBallMesh = new THREE.Mesh(dBallGeo, dBallMat);
     dBallMesh.position.set(0, 0.0, 0.0);
     gDiscoBall.add(dBallMesh);
 
-    // Dedicated Multi-Directional Vibrant Stage Lights
-    const dBallKeyLight = new THREE.DirectionalLight(0xffffff, 1.8);
-    dBallKeyLight.position.set(4.0, 7.0, 8.0);
+    // 3. Top Mounting Cap & Eyelet Loop (Directly attached to the top pole of the disco ball)
+    const discoChainMat = new THREE.MeshStandardMaterial({
+        color: 0xdce8fa, // Polished silver chrome chain links & hardware
+        metalness: 0.98,
+        roughness: 0.10,
+        envMap: clubEnvMap,
+        envMapIntensity: 3.2
+    });
+
+    const discoCapGeo = new THREE.CylinderGeometry(0.72, 0.98, 0.28, 32);
+    const discoCapMesh = new THREE.Mesh(discoCapGeo, discoChainMat);
+    discoCapMesh.position.set(0, 5.16, 0);
+    dBallMesh.add(discoCapMesh);
+
+    const discoEyeletGeo = new THREE.TorusGeometry(0.32, 0.08, 16, 24);
+    const discoEyeletMesh = new THREE.Mesh(discoEyeletGeo, discoChainMat);
+    discoEyeletMesh.position.set(0, 5.48, 0);
+    dBallMesh.add(discoEyeletMesh);
+
+    // 4. Top Hanging Metal Chain & Ceiling Mount (Interlocked Silver Links)
+    const discoChainGroup = new THREE.Group();
+    const discoChainLinkGeo = new THREE.TorusGeometry(0.28, 0.075, 16, 24);
+    const numDiscoChainLinks = 17;
+    const discoChainLinks = [];
+    for (let l = 0; l < numDiscoChainLinks; l++) {
+        const linkMesh = new THREE.Mesh(discoChainLinkGeo, discoChainMat);
+        linkMesh.position.set(0, 5.5 + l * 0.48, 0);
+        linkMesh.rotation.y = (l % 2 === 0) ? 0 : Math.PI / 2;
+        discoChainGroup.add(linkMesh);
+        discoChainLinks.push(linkMesh);
+    }
+
+    const discoCeilingMountGeo = new THREE.CylinderGeometry(0.85, 0.85, 0.30, 24);
+    const discoCeilingMountMesh = new THREE.Mesh(discoCeilingMountGeo, discoChainMat);
+    discoCeilingMountMesh.position.set(0, 13.5, 0);
+    discoChainGroup.add(discoCeilingMountMesh);
+    gDiscoBall.add(discoChainGroup);
+
+    // 5. Dedicated Multi-Directional Concert Stage Pinspots & Stage Lights (Dual Silver Pinspots + Accent Washes)
+    const dBallKeyLight = new THREE.DirectionalLight(0xffffff, 2.4); // Brilliant pure-white key pinspot
+    dBallKeyLight.position.set(4.0, 7.5, 8.5);
     dBallKeyLight.target = dBallMesh;
     gDiscoBall.add(dBallKeyLight);
 
-    const dBallCyanLight = new THREE.DirectionalLight(0x00ffff, 1.4);
-    dBallCyanLight.position.set(-8.0, 3.0, 4.0);
+    const dBallPinLeft = new THREE.DirectionalLight(0xf0f7ff, 2.2); // Cool-white glass pinspot
+    dBallPinLeft.position.set(-6.0, 8.0, 8.0);
+    dBallPinLeft.target = dBallMesh;
+    gDiscoBall.add(dBallPinLeft);
+
+    const dBallPointSilver = new THREE.PointLight(0xffffff, 3.2, 24.0, 1.2); // Core silver specular highlight
+    dBallPointSilver.position.set(0.0, 4.5, 7.5);
+    gDiscoBall.add(dBallPointSilver);
+
+    const dBallCyanLight = new THREE.DirectionalLight(0x00ffff, 0.9);
+    dBallCyanLight.position.set(-8.0, 2.0, 4.0);
     dBallCyanLight.target = dBallMesh;
     gDiscoBall.add(dBallCyanLight);
 
-    const dBallMagentaLight = new THREE.DirectionalLight(0xff007f, 1.4);
+    const dBallMagentaLight = new THREE.DirectionalLight(0xff007f, 0.9);
     dBallMagentaLight.position.set(8.0, -2.0, 4.0);
     dBallMagentaLight.target = dBallMesh;
     gDiscoBall.add(dBallMagentaLight);
 
-    const dBallRimLight = new THREE.DirectionalLight(0x4488ff, 1.0);
+    const dBallRimLight = new THREE.DirectionalLight(0x5599ff, 1.0);
     dBallRimLight.position.set(0.0, -6.0, -5.0);
     dBallRimLight.target = dBallMesh;
     gDiscoBall.add(dBallRimLight);
 
-    const dBallPointCyan = new THREE.PointLight(0x00ffff, 2.5, 22.0, 1.2);
-    dBallPointCyan.position.set(-7.0, 4.0, 6.0);
+    const dBallPointCyan = new THREE.PointLight(0x00ffff, 1.6, 20.0, 1.2);
+    dBallPointCyan.position.set(-7.0, 3.0, 5.0);
     gDiscoBall.add(dBallPointCyan);
 
-    const dBallPointMagenta = new THREE.PointLight(0xff007f, 2.5, 22.0, 1.2);
-    dBallPointMagenta.position.set(7.0, 4.0, 6.0);
+    const dBallPointMagenta = new THREE.PointLight(0xff007f, 1.6, 20.0, 1.2);
+    dBallPointMagenta.position.set(7.0, 3.0, 5.0);
     gDiscoBall.add(dBallPointMagenta);
 
-    // 3. 1,200 Floating 3D Specular Starburst Glints & Sparkles
+    // 6. 1,200 Floating 3D Specular Starburst Glints & Sparkles (Diamond White & Glass Crystal)
     const glintCount = 1200;
     const glintGeo = new THREE.BufferGeometry();
     const glintPos = new Float32Array(glintCount * 3);
@@ -5762,13 +5821,13 @@ export function createVFXScene(container) {
     const glintBaseRads = new Float32Array(glintCount);
 
     const gHues = [
-        new THREE.Color(0xffffff),
-        new THREE.Color(0x88ffff),
-        new THREE.Color(0xff88cc),
-        new THREE.Color(0xaaccff),
-        new THREE.Color(0xffea88),
-        new THREE.Color(0x00ffff),
-        new THREE.Color(0xff007f)
+        new THREE.Color(0xffffff), // Diamond white
+        new THREE.Color(0xf4f8ff), // Crisp silver
+        new THREE.Color(0xdceeff), // Mirror glass reflection
+        new THREE.Color(0xffffff), // Pure white
+        new THREE.Color(0xe0f0ff), // Ice glass
+        new THREE.Color(0x88ffff), // Subtle cyan facet glint
+        new THREE.Color(0xff99dd)  // Subtle magenta facet glint
     ];
 
     for (let i = 0; i < glintCount; i++) {
@@ -9124,18 +9183,48 @@ export function createVFXScene(container) {
             dBallMesh.rotation.x = Math.sin(elapsedTime * 0.6) * 0.03;
             dBallMesh.rotation.z = Math.cos(elapsedTime * 0.45) * 0.02;
 
+            // 🔗 100% Attached Hanging Chain Dynamic Physics:
+            // Calculate world position of the top eyelet ring attached to the disco ball
+            const eyeletLocal = new THREE.Vector3(0, 5.48, 0);
+            const eyeletWorld = eyeletLocal.clone().applyEuler(dBallMesh.rotation).add(dBallMesh.position);
+            const ceilingAnchor = new THREE.Vector3(0, 13.2, 0);
+
+            const totalDiscoLinks = discoChainLinks.length;
+            const ballRotY = dBallMesh.rotation.y;
+            for (let l = 0; l < totalDiscoLinks; l++) {
+                const link = discoChainLinks[l];
+                const t0 = l / (totalDiscoLinks - 1);
+                const linkPos = new THREE.Vector3().lerpVectors(eyeletWorld, ceilingAnchor, t0);
+
+                // Natural catenary suspension sag
+                const sagFactor = Math.sin(t0 * Math.PI) * 0.12;
+                linkPos.x += Math.sin(ballRotY * 0.35 + t0 * 1.5) * sagFactor;
+                linkPos.z += Math.cos(ballRotY * 0.35 + t0 * 1.5) * sagFactor;
+                link.position.copy(linkPos);
+
+                // Alternating link angles aligned to hanging chain
+                const baseRotY = (l % 2 === 0) ? (ballRotY * 0.15) : (ballRotY * 0.15 + Math.PI / 2);
+                link.rotation.set(
+                    dBallMesh.rotation.x * (1.0 - t0),
+                    baseRotY,
+                    dBallMesh.rotation.z * (1.0 - t0)
+                );
+            }
+
             const bassVal = bassPop;
             const midVal = audio.smoothedMid || 0;
 
             const isKick = audio.isOnset && (audio.bassImpact > 0.40 || bassPop > 0.50);
             const pulse = isKick ? 1.0 : 0.0;
 
-            // Audio-reactive light pulses
-            dBallKeyLight.intensity = 1.8 + bassVal * 1.0 + pulse * 1.2;
-            dBallCyanLight.intensity = 1.4 + bassVal * 0.8 + midVal * 0.6;
-            dBallMagentaLight.intensity = 1.4 + bassVal * 0.8 + midVal * 0.6;
-            dBallPointCyan.intensity = (2.5 + bassVal * 4.0 + pulse * 5.0) * (bloomMultiplier + 0.5);
-            dBallPointMagenta.intensity = (2.5 + bassVal * 4.0 + pulse * 5.0) * (bloomMultiplier + 0.5);
+            // Audio-reactive light pulses (Brilliant Silver Glass Pinspots + Specular Core)
+            dBallKeyLight.intensity = 2.4 + bassVal * 1.4 + pulse * 1.6;
+            dBallPinLeft.intensity = 2.2 + bassVal * 1.2 + pulse * 1.4;
+            dBallPointSilver.intensity = (3.2 + bassVal * 4.5 + pulse * 5.5) * (bloomMultiplier + 0.5);
+            dBallCyanLight.intensity = 0.9 + bassVal * 0.5 + midVal * 0.4;
+            dBallMagentaLight.intensity = 0.9 + bassVal * 0.5 + midVal * 0.4;
+            dBallPointCyan.intensity = (1.6 + bassVal * 2.2 + pulse * 2.5) * (bloomMultiplier + 0.5);
+            dBallPointMagenta.intensity = (1.6 + bassVal * 2.2 + pulse * 2.5) * (bloomMultiplier + 0.5);
 
             // Orbiting 3D Specular Glints swirling around the big disco ball
             glintSystem.position.set(0, 0, 0);
