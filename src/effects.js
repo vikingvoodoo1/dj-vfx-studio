@@ -681,6 +681,95 @@ const PumpkinReflectionRaysShader = {
 };
 
 // -------------------------------------------------------------------------
+// Authentic Bonfire Night Glowing Embers Shader (Halloween / Guy Fawkes Nov 5th)
+// -------------------------------------------------------------------------
+const BonfireNightEmbersShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uBass: { value: 0.0 },
+        uTexture: { value: null }
+    },
+    vertexShader: `
+        attribute float aSize;
+        attribute float aFlickerSpeed;
+        attribute float aFlickerPhase;
+        attribute float aHeat;
+
+        uniform float uTime;
+        uniform float uBass;
+
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+
+        void main() {
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_Position = projectionMatrix * mvPosition;
+
+            // Perspective distance attenuation: closer embers look substantial, distant ones look subtle
+            float distToCam = max(-mvPosition.z, 0.1);
+            float depthScale = clamp(130.0 / distToCam, 0.35, 4.0);
+
+            // Subtle organic thermal flicker (oxygen pocket flare)
+            float flicker = 0.80 + 0.20 * sin(uTime * aFlickerSpeed + aFlickerPhase);
+            vFlicker = flicker;
+
+            // Bass breath thermal updraft pulse
+            float bassSize = 1.0 + uBass * 0.25;
+            gl_PointSize = aSize * depthScale * flicker * bassSize;
+
+            // Thermal cool-down color gradient as embers rise from bonfire bed to night sky:
+            // Low altitude (-9 to -2): White-gold incandescent spark
+            // Mid altitude (-2 to +5): Radiant flame orange
+            // High altitude (+5 to +14): Deep smoldering ruby cinder fading out
+            float altFrac = clamp((position.y + 9.0) / 22.0, 0.0, 1.0);
+
+            vec3 colWhiteGold = vec3(1.0, 0.96, 0.82); // Molten core
+            vec3 colHotGold   = vec3(1.0, 0.80, 0.25); // Intense gold
+            vec3 colFlameOrg  = vec3(1.0, 0.42, 0.05); // Classic bonfire flame
+            vec3 colDeepRuby  = vec3(0.85, 0.14, 0.02); // Smoldering ember
+            vec3 colCharcoal  = vec3(0.40, 0.05, 0.01); // Dying coal
+
+            vec3 emberColor;
+            if (altFrac < 0.20) {
+                emberColor = mix(colWhiteGold, colHotGold, altFrac / 0.20);
+            } else if (altFrac < 0.55) {
+                emberColor = mix(colHotGold, colFlameOrg, (altFrac - 0.20) / 0.35);
+            } else if (altFrac < 0.85) {
+                emberColor = mix(colFlameOrg, colDeepRuby, (altFrac - 0.55) / 0.30);
+            } else {
+                emberColor = mix(colDeepRuby, colCharcoal, (altFrac - 0.85) / 0.15);
+            }
+
+            // Per-particle initial temperature variation
+            vColor = mix(emberColor, colHotGold, aHeat * 0.25);
+
+            // Gentle lifecycle fade: smooth birth at bottom, smooth fade-out as it cools into the sky
+            float fadeIn = smoothstep(-9.0, -6.0, position.y);
+            float fadeOut = 1.0 - smoothstep(8.5, 13.5, position.y);
+            vAlpha = fadeIn * fadeOut * 0.90;
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D uTexture;
+        varying vec3 vColor;
+        varying float vAlpha;
+        varying float vFlicker;
+
+        void main() {
+            vec4 texCol = texture2D(uTexture, gl_PointCoord);
+            if (texCol.a < 0.01) discard;
+
+            // Modulate with ember temperature color and thermal flicker
+            vec3 finalRgb = vColor * texCol.rgb * vFlicker * 1.35;
+            float finalAlpha = texCol.a * vAlpha;
+
+            gl_FragColor = vec4(finalRgb, finalAlpha);
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
 // Wawa Sensei Godray Volumetric Shader (Silky Smooth Striations, Mie Forward Scattering & Hyper-Vibrant Neon)
 // -------------------------------------------------------------------------
 const WawaSenseiGodrayShader = {
@@ -8566,39 +8655,91 @@ export function createVFXScene(container) {
     const pumpkinFloorSpots = new THREE.Points(pFloorGeo, pFloorMat);
     gPumpkinDiscoBall.add(pumpkinFloorSpots);
 
-    // 9. 250 Floating Glowing Jack-o'-Lantern Fire Embers
-    const pEmberCount = 250;
+    // 9. Authentic Bonfire Night Glowing Fire Embers (Subtly floating upwards)
+    // Procedural soft incandescent ember particle texture (hot core + smooth thermal halo)
+    const emberCanvas = document.createElement('canvas');
+    emberCanvas.width = 64;
+    emberCanvas.height = 64;
+    const emberCtx = emberCanvas.getContext('2d');
+    const eGrad = emberCtx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    eGrad.addColorStop(0.00, 'rgba(255, 255, 245, 1.0)'); // Incandescent core (hot white-gold)
+    eGrad.addColorStop(0.18, 'rgba(255, 215, 75, 0.95)');  // Molten bright gold
+    eGrad.addColorStop(0.42, 'rgba(255, 115, 20, 0.75)');  // Vivid flame orange
+    eGrad.addColorStop(0.70, 'rgba(215, 35, 5, 0.35)');   // Deep smoldering crimson
+    eGrad.addColorStop(1.00, 'rgba(100, 10, 0, 0.0)');    // Soft thermal smoke falloff
+    emberCtx.fillStyle = eGrad;
+    emberCtx.beginPath();
+    emberCtx.arc(32, 32, 32, 0, Math.PI * 2);
+    emberCtx.fill();
+    const bonfireEmberTex = new THREE.CanvasTexture(emberCanvas);
+
+    const pEmberCount = 380;
     const pEmberGeo = new THREE.BufferGeometry();
     const pEmberPos = new Float32Array(pEmberCount * 3);
-    const pEmberCol = new Float32Array(pEmberCount * 3);
     const pEmberVel = new Float32Array(pEmberCount * 3);
+    const pEmberSize = new Float32Array(pEmberCount);
+    const pEmberFlickerSpeed = new Float32Array(pEmberCount);
+    const pEmberFlickerPhase = new Float32Array(pEmberCount);
+    const pEmberHeat = new Float32Array(pEmberCount);
+    const pEmberDriftSpeed = new Float32Array(pEmberCount);
+    const pEmberDriftPhase = new Float32Array(pEmberCount);
+    const pEmberDriftAmp = new Float32Array(pEmberCount);
 
     for (let e = 0; e < pEmberCount; e++) {
-        pEmberPos[e * 3] = (Math.random() - 0.5) * 28.0;
-        pEmberPos[e * 3 + 1] = -9.0 + Math.random() * 22.0;
-        pEmberPos[e * 3 + 2] = (Math.random() - 0.5) * 20.0;
+        // Natural spatial distribution throughout stage volume (wide & deep)
+        pEmberPos[e * 3] = (Math.random() - 0.5) * 32.0;
+        pEmberPos[e * 3 + 1] = -9.0 + Math.random() * 23.0;
+        pEmberPos[e * 3 + 2] = (Math.random() - 0.5) * 26.0;
 
-        pEmberVel[e * 3] = (Math.random() - 0.5) * 0.4;
-        pEmberVel[e * 3 + 1] = 0.4 + Math.random() * 0.8; // Upward drift
-        pEmberVel[e * 3 + 2] = (Math.random() - 0.5) * 0.4;
+        // Subtle buoyant upward velocity (gentle convection, NOT fast bullets)
+        pEmberVel[e * 3] = 0.0;
+        pEmberVel[e * 3 + 1] = 0.35 + Math.random() * 0.55; // gentle upward loft
+        pEmberVel[e * 3 + 2] = 0.0;
 
-        const isHot = Math.random() > 0.4;
-        const eCol = isHot ? new THREE.Color(0xff9900) : new THREE.Color(0xff3300);
-        pEmberCol[e * 3] = eCol.r;
-        pEmberCol[e * 3 + 1] = eCol.g;
-        pEmberCol[e * 3 + 2] = eCol.b;
+        // Natural ember size distribution: mostly fine sparks, some medium cinders, a few glowing flakes
+        const sizeRand = Math.random();
+        if (sizeRand < 0.65) {
+            pEmberSize[e] = 0.28 + Math.random() * 0.18; // Fine sparks
+        } else if (sizeRand < 0.90) {
+            pEmberSize[e] = 0.48 + Math.random() * 0.22; // Medium burning cinders
+        } else {
+            pEmberSize[e] = 0.72 + Math.random() * 0.28; // Large glowing flakes of burning wood
+        }
+
+        // Independent flicker rates simulating oxygen drafts stoking the ember
+        pEmberFlickerSpeed[e] = 2.0 + Math.random() * 4.5;
+        pEmberFlickerPhase[e] = Math.random() * Math.PI * 2.0;
+
+        // Per-particle initial temperature (hotter cinders vs cooler smoldering flakes)
+        pEmberHeat[e] = Math.random();
+
+        // Horizontal meandering parameters (convective air swirl)
+        pEmberDriftSpeed[e] = 0.8 + Math.random() * 1.6;
+        pEmberDriftPhase[e] = Math.random() * Math.PI * 2.0;
+        pEmberDriftAmp[e] = 0.15 + Math.random() * 0.35;
     }
+
     pEmberGeo.setAttribute('position', new THREE.BufferAttribute(pEmberPos, 3));
-    pEmberGeo.setAttribute('color', new THREE.BufferAttribute(pEmberCol, 3));
-    const pEmberMat = new THREE.PointsMaterial({
-        size: 0.32,
-        map: starburstTex,
-        vertexColors: true,
+    pEmberGeo.setAttribute('aSize', new THREE.BufferAttribute(pEmberSize, 1));
+    pEmberGeo.setAttribute('aFlickerSpeed', new THREE.BufferAttribute(pEmberFlickerSpeed, 1));
+    pEmberGeo.setAttribute('aFlickerPhase', new THREE.BufferAttribute(pEmberFlickerPhase, 1));
+    pEmberGeo.setAttribute('aHeat', new THREE.BufferAttribute(pEmberHeat, 1));
+
+    const pEmberMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uTexture: { value: bonfireEmberTex }
+        },
+        vertexShader: BonfireNightEmbersShader.vertexShader,
+        fragmentShader: BonfireNightEmbersShader.fragmentShader,
         blending: THREE.AdditiveBlending,
         transparent: true,
         depthWrite: false
     });
+
     const pumpkinEmbers = new THREE.Points(pEmberGeo, pEmberMat);
+    pumpkinEmbers.renderOrder = 22;
     gPumpkinDiscoBall.add(pumpkinEmbers);
 
     // -------------------------------------------------------------------------
@@ -10630,19 +10771,30 @@ export function createVFXScene(container) {
             pFloorMat.size = 0.45 + (leftSunGlare + rightSunGlare) * 0.25 + smoothedBass * 0.30 + treblePop * 0.25 + pumpkinKickThump * 0.35;
             pFloorMat.opacity = Math.min(0.90, 0.35 + avgPulse * 0.35 + pumpkinKickThump * 0.25);
 
-            // 8. Floating Jack-o'-Lantern Fire Embers (Drifting upwards)
+            // 8. Authentic Bonfire Fire Embers (Subtly drifting upwards on warm convective currents)
             const emberPosAttr = pEmberGeo.attributes.position;
             const emberArray = emberPosAttr.array;
-            for (let e = 0; e < pEmberCount; e++) {
-                emberArray[e * 3 + 1] += (pEmberVel[e * 3 + 1] + smoothedBass * 0.8 + pumpkinKickThump * 0.8) * delta * 5.0;
-                emberArray[e * 3] += pEmberVel[e * 3] * delta * 4.0;
-                emberArray[e * 3 + 2] += pEmberVel[e * 3 + 2] * delta * 4.0;
+            pEmberMat.uniforms.uTime.value = elapsedTime;
+            pEmberMat.uniforms.uBass.value = smoothedBass + pumpkinKickThump * 0.40;
 
-                // Recycle embers when reaching top
-                if (emberArray[e * 3 + 1] > 14.0) {
-                    emberArray[e * 3] = (Math.random() - 0.5) * 16.0;
-                    emberArray[e * 3 + 1] = -8.0;
-                    emberArray[e * 3 + 2] = (Math.random() - 0.5) * 16.0;
+            // Gentle convective loft speed (subtle floating, never rushing)
+            const baseRiseSpeed = delta * 1.35;
+            const bassDraftLift = (smoothedBass * 0.25 + pumpkinKickThump * 0.35) * delta;
+
+            for (let e = 0; e < pEmberCount; e++) {
+                // Gentle upward convective drift
+                emberArray[e * 3 + 1] += (pEmberVel[e * 3 + 1] * baseRiseSpeed) + bassDraftLift;
+
+                // Subtle meandering draft curl (convective swirl across warm air drafts)
+                const driftPhase = elapsedTime * pEmberDriftSpeed[e] + pEmberDriftPhase[e];
+                emberArray[e * 3] += Math.sin(driftPhase) * delta * pEmberDriftAmp[e];
+                emberArray[e * 3 + 2] += Math.cos(driftPhase * 0.85) * delta * (pEmberDriftAmp[e] * 0.8);
+
+                // Respawn at bottom when ember cools and reaches the top
+                if (emberArray[e * 3 + 1] > 13.5) {
+                    emberArray[e * 3] = (Math.random() - 0.5) * 30.0;
+                    emberArray[e * 3 + 1] = -9.0 + (Math.random() - 0.5) * 1.5;
+                    emberArray[e * 3 + 2] = (Math.random() - 0.5) * 24.0;
                 }
             }
             emberPosAttr.needsUpdate = true;

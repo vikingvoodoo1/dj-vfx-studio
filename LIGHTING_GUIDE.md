@@ -263,6 +263,24 @@ Floor caustics are created via rotating particle arrays (`pumpkinFloorSpots`):
 * Motion: Revolves on $Y$-axis slightly faster than the ball rotation ($1.25\times$) to simulate refractive light speed.
 * Reactivity: Particle size and opacity swell on bass thumps and sun-glare specular alignment.
 
+### Bonfire Night Floating Fire Embers (`BonfireNightEmbersShader`)
+Designed for Halloween and November 5th (Bonfire Night / Guy Fawkes) stage atmospheres, replacing generic stars/dots with an authentic, physical bonfire ember simulation:
+* **Procedural Incandescent Ember Texture (`bonfireEmberTex`)**:
+  * Generated on a procedural 2D canvas with multi-stop radial thermal gradient.
+  * White-hot molten core (`rgba(255, 255, 245, 1.0)`) $\rightarrow$ bright yellow-amber (`rgba(255, 215, 75, 0.95)`) $\rightarrow$ vivid flame orange (`rgba(255, 115, 20, 0.75)`) $\rightarrow$ deep smoldering crimson (`rgba(215, 35, 5, 0.35)`) $\rightarrow$ thermal smoke falloff.
+* **Thermal Altitude Cooling Pipeline**:
+  * As embers drift upward from the firebed ($y = -9$) into the night sky ($y = +14$), they dynamically cool down in real time:
+    * **Low Altitude ($-9$ to $-2$)**: Incandescent white-gold sparks.
+    * **Mid Altitude ($-2$ to $+5$)**: Radiant flame orange cinders.
+    * **High Altitude ($+5$ to $+14$)**: Smoldering deep ruby embers cooling into dark charcoal ash before gently fading out.
+* **Thermal Convection & Draft Physics**:
+  * **Gentle Loft Speed**: Tuned to subtle buoyancy ($1.35\times$ convection rate instead of rapid bullet particles).
+  * **Meandering Draft Swirl**: Each ember possesses unique drift frequency and phase offsets, undulating horizontally along smooth sine/cosine warm air drafts.
+  * **Thermal Bass Updraft**: Deep kick transients deliver a subtle convective lift surge (`smoothedBass * 0.25 + pumpkinKickThump * 0.35`), simulating hot air expanding above the firebed.
+* **Particle Sizes & Independent Shimmer**:
+  * Log-normal distribution of particle sizes (`0.28` fine sparks, `0.48` medium cinders, `0.72` large glowing wood flakes).
+  * Independent oxygen-draft flicker rates (`aFlickerSpeed`, `aFlickerPhase`) simulating air turbulence stoking individual coals.
+
 ---
 
 ## 8. Audio-Reactive Control & Timing Engine
