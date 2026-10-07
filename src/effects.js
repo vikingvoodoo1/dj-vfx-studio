@@ -989,6 +989,52 @@ const FloorSpotShader = {
     `
 };
 
+// -------------------------------------------------------------------------
+// Subtle Sparkling White & Silver Disco Starfield Shader
+// -------------------------------------------------------------------------
+const DiscoSilverStarsShader = {
+    uniforms: {
+        uTime: { value: 0.0 },
+        uTexture: { value: null }
+    },
+    vertexShader: `
+        uniform float uTime;
+        attribute float aPhase;
+        attribute float aSpeed;
+        attribute float aBaseSize;
+        varying vec3 vColor;
+        varying float vSparkle;
+
+        void main() {
+            vColor = color;
+            
+            // Gentle organic sinusoidal twinkle per star
+            float twinkle = sin(uTime * aSpeed + aPhase);
+            // Delicate glint shimmer pulse
+            float glint = pow(max(0.0, sin(uTime * (aSpeed * 0.75) + aPhase * 1.3)), 6.0) * 0.40;
+            vSparkle = 0.65 + 0.35 * twinkle + glint;
+
+            vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = (aBaseSize * vSparkle) * (260.0 / -mvPosition.z);
+            gl_Position = projectionMatrix * mvPosition;
+        }
+    `,
+    fragmentShader: `
+        uniform sampler2D uTexture;
+        varying vec3 vColor;
+        varying float vSparkle;
+
+        void main() {
+            vec4 tex = texture2D(uTexture, gl_PointCoord);
+            if (tex.a < 0.02) discard;
+
+            // Pure luminous white/silver sparkle without oversaturation
+            vec3 finalCol = vColor * vSparkle;
+            gl_FragColor = vec4(finalCol * tex.a, tex.a * min(1.0, vSparkle * 0.90));
+        }
+    `
+};
+
 // Floating Nightclub Fog & Atmospheric Participating Media (Smooth Volumetric Smoke Dynamically Illuminated by 8 Spotlights)
 const FloatingAtmosphericFogShader = {
     uniforms: {
@@ -5811,46 +5857,59 @@ export function createVFXScene(container) {
     dBallPointMagenta.position.set(7.0, 3.0, 5.0);
     gDiscoBall.add(dBallPointMagenta);
 
-    // 6. 1,200 Floating 3D Specular Starburst Glints & Sparkles (Diamond White & Glass Crystal)
-    const glintCount = 1200;
+    // 6. 1,500 Floating 3D Specular Starburst Stars & Sparkles (Subtle Sparkling White & Silver)
+    const glintCount = 1500;
     const glintGeo = new THREE.BufferGeometry();
     const glintPos = new Float32Array(glintCount * 3);
     const glintCol = new Float32Array(glintCount * 3);
-    const glintThetas = new Float32Array(glintCount);
-    const glintPhis = new Float32Array(glintCount);
-    const glintBaseRads = new Float32Array(glintCount);
+    const glintPhase = new Float32Array(glintCount);
+    const glintSpeed = new Float32Array(glintCount);
+    const glintBaseSize = new Float32Array(glintCount);
 
-    const gHues = [
-        new THREE.Color(0xffffff), // Diamond white
-        new THREE.Color(0xf4f8ff), // Crisp silver
-        new THREE.Color(0xdceeff), // Mirror glass reflection
-        new THREE.Color(0xffffff), // Pure white
-        new THREE.Color(0xe0f0ff), // Ice glass
-        new THREE.Color(0x88ffff), // Subtle cyan facet glint
-        new THREE.Color(0xff99dd)  // Subtle magenta facet glint
+    // Pure white and silver palette (zero colored hues)
+    const silverHues = [
+        new THREE.Color(0xffffff), // Diamond Pure White
+        new THREE.Color(0xf5f8fc), // Bright Platinum Silver
+        new THREE.Color(0xedf3fa), // Shimmering Mirror Silver
+        new THREE.Color(0xe2ebf5), // Ice Crystal Silver
+        new THREE.Color(0xfcfdff), // Luminous White Star
+        new THREE.Color(0xdce6f2)  // Cool Chrome Silver
     ];
 
     for (let i = 0; i < glintCount; i++) {
+        // Distribute in a rich 3D field spanning around and behind the disco ball
         const theta = Math.random() * Math.PI * 2;
         const phi = Math.acos((Math.random() * 2) - 1);
-        const r = 5.8 + Math.random() * 22.0;
-
-        glintThetas[i] = theta;
-        glintPhis[i] = phi;
-        glintBaseRads[i] = r;
+        const r = 6.2 + Math.pow(Math.random(), 1.25) * 28.0;
 
         glintPos[i * 3] = r * Math.sin(phi) * Math.cos(theta);
         glintPos[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
-        glintPos[i * 3 + 2] = r * Math.cos(phi);
+        // Slightly bias depth backwards so stars frame and sit behind the disco ball
+        glintPos[i * 3 + 2] = r * Math.cos(phi) - 2.5;
 
-        const c = gHues[i % gHues.length];
-        glintCol[i * 3] = c.r; glintCol[i * 3 + 1] = c.g; glintCol[i * 3 + 2] = c.b;
+        const c = silverHues[i % silverHues.length];
+        glintCol[i * 3] = c.r;
+        glintCol[i * 3 + 1] = c.g;
+        glintCol[i * 3 + 2] = c.b;
+
+        glintPhase[i] = Math.random() * Math.PI * 2;
+        glintSpeed[i] = 1.0 + Math.random() * 1.8; // Gentle, subtle sparkle speed
+        glintBaseSize[i] = 0.28 + Math.random() * 0.32; // Delicate natural sizes
     }
+
     glintGeo.setAttribute('position', new THREE.BufferAttribute(glintPos, 3));
     glintGeo.setAttribute('color', new THREE.BufferAttribute(glintCol, 3));
-    const glintMat = new THREE.PointsMaterial({
-        size: 0.35,
-        map: starburstTex,
+    glintGeo.setAttribute('aPhase', new THREE.BufferAttribute(glintPhase, 1));
+    glintGeo.setAttribute('aSpeed', new THREE.BufferAttribute(glintSpeed, 1));
+    glintGeo.setAttribute('aBaseSize', new THREE.BufferAttribute(glintBaseSize, 1));
+
+    const glintMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uTexture: { value: starburstTex }
+        },
+        vertexShader: DiscoSilverStarsShader.vertexShader,
+        fragmentShader: DiscoSilverStarsShader.fragmentShader,
         vertexColors: true,
         blending: THREE.AdditiveBlending,
         transparent: true,
@@ -9177,11 +9236,11 @@ export function createVFXScene(container) {
         // FX 4: 🪩 Authentic Nightclub Mirror Ball Rig [Top Pinspots & Floor Reflections]
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 4) {
-            // Audio-driven ball rotation speed & angular velocity
-            const ballSpinSpeed = (bps * 0.38 + (audio.energy || 0) * 0.45 + bassPop * 0.8) * speed;
+            // Constant, graceful ball rotation (music reactivity decoupled for now)
+            const ballSpinSpeed = 0.24 * speed;
             dBallMesh.rotation.y += ballSpinSpeed * delta * 1.8;
-            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.6) * 0.03;
-            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.45) * 0.02;
+            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.5) * 0.02;
+            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.35) * 0.015;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
             // Calculate world position of the top eyelet ring attached to the disco ball
@@ -9211,28 +9270,21 @@ export function createVFXScene(container) {
                 );
             }
 
-            const bassVal = bassPop;
-            const midVal = audio.smoothedMid || 0;
+            // Steady, elegant stage illumination (music reactivity decoupled for now)
+            dBallKeyLight.intensity = 2.5;
+            dBallPinLeft.intensity = 2.3;
+            dBallPointSilver.intensity = 3.6;
+            dBallCyanLight.intensity = 0.8;
+            dBallMagentaLight.intensity = 0.8;
+            dBallPointCyan.intensity = 1.2;
+            dBallPointMagenta.intensity = 1.2;
 
-            const isKick = audio.isOnset && (audio.bassImpact > 0.40 || bassPop > 0.50);
-            const pulse = isKick ? 1.0 : 0.0;
-
-            // Audio-reactive light pulses (Brilliant Silver Glass Pinspots + Specular Core)
-            dBallKeyLight.intensity = 2.4 + bassVal * 1.4 + pulse * 1.6;
-            dBallPinLeft.intensity = 2.2 + bassVal * 1.2 + pulse * 1.4;
-            dBallPointSilver.intensity = (3.2 + bassVal * 4.5 + pulse * 5.5) * (bloomMultiplier + 0.5);
-            dBallCyanLight.intensity = 0.9 + bassVal * 0.5 + midVal * 0.4;
-            dBallMagentaLight.intensity = 0.9 + bassVal * 0.5 + midVal * 0.4;
-            dBallPointCyan.intensity = (1.6 + bassVal * 2.2 + pulse * 2.5) * (bloomMultiplier + 0.5);
-            dBallPointMagenta.intensity = (1.6 + bassVal * 2.2 + pulse * 2.5) * (bloomMultiplier + 0.5);
-
-            // Orbiting 3D Specular Glints swirling around the big disco ball
+            // Subtle sparkling white & silver background stars (steady rotation, zero music scale pop)
+            glintMat.uniforms.uTime.value = elapsedTime;
             glintSystem.position.set(0, 0, 0);
-            glintSystem.rotation.y += ballSpinSpeed * delta * 1.8;
-            glintSystem.rotation.x = Math.sin(elapsedTime * 0.4) * 0.05;
-            const gScale = 1.0 + (bassPop * 0.12) + (transient * 0.18);
-            glintSystem.scale.setScalar(gScale);
-            glintMat.size = 0.35 * (1.0 + (bassPop * 0.35) + (transient * 0.30));
+            glintSystem.rotation.y += 0.04 * speed * delta;
+            glintSystem.rotation.x = Math.sin(elapsedTime * 0.25) * 0.02;
+            glintSystem.scale.set(1.0, 1.0, 1.0);
         }
         // ---------------------------------------------------------------------
         // FX 5: ⚡ Dual-Bank Volumetric Searchlights
