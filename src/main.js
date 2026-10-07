@@ -679,7 +679,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 21;
+    const TOTAL_FX = 22;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -3977,7 +3977,7 @@ async function init() {
         'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
         'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
         'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
-        'Pumpkin Disco Ball'
+        'Pumpkin Disco Ball', 'Haunted Manor'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -4951,7 +4951,7 @@ async function init() {
         });
     }
 
-    // 7. Keyboard Shortcuts (21 Presets)
+    // 7. Keyboard Shortcuts (22 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
         '5': 4, '6': 5, '7': 6, '8': 7,
