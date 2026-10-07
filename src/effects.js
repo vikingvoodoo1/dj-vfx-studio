@@ -5800,6 +5800,24 @@ export function createVFXScene(container) {
     const studioEq2DParticles = [];
     const MAX_STUDIO_2D_PARTICLES = 450; // Rich, dense particle canopy reaching the top of the screen
 
+    // Pre-computed color palette cache to guarantee zero garbage collection and zero CSS string parsing
+    const studioEqColors = [];
+    for (let i = 0; i < STUDIO_EQ_BARS; i++) {
+        const freqNorm = i / STUDIO_EQ_BARS;
+        let hue = Math.round(185 - freqNorm * 220);
+        if (hue < 0) hue += 360;
+        studioEqColors.push({
+            hue,
+            grad0: `hsla(${hue}, 95%, 45%, 0.25)`,
+            grad1: `hsla(${hue}, 100%, 55%, 0.85)`,
+            grad2: `hsla(${hue}, 100%, 75%, 0.98)`,
+            grad3: `hsla(${hue}, 100%, 94%, 1.0)`,
+            peak: `hsla(${hue}, 100%, 92%, 0.95)`,
+            halo: `hsl(${hue}, 100%, 65%)`,
+            core: `hsl(${hue}, 100%, 82%)`
+        });
+    }
+
     // -------------------------------------------------------------------------
     // FX 1: 🎯 CIRCULAR SPECTRUM MANDALA
     // -------------------------------------------------------------------------
@@ -9271,17 +9289,13 @@ export function createVFXScene(container) {
                     const bx = barMargin + i * (barWidth + barSpacing);
                     const by = baseY - barHeight;
 
-                    // Harmonious spectral color gradient across audible bands:
-                    // Sub (Cyan 185) -> Bass (Emerald 150) -> Mid (Lime/Yellow 75) -> Hi-Mid (Orange 35) -> Air (Magenta 320)
-                    const freqNorm = i / STUDIO_EQ_BARS;
-                    let hue = 185 - freqNorm * 220;
-                    if (hue < 0) hue += 360;
-
+                    // Pre-computed spectral gradient and peak needles (Zero String Allocations)
+                    const col = studioEqColors[i];
                     const grad = ctx.createLinearGradient(0, baseY, 0, by);
-                    grad.addColorStop(0.0, `hsla(${hue}, 95%, 45%, 0.25)`);
-                    grad.addColorStop(0.55, `hsla(${hue}, 100%, 55%, 0.85)`);
-                    grad.addColorStop(0.92, `hsla(${hue}, 100%, 75%, 0.98)`);
-                    grad.addColorStop(1.0, `hsla(${hue}, 100%, 94%, 1.0)`);
+                    grad.addColorStop(0.0, col.grad0);
+                    grad.addColorStop(0.55, col.grad1);
+                    grad.addColorStop(0.92, col.grad2);
+                    grad.addColorStop(1.0, col.grad3);
 
                     ctx.fillStyle = grad;
                     ctx.beginPath();
@@ -9302,7 +9316,7 @@ export function createVFXScene(container) {
                     }
 
                     const peakY = baseY - studioEqPeakLevels[i] - 5;
-                    ctx.fillStyle = `hsla(${hue}, 100%, 92%, 0.95)`;
+                    ctx.fillStyle = col.peak;
                     if (ctx.roundRect) {
                         ctx.beginPath();
                         ctx.roundRect(bx, peakY, barWidth, 3.5, 2);
@@ -9323,7 +9337,7 @@ export function createVFXScene(container) {
                             decay: 0.0035 + Math.random() * 0.0055, // Long lifespan to float all the way to top of screen
                             size: 3.0 + Math.random() * 7.5,
                             seed: Math.random() * 10.0,
-                            hue: hue
+                            barIdx: i
                         });
                     }
                 }
@@ -9343,29 +9357,34 @@ export function createVFXScene(container) {
                         continue;
                     }
 
+                    const col = studioEqColors[part.barIdx] || studioEqColors[0];
                     const rad = Math.max(1.8, part.size * (0.35 + part.life * 0.65));
                     const alpha = Math.min(1.0, part.life * 1.25);
 
                     // Soft glowing outer halo
-                    ctx.fillStyle = `hsla(${part.hue}, 100%, 65%, ${alpha * 0.32})`;
+                    ctx.globalAlpha = alpha * 0.32;
+                    ctx.fillStyle = col.halo;
                     ctx.beginPath();
                     ctx.arc(part.x, part.y, rad * 1.8, 0, Math.PI * 2);
                     ctx.fill();
 
                     // Saturated neon core
-                    ctx.fillStyle = `hsla(${part.hue}, 100%, 82%, ${alpha * 0.95})`;
+                    ctx.globalAlpha = alpha * 0.95;
+                    ctx.fillStyle = col.core;
                     ctx.beginPath();
                     ctx.arc(part.x, part.y, rad * 0.85, 0, Math.PI * 2);
                     ctx.fill();
 
                     // White-hot center glint for larger particles
                     if (part.size > 5.5) {
-                        ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.85})`;
+                        ctx.globalAlpha = alpha * 0.85;
+                        ctx.fillStyle = '#ffffff';
                         ctx.beginPath();
                         ctx.arc(part.x, part.y, rad * 0.35, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
+                ctx.globalAlpha = 1.0;
 
                 studioEqTex.needsUpdate = true;
             }
