@@ -4967,7 +4967,8 @@ async function init() {
         'i': 17, 'I': 17,
         'o': 18, 'O': 18,
         'p': 19, 'P': 19,
-        '[': 20
+        '[': 20,
+        ']': 21
     };
 
     window.addEventListener('keydown', (e) => {

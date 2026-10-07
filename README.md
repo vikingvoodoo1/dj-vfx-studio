@@ -43,8 +43,9 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 - **FX 17: Pure White Godrays & Protean Volumetric Clouds** — Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop.
 - **FX 18: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays with floor reflection pools and lens glow.
 
-### 🎃 Category 4: Halloween Spooky Special (FX 20)
+### 🎃 Category 4: Halloween Spooky Special (FX 20–21)
 - **FX 20: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays** — Sapphire-blue metallic glass faceted mirror ball sphere with top hanging link chain, carved glowing Jack-o'-Lantern face with incandescent internal flame gradients, 14 fanned deep blue volumetric light rays bouncing off mirror tiles with Mie atmospheric haze, dedicated multi-angle pinspot lighting, 1,200 specular facet glints, orbiting floor caustic reflection spots, and drifting fire embers.
+- **FX 21: 🏚️ Haunted Manor & Moonlit Forest [Flying Bats & Thunderstorm]** — Eerie gothic horror nightscape featuring a luminous full moon with lunar maria and atmospheric corona halo, multi-tiered Victorian gothic haunted mansion with flickering warm candlelit arched windows, gnarled bare oak tree with twisted branches framing the moon, winding overgrown estate driveway with cold moonlit puddle reflections, open ornate wrought-iron cemetery gates with ivy-covered stone pillars, 32 dynamic flying vampire bats with realistic wing flapping and flight trajectories, low-lying graveyard ground mist, and audio-reactive double-burst lightning flashes casting stark high-contrast silhouettes on heavy bass kicks.
 
 ### 🕸️ Category 5: Cyber, Retro & Typography (FX 8–11, FX 19)
 - **FX 8: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.
