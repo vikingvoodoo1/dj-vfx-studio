@@ -2638,351 +2638,6 @@ const DiscoFloorShader = {
 };
 
 // =============================================================================
-// Disco Silhouette Dancers in Glowing Color Box Light Walls Shader (FX 9)
-// Features 5-Compartment 3D Lightbox Stage, Curvaceous Shaded Female Dancers,
-// Fluid S-Curve Dance Choreography, Fresnel Neon Rim Lighting & Audio Reactivity
-// =============================================================================
-const DiscoDancerBoxShader = {
-    uniforms: {
-        uTime: { value: 0.0 },
-        uBass: { value: 0.0 },
-        uMid: { value: 0.0 },
-        uTreble: { value: 0.0 },
-        uBPM: { value: 126.0 }
-    },
-    vertexShader: `
-        varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        varying vec2 vUv;
-        uniform float uTime;
-        uniform float uBass;
-        uniform float uMid;
-        uniform float uTreble;
-        uniform float uBPM;
-
-        // Smooth minimum for blending organic body joints
-        float smin(float a, float b, float k) {
-            float h = clamp(0.5 + 0.5 * (b - a) / k, 0.0, 1.0);
-            return mix(b, a, h) - k * h * (1.0 - h);
-        }
-
-        // Segment SDF
-        float sdCapsule(vec2 p, vec2 a, vec2 b, float r1, float r2) {
-            vec2 pa = p - a, ba = b - a;
-            float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-            float r = mix(r1, r2, h);
-            return length(pa - ba * h) - r;
-        }
-
-        // Circle SDF
-        float sdCircle(vec2 p, vec2 c, float r) {
-            return length(p - c) - r;
-        }
-
-        // Female Shadow Dancer Body SDF with Fluid Sensual Movement, Flowing Hair & Realistic Human Curves
-        float sdFemaleDancer(vec2 p, float t, int poseType) {
-            // Rhythmic hip sway, spinal S-curve & sensual body-wave ripple
-            float hipSway = sin(t) * 0.13 + sin(t * 0.5) * 0.04;
-            float chestSway = -sin(t + 0.4) * 0.07;
-            float bodyWave = sin(p.y * 3.6 - t * 2.2) * 0.038;
-            
-            // Central spine anchor curve
-            float spineX = mix(hipSway, chestSway, smoothstep(-0.15, 0.52, p.y)) + bodyWave;
-            vec2 sp = vec2(p.x - spineX, p.y);
-
-            // 1. Head, Feminine Face Profile & Flowing Long Hair (Backlit Silhouette)
-            float headY = 0.65 + cos(t * 1.8) * 0.018;
-            float headX = spineX + sin(t * 0.9) * 0.025;
-            vec2 headCenter = vec2(headX, headY);
-            
-            // Cranium & facial chin/jawline
-            float dHead = sdCapsule(p, headCenter + vec2(0.0, 0.025), headCenter - vec2(0.0, 0.025), 0.080, 0.058);
-            
-            // Voluminous hair crown & natural fringe
-            float dHairCrown = sdCircle(p, headCenter + vec2(-0.012, 0.035), 0.100);
-            float dHairFringe = sdCircle(p, headCenter + vec2(0.042, 0.040), 0.070);
-            
-            // Long cascading silky hair swaying dynamically with body inertia
-            vec2 hairStart = vec2(headX - 0.055, headY + 0.025);
-            float hairSwing = sin(t * 1.3 - 0.6) * 0.12 - 0.07;
-            vec2 hairMid1 = vec2(headX + hairSwing * 0.8, headY - 0.15);
-            vec2 hairMid2 = vec2(headX + hairSwing * 1.4 - 0.02, headY - 0.36);
-            vec2 hairTip = vec2(headX + hairSwing * 1.8 - 0.04, headY - 0.56);
-            
-            float dHair1 = sdCapsule(p, hairStart, hairMid1, 0.068, 0.050);
-            float dHair2 = sdCapsule(p, hairMid1, hairMid2, 0.050, 0.032);
-            float dHair3 = sdCapsule(p, hairMid2, hairTip, 0.032, 0.010);
-            float dHair = min(min(dHairCrown, dHairFringe), min(dHair1, min(dHair2, dHair3)));
-
-            // 2. Slender Graceful Neck & Trapezius Slope
-            float dNeck = sdCapsule(p, headCenter - vec2(0.0, 0.025), vec2(spineX, 0.50), 0.045, 0.062);
-            float dTraps = sdCapsule(sp, vec2(0.0, 0.50), vec2(0.0, 0.44), 0.062, 0.150);
-
-            // 3. Voluptuous Torso (Natural Feminine Silhouette: Clavicle -> Bust -> Hourglass Waist -> Flared Hips)
-            // Ribcage & Chest
-            float dChest = sdCapsule(sp, vec2(0.0, 0.48), vec2(0.0, 0.29), 0.150, 0.138);
-            
-            // Natural rounded bust contour
-            float dBustL = sdCircle(sp, vec2(-0.072, 0.34), 0.086);
-            float dBustR = sdCircle(sp, vec2(0.072, 0.34), 0.086);
-            float dBust = min(dBustL, dBustR);
-
-            // Toned, curvaceous waistline
-            float dWaist = sdCapsule(sp, vec2(0.0, 0.29), vec2(0.0, 0.08), 0.138, 0.114);
-            
-            // Pelvis, glute curvature & curvaceous hips
-            float dPelvis = sdCapsule(sp, vec2(0.0, 0.08), vec2(0.0, -0.11), 0.114, 0.180);
-            float dHipL = sdCircle(sp, vec2(-0.122, -0.03), 0.112);
-            float dHipR = sdCircle(sp, vec2(0.122, -0.03), 0.112);
-            float dHips = min(dPelvis, min(dHipL, dHipR));
-
-            // Organic smooth union for torso
-            float dTorso = smin(dChest, dBust, 0.045);
-            dTorso = smin(dTorso, dWaist, 0.05);
-            dTorso = smin(dTorso, dHips, 0.05);
-            dTorso = smin(dTorso, dTraps, 0.04);
-            dTorso = smin(dTorso, dNeck, 0.035);
-
-            // 4. Expressive Arms, Wrists & Delicate Hands (4 Sensual Shadow Dancer Routines)
-            vec2 shL = vec2(spineX - 0.158, 0.45);
-            vec2 shR = vec2(spineX + 0.158, 0.45);
-
-            vec2 elbL, wristL, handL, elbR, wristR, handR;
-
-            if (poseType == 0) {
-                // Routine A: Sensual hair glide & hand resting on hip curve
-                elbL = vec2(spineX - 0.25, 0.58 + sin(t) * 0.05);
-                wristL = vec2(headCenter.x - 0.10, headCenter.y + 0.06 + cos(t) * 0.03);
-                handL = vec2(headCenter.x + 0.02, headCenter.y + 0.11 + cos(t) * 0.03);
-                
-                elbR = vec2(spineX + 0.27, 0.23 + cos(t) * 0.04);
-                wristR = vec2(spineX + 0.17, 0.02 + sin(t) * 0.03);
-                handR = vec2(spineX + 0.13, -0.07 + sin(t) * 0.03);
-            } else if (poseType == 1) {
-                // Routine B: Dual overhead sensual stretch with arched wrist flourishes
-                elbL = vec2(spineX - 0.24, 0.63 + sin(t * 1.3) * 0.06);
-                wristL = vec2(spineX - 0.16, 0.83 + cos(t * 1.3) * 0.05);
-                handL = vec2(spineX - 0.12, 0.93 + cos(t * 1.3) * 0.05);
-                
-                elbR = vec2(spineX + 0.24, 0.63 - sin(t * 1.3) * 0.06);
-                wristR = vec2(spineX + 0.16, 0.83 - cos(t * 1.3) * 0.05);
-                handR = vec2(spineX + 0.12, 0.93 - cos(t * 1.3) * 0.05);
-            } else if (poseType == 2) {
-                // Routine C: Fluid horizontal side-sweep & décolletage caress
-                elbL = vec2(spineX - 0.33, 0.37 + cos(t) * 0.06);
-                wristL = vec2(spineX - 0.40, 0.56 + sin(t) * 0.06);
-                handL = vec2(spineX - 0.46, 0.64 + sin(t) * 0.06);
-                
-                elbR = vec2(spineX + 0.20, 0.38 + sin(t) * 0.04);
-                wristR = vec2(spineX + 0.02, 0.42 + cos(t) * 0.03);
-                handR = vec2(spineX - 0.04, 0.40 + cos(t) * 0.03);
-            } else {
-                // Routine D: Dynamic rhythm pump & low hip accent
-                elbR = vec2(spineX + 0.27, 0.67 + cos(t) * 0.07);
-                wristR = vec2(spineX + 0.33, 0.85 + sin(t) * 0.06);
-                handR = vec2(spineX + 0.35, 0.95 + sin(t) * 0.06);
-                
-                elbL = vec2(spineX - 0.25, 0.17 + sin(t) * 0.03);
-                wristL = vec2(spineX - 0.17, -0.06);
-                handL = vec2(spineX - 0.13, -0.16);
-            }
-
-            // Naturally tapered arm segments (deltoid -> bicep -> forearm -> delicate hand)
-            float dArmL1 = sdCapsule(p, shL, elbL, 0.052, 0.042);
-            float dArmL2 = sdCapsule(p, elbL, wristL, 0.042, 0.028);
-            float dHandL = sdCapsule(p, wristL, handL, 0.028, 0.015);
-            
-            float dArmR1 = sdCapsule(p, shR, elbR, 0.052, 0.042);
-            float dArmR2 = sdCapsule(p, elbR, wristR, 0.042, 0.028);
-            float dHandR = sdCapsule(p, wristR, handR, 0.028, 0.015);
-
-            float dArms = min(min(dArmL1, min(dArmL2, dHandL)), min(dArmR1, min(dArmR2, dHandR)));
-            float dUpper = smin(dTorso, dArms, 0.04);
-            dUpper = min(dUpper, dHead);
-            dUpper = min(dUpper, dHair);
-
-            // 5. Shapely Legs, Voluptuous Thighs, Sculpted Calves & High-Heeled Stilettos
-            vec2 hipL = vec2(spineX - 0.092, -0.09);
-            vec2 hipR = vec2(spineX + 0.092, -0.09);
-
-            float legStep = sin(t) * 0.06;
-            vec2 kneeL = vec2(spineX - 0.10 + legStep, -0.43);
-            vec2 ankleL = vec2(spineX - 0.09 + legStep * 1.1, -0.74);
-            vec2 toeL = vec2(spineX - 0.04 + legStep * 1.1, -0.84);
-            vec2 heelL = vec2(spineX - 0.13 + legStep * 1.1, -0.84);
-
-            vec2 kneeR = vec2(spineX + 0.10 - legStep, -0.43);
-            vec2 ankleR = vec2(spineX + 0.09 - legStep * 1.1, -0.74);
-            vec2 toeR = vec2(spineX + 0.13 - legStep * 1.1, -0.84);
-            vec2 heelR = vec2(spineX + 0.05 - legStep * 1.1, -0.84);
-
-            // Voluptuous shapely thighs with natural glute flare
-            float dThighSegL = sdCapsule(p, hipL, kneeL, 0.110, 0.072);
-            float dThighFlareL = sdCircle(p, mix(hipL, kneeL, 0.25) + vec2(-0.022, 0.0), 0.092);
-            float dThighL = smin(dThighSegL, dThighFlareL, 0.03);
-
-            float dThighSegR = sdCapsule(p, hipR, kneeR, 0.110, 0.072);
-            float dThighFlareR = sdCircle(p, mix(hipR, kneeR, 0.25) + vec2(0.022, 0.0), 0.092);
-            float dThighR = smin(dThighSegR, dThighFlareR, 0.03);
-
-            // Defined knee joints
-            float dKneeL = sdCircle(p, kneeL, 0.065);
-            float dKneeR = sdCircle(p, kneeR, 0.065);
-
-            // Calves with realistic gastrocnemius muscle curve tapering to slender ankle
-            float dCalfSegL = sdCapsule(p, kneeL, ankleL, 0.070, 0.036);
-            float dCalfBulgeL = sdCircle(p, mix(kneeL, ankleL, 0.32) + vec2(0.018, 0.0), 0.066);
-            float dCalfL = smin(dCalfSegL, dCalfBulgeL, 0.03);
-
-            float dCalfSegR = sdCapsule(p, kneeR, ankleR, 0.070, 0.036);
-            float dCalfBulgeR = sdCircle(p, mix(kneeR, ankleR, 0.32) + vec2(-0.018, 0.0), 0.066);
-            float dCalfR = smin(dCalfSegR, dCalfBulgeR, 0.03);
-
-            // Stiletto High Heels: Arched Instep, Platform Toe & Needle Heel
-            float dInstepL = sdCapsule(p, ankleL, toeL, 0.036, 0.024);
-            float dToeL = sdCapsule(p, toeL, toeL + vec2(0.038, -0.02), 0.024, 0.016);
-            float dStilettoL = sdCapsule(p, ankleL - vec2(0.02, 0.02), heelL, 0.016, 0.009);
-            float dFootL = min(dInstepL, min(dToeL, dStilettoL));
-
-            float dInstepR = sdCapsule(p, ankleR, toeR, 0.036, 0.024);
-            float dToeR = sdCapsule(p, toeR, toeR + vec2(0.038, -0.02), 0.024, 0.016);
-            float dStilettoR = sdCapsule(p, ankleR - vec2(0.02, 0.02), heelR, 0.016, 0.009);
-            float dFootR = min(dInstepR, min(dToeR, dStilettoR));
-
-            float dLegL = min(dThighL, min(dKneeL, min(dCalfL, dFootL)));
-            float dLegR = min(dThighR, min(dKneeR, min(dCalfR, dFootR)));
-            float dLegs = min(dLegL, dLegR);
-
-            return smin(dUpper, dLegs, 0.048);
-        }
-
-        void main() {
-            vec2 uv = vUv;
-            
-            // 5-Column Lightbox Wall Layout
-            float numBoxes = 5.0;
-            float boxCol = floor(uv.x * numBoxes);
-            float boxU = fract(uv.x * numBoxes);
-            float boxV = uv.y;
-
-            // Box compartment center-relative coordinates [-1, 1]
-            vec2 boxP = vec2((boxU - 0.5) * 2.0, (boxV - 0.5) * 2.0);
-
-            // Lightbox Bevel Border Frame
-            vec2 frameDist = abs(boxP);
-            float isFrame = step(0.92, max(frameDist.x, frameDist.y));
-            float neonTrim = smoothstep(0.04, 0.0, abs(max(frameDist.x, frameDist.y) - 0.90));
-
-            // Dynamic 5-Color Neon Lightbox Color Palette
-            vec3 cBox;
-            if (boxCol < 0.5) {
-                // Box 0: Hot Neon Magenta
-                cBox = vec3(1.0, 0.05, 0.55);
-            } else if (boxCol < 1.5) {
-                // Box 1: Electric Cyan (Matching Envato glowing blue reference)
-                cBox = vec3(0.0, 0.85, 1.0);
-            } else if (boxCol < 2.5) {
-                // Box 2: Solar Amber Gold (Center Stage)
-                cBox = vec3(1.0, 0.80, 0.10);
-            } else if (boxCol < 3.5) {
-                // Box 3: Vivid Emerald Lime
-                cBox = vec3(0.05, 1.0, 0.45);
-            } else {
-                // Box 4: Ultraviolet Purple
-                cBox = vec3(0.70, 0.10, 1.0);
-            }
-
-            // Audio-driven Color Pulse & Strobe
-            float beatPulse = uBass * (0.8 + 0.4 * sin(uTime * 4.0 + boxCol));
-            vec3 boxBacklight = cBox * (0.80 + beatPulse * 0.90);
-
-            // 3D Inner Lightbox Gradient Shading (Recessed luminous glow effect)
-            float innerGlow = (1.0 - length(boxP * vec2(0.7, 0.85)) * 0.72);
-            innerGlow = clamp(innerGlow, 0.06, 1.0);
-            vec3 bgCol = mix(vec3(0.012, 0.005, 0.035), boxBacklight, pow(innerGlow, 1.5));
-
-            // Atmospheric backlight flare & subtle smoke haze in the booth
-            float smokeHaze = sin(boxP.x * 4.0 + uTime * 1.5) * cos(boxP.y * 3.0 - uTime * 1.2) * 0.08 + 0.08;
-            bgCol += cBox * smokeHaze * (0.8 + uBass * 0.5);
-
-            // Horizontal neon stage tube lines on back wall
-            float tubeGrid = sin(boxV * 35.0) * 0.5 + 0.5;
-            tubeGrid = pow(tubeGrid, 8.0) * 0.35;
-            bgCol += cBox * tubeGrid;
-
-            // Frame metallic dark bezel with glowing neon tubing
-            vec3 frameCol = vec3(0.04, 0.03, 0.06) + cBox * (neonTrim * 2.2 + uBass * 0.4);
-            vec3 sceneCol = mix(bgCol, frameCol, isFrame);
-
-            // -----------------------------------------------------------------
-            // Render High-Fidelity Glowing Shadow Dancer in this Compartment
-            // -----------------------------------------------------------------
-            // Scale and center coordinate for the dancer
-            vec2 dancerUv = vec2(boxP.x * 0.85, (boxV - 0.52) * 1.85);
-            
-            // Sync dancer choreography with BPM and column offset
-            float danceBps = (uBPM / 60.0);
-            float danceTime = uTime * danceBps * 3.14159 + boxCol * 1.25;
-            int poseType = int(mod(boxCol, 4.0));
-
-            float dBody = sdFemaleDancer(dancerUv, danceTime, poseType);
-
-            // High-contrast anti-aliased body mask
-            float bodyMask = 1.0 - smoothstep(-0.004, 0.004, dBody);
-
-            // Body Surface Normal & 3D Shading
-            float eps = 0.0035;
-            float dx = sdFemaleDancer(dancerUv + vec2(eps, 0.0), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(eps, 0.0), danceTime, poseType);
-            float dy = sdFemaleDancer(dancerUv + vec2(0.0, eps), danceTime, poseType) - sdFemaleDancer(dancerUv - vec2(0.0, eps), danceTime, poseType);
-            vec2 grad = normalize(vec2(dx, dy) + vec2(0.0001));
-            float nz = sqrt(max(0.0, 1.0 - dot(grad, grad) * 0.5));
-
-            // Deep obsidian / silky shadow dancer silhouette body core
-            vec3 cSilhouette = vec3(0.010, 0.008, 0.018);
-
-            // Glossy highlight reflection on shoulder/bust/hips
-            vec2 lightDir = normalize(vec2(0.35, 0.75));
-            float spec = pow(max(0.0, dot(grad, lightDir)), 7.0) * (0.40 + uBass * 0.35);
-            vec3 bodyShading = cSilhouette + vec3(0.45, 0.50, 0.60) * spec;
-
-            // Intense Glowing Backlit Fresnel Rim Light (Shadow Dancer Aesthetic)
-            float fresnel = pow(clamp(1.0 - nz, 0.0, 1.0), 1.9);
-            vec3 rimGlow = cBox * fresnel * (2.8 + uBass * 1.5);
-
-            vec3 dancerCol = bodyShading + rimGlow;
-
-            // Volumetric Backlight Corona / Bloom Spill around silhouette contours
-            float outerHalo = smoothstep(0.09, 0.0, dBody) * 0.55;
-            sceneCol += cBox * outerHalo * (1.1 + uBass * 0.7);
-
-            // Combine Dancer over Lightbox Scene
-            vec3 finalCol = mix(sceneCol, dancerCol, bodyMask);
-
-            // Mirrored glossy dance floor reflection at bottom
-            if (boxV < 0.16) {
-                float floorFade = smoothstep(0.16, 0.0, boxV);
-                vec3 floorReflect = cBox * (0.50 + uBass * 0.5) * floorFade;
-                finalCol += floorReflect;
-            }
-
-            // CRT Scanline & Lens Vignette
-            float scanline = sin(vUv.y * 420.0) * 0.08 + 0.92;
-            float vignette = smoothstep(0.85, 0.35, length(vUv - 0.5) * 0.9);
-            finalCol *= scanline * vignette;
-
-            gl_FragColor = vec4(finalCol, 1.0);
-        }
-    `
-};
-
-// =============================================================================
-// Retro Arcade 80s Shader (Pac-Man, Ghost Chase, Screen Perimeter & Space Invader Cannon Shootout)
-// =============================================================================
 const RetroArcadeShader = {
     uniforms: {
         uTime: { value: 0.0 },
@@ -6146,29 +5801,7 @@ export function createVFXScene(container) {
     gDiscoBall.add(glintSystem);
 
     // -------------------------------------------------------------------------
-    // FX 5: 🕺 70S DISCO DANCEFLOOR (CLEAN SATURDAY NIGHT FEVER FLOOR)
-    // -------------------------------------------------------------------------
-    const gDiscoFloor = createFXGroup();
-
-    // 1. Saturday Night Fever Illuminated Dancefloor
-    const dfMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 },
-            uBPM: { value: 126.0 }
-        },
-        vertexShader: DiscoFloorShader.vertexShader,
-        fragmentShader: DiscoFloorShader.fragmentShader,
-        transparent: true,
-        side: THREE.DoubleSide
-    });
-    const dfMesh = new THREE.Mesh(new THREE.PlaneGeometry(36, 36), dfMat);
-    dfMesh.rotation.x = -Math.PI / 2.3;
-    dfMesh.position.set(0, -6.0, -8.0);
-    gDiscoFloor.add(dfMesh);
-
-    // -------------------------------------------------------------------------
-    // FX 6: ⚡ DUAL-BANK VOLUMETRIC SEARCHLIGHTS
+    // FX 5: ⚡ DUAL-BANK VOLUMETRIC SEARCHLIGHTS
     // -------------------------------------------------------------------------
     const gLasers = createFXGroup();
     const topLaserBeams = [];
@@ -6336,33 +5969,12 @@ export function createVFXScene(container) {
     const centerOcta = new THREE.Mesh(new THREE.OctahedronGeometry(1.8, 1), new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true }));
     gRings.add(centerOcta);
 
-    // -------------------------------------------------------------------------
-    // FX 9: 💃 SILHOUETTE CLUB DANCERS IN GLOWING COLOR BOX WALLS [NEW]
-    // -------------------------------------------------------------------------
-    const gDancers = createFXGroup();
-    const dancerBoxGeo = new THREE.PlaneGeometry(38, 22);
-    const dancerBoxMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 },
-            uMid: { value: 0.0 },
-            uTreble: { value: 0.0 },
-            uBPM: { value: 126.0 }
-        },
-        vertexShader: DiscoDancerBoxShader.vertexShader,
-        fragmentShader: DiscoDancerBoxShader.fragmentShader,
-        depthWrite: false
-    });
-    const dancerBoxMesh = new THREE.Mesh(dancerBoxGeo, dancerBoxMat);
-    dancerBoxMesh.position.set(0, 0, -4.5);
-    gDancers.add(dancerBoxMesh);
-
     // =========================================================================
     // CATEGORY 3: 🕸️ CYBER & RETRO (FX 10-13)
     // =========================================================================
 
     // -------------------------------------------------------------------------
-    // FX 10: 🌅 SYNTHWAVE CYBER GRID
+    // FX 8: 🌅 SYNTHWAVE CYBER GRID
     // -------------------------------------------------------------------------
     const gGrid = createFXGroup();
     const gridPlaneGeo = new THREE.PlaneGeometry(74, 100, 96, 120);
@@ -7029,7 +6641,7 @@ export function createVFXScene(container) {
     gSweepingGodrays.add(godrayFogGroup);
 
     // -------------------------------------------------------------------------
-    // FX 19: ☁️ PURE WHITE GODRAYS & PROTEAN VOLUMETRIC CLOUDS
+    // FX 17: ☁️ PURE WHITE GODRAYS & PROTEAN VOLUMETRIC CLOUDS
     // -------------------------------------------------------------------------
     const gWhiteGodrayProtean = createFXGroup();
 
@@ -7203,7 +6815,7 @@ export function createVFXScene(container) {
     gWhiteGodrayProtean.add(whiteGodrayFogGroup);
 
     // -------------------------------------------------------------------------
-    // FX 20: 🪩 DISCO DANCE FLOOR WITH COLOURED GODRAYS & ATMOSPHERIC SMOKE
+    // FX 18: 🪩 DISCO DANCE FLOOR WITH COLOURED GODRAYS & ATMOSPHERIC SMOKE
     // -------------------------------------------------------------------------
     const gDiscoGodrays = createFXGroup();
 
@@ -7671,7 +7283,7 @@ export function createVFXScene(container) {
         vhsSmokeGroup.add(smokeMesh);
     });
     // -------------------------------------------------------------------------
-    // FX 22: 🎃 SPINNING PUMPKIN DISCO BALL & VOLUMETRIC BLUE GODRAYS
+    // FX 20: 🎃 SPINNING PUMPKIN DISCO BALL & VOLUMETRIC BLUE GODRAYS
     // -------------------------------------------------------------------------
     const gPumpkinDiscoBall = createFXGroup();
 
@@ -8868,7 +8480,7 @@ export function createVFXScene(container) {
             currentFXIndex = index;
             nightclubPass.uniforms.uAberration.value = 0.3;
             manualFlash = 0.3;
-            if (index === 21) {
+            if (index === 19) {
                 vhsLastPhraseSwitchTime = clock.getElapsedTime();
                 renderVhsTextCanvas(vhsCurrentPhraseIdx);
             }
@@ -9534,17 +9146,9 @@ export function createVFXScene(container) {
             glintMat.size = 0.35 * (1.0 + (bassPop * 0.35) + (transient * 0.30));
         }
         // ---------------------------------------------------------------------
-        // FX 5: 🕺 70s Disco Dancefloor (Clean Saturday Night Fever Floor)
+        // FX 5: ⚡ Dual-Bank Volumetric Searchlights
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 5) {
-            dfMat.uniforms.uTime.value = elapsedTime;
-            dfMat.uniforms.uBass.value = bassPop;
-            dfMat.uniforms.uBPM.value = currentBPM;
-        }
-        // ---------------------------------------------------------------------
-        // FX 6: ⚡ Dual-Bank Volumetric Searchlights
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 6) {
             const sweepTime = elapsedTime * 1.4;
             const choreoPhase = Math.floor(elapsedTime * 0.15) % 3;
             const fanSpread = Math.sin(sweepTime * 0.5) * 0.5 + 0.5;
@@ -9605,7 +9209,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 7: 💥 Saber Multi-Beam DJ Fixtures
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 7) {
+        else if (currentFXIndex === 6) {
             saberPods.forEach((pod, pIdx) => {
                 const dir = pod.cfg.rotDir;
                 pod.head.rotation.z += speed * (0.35 + pIdx * 0.06) * dir;
@@ -9624,7 +9228,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 8: 💫 Strobe Hyper-Rings & Laser Matrix
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 8) {
+        else if (currentFXIndex === 7) {
             hyperRings.forEach((hr, idx) => {
                 const dir = (idx % 2 === 0) ? 1 : -1;
                 hr.rotation.x += speed * (0.5 + idx * 0.15) * dir;
@@ -9636,19 +9240,9 @@ export function createVFXScene(container) {
             centerOcta.rotation.y += delta * 1.0;
         }
         // ---------------------------------------------------------------------
-        // FX 9: 💃 Silhouette Club Dancers in Glowing Color Box Walls [NEW]
+        // FX 8: 🌅 Synthwave Cyber Grid
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 9) {
-            dancerBoxMat.uniforms.uTime.value = elapsedTime;
-            dancerBoxMat.uniforms.uBass.value = bassPop;
-            dancerBoxMat.uniforms.uMid.value = audio.smoothedMid || 0;
-            dancerBoxMat.uniforms.uTreble.value = audio.smoothedTreble || 0;
-            dancerBoxMat.uniforms.uBPM.value = currentBPM;
-        }
-        // ---------------------------------------------------------------------
-        // FX 10: 🌅 Synthwave Cyber Grid
-        // ---------------------------------------------------------------------
-        else if (currentFXIndex === 10) {
+        else if (currentFXIndex === 8) {
             gridPlaneMat.uniforms.uTime.value = elapsedTime;
             gridPlaneMat.uniforms.uBass.value = bassPop;
             gridPlaneMat.uniforms.uMid.value = audio.smoothedMid || 0;
@@ -9658,7 +9252,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 11: 🌄 Synthwave Glowing River, Mountains & 80s Sun [NEW]
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 11) {
+        else if (currentFXIndex === 9) {
             riverMat.uniforms.uTime.value = elapsedTime;
             riverMat.uniforms.uBass.value = bassPop;
             riverMat.uniforms.uMid.value = audio.smoothedMid || 0;
@@ -9672,7 +9266,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 12: 💻 Matrix Code Rain [NEW]
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 12) {
+        else if (currentFXIndex === 10) {
             matrixMat.uniforms.uTime.value = elapsedTime;
             matrixMat.uniforms.uBass.value = bassPop;
             matrixMat.uniforms.uMid.value = audio.smoothedMid || 0;
@@ -9681,7 +9275,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 13: 👾 Retro Arcade 80s Theme [NEW]
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 13) {
+        else if (currentFXIndex === 11) {
             arcadeMat.uniforms.uTime.value = elapsedTime;
             arcadeMat.uniforms.uBass.value = bassPop;
             arcadeMat.uniforms.uMid.value = audio.smoothedMid || 0;
@@ -9689,7 +9283,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 14: 🚀 Warp Speed Starfield
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 14) {
+        else if (currentFXIndex === 12) {
             const positions = warpStarGeo.attributes.position.array;
             const warpVelocity = (22.0 + bassPop * 40.0 + transient * 50.0) * delta;
 
@@ -9708,7 +9302,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 15: 🌌 Spiral Galaxy Cosmic Vortex
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 15) {
+        else if (currentFXIndex === 13) {
             plasmaMat.uniforms.uTime.value = elapsedTime;
             plasmaMat.uniforms.uBass.value = bassPop;
             plasmaMat.uniforms.uMid.value = audio.smoothedMid || 0;
@@ -9735,7 +9329,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 16: ✨ Hyper Particle Stream (GPU Curl & Multi-Strand Spline Flow)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 16) {
+        else if (currentFXIndex === 14) {
             // Soft exponential smoothing for audio responsiveness (zero twitching)
             const rawBass = (audio.smoothedBass || 0.0);
             const rawMid = (audio.smoothedMid || 0.0);
@@ -9774,7 +9368,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 17: ⏱️ Time.is Live Precision DJ Clock & Spectrum [NEW]
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 17) {
+        else if (currentFXIndex === 15) {
             const now = new Date();
             const hours = String(now.getHours()).padStart(2, '0');
             const minutes = String(now.getMinutes()).padStart(2, '0');
@@ -9923,7 +9517,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 18: 🔦 Sweeping Godray Disco Lights (Slow, Majestic Moving-Head Rig)
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 18) {
+        else if (currentFXIndex === 16) {
             // Majestic, fluid arena sweep synced to tempo (graceful, calm, hypnotic)
             const sweepSpeed = 0.14 * (currentBPM / 126.0);
             const sweepTime = elapsedTime * sweepSpeed;
@@ -10032,9 +9626,9 @@ export function createVFXScene(container) {
             });
         }
         // ---------------------------------------------------------------------
-        // FX 19: ☁️ Pure White Godrays & Protean Volumetric Clouds
+        // FX 17: ☁️ Pure White Godrays & Protean Volumetric Clouds
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 19) {
+        else if (currentFXIndex === 17) {
             // Tempo-synchronized majestic arena sweep
             const sweepSpeed = 0.14 * (currentBPM / 126.0);
             const sweepTime = elapsedTime * sweepSpeed;
@@ -10140,9 +9734,9 @@ export function createVFXScene(container) {
             });
         }
         // ---------------------------------------------------------------------
-        // FX 20: 🪩 Disco Dance Floor with Coloured Godrays & Atmospheric Smoke
+        // FX 18: 🪩 Disco Dance Floor with Coloured Godrays & Atmospheric Smoke
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 20) {
+        else if (currentFXIndex === 18) {
             // Animate 70s Saturday Night Fever Disco Dancefloor
             discoStageFloorMat.uniforms.uTime.value = elapsedTime;
             discoStageFloorMat.uniforms.uBass.value = audio.bass || 0;
@@ -10257,7 +9851,7 @@ export function createVFXScene(container) {
         // ---------------------------------------------------------------------
         // FX 21: 📼 VHS Glitch Words & Godrays ("DREAMLOVER" / "DO YOU BELIEVE?")
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 21) {
+        else if (currentFXIndex === 19) {
             // Phrase alternation timer (~8.0s cadence / 16 beats, tempo-synced)
             const phraseDuration = Math.max(7.5, 16.0 * (60.0 / currentBPM));
             if (elapsedTime - vhsLastPhraseSwitchTime > phraseDuration) {
@@ -10393,9 +9987,9 @@ export function createVFXScene(container) {
             });
         }
         // ---------------------------------------------------------------------
-        // FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays
+        // FX 20: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays
         // ---------------------------------------------------------------------
-        else if (currentFXIndex === 22) {
+        else if (currentFXIndex === 20) {
             // 1. 🎵 MUSICAL TIMING & TRUE PERCUSSIVE DRUM ONSET DETECTION
             const bps = currentBPM / 60.0;
             const beatDuration = 60.0 / currentBPM;
@@ -10974,11 +10568,11 @@ export function createVFXScene(container) {
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
         }
-        if (audio.isOnset && currentFXIndex !== 18 && currentFXIndex !== 19 && currentFXIndex !== 20 && currentFXIndex !== 21 && currentFXIndex !== 22) {
+        if (audio.isOnset && (currentFXIndex < 16 || currentFXIndex > 20)) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) {
+        } else if (currentFXIndex >= 16 && currentFXIndex <= 20) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -10992,14 +10586,14 @@ export function createVFXScene(container) {
         camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
+        const fxBloomBoost = (currentFXIndex === 4 || (currentFXIndex >= 16 && currentFXIndex <= 20)) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18);
         const targetBloom = Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex >= 16 && currentFXIndex <= 20) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 18 || currentFXIndex === 19 || currentFXIndex === 20 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex >= 16 && currentFXIndex <= 20) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -11147,28 +10741,28 @@ export function createVFXScene(container) {
             const bps = currentBPM / 60.0;
             const beatStep = Math.floor(time * bps);
 
-            // FX 22: 🎃 Pumpkin Disco Ball -> Sapphire Blue, Flame Orange & Electric Cyan
-            if (currentFXIndex === 22) {
+            // FX 20: 🎃 Pumpkin Disco Ball -> Sapphire Blue, Flame Orange & Electric Cyan
+            if (currentFXIndex === 20) {
                 const pumpkinPalette = ['#0044ff', '#ff4400', '#00e5ff', '#00ff22', '#9400d3', '#ff007f'];
                 return pumpkinPalette[beatStep % pumpkinPalette.length];
             }
-            // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
-            if (currentFXIndex === 18 && typeof godrayChaseIndex === 'number' && godrayPalette) {
+            // FX 16: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
+            if (currentFXIndex === 16 && typeof godrayChaseIndex === 'number' && godrayPalette) {
                 const hexNum = godrayPalette[godrayChaseIndex % godrayPalette.length];
                 return '#' + hexNum.toString(16).padStart(6, '0');
             }
-            // FX 20: 🪩 Disco Floor & Coloured Godrays (O) -> Tracks active disco moving head
-            if (currentFXIndex === 20 && typeof discoGodrayChaseIndex === 'number' && godrayPalette) {
+            // FX 18: 🪩 Disco Floor & Coloured Godrays (O) -> Tracks active disco moving head
+            if (currentFXIndex === 18 && typeof discoGodrayChaseIndex === 'number' && godrayPalette) {
                 const hexNum = godrayPalette[discoGodrayChaseIndex % godrayPalette.length];
                 return '#' + hexNum.toString(16).padStart(6, '0');
             }
-            // FX 21: 📼 VHS Glitch Words & Godrays (P) -> Crisp white with electric neon glitch pulses
-            if (currentFXIndex === 21) {
+            // FX 19: 📼 VHS Glitch Words & Godrays (P) -> Crisp white with electric neon glitch pulses
+            if (currentFXIndex === 19) {
                 const vhsPalette = ['#ffffff', '#00ffff', '#ffffff', '#ff007f'];
                 return vhsPalette[beatStep % vhsPalette.length];
             }
-            // FX 19: ☁️ Pure White Godrays & Fog (I)
-            if (currentFXIndex === 19) {
+            // FX 17: ☁️ Pure White Godrays & Fog (I)
+            if (currentFXIndex === 17) {
                 const whitePalette = ['#ffffff', '#e0f7ff', '#ffffff', '#fff0f5'];
                 return whitePalette[beatStep % whitePalette.length];
             }

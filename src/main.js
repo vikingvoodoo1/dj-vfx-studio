@@ -679,7 +679,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 23;
+    const TOTAL_FX = 21;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -3972,11 +3972,11 @@ async function init() {
     // 4. Categorized FX Bank Switching & Filtering
     const FX_NAMES = [
         '3D Studio EQ', 'Circular Spectrum', 'Fluid Wave Matrix', 'DJ Deck Waveforms',
-        'Spinning Disco Ball', '70s Disco Dancefloor', 'Dual-Bank Lasers', 'Saber Multi-Beams',
-        'Strobe Rings', 'Silhouette Dancers', 'Synthwave Grid', 'Synthwave River & Sun',
-        'Matrix Code Rain', 'Retro Arcade 80s', 'Warp Starfield', 'Spiral Galaxy Vortex',
-        'Hyper Particle Stream', 'Time.is Clock', 'Sweeping Godrays', 'White Godrays & Fog',
-        'Disco Floor & Godrays', 'VHS Glitch Words', 'Pumpkin Disco Ball'
+        'Spinning Disco Ball', 'Dual-Bank Lasers', 'Saber Multi-Beams', 'Strobe Rings',
+        'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
+        'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
+        'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
+        'Pumpkin Disco Ball'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -4950,22 +4950,23 @@ async function init() {
         });
     }
 
-    // 7. Keyboard Shortcuts (22 Presets)
+    // 7. Keyboard Shortcuts (21 Presets)
     const hotkeyMap = {
         '1': 0, '2': 1, '3': 2, '4': 3,
-        '5': 4, '6': 5, '7': 6, '8': 7, '9': 8, '0': 9,
-        '-': 10, '=': 11,
-        'q': 12, 'Q': 12,
-        'w': 13, 'W': 13,
-        'e': 14, 'E': 14,
-        'r': 15, 'R': 15,
-        't': 16, 'T': 16,
-        'y': 17, 'Y': 17,
-        'u': 18, 'U': 18,
-        'i': 19, 'I': 19,
-        'o': 20, 'O': 20,
-        'p': 21, 'P': 21,
-        '[': 22
+        '5': 4, '6': 5, '7': 6, '8': 7,
+        '9': 8, '0': 9,
+        '-': 8, '=': 9,
+        'q': 10, 'Q': 10,
+        'w': 11, 'W': 11,
+        'e': 12, 'E': 12,
+        'r': 13, 'R': 13,
+        't': 14, 'T': 14,
+        'y': 15, 'Y': 15,
+        'u': 16, 'U': 16,
+        'i': 17, 'I': 17,
+        'o': 18, 'O': 18,
+        'p': 19, 'P': 19,
+        '[': 20
     };
 
     window.addEventListener('keydown', (e) => {

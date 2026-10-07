@@ -10,7 +10,7 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ## 🌟 Key Highlights
 
-- **23 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, spinning pumpkin disco balls with volumetric blue godrays, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **21 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, spinning pumpkin disco balls with volumetric blue godrays, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
 - **🖼️ 3-Layer 3D Branding & Promo System**: Independent hardware-accelerated layers for **DJ Logo / Media (MP4/PNG)**, **Station / Broadcast Logo**, and **Event Flyer / Promo Graphics** with 9-way directional grid positioning, 3D spin/orbit/freeroam physics, custom display modes, and dark contrast shields.
 - **⏱️ Multi-Layer Automation & Pop-Up Scheduler**: Interval scheduling for branding layers with customizable frequency (`30s` to `30m`), display duration (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
 - **🎬 10 Cinematic Transition Effects**: Smooth Exponential Fade, Scale Zoom & Spring Pop, Slide In/Down/Up, Neon Strobe Multi-Burst, Cyber Hologram Glitch, 3D Spin Vortex, 3D Perspective Flip Card, and Instant Cut.
@@ -24,7 +24,7 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ---
 
-## 🗂️ VFX Scene Bank (23 Distinct Modes)
+## 🗂️ VFX Scene Bank (21 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: Full-Screen Particle Spectrum Visualizer** — Pure, borderless edge-to-edge 36-band visualizer with frequency-mapped spectral gradients (Cyan to Magenta), peak-hold needle physics, and glowing spectrum particles floating seamlessly from active bar crests all the way to the top of the screen.
@@ -32,32 +32,30 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 - **FX 2: Geometric Disco Spectrum** — Concentric faceted polygon rings undulating with transient beat impacts.
 - **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with deck telemetry.
 
-### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 18–20, FX 22)
-- **FX 18: Sweeping Godray Disco Lights** — 8 concert moving-head fixtures mounted across a top stadium truss with saturated neon beams, Mie forward scattering, staggered bass chase, and floor reflection pools.
-- **FX 19: Pure White Godrays & Protean Volumetric Clouds** — Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop.
-- **FX 20: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic 70s *Saturday Night Fever* illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays with floor reflection pools and lens glow.
-- **FX 22: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays** — Sapphire-blue metallic glass faceted mirror ball sphere with top hanging link chain, carved glowing Jack-o'-Lantern face with incandescent internal flame gradients, 14 fanned deep blue volumetric light rays bouncing off mirror tiles with Mie atmospheric haze, dedicated multi-angle pinspot lighting, 1,200 specular facet glints, orbiting floor caustic reflection spots, and drifting fire embers.
+### 🔦 Category 2: Volumetric Godrays & Stage Fixtures (FX 16–18, FX 20)
+- **FX 16: Sweeping Godray Disco Lights** — 8 concert moving-head fixtures mounted across a top stadium truss with saturated neon beams, Mie forward scattering, staggered bass chase, and floor reflection pools.
+- **FX 17: Pure White Godrays & Protean Volumetric Clouds** — Diamond Xenon white 8-head moving spotlight rig combined with raymarched Protean Clouds volumetric fog backdrop.
+- **FX 18: Disco Dancefloor with Coloured Godrays & Atmospheric Smoke** — Classic illuminated tile dancefloor bathed in 8 sweeping multi-colored concert godrays with floor reflection pools and lens glow.
+- **FX 20: 🎃 Spinning Pumpkin Disco Ball & Volumetric Blue Godrays** — Sapphire-blue metallic glass faceted mirror ball sphere with top hanging link chain, carved glowing Jack-o'-Lantern face with incandescent internal flame gradients, 14 fanned deep blue volumetric light rays bouncing off mirror tiles with Mie atmospheric haze, dedicated multi-angle pinspot lighting, 1,200 specular facet glints, orbiting floor caustic reflection spots, and drifting fire embers.
 
-### 🕸️ Category 3: Cyber, Retro & Typography (FX 10–13, FX 21)
-- **FX 10: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.
-- **FX 11: Synthwave River, Mountains & 80s Sun** — Procedural GLSL sunset with horizontal bar segments, twilight star sky, and reflective river shader.
-- **FX 12: Matrix Code Rain** — Classic cascading digital rain glyphs rendered in glowing phosphor green with audio speed modulation.
-- **FX 13: Retro Arcade 80s Theme** — Vintage vector CRT arcade aesthetics with wireframe geometry and nostalgic neon glow.
-- **FX 21: VHS Glitch Words with Overhead Godrays & Inward Smoke** — Alternating bold white typography (*"DREAMLOVER"* / *"DO YOU BELIEVE?"*) with real-time VHS scanlines, horizontal tape tracking tears, RGB chromatic displacement, and analog static noise, illuminated by 8 downward-pointing moving-head godray spotlights with dual-directional atmospheric smoke billowing inward from left and right wings.
+### 🕸️ Category 3: Cyber, Retro & Typography (FX 8–11, FX 19)
+- **FX 8: Synthwave Cyber Grid** — Infinite perspective neon wireframe grid rushing into the horizon with bass-reactive mountain ranges.
+- **FX 9: Synthwave River, Mountains & 80s Sun** — Procedural GLSL sunset with horizontal bar segments, twilight star sky, and reflective river shader.
+- **FX 10: Matrix Code Rain** — Classic cascading digital rain glyphs rendered in glowing phosphor green with audio speed modulation.
+- **FX 11: Retro Arcade 80s Theme** — Vintage vector CRT arcade aesthetics with wireframe geometry and nostalgic neon glow.
+- **FX 19: VHS Glitch Words with Overhead Godrays & Inward Smoke** — Alternating bold white typography (*"DREAMLOVER"* / *"DO YOU BELIEVE?"*) with real-time VHS scanlines, horizontal tape tracking tears, RGB chromatic displacement, and analog static noise, illuminated by 8 downward-pointing moving-head godray spotlights with dual-directional atmospheric smoke billowing inward from left and right wings.
 
-### 🌌 Category 4: Space, Particles & Stage Lights (FX 14–17)
-- **FX 14: Warp Speed Starfield** — Hyperdrive relativistic star streaks accelerating dynamically on track drops.
-- **FX 15: Spiral Galaxy Accretion Vortex** — 3D volumetric logarithmic accretion spiral with millions of stellar bodies and core luminance.
-- **FX 16: Hyper Particle Stream** — GPU curl noise particle simulation following 3D Bézier splines with chromatic velocity grading.
-- **FX 17: Time.is Atomic DJ Stage Clock** — High-resolution millisecond synchronized clock with rotating 3D gyro gimbal rings and circular frequency analyzer.
+### 🌌 Category 4: Space, Particles & Stage Lights (FX 12–15)
+- **FX 12: Warp Speed Starfield** — Hyperdrive relativistic star streaks accelerating dynamically on track drops.
+- **FX 13: Spiral Galaxy Accretion Vortex** — 3D volumetric logarithmic accretion spiral with millions of stellar bodies and core luminance.
+- **FX 14: Hyper Particle Stream** — GPU curl noise particle simulation following 3D Bézier splines with chromatic velocity grading.
+- **FX 15: Time.is Atomic DJ Stage Clock** — High-resolution millisecond synchronized clock with rotating 3D gyro gimbal rings and circular frequency analyzer.
 
-### 🌊 Category 5: Tunnels, Lasers & Nightclub Visuals (FX 4–9)
+### ⚡ Category 5: Lasers & Disco (FX 4–7)
 - **FX 4: Authentic Nightclub Mirror Ball** — Faceted 3D disco mirror ball with motorized spin, overhead dual pinspots, and dancing floor reflection sprites.
-- **FX 5: Neon Laser Polygon Tunnel** — Hexagonal laser tunnel with volumetric neon perimeter strobes.
-- **FX 6: Cyber Cyberpunk Matrix Tunnel** — High-speed cyber grid corridor with wireframe light streams.
-- **FX 7: Hypnotic Spiral Vortex Tunnel** — Hypnotic dual-helix vortex with bass-reactive angular acceleration.
-- **FX 8: Neon Laser Fan Array** — Multi-beam concert laser array sweeping over crowd horizon.
-- **FX 9: Audio Wave Surface Grid** — 3D displacement wireframe ocean surface reacting to live frequency spectrum.
+- **FX 5: Dual-Bank Moving Lasers** — Dual upper and lower scanning laser banks with responsive color fans.
+- **FX 6: Saber Multi-Beams** — Cross-firing high-intensity concert saber beams with synchronized rotation.
+- **FX 7: Strobe Rings & Atom Particles** — Concentric pulsating neon strobe rings with high-speed orbiting electrons.
 
 ---
 
