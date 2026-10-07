@@ -389,10 +389,11 @@ const PumpkinVolumetricRaysShader = {
             float alpha = baseAlpha * (0.85 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
             if (alpha < 0.001) discard;
 
-            // 7. Color Composition with Deep Vibrant Halloween Saturation & Bright Core
-            float coreBlend = clamp(hotCore * 1.10 + originGlow * 0.30 + impactHotspot * 0.35 + uPulse * 0.20, 0.0, 1.0);
-            vec3 saturatedColor = uColor * 1.15;
-            vec3 finalColor = mix(saturatedColor, uCoreColor, coreBlend * 0.65) * (1.0 + uPulse * 0.30 + uTreble * 0.20);
+            // 7. Color Composition with Rich True Color Saturation & Luminous Core
+            float coreBlend = clamp(hotCore * 0.85 + originGlow * 0.25 + impactHotspot * 0.30 + uPulse * 0.15, 0.0, 1.0);
+            vec3 saturatedColor = uColor * 1.25;
+            vec3 saturatedCore = mix(uCoreColor, uColor, 0.25) * 1.20;
+            vec3 finalColor = mix(saturatedColor, saturatedCore, coreBlend * 0.45) * (1.0 + uPulse * 0.25 + uTreble * 0.15);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -473,8 +474,10 @@ const PumpkinReflectionRaysShader = {
             float alpha = baseAlpha * (0.80 + uPulse * 0.35 + uTreble * 0.25) * uIntensity;
             if (alpha < 0.001) discard;
 
-            float coreBlend = clamp(hotCore * 1.20 + bounceOrigin * 0.45 + uPulse * 0.25, 0.0, 1.0);
-            vec3 finalColor = mix(uColor * 0.88, uCoreColor, coreBlend) * (1.0 + uPulse * 0.35 + uTreble * 0.25);
+            float coreBlend = clamp(hotCore * 0.85 + bounceOrigin * 0.35 + uPulse * 0.20, 0.0, 1.0);
+            vec3 saturatedColor = uColor * 1.30;
+            vec3 saturatedCore = mix(uCoreColor, uColor, 0.30) * 1.25;
+            vec3 finalColor = mix(saturatedColor, saturatedCore, coreBlend * 0.40) * (1.0 + uPulse * 0.25 + uTreble * 0.15);
 
             gl_FragColor = vec4(finalColor * alpha, clamp(alpha, 0.0, 1.0));
         }
@@ -7597,33 +7600,33 @@ export function createVFXScene(container) {
     pumpkinChainGroup.add(ceilingMountMesh);
     gPumpkinDiscoBall.add(pumpkinChainGroup);
 
-    // Highly Vibrant Halloween & Radiant White Spectral Color Palette for FX 22
+    // Highly Vibrant True Stage Colors Palette for FX 22 (Pure saturated hues, luminous matching cores, zero pale whites)
     const HALLOWEEN_PALETTE = [
-        // 1. Hyper-Brilliant Xenon Cool White
-        { color: new THREE.Color(0xffffff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffffff), name: 'Xenon Strobe White' },
+        // 1. Deep Royal Sapphire Cobalt Blue
+        { color: new THREE.Color(0x0044ff), core: new THREE.Color(0x3872ff), emissive: new THREE.Color(0x0026b3), name: 'Royal Sapphire Blue' },
         // 2. Deep Saturated Blood Pumpkin Orange
-        { color: new THREE.Color(0xff4000), core: new THREE.Color(0xffd599), emissive: new THREE.Color(0xff3300), name: 'Deep Pumpkin Flame' },
-        // 3. Shimmering Moonlight Ice Silver White
-        { color: new THREE.Color(0xd6eeff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xb0d8ff), name: 'Moonlight Ice White' },
-        // 4. Sinister Witch Velvet Violet Purple
-        { color: new THREE.Color(0x9900ff), core: new THREE.Color(0xebccff), emissive: new THREE.Color(0x8800ee), name: 'Witch Velvet Purple' },
-        // 5. Radioactive Toxic Acid Neon Slime Green
-        { color: new THREE.Color(0x00ff33), core: new THREE.Color(0xd0ffd9), emissive: new THREE.Color(0x00dd22), name: 'Toxic Slime Green' },
-        // 6. Warm Halogen Candlelight Incandescent Gold White
-        { color: new THREE.Color(0xffeed6), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xffd9a8), name: 'Candlelight Gold White' },
+        { color: new THREE.Color(0xff4400), core: new THREE.Color(0xff6e1a), emissive: new THREE.Color(0xcc2900), name: 'Vivid Pumpkin Flame' },
+        // 3. Electric Laser Cyan
+        { color: new THREE.Color(0x00e5ff), core: new THREE.Color(0x4ff0ff), emissive: new THREE.Color(0x009eb3), name: 'Electric Laser Cyan' },
+        // 4. Sinister Witch Velvet Purple
+        { color: new THREE.Color(0x9400d3), core: new THREE.Color(0xbd3bfa), emissive: new THREE.Color(0x6a0099), name: 'Witch Velvet Purple' },
+        // 5. Radioactive Toxic Acid Neon Green
+        { color: new THREE.Color(0x00ff22), core: new THREE.Color(0x47ff5f), emissive: new THREE.Color(0x00b315), name: 'Toxic Acid Green' },
+        // 6. Molten Jack-o'-Lantern Amber Gold
+        { color: new THREE.Color(0xff8c00), core: new THREE.Color(0xffad2e), emissive: new THREE.Color(0xcc6600), name: 'Molten Amber Gold' },
         // 7. Sinister Blood Ruby Crimson Red
-        { color: new THREE.Color(0xff002b), core: new THREE.Color(0xffc2cc), emissive: new THREE.Color(0xee001e), name: 'Blood Ruby Crimson' },
-        // 8. Deep Glowing Jack-o'-Lantern Molten Amber
-        { color: new THREE.Color(0xff7700), core: new THREE.Color(0xffe2b3), emissive: new THREE.Color(0xee6600), name: 'Molten Jack-o-Lantern' },
-        // 9. Spectral Ghost Silver Lilac White
-        { color: new THREE.Color(0xf0e6ff), core: new THREE.Color(0xffffff), emissive: new THREE.Color(0xdac4ff), name: 'Spectral Phantom White' },
-        // 10. Midnight Phantom Spooky Cobalt Blue
-        { color: new THREE.Color(0x0048ff), core: new THREE.Color(0xb8d0ff), emissive: new THREE.Color(0x0038dd), name: 'Midnight Spooky Blue' }
+        { color: new THREE.Color(0xff002b), core: new THREE.Color(0xff3b59), emissive: new THREE.Color(0xb3001b), name: 'Blood Ruby Crimson' },
+        // 8. Shocking Neon Fuchsia Pink
+        { color: new THREE.Color(0xff007f), core: new THREE.Color(0xff3d9f), emissive: new THREE.Color(0xb30056), name: 'Shocking Neon Fuchsia' },
+        // 9. High-Voltage Laser Lime
+        { color: new THREE.Color(0xa6ff00), core: new THREE.Color(0xc2ff3d), emissive: new THREE.Color(0x73b300), name: 'Laser Lime Gold' },
+        // 10. Deep Caribbean Turquoise
+        { color: new THREE.Color(0x00ffaa), core: new THREE.Color(0x47ffc2), emissive: new THREE.Color(0x00b374), name: 'Deep Caribbean Turquoise' }
     ];
 
     function sampleHalloweenPalette(t) {
         if (!HALLOWEEN_PALETTE || HALLOWEEN_PALETTE.length === 0) {
-            const fallback = new THREE.Color(0xffffff);
+            const fallback = new THREE.Color(0x00e5ff);
             return { color: fallback, core: fallback, emissive: fallback };
         }
         const n = HALLOWEEN_PALETTE.length;
@@ -7715,21 +7718,71 @@ export function createVFXScene(container) {
         headBodyMesh.rotation.x = Math.PI / 2;
         headGroup.add(headBodyMesh);
 
-        // Glowing front lens optic disc
-        const lensGeo = new THREE.CircleGeometry(0.44, 24);
+        // Lens bezel collar (matte dark metallic rim framing the optical glass)
+        const bezelGeo = new THREE.RingGeometry(0.42, 0.485, 28);
+        const bezelMat = new THREE.MeshStandardMaterial({
+            color: 0x0a0c10,
+            metalness: 0.95,
+            roughness: 0.25,
+            side: THREE.DoubleSide
+        });
+        const bezelMesh = new THREE.Mesh(bezelGeo, bezelMat);
+        bezelMesh.position.set(0, 0, 0.478);
+        headGroup.add(bezelMesh);
+
+        // Concert lens illuminated front halo ring
+        const bezelLedGeo = new THREE.TorusGeometry(0.455, 0.018, 12, 28);
+        const bezelLedMat = new THREE.MeshBasicMaterial({ color: 0x00ffff });
+        const bezelLedMesh = new THREE.Mesh(bezelLedGeo, bezelLedMat);
+        bezelLedMesh.position.set(0, 0, 0.480);
+        headGroup.add(bezelLedMesh);
+
+        // Primary optical glass lens element (vibrant true-color emissive glass)
+        const lensGeo = new THREE.CircleGeometry(0.42, 28);
         const lensMat = new THREE.MeshBasicMaterial({
-            color: 0xffffff,
+            color: 0x00ffff,
             side: THREE.DoubleSide
         });
         const lensMesh = new THREE.Mesh(lensGeo, lensMat);
-        lensMesh.position.set(0, 0, 0.49);
+        lensMesh.position.set(0, 0, 0.482);
         headGroup.add(lensMesh);
+
+        // High-output condenser aperture corona (additive glow around inner optics)
+        const lensCoronaGeo = new THREE.RingGeometry(0.20, 0.41, 28);
+        const lensCoronaMat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.85,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const lensCoronaMesh = new THREE.Mesh(lensCoronaGeo, lensCoronaMat);
+        lensCoronaMesh.position.set(0, 0, 0.485);
+        headGroup.add(lensCoronaMesh);
+
+        // High-energy central emitter core (super-bright intense LED/arc lamp core)
+        const lensCoreGeo = new THREE.CircleGeometry(0.22, 28);
+        const lensCoreMat = new THREE.MeshBasicMaterial({
+            color: 0x00ffff,
+            side: THREE.DoubleSide,
+            transparent: true,
+            opacity: 0.95,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+        const lensCoreMesh = new THREE.Mesh(lensCoreGeo, lensCoreMat);
+        lensCoreMesh.position.set(0, 0, 0.488);
+        headGroup.add(lensCoreMesh);
 
         return {
             fixtureGroup,
             yokeGroup,
             headGroup,
             lensMat,
+            lensCoronaMat,
+            lensCoreMat,
+            bezelLedMat,
             ledRingMat: accentMat
         };
     }
@@ -8082,8 +8135,16 @@ export function createVFXScene(container) {
         pFloorPos[f * 3 + 1] = -10.5 + Math.random() * 1.5; // On stage floor
         pFloorPos[f * 3 + 2] = Math.sin(angle) * rad;
 
-        const isOrange = Math.random() < 0.35;
-        const col = isOrange ? new THREE.Color(0xff8800) : new THREE.Color(0x00ffff);
+        const floorPalette = [
+            new THREE.Color(0x00e5ff), // Electric Cyan
+            new THREE.Color(0xff4400), // Pumpkin Orange
+            new THREE.Color(0x00ff22), // Toxic Green
+            new THREE.Color(0x9400d3), // Witch Purple
+            new THREE.Color(0xff007f), // Neon Pink
+            new THREE.Color(0x0044ff), // Cobalt Blue
+            new THREE.Color(0xff8c00)  // Molten Amber
+        ];
+        const col = floorPalette[Math.floor(Math.random() * floorPalette.length)];
         pFloorCol[f * 3] = col.r;
         pFloorCol[f * 3 + 1] = col.g;
         pFloorCol[f * 3 + 2] = col.b;
@@ -9814,10 +9875,17 @@ export function createVFXScene(container) {
             const beamLeftPower = Math.max(0.20, (0.45 + leftHit * 0.50 + audioSurge * 0.35 + pumpkinDeadOnFlashPulse * 0.50 + pumpkin8BarFlashPulse * 0.60 + convergencePower * 0.60) * (0.70 + pulseMultiL * 0.30));
             const beamRightPower = Math.max(0.20, (0.45 + rightHit * 0.50 + audioSurge * 0.35 + pumpkinDeadOnFlashPulse * 0.50 + pumpkin8BarFlashPulse * 0.60 + convergencePower * 0.60) * (0.70 + pulseMultiR * 0.30));
 
-            // Update Fixture Lens & Status LED Colors and Intensity with Musical Beat Pulse
-            pLeftFixture.lensMat.color.copy(leftColor).multiplyScalar(0.20 + pulseMultiL * 0.70);
+            // Update Fixture Lens Optics & Status LED Colors: True saturated colors matching the beam
+            pLeftFixture.lensMat.color.copy(leftColor);
+            pLeftFixture.lensCoronaMat.color.copy(leftColor);
+            pLeftFixture.lensCoreMat.color.copy(leftCore);
+            pLeftFixture.bezelLedMat.color.copy(leftColor);
             pLeftFixture.ledRingMat.color.copy(leftColor);
-            pRightFixture.lensMat.color.copy(rightColor).multiplyScalar(0.20 + pulseMultiR * 0.70);
+
+            pRightFixture.lensMat.color.copy(rightColor);
+            pRightFixture.lensCoronaMat.color.copy(rightColor);
+            pRightFixture.lensCoreMat.color.copy(rightCore);
+            pRightFixture.bezelLedMat.color.copy(rightColor);
             pRightFixture.ledRingMat.color.copy(rightColor);
 
             // The Pumpkin body reveals its TRUE dark spooky Halloween colors in unlit spots, and blazes at beam contact spots!
@@ -9841,7 +9909,7 @@ export function createVFXScene(container) {
             if (pumpkinStem) {
                 pumpkinStem.traverse((child) => {
                     if (child.isMesh && child.material && child.material.color) {
-                        child.material.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.55).multiplyScalar(0.35 + avgPulse * 0.50));
+                        child.material.color.copy(pumpkinThemeCol).multiplyScalar(0.45 + avgPulse * 0.45);
                     }
                 });
             }
@@ -9887,7 +9955,8 @@ export function createVFXScene(container) {
                 const midHitPos = targetLeftPos.clone().lerp(targetRightPos, 0.5);
                 midHitPos.z += 0.12; // Float right on front mirror facets
 
-                const meetColor = new THREE.Color().lerpColors(leftColor, rightColor, 0.5).lerp(new THREE.Color(0xffffff), 0.50);
+                const meetCore = new THREE.Color().lerpColors(leftCore, rightCore, 0.5);
+                const meetColor = new THREE.Color().lerpColors(leftColor, rightColor, 0.5).lerp(meetCore, 0.35);
 
                 pMeetFlare.position.copy(midHitPos);
                 pMeetFlare.material.color.copy(meetColor);
@@ -9920,7 +9989,7 @@ export function createVFXScene(container) {
             pRightHitFlare.scale.set(flareScaleR * rightHit, flareScaleR * rightHit, 1.0);
 
             // Front Key Light & Pumpkin Flame (internal flame reacts with deep kicks and convergence)
-            pKeyLight.color.copy(pumpkinThemeCol.clone().lerp(new THREE.Color(0xffffff), 0.35));
+            pKeyLight.color.copy(pumpkinThemeCol);
             pKeyLight.intensity = (0.75 + totalGlareScore * 0.60 + convergencePower * 1.4 + pumpkinDeadOnFlashPulse * 0.70 + pumpkin8BarFlashPulse * 0.90 + pumpkinKickThump * 0.80);
 
             pumpkinFlameLight.color.copy(pumpkinThemeCol);
@@ -9936,9 +10005,7 @@ export function createVFXScene(container) {
 
             if (totalHaloFlash > 0.005) {
                 pumpkinHaloMesh.visible = true;
-                const haloTint = (pumpkin8BarFlashPulse > 0.20 || pumpkinDeadOnFlashPulse > 0.25 || convergencePower > 0.25)
-                    ? new THREE.Color(0xffeedd)
-                    : pumpkinThemeCol;
+                const haloTint = pumpkinThemeCol;
                 pumpkinHaloMat.uniforms.uHaloColor.value.copy(haloTint);
                 pumpkinHaloMat.uniforms.uTime.value = elapsedTime;
                 pumpkinHaloMat.uniforms.uHaloIntensity.value = Math.pow(totalHaloFlash, 1.2) * 1.75;
@@ -10138,7 +10205,7 @@ export function createVFXScene(container) {
                 19: ['#00f0ff', '#ff00aa', '#00ff88', '#ffaa00', '#9900ff', '#00e5ff'], // White Godrays & Fog
                 20: ['#00e5ff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'], // Disco Floor & Godrays
                 21: ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'], // VHS Glitch Words
-                22: ['#0044ff', '#ff6600', '#00aaff', '#ffaa00', '#0022aa', '#ffffff'], // Pumpkin Disco Ball
+                22: ['#0044ff', '#ff4400', '#00e5ff', '#00ff22', '#9400d3', '#ff007f'], // Pumpkin Disco Ball
             };
             return SCENE_PALETTES[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
         },
@@ -10149,7 +10216,7 @@ export function createVFXScene(container) {
 
             // FX 22: 🎃 Pumpkin Disco Ball -> Sapphire Blue, Flame Orange & Electric Cyan
             if (currentFXIndex === 22) {
-                const pumpkinPalette = ['#0055ff', '#ff6600', '#00aaff', '#ffaa00'];
+                const pumpkinPalette = ['#0044ff', '#ff4400', '#00e5ff', '#00ff22', '#9400d3', '#ff007f'];
                 return pumpkinPalette[beatStep % pumpkinPalette.length];
             }
             // FX 18: 🔦 Sweeping Godrays (U) -> Tracks the active flared moving-head concert fixture!
