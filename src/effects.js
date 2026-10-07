@@ -9752,29 +9752,26 @@ export function createVFXScene(container) {
 
 
             // 2. Motorized Disco Spin (Y-axis) with Natural Steady Hanging Sway
-            // Smooth, constant rotation speed that stays calm and steady
+            // Smooth, constant rotation speed that stays calm, elegant, and steady
             const spinVelocity = 0.15 * (currentBPM / 126.0);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Steady, organic gyroscopic tilt (~3 degrees) with subtle kick-reactive nudge only on heavy drops
+            // Steady, organic gyroscopic tilt (~3 degrees) like an authentic hanging disco ball (no beat pulse or twitching)
             const rotY = pumpkinPivot.rotation.y;
-            const tiltAmount = 0.052 + pumpkinKickThump * 0.035;
+            const tiltAmount = 0.052;
             pumpkinPivot.rotation.z = Math.sin(rotY) * tiltAmount;
             pumpkinPivot.rotation.x = Math.cos(rotY) * tiltAmount * 0.85;
 
-            // 3. 🎃 Visible Beat & Bass Pulse: STRICTLY ONLY ON DEEP BASS KICKS
-            // Zero continuous expansion - rests completely still when no kick is hitting
-            const pulseScale = pumpkinKickThump * 0.055;
-            pumpkinMesh.scale.set(1.0 + pulseScale, 1.0 + pulseScale, 1.0 + pulseScale);
+            // 3. Steady Physical Pumpkin Geometry (NO pulsing with beat - solid authentic mirror disco ball)
+            pumpkinMesh.scale.set(1.0, 1.0, 1.0);
             if (pumpkinStem) {
-                pumpkinStem.scale.set(1.0 + pulseScale, 1.0 + pulseScale, 1.0 + pulseScale);
+                pumpkinStem.scale.set(1.0, 1.0, 1.0);
             }
-            // Vertical bounce on ceiling chain (strictly zero unless a deep kick strikes)
-            pumpkinPivot.position.y = Math.sin(pumpkinKickThump * Math.PI) * 0.18;
+            pumpkinPivot.position.y = 0.0;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
-            // Calculate exact world position of the stalk top eyelet ring (tracks tilt and vertical bounce)
-            const stalkTipLocal = new THREE.Vector3(0.04, 5.85 * (1.0 + pulseScale), 0.03);
+            // Calculate exact world position of the stalk top eyelet ring
+            const stalkTipLocal = new THREE.Vector3(0.04, 5.85, 0.03);
             const stalkTipWorld = stalkTipLocal.clone().applyEuler(pumpkinPivot.rotation).add(pumpkinPivot.position);
             const ceilingAnchor = new THREE.Vector3(0, 13.2, 0);
 
@@ -9920,12 +9917,12 @@ export function createVFXScene(container) {
             pumpkinUniforms.uFlash.value = Math.max(leftSunGlare, rightSunGlare) * 0.60 + convergencePower * 0.40;
             pumpkinUniforms.uTime.value = elapsedTime;
             pumpkinUniforms.uTreble.value = treblePop;
-            pumpkinUniforms.uBassPunch.value = pumpkinKickThump;
+            pumpkinUniforms.uBassPunch.value = 0.0; // Pumpkin does not pulse with beat
 
             if (pumpkinStem) {
                 pumpkinStem.traverse((child) => {
                     if (child.isMesh && child.material && child.material.color) {
-                        child.material.color.copy(pumpkinThemeCol).multiplyScalar(0.45 + avgPulse * 0.45);
+                        child.material.color.copy(pumpkinThemeCol).multiplyScalar(0.70);
                     }
                 });
             }
