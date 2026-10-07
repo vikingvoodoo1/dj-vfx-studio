@@ -7823,7 +7823,9 @@ export function createVFXScene(container) {
     let pumpkinWasDeadOn = false;
     let pumpkinKickThump = 0.0;
     let pumpkinWhiteLightLastBeat = -1;
-    let pumpkinWhiteLightOnTime = -10.0;
+    let pumpkinWhiteLightOnTimeA = -10.0;
+    let pumpkinWhiteLightOnTimeB = -10.0;
+    let pumpkinWhiteLightLastGroup = 'B';
     let pumpkinMiniSweepPhase = 0.0;
     let pumpkinPrevBass = 0.0;
     let pumpkinPrevMid = 0.0;
@@ -8190,169 +8192,115 @@ export function createVFXScene(container) {
     pRightHitFlare.renderOrder = 23;
     gPumpkinDiscoBall.add(pRightHitFlare);
 
-    // 5. Two Compact Center-Bottom Moving-Head Spotlights (Pulse in White to Beat with VU Meter Reaction)
-    const pMiniLeftFixturePos = new THREE.Vector3(-2.4, -6.8, 5.8);
-    const pMiniRightFixturePos = new THREE.Vector3(2.4, -6.8, 5.8);
-
-    const pMiniLeftFixture = createMovingHeadFixture(pMiniLeftFixturePos, 0.55);
-    gPumpkinDiscoBall.add(pMiniLeftFixture.fixtureGroup);
-
-    const pMiniRightFixture = createMovingHeadFixture(pMiniRightFixturePos, 0.55);
-    gPumpkinDiscoBall.add(pMiniRightFixture.fixtureGroup);
-
-    // Pure Xenon white lens optics and accent rings
-    pMiniLeftFixture.lensMat.color.setHex(0xffffff);
-    pMiniLeftFixture.lensCoronaMat.color.setHex(0xffffff);
-    pMiniLeftFixture.lensCoreMat.color.setHex(0xffffff);
-    pMiniLeftFixture.bezelLedMat.color.setHex(0xffffff);
-    pMiniLeftFixture.ledRingMat.color.setHex(0xffffff);
-
-    pMiniRightFixture.lensMat.color.setHex(0xffffff);
-    pMiniRightFixture.lensCoronaMat.color.setHex(0xffffff);
-    pMiniRightFixture.lensCoreMat.color.setHex(0xffffff);
-    pMiniRightFixture.bezelLedMat.color.setHex(0xffffff);
-    pMiniRightFixture.ledRingMat.color.setHex(0xffffff);
-
-    // Dynamic Target Tracking Dummies on UNDERNEATH FRONT of the pumpkin
-    const pMiniLeftTargetObj = new THREE.Object3D();
-    pMiniLeftTargetObj.position.set(-1.0, -2.8, 3.8);
-    gPumpkinDiscoBall.add(pMiniLeftTargetObj);
-
-    const pMiniRightTargetObj = new THREE.Object3D();
-    pMiniRightTargetObj.position.set(1.0, -2.8, 3.8);
-    gPumpkinDiscoBall.add(pMiniRightTargetObj);
-
-    // Upward-shining crisp directional spotlights
-    const pMiniLeftSpot = new THREE.SpotLight(0xffffff, 2.0, 35.0, Math.PI / 6.0, 0.75, 1.0);
-    pMiniLeftSpot.position.copy(pMiniLeftFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniLeftSpot.target = pMiniLeftTargetObj;
-    gPumpkinDiscoBall.add(pMiniLeftSpot);
-
-    const pMiniRightSpot = new THREE.SpotLight(0xffffff, 2.0, 35.0, Math.PI / 6.0, 0.75, 1.0);
-    pMiniRightSpot.position.copy(pMiniRightFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniRightSpot.target = pMiniRightTargetObj;
-    gPumpkinDiscoBall.add(pMiniRightSpot);
-
-    // Volumetric God-Ray Beams with VU Meter Stepped Ladder Shader
+    // 5. Five Compact Center-Bottom Moving-Head Spotlights (Strobe in White on Alternating Beats)
     const pMiniBeamGeo = createMultiPlaneRayGeometry(8, 0.40, 2.6, 22.0);
     const pMiniCoreBeamGeo = createMultiPlaneRayGeometry(8, 0.18, 1.2, 22.0);
 
-    const pMiniLeftBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 1.5 },
-            uTime: { value: 0.0 },
-            uVuLevel: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 },
-            uHit: { value: 1.0 }
-        },
-        vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-        fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pMiniLeftBeamMesh = new THREE.Mesh(pMiniBeamGeo, pMiniLeftBeamMat);
-    pMiniLeftBeamMesh.position.copy(pMiniLeftFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniLeftBeamMesh.renderOrder = 20;
-    gPumpkinDiscoBall.add(pMiniLeftBeamMesh);
+    function createMiniWhiteSpotSetup(fixturePos, initialTargetPos) {
+        const fixture = createMovingHeadFixture(fixturePos, 0.55);
+        gPumpkinDiscoBall.add(fixture.fixtureGroup);
 
-    const pMiniLeftCoreBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 2.0 },
-            uTime: { value: 0.0 },
-            uVuLevel: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 },
-            uHit: { value: 1.0 }
-        },
-        vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-        fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pMiniLeftCoreBeamMesh = new THREE.Mesh(pMiniCoreBeamGeo, pMiniLeftCoreBeamMat);
-    pMiniLeftCoreBeamMesh.position.copy(pMiniLeftFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniLeftCoreBeamMesh.renderOrder = 21;
-    gPumpkinDiscoBall.add(pMiniLeftCoreBeamMesh);
+        // Pure Xenon white lens optics and accent rings
+        fixture.lensMat.color.setHex(0xffffff);
+        fixture.lensCoronaMat.color.setHex(0xffffff);
+        fixture.lensCoreMat.color.setHex(0xffffff);
+        fixture.bezelLedMat.color.setHex(0xffffff);
+        fixture.ledRingMat.color.setHex(0xffffff);
 
-    const pMiniRightBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 1.5 },
-            uTime: { value: 0.0 },
-            uVuLevel: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 },
-            uHit: { value: 1.0 }
-        },
-        vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-        fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pMiniRightBeamMesh = new THREE.Mesh(pMiniBeamGeo, pMiniRightBeamMat);
-    pMiniRightBeamMesh.position.copy(pMiniRightFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniRightBeamMesh.renderOrder = 20;
-    gPumpkinDiscoBall.add(pMiniRightBeamMesh);
+        // Dynamic Target Tracking Dummy on FRONT of the pumpkin
+        const targetObj = new THREE.Object3D();
+        targetObj.position.copy(initialTargetPos);
+        gPumpkinDiscoBall.add(targetObj);
 
-    const pMiniRightCoreBeamMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uColor: { value: new THREE.Color(0xffffff) },
-            uCoreColor: { value: new THREE.Color(0xffffff) },
-            uIntensity: { value: 2.0 },
-            uTime: { value: 0.0 },
-            uVuLevel: { value: 0.0 },
-            uPulse: { value: 0.0 },
-            uTreble: { value: 0.0 },
-            uHit: { value: 1.0 }
-        },
-        vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-        fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        side: THREE.DoubleSide,
-        depthWrite: false
-    });
-    const pMiniRightCoreBeamMesh = new THREE.Mesh(pMiniCoreBeamGeo, pMiniRightCoreBeamMat);
-    pMiniRightCoreBeamMesh.position.copy(pMiniRightFixturePos).add(new THREE.Vector3(0, 0.69, 0));
-    pMiniRightCoreBeamMesh.renderOrder = 21;
-    gPumpkinDiscoBall.add(pMiniRightCoreBeamMesh);
+        // Upward-shining directional spotlight
+        const spot = new THREE.SpotLight(0xffffff, 2.0, 35.0, Math.PI / 6.0, 0.75, 1.0);
+        spot.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
+        spot.target = targetObj;
+        gPumpkinDiscoBall.add(spot);
 
-    // Underneath Front Surface Delicate Sparkle Glints (Where white beams touch mirror facets)
-    const pMiniLeftHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: starburstTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-    }));
-    pMiniLeftHitFlare.scale.set(1.3, 1.3, 1.0);
-    pMiniLeftHitFlare.renderOrder = 23;
-    gPumpkinDiscoBall.add(pMiniLeftHitFlare);
+        // Volumetric God-Ray Beams with VU Meter Stepped Ladder Shader
+        const beamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffffff) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 1.5 },
+                uTime: { value: 0.0 },
+                uVuLevel: { value: 0.0 },
+                uPulse: { value: 0.0 },
+                uTreble: { value: 0.0 },
+                uHit: { value: 1.0 }
+            },
+            vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
+            fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const beamMesh = new THREE.Mesh(pMiniBeamGeo, beamMat);
+        beamMesh.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
+        beamMesh.renderOrder = 20;
+        gPumpkinDiscoBall.add(beamMesh);
 
-    const pMiniRightHitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
-        map: starburstTex,
-        color: 0xffffff,
-        blending: THREE.AdditiveBlending,
-        transparent: true,
-        opacity: 0.0,
-        depthWrite: false
-    }));
-    pMiniRightHitFlare.scale.set(1.3, 1.3, 1.0);
-    pMiniRightHitFlare.renderOrder = 23;
-    gPumpkinDiscoBall.add(pMiniRightHitFlare);
+        const coreBeamMat = new THREE.ShaderMaterial({
+            uniforms: {
+                uColor: { value: new THREE.Color(0xffffff) },
+                uCoreColor: { value: new THREE.Color(0xffffff) },
+                uIntensity: { value: 2.0 },
+                uTime: { value: 0.0 },
+                uVuLevel: { value: 0.0 },
+                uPulse: { value: 0.0 },
+                uTreble: { value: 0.0 },
+                uHit: { value: 1.0 }
+            },
+            vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
+            fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
+            transparent: true,
+            blending: THREE.AdditiveBlending,
+            side: THREE.DoubleSide,
+            depthWrite: false
+        });
+        const coreBeamMesh = new THREE.Mesh(pMiniCoreBeamGeo, coreBeamMat);
+        coreBeamMesh.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
+        coreBeamMesh.renderOrder = 21;
+        gPumpkinDiscoBall.add(coreBeamMesh);
+
+        // Underneath Front Surface Delicate Sparkle Glints (Where white beams touch mirror facets)
+        const hitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: starburstTex,
+            color: 0xffffff,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.0,
+            depthWrite: false
+        }));
+        hitFlare.scale.set(1.3, 1.3, 1.0);
+        hitFlare.renderOrder = 23;
+        hitFlare.visible = false;
+        gPumpkinDiscoBall.add(hitFlare);
+
+        return {
+            fixturePos,
+            fixture,
+            targetObj,
+            spot,
+            beamMat,
+            beamMesh,
+            coreBeamMat,
+            coreBeamMesh,
+            hitFlare
+        };
+    }
+
+    // Five-fixture array spaced at 2.4-unit intervals: [-4.8, -2.4, 0.0, +2.4, +4.8]
+    // Group A (2 existing lights at -2.4 and +2.4): Strobe on beat 1 & 3
+    const pMiniLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-2.4, -6.8, 5.8), new THREE.Vector3(-1.0, -2.8, 3.8));
+    const pMiniRight = createMiniWhiteSpotSetup(new THREE.Vector3(2.4, -6.8, 5.8), new THREE.Vector3(1.0, -2.8, 3.8));
+
+    // Group B (3 new lights: Far-Left, Center, Far-Right): Strobe on alternate beat 2 & 4
+    const pMiniFarLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-4.8, -6.8, 5.8), new THREE.Vector3(-3.0, -2.8, 3.8));
+    const pMiniCenter = createMiniWhiteSpotSetup(new THREE.Vector3(0.0, -6.8, 5.8), new THREE.Vector3(0.0, -2.8, 3.8));
+    const pMiniFarRight = createMiniWhiteSpotSetup(new THREE.Vector3(4.8, -6.8, 5.8), new THREE.Vector3(3.0, -2.8, 3.8));
 
     // Convergence Super-Bright Specular Reflection Flare (Ignites when both lights meet on the pumpkin surface)
     const pMeetFlare = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -10077,6 +10025,7 @@ export function createVFXScene(container) {
 
             // -----------------------------------------------------------------
             // STROBE BEAT & DRUM TRIGGER: Light snaps ON on the beat, and snaps OFF between beats!
+            // Alternating Effect: Group A (2 inner lights) on even beats, Group B (3 lights: far-left, center, far-right) on odd beats
             // -----------------------------------------------------------------
             // 1. Musical Beat / Kick Drum (fires once per beat on beat index transition)
             const isNewBeat = (curBeatIdx !== pumpkinWhiteLightLastBeat && beatFrac < 0.28);
@@ -10084,14 +10033,32 @@ export function createVFXScene(container) {
             const isDeepKick = (audio.isOnset && (rawBass > 0.25 || bassImpact > 0.30)) || (rawBass > 0.55 && (audio.transientImpulse || 0) > 0.35);
 
             // 3. Optional offbeat percussion (snare crack / clap) between beats
-            const timeSinceLastStrobe = elapsedTime - pumpkinWhiteLightOnTime;
+            const timeSinceLastStrobeA = elapsedTime - pumpkinWhiteLightOnTimeA;
+            const timeSinceLastStrobeB = elapsedTime - pumpkinWhiteLightOnTimeB;
+            const timeSinceLastStrobe = Math.min(timeSinceLastStrobeA, timeSinceLastStrobeB);
             const isSnareCrack = (deltaMid > 0.06 && rawMid > smoothedMid * 1.15 + 0.05);
             // Crucial: Only allow an offbeat snare flash if the previous beat strobe has ALREADY finished and turned OFF (>200ms)!
             const isOffbeatDrum = timeSinceLastStrobe > 0.20 && (isDeepKick || isSnareCrack || audio.isOnset);
 
-            if (isNewBeat || isOffbeatDrum) {
+            if (isNewBeat) {
                 pumpkinWhiteLightLastBeat = curBeatIdx;
-                pumpkinWhiteLightOnTime = elapsedTime;
+                if (curBeatIdx % 2 === 0) {
+                    pumpkinWhiteLightOnTimeA = elapsedTime;
+                    pumpkinWhiteLightLastGroup = 'A';
+                } else {
+                    pumpkinWhiteLightOnTimeB = elapsedTime;
+                    pumpkinWhiteLightLastGroup = 'B';
+                }
+            } else if (isOffbeatDrum) {
+                pumpkinWhiteLightLastBeat = curBeatIdx;
+                // Ping-pong alternate on offbeat drums
+                if (pumpkinWhiteLightLastGroup === 'A') {
+                    pumpkinWhiteLightOnTimeB = elapsedTime;
+                    pumpkinWhiteLightLastGroup = 'B';
+                } else {
+                    pumpkinWhiteLightOnTimeA = elapsedTime;
+                    pumpkinWhiteLightLastGroup = 'A';
+                }
             }
 
             // Save current levels for next frame's delta comparison
@@ -10104,22 +10071,32 @@ export function createVFXScene(container) {
             }
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
-            // High-Contrast Crisp Strobe Envelope: Snaps ON on the beat, snaps OFF to complete darkness
+            // High-Contrast Crisp Strobe Envelopes: Snaps ON on the beat, snaps OFF to complete darkness
             // Strobe duration: ~130ms crisp ON, then 35ms ultra-fast shutter snap to 0.0 pure darkness
-            const timeSinceBeat = elapsedTime - pumpkinWhiteLightOnTime;
             const onDuration = Math.min(0.16, Math.max(0.11, beatDuration * 0.30));
             const shutterCloseDuration = 0.035;
 
-            let whiteLightFactor = 0.0;
-            if (timeSinceBeat >= 0.0 && timeSinceBeat < onDuration) {
-                whiteLightFactor = 1.0; // Crisp 100% ON (Strobe flash on the beat!)
-            } else if (timeSinceBeat >= onDuration && timeSinceBeat < onDuration + shutterCloseDuration) {
-                // Ultra-fast shutter snap to black
-                whiteLightFactor = 1.0 - ((timeSinceBeat - onDuration) / shutterCloseDuration);
+            // Group A (2 Inner Lights) Envelope
+            const timeSinceBeatA = elapsedTime - pumpkinWhiteLightOnTimeA;
+            let whiteLightFactorA = 0.0;
+            if (timeSinceBeatA >= 0.0 && timeSinceBeatA < onDuration) {
+                whiteLightFactorA = 1.0; // Crisp 100% ON
+            } else if (timeSinceBeatA >= onDuration && timeSinceBeatA < onDuration + shutterCloseDuration) {
+                whiteLightFactorA = 1.0 - ((timeSinceBeatA - onDuration) / shutterCloseDuration);
             } else {
-                whiteLightFactor = 0.0; // Total 100% OFF (Pure darkness) between beats!
+                whiteLightFactorA = 0.0; // Total 100% OFF between beats!
             }
-            const isWhiteLightActive = whiteLightFactor > 0.001;
+
+            // Group B (3 Outer & Center Lights) Envelope (Alternating Beat)
+            const timeSinceBeatB = elapsedTime - pumpkinWhiteLightOnTimeB;
+            let whiteLightFactorB = 0.0;
+            if (timeSinceBeatB >= 0.0 && timeSinceBeatB < onDuration) {
+                whiteLightFactorB = 1.0; // Crisp 100% ON
+            } else if (timeSinceBeatB >= onDuration && timeSinceBeatB < onDuration + shutterCloseDuration) {
+                whiteLightFactorB = 1.0 - ((timeSinceBeatB - onDuration) / shutterCloseDuration);
+            } else {
+                whiteLightFactorB = 0.0; // Total 100% OFF between beats!
+            }
 
 
             // 2. Motorized Disco Spin (Y-axis) with Natural Steady Hanging Sway
@@ -10216,57 +10193,50 @@ export function createVFXScene(container) {
             pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
-            // 4b. Two Compact Center-Bottom Spotlights Sweeping Left-to-Right Across Underneath Front
-            // Musical 4-beat cycle: complete left-right sweep every 2 beats, in sync with the bar
+            // 4b. Five Compact Center-Bottom Spotlights Sweeping Across Underneath Front
+            // Musical 4-beat cycle: complete sweep every 2 beats, in sync with the bar
             const sweepBaseBps = currentBPM / 60.0;
             pumpkinMiniSweepPhase += delta * sweepBaseBps * (Math.PI * 0.50);
 
-            // Wide, dramatic sweep amplitude covering the entire underneath front (-4.4 to +4.4)
-            // Left fixture sweeps left-to-right
+            // Group A: Inner Left & Right Fixtures (-2.4 and +2.4) - Crossing 'X' sweep
             const sweep1 = pumpkinMiniSweepPhase;
             const txMini1 = Math.sin(sweep1) * 4.4;
             const tyMini1 = -2.70 + Math.cos(sweep1 * 0.8) * 0.60;
             const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.88) * (tyMini1 / 0.88));
             const tzMini1 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini1)));
             const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1);
-            pMiniLeftTargetObj.position.copy(targetMini1Pos);
 
-            // Right fixture sweeps in counter-direction (crossing beams forming dynamic 'X' pattern!)
             const sweep2 = -pumpkinMiniSweepPhase;
             const txMini2 = Math.sin(sweep2) * 4.4;
             const tyMini2 = -2.70 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.60;
             const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.88) * (tyMini2 / 0.88));
             const tzMini2 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini2)));
             const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2);
-            pMiniRightTargetObj.position.copy(targetMini2Pos);
 
-            // Orient mini moving-head fixtures towards underneath targets
-            const miniLeftHeadPos = pMiniLeftFixturePos.clone().add(new THREE.Vector3(0, 0.69, 0));
-            const miniLeftDir = targetMini1Pos.clone().sub(miniLeftHeadPos);
-            const miniLeftDist = miniLeftDir.length();
-            const miniLeftDirNorm = miniLeftDir.clone().normalize();
+            // Group B: Center, Far-Left, Far-Right Fixtures (-4.8, 0.0, +4.8) - 3-beam converging fan
+            // Center fixture sweeps upward across the middle front
+            const sweepC = pumpkinMiniSweepPhase * 1.25;
+            const txCenter = Math.sin(sweepC) * 2.8;
+            const tyCenter = -2.50 + Math.cos(sweepC * 0.7) * 0.65;
+            const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.88) * (tyCenter / 0.88));
+            const tzCenter = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqCenter)));
+            const targetCenterPos = new THREE.Vector3(txCenter, tyCenter, tzCenter);
 
-            pMiniLeftFixture.headGroup.lookAt(targetMini1Pos);
-            pMiniLeftFixture.yokeGroup.rotation.y = Math.atan2(miniLeftDirNorm.x, miniLeftDirNorm.z);
+            // Far Left fixture sweeps inward towards center
+            const sweepFL = pumpkinMiniSweepPhase + Math.PI * 0.5;
+            const txFarLeft = -1.2 + Math.sin(sweepFL) * 3.6;
+            const tyFarLeft = -2.70 + Math.cos(sweepFL * 0.85) * 0.60;
+            const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.88) * (tyFarLeft / 0.88));
+            const tzFarLeft = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarLeft)));
+            const targetFarLeftPos = new THREE.Vector3(txFarLeft, tyFarLeft, tzFarLeft);
 
-            const miniRightHeadPos = pMiniRightFixturePos.clone().add(new THREE.Vector3(0, 0.69, 0));
-            const miniRightDir = targetMini2Pos.clone().sub(miniRightHeadPos);
-            const miniRightDist = miniRightDir.length();
-            const miniRightDirNorm = miniRightDir.clone().normalize();
-
-            pMiniRightFixture.headGroup.lookAt(targetMini2Pos);
-            pMiniRightFixture.yokeGroup.rotation.y = Math.atan2(miniRightDirNorm.x, miniRightDirNorm.z);
-
-            // Align volumetric beams and inner cores along fixture-to-target vectors
-            pMiniLeftBeamMesh.quaternion.setFromUnitVectors(upVec, miniLeftDirNorm);
-            pMiniLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, miniLeftDirNorm);
-            pMiniLeftBeamMesh.scale.set(1.0, miniLeftDist / 22.0, 1.0);
-            pMiniLeftCoreBeamMesh.scale.set(1.0, miniLeftDist / 22.0, 1.0);
-
-            pMiniRightBeamMesh.quaternion.setFromUnitVectors(upVec, miniRightDirNorm);
-            pMiniRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, miniRightDirNorm);
-            pMiniRightBeamMesh.scale.set(1.0, miniRightDist / 22.0, 1.0);
-            pMiniRightCoreBeamMesh.scale.set(1.0, miniRightDist / 22.0, 1.0);
+            // Far Right fixture sweeps inward towards center (symmetrically opposite)
+            const sweepFR = -pumpkinMiniSweepPhase - Math.PI * 0.5;
+            const txFarRight = 1.2 + Math.sin(sweepFR) * 3.6;
+            const tyFarRight = -2.70 + Math.cos(sweepFR * 0.85 + Math.PI) * 0.60;
+            const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.88) * (tyFarRight / 0.88));
+            const tzFarRight = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarRight)));
+            const targetFarRightPos = new THREE.Vector3(txFarRight, tyFarRight, tzFarRight);
 
             // Gradual specular sun-glare geometry:
             // "a gradual intensity like the sun glaring through a window hitting your face temporarily as you move past it"
@@ -10335,9 +10305,17 @@ export function createVFXScene(container) {
             pumpkinUniforms.uSpot2Color.value.copy(rightColor);
             pumpkinUniforms.uSpot1Intensity.value = 0.85 + pulseMultiL * 0.35;
             pumpkinUniforms.uSpot2Intensity.value = 0.85 + pulseMultiR * 0.35;
-            pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetMini1Pos);
-            pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetMini2Pos);
-            pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactor * 0.50;
+            if (whiteLightFactorA > 0.001) {
+                pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetMini1Pos);
+                pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetMini2Pos);
+                pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactorA * 0.50;
+            } else if (whiteLightFactorB > 0.001) {
+                pumpkinUniforms.uWhiteSpot1Pos.value.copy(targetFarLeftPos);
+                pumpkinUniforms.uWhiteSpot2Pos.value.copy(targetFarRightPos);
+                pumpkinUniforms.uWhiteSpotIntensity.value = whiteLightFactorB * 0.50;
+            } else {
+                pumpkinUniforms.uWhiteSpotIntensity.value = 0.0;
+            }
             pumpkinUniforms.uDarkBaseColor.value.copy(leftSample.emissive.clone().lerp(rightSample.emissive, 0.5));
             pumpkinUniforms.uEmissiveThemeColor.value.copy(pumpkinEmissiveCol);
             pumpkinUniforms.uFlash.value = Math.max(leftSunGlare, rightSunGlare) * 0.60 + convergencePower * 0.40;
@@ -10428,98 +10406,82 @@ export function createVFXScene(container) {
             pRightHitFlare.scale.set(flareScaleR, flareScaleR, 1.0);
 
             // -----------------------------------------------------------------
-            // Dual White Center Spotlights: Soft Luminous Pulse on Any Drum!
+            // Five White Bottom Spotlights: Alternating Beat Concert Strobe
+            // Group A (2 inner lights) on even beats; Group B (3 lights: far-left, center, far-right) on odd beats
             // -----------------------------------------------------------------
-            if (isWhiteLightActive) {
-                const beamPower = 0.90 * whiteLightFactor;
-                const spotPower = 1.40 * whiteLightFactor;
+            function updateMiniFixture(item, targetPos, whiteFactor) {
+                item.targetObj.position.copy(targetPos);
 
-                // Soft, elegant Xenon spotlights washing underneath pumpkin
-                pMiniLeftSpot.intensity = spotPower;
-                pMiniRightSpot.intensity = spotPower;
+                const headPos = item.fixturePos.clone().add(new THREE.Vector3(0, 0.69, 0));
+                const dir = targetPos.clone().sub(headPos);
+                const dist = dir.length();
+                const dirNorm = dir.clone().normalize();
 
-                // Volumetric beam meshes active with soft, silky haze
-                pMiniLeftBeamMesh.visible = true;
-                pMiniLeftCoreBeamMesh.visible = true;
-                pMiniRightBeamMesh.visible = true;
-                pMiniRightCoreBeamMesh.visible = true;
+                item.fixture.headGroup.lookAt(targetPos);
+                item.fixture.yokeGroup.rotation.y = Math.atan2(dirNorm.x, dirNorm.z);
 
-                pMiniLeftBeamMat.uniforms.uIntensity.value = beamPower;
-                pMiniLeftBeamMat.uniforms.uVuLevel.value = 1.0;
-                pMiniLeftBeamMat.uniforms.uPulse.value = whiteLightFactor;
-                pMiniLeftBeamMat.uniforms.uTime.value = elapsedTime;
-                pMiniLeftBeamMat.uniforms.uHit.value = 1.0;
+                item.beamMesh.quaternion.setFromUnitVectors(upVec, dirNorm);
+                item.coreBeamMesh.quaternion.setFromUnitVectors(upVec, dirNorm);
+                item.beamMesh.scale.set(1.0, dist / 22.0, 1.0);
+                item.coreBeamMesh.scale.set(1.0, dist / 22.0, 1.0);
 
-                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.15;
-                pMiniLeftCoreBeamMat.uniforms.uVuLevel.value = 1.0;
-                pMiniLeftCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
-                pMiniLeftCoreBeamMat.uniforms.uTime.value = elapsedTime;
-                pMiniLeftCoreBeamMat.uniforms.uHit.value = 1.0;
+                if (whiteFactor > 0.001) {
+                    const beamPower = 0.90 * whiteFactor;
+                    const spotPower = 1.40 * whiteFactor;
 
-                pMiniRightBeamMat.uniforms.uIntensity.value = beamPower;
-                pMiniRightBeamMat.uniforms.uVuLevel.value = 1.0;
-                pMiniRightBeamMat.uniforms.uPulse.value = whiteLightFactor;
-                pMiniRightBeamMat.uniforms.uTime.value = elapsedTime;
-                pMiniRightBeamMat.uniforms.uHit.value = 1.0;
+                    item.spot.intensity = spotPower;
 
-                pMiniRightCoreBeamMat.uniforms.uIntensity.value = beamPower * 1.15;
-                pMiniRightCoreBeamMat.uniforms.uVuLevel.value = 1.0;
-                pMiniRightCoreBeamMat.uniforms.uPulse.value = whiteLightFactor;
-                pMiniRightCoreBeamMat.uniforms.uTime.value = elapsedTime;
-                pMiniRightCoreBeamMat.uniforms.uHit.value = 1.0;
+                    item.beamMesh.visible = true;
+                    item.coreBeamMesh.visible = true;
 
-                // Lens optics: gentle warm white luminance (never glaring, decays to zero)
-                const lensBright = 0.70 * whiteLightFactor;
-                pMiniLeftFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
-                pMiniLeftFixture.lensCoronaMat.color.setRGB(lensBright * 0.75, lensBright * 0.75, lensBright * 0.75);
-                pMiniLeftFixture.lensCoreMat.color.setRGB(lensBright, lensBright, lensBright);
-                pMiniRightFixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
-                pMiniRightFixture.lensCoronaMat.color.setRGB(lensBright * 0.75, lensBright * 0.75, lensBright * 0.75);
-                pMiniRightFixture.lensCoreMat.color.setRGB(lensBright, lensBright, lensBright);
+                    item.beamMat.uniforms.uIntensity.value = beamPower;
+                    item.beamMat.uniforms.uVuLevel.value = 1.0;
+                    item.beamMat.uniforms.uPulse.value = whiteFactor;
+                    item.beamMat.uniforms.uTime.value = elapsedTime;
+                    item.beamMat.uniforms.uHit.value = 1.0;
 
-                // Underneath front surface starburst hit flares: soft sheen
-                pMiniLeftHitFlare.visible = true;
-                pMiniLeftHitFlare.position.copy(targetMini1Pos);
-                pMiniLeftHitFlare.material.opacity = 0.30 * whiteLightFactor;
-                const flareScale1 = 0.8 + whiteLightFactor * 0.30;
-                pMiniLeftHitFlare.scale.set(flareScale1, flareScale1, 1.0);
+                    item.coreBeamMat.uniforms.uIntensity.value = beamPower * 1.15;
+                    item.coreBeamMat.uniforms.uVuLevel.value = 1.0;
+                    item.coreBeamMat.uniforms.uPulse.value = whiteFactor;
+                    item.coreBeamMat.uniforms.uTime.value = elapsedTime;
+                    item.coreBeamMat.uniforms.uHit.value = 1.0;
 
-                pMiniRightHitFlare.visible = true;
-                pMiniRightHitFlare.position.copy(targetMini2Pos);
-                pMiniRightHitFlare.material.opacity = 0.30 * whiteLightFactor;
-                const flareScale2 = 0.8 + whiteLightFactor * 0.30;
-                pMiniRightHitFlare.scale.set(flareScale2, flareScale2, 1.0);
-            } else {
-                // Completely OFF between drum hits
-                pMiniLeftSpot.intensity = 0.0;
-                pMiniRightSpot.intensity = 0.0;
+                    const lensBright = 0.70 * whiteFactor;
+                    item.fixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
+                    item.fixture.lensCoronaMat.color.setRGB(lensBright * 0.75, lensBright * 0.75, lensBright * 0.75);
+                    item.fixture.lensCoreMat.color.setRGB(lensBright, lensBright, lensBright);
 
-                pMiniLeftBeamMesh.visible = false;
-                pMiniLeftCoreBeamMesh.visible = false;
-                pMiniRightBeamMesh.visible = false;
-                pMiniRightCoreBeamMesh.visible = false;
+                    item.hitFlare.visible = true;
+                    item.hitFlare.position.copy(targetPos);
+                    item.hitFlare.material.opacity = 0.30 * whiteFactor;
+                    const flareScale = 0.8 + whiteFactor * 0.30;
+                    item.hitFlare.scale.set(flareScale, flareScale, 1.0);
+                } else {
+                    item.spot.intensity = 0.0;
+                    item.beamMesh.visible = false;
+                    item.coreBeamMesh.visible = false;
 
-                pMiniLeftBeamMat.uniforms.uIntensity.value = 0.0;
-                pMiniLeftBeamMat.uniforms.uVuLevel.value = 0.0;
-                pMiniLeftCoreBeamMat.uniforms.uIntensity.value = 0.0;
-                pMiniRightBeamMat.uniforms.uIntensity.value = 0.0;
-                pMiniRightBeamMat.uniforms.uVuLevel.value = 0.0;
-                pMiniRightCoreBeamMat.uniforms.uIntensity.value = 0.0;
+                    item.beamMat.uniforms.uIntensity.value = 0.0;
+                    item.beamMat.uniforms.uVuLevel.value = 0.0;
+                    item.coreBeamMat.uniforms.uIntensity.value = 0.0;
 
-                // Lens glass idle/dark
-                pMiniLeftFixture.lensMat.color.setRGB(0.04, 0.04, 0.04);
-                pMiniLeftFixture.lensCoronaMat.color.setRGB(0.0, 0.0, 0.0);
-                pMiniLeftFixture.lensCoreMat.color.setRGB(0.0, 0.0, 0.0);
-                pMiniRightFixture.lensMat.color.setRGB(0.04, 0.04, 0.04);
-                pMiniRightFixture.lensCoronaMat.color.setRGB(0.0, 0.0, 0.0);
-                pMiniRightFixture.lensCoreMat.color.setRGB(0.0, 0.0, 0.0);
+                    item.fixture.lensMat.color.setRGB(0.04, 0.04, 0.04);
+                    item.fixture.lensCoronaMat.color.setRGB(0.0, 0.0, 0.0);
+                    item.fixture.lensCoreMat.color.setRGB(0.0, 0.0, 0.0);
 
-                pMiniLeftHitFlare.visible = false;
-                pMiniLeftHitFlare.material.opacity = 0.0;
-
-                pMiniRightHitFlare.visible = false;
-                pMiniRightHitFlare.material.opacity = 0.0;
+                    item.hitFlare.visible = false;
+                    item.hitFlare.material.opacity = 0.0;
+                }
             }
+
+            // Group A (2 Inner Lights: -2.4 and +2.4)
+            updateMiniFixture(pMiniLeft, targetMini1Pos, whiteLightFactorA);
+            updateMiniFixture(pMiniRight, targetMini2Pos, whiteLightFactorA);
+
+            // Group B (3 Outer & Center Lights: -4.8, 0.0, +4.8)
+            updateMiniFixture(pMiniFarLeft, targetFarLeftPos, whiteLightFactorB);
+            updateMiniFixture(pMiniCenter, targetCenterPos, whiteLightFactorB);
+            updateMiniFixture(pMiniFarRight, targetFarRightPos, whiteLightFactorB);
 
             // Front Key Light & Pumpkin Flame (internal flame reacts with deep kicks and convergence)
             pKeyLight.color.copy(pumpkinThemeCol);
