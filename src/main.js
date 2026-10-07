@@ -3948,7 +3948,8 @@ async function init() {
         const url = URL.createObjectURL(file);
         const isVideo = file.type.startsWith('video') || file.name.endsWith('.mp4') || file.name.endsWith('.webm');
         vfx.loadLogoMedia(url, isVideo);
-        logoFilename.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
+        const logoFnEl = document.getElementById('logoFilename');
+        if (logoFnEl) logoFnEl.textContent = file.name.length > 20 ? file.name.slice(0, 17) + '...' : file.name;
     }
 
     // Drag & Drop

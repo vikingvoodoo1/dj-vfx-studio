@@ -5816,6 +5816,7 @@ export function createVFXScene(container) {
     const discoRoughnessTex = createDiscoRoughnessMap();
     const discoMetalnessTex = createDiscoMetalnessMap();
     const discoTileTex = createDiscoTileTexture();
+    const clubEnvMap = createClubEnvironmentMap(renderer);
     const silverGlassEnvMap = createSilverGlassEnvironmentMap(renderer);
     const volumetricBeamTex = createVolumetricBeamTexture();
     const floorTileTex = createFloorTileTexture();
