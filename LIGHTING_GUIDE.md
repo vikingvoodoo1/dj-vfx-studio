@@ -256,7 +256,9 @@ Both the traditional **Mirror Disco Ball** (FX 4) and the **Pumpkin Mirror Ball*
 ### Hanging Hardware & Suspension Architecture
 * **Top Mounting Cap & Swivel Eyelet**: Directly attached to the top pole of the mirror ball sphere ($y = 5.16 - 5.48$), consisting of a polished silver chrome collar disk (`discoCapGeo`, $r = 0.72 - 0.98$) and heavy-duty eyelet loop (`TorusGeometry(0.32, 0.08)`).
 * **Interlocking Silver Suspension Chain (`discoChainGroup`)**: 17 individually articulated torus chain links (`TorusGeometry(0.28, 0.075)`) forged from polished chrome (`0xdce8fa`, metalness `0.98`, roughness `0.10`).
-* **Catenary Suspension Dynamics**: Each link interpolates dynamically between the ball's top eyelet world coordinate and the ceiling flange at $y = 13.5$, maintaining alternating $90^\circ$ link orientations and natural catenary sag (`sagFactor = sin(t0 * PI) * 0.12`).
+* **Catenary Suspension Dynamics & Organic Chain Wobble**:
+  * Each link interpolates dynamically between the ball's top eyelet world coordinate and the ceiling flange at $y = 13.5$, maintaining alternating $90^\circ$ link orientations and natural catenary sag (`sagFactor = sin(t0 * PI) * 0.10`).
+  * **Subtle Suspension Pendulum Wobble**: The mirror ball exhibits a delicate, authentic dual-harmonic pendulum drift ($x \approx \pm 0.18$, $z \approx \pm 0.15$) with coupled physical tilt ($\approx 1^\circ - 2^\circ$) and chain link flexion, imparting realistic physical mass and suspended inertia as it gracefully spins.
 
 ### Optical Pure Silver / Glass Mirror Model (`MeshPhysicalMaterial`)
 * **Dedicated Monochrome Studio Environment Map (`createSilverGlassEnvironmentMap`)**:

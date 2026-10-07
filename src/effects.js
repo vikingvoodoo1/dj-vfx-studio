@@ -9297,8 +9297,17 @@ export function createVFXScene(container) {
         else if (currentFXIndex === 4) {
             // Constant, graceful ball rotation (100% decoupled from music & BPM)
             dBallMesh.rotation.y += 0.32 * delta;
-            dBallMesh.rotation.x = Math.sin(elapsedTime * 0.4) * 0.02;
-            dBallMesh.rotation.z = Math.cos(elapsedTime * 0.3) * 0.015;
+
+            // 🌀 Very subtle organic suspension wobble & pendulum sway on the chain
+            const wobbleTime = elapsedTime * 0.75;
+            const wobbleX = Math.sin(wobbleTime) * 0.16 + Math.sin(wobbleTime * 1.6 + 0.9) * 0.05;
+            const wobbleZ = Math.cos(wobbleTime * 0.85) * 0.14 + Math.cos(wobbleTime * 1.3 + 1.2) * 0.04;
+            dBallMesh.position.x = wobbleX;
+            dBallMesh.position.z = wobbleZ;
+
+            // Physical tilt coupling: pendulum tilt from suspension point + delicate micro-precession wobble
+            dBallMesh.rotation.z = -(wobbleX / 13.2) * 1.1 + Math.sin(wobbleTime * 1.8 + 0.4) * 0.022;
+            dBallMesh.rotation.x = (wobbleZ / 13.2) * 1.1 + Math.cos(wobbleTime * 1.5 + 0.7) * 0.018;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
             // Calculate world position of the top eyelet ring attached to the disco ball
@@ -9313,18 +9322,18 @@ export function createVFXScene(container) {
                 const t0 = l / (totalDiscoLinks - 1);
                 const linkPos = new THREE.Vector3().lerpVectors(eyeletWorld, ceilingAnchor, t0);
 
-                // Natural catenary suspension sag
-                const sagFactor = Math.sin(t0 * Math.PI) * 0.12;
-                linkPos.x += Math.sin(ballRotY * 0.35 + t0 * 1.5) * sagFactor;
-                linkPos.z += Math.cos(ballRotY * 0.35 + t0 * 1.5) * sagFactor;
+                // Natural catenary suspension sag & subtle chain sway
+                const sagFactor = Math.sin(t0 * Math.PI) * 0.10;
+                linkPos.x += Math.sin(ballRotY * 0.25 + t0 * 1.5) * sagFactor;
+                linkPos.z += Math.cos(ballRotY * 0.25 + t0 * 1.5) * sagFactor;
                 link.position.copy(linkPos);
 
                 // Alternating link angles aligned to hanging chain
                 const baseRotY = (l % 2 === 0) ? (ballRotY * 0.15) : (ballRotY * 0.15 + Math.PI / 2);
                 link.rotation.set(
-                    dBallMesh.rotation.x * (1.0 - t0),
+                    dBallMesh.rotation.x * (1.0 - t0) + Math.sin(wobbleTime + l * 0.15) * 0.012,
                     baseRotY,
-                    dBallMesh.rotation.z * (1.0 - t0)
+                    dBallMesh.rotation.z * (1.0 - t0) + Math.cos(wobbleTime + l * 0.15) * 0.012
                 );
             }
 
@@ -9335,6 +9344,7 @@ export function createVFXScene(container) {
             dBallRimLight.intensity = 1.4;
             dBallFillLight.intensity = 1.2;
             dBallPointSilver.intensity = 4.2;
+            dBallPointSilver.position.set(wobbleX, 4.5, 7.5 + wobbleZ * 0.5);
 
             // Subtle sparkling white & silver background stars (steady drift, zero music reaction)
             glintMat.uniforms.uTime.value = elapsedTime;
