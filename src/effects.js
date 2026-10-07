@@ -508,6 +508,95 @@ const PumpkinWhiteVuRaysShader = {
 };
 
 // -------------------------------------------------------------------------
+// Wide Shaded Bright-Foggy White Rays Shader (Group B Bottom Spotlights)
+// -------------------------------------------------------------------------
+const PumpkinWhiteFoggyRaysShader = {
+    uniforms: {
+        uColor: { value: new THREE.Color(0xffffff) },
+        uCoreColor: { value: new THREE.Color(0xffffff) },
+        uIntensity: { value: 1.0 },
+        uTime: { value: 0.0 },
+        uVuLevel: { value: 0.0 },
+        uPulse: { value: 0.0 },
+        uTreble: { value: 0.0 },
+        uHit: { value: 1.0 }
+    },
+    vertexShader: `
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            vUv = uv;
+            vNormalLocal = normal;
+            vec4 worldPos = modelMatrix * vec4(position, 1.0);
+            vPositionWorld = worldPos.xyz;
+            vViewDir = normalize(cameraPosition - worldPos.xyz);
+            gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+    `,
+    fragmentShader: `
+        uniform vec3 uColor;
+        uniform vec3 uCoreColor;
+        uniform float uIntensity;
+        uniform float uTime;
+        uniform float uVuLevel;
+        uniform float uPulse;
+        uniform float uTreble;
+        uniform float uHit;
+
+        varying vec2 vUv;
+        varying vec3 vNormalLocal;
+        varying vec3 vPositionWorld;
+        varying vec3 vViewDir;
+
+        void main() {
+            float y = vUv.y;
+            float uDist = abs(vUv.x - 0.5) * 2.0; // 0.0 at beam centerline, 1.0 at outer edge
+
+            // 1. Shaded Volumetric Fog Density & Turbulence (Rolling atmospheric stage fog)
+            float fogLayer1 = sin(vPositionWorld.y * 1.5 + uTime * 1.2 + vUv.x * 6.0);
+            float fogLayer2 = cos(vPositionWorld.x * 1.2 - uTime * 0.8 + y * 8.0);
+            float fogNoise = 0.80 + 0.20 * (fogLayer1 * 0.5 + fogLayer2 * 0.5);
+
+            // Subtle vertical striations inside the fog plume
+            float fineRays = sin(vUv.x * 32.0 + uTime * 0.9 + y * 4.0) * 0.5 + 0.5;
+            float striations = 0.86 + 0.14 * fineRays;
+
+            // 2. Wide Gaussian Fog Aperture Envelope (Broad, volumetric plume)
+            float fogHalo = exp(-pow(uDist * 1.15, 2.0)) * 0.70;
+            float fogCore = exp(-pow(uDist * 2.4, 2.0)) * 0.60;
+            float beamCross = (fogHalo + fogCore) * fogNoise * striations;
+
+            // 3. Volumetric Mie Forward/Backward Light Scattering (Rich volumetric shading)
+            float viewFacing = abs(dot(vViewDir, normalize(vNormalLocal)));
+            float mieScattering = 0.75 + 0.25 * pow(1.0 - viewFacing, 1.4);
+
+            // 4. Longitudinal Shaft Profile (Smooth origin, dense bright foggy body, soft contact)
+            float originGlow = exp(-y * 3.8) * 0.85;
+            float shaftBody = smoothstep(0.01, 0.12, y) * (1.0 - smoothstep(0.85, 1.02, y)) * 0.80;
+            float hitFactor = clamp(uHit, 0.0, 1.0);
+            float impactGlow = exp(-pow((1.0 - y) * 3.2, 2.0)) * exp(-pow(uDist * 1.8, 2.0)) * 0.90 * hitFactor;
+            
+            float longProfile = (originGlow * 0.85 + shaftBody + impactGlow * 0.75);
+
+            // 5. Bright Foggy Opacity with Shaded Falloff
+            float rawAlpha = beamCross * mieScattering * longProfile * uIntensity * 0.58;
+            float alpha = clamp(rawAlpha, 0.0, 0.55);
+            if (alpha < 0.001) discard;
+
+            // Luminous, pristine bright Xenon white fog color
+            vec3 brightFogWhite = vec3(0.96, 0.98, 1.0);
+            vec3 coreWhite = vec3(1.0, 1.0, 1.0);
+            vec3 finalColor = mix(brightFogWhite, coreWhite, fogCore * 0.40);
+
+            gl_FragColor = vec4(finalColor * alpha, alpha);
+        }
+    `
+};
+
+// -------------------------------------------------------------------------
 // Specular Reflected Rays Shader (FX 22: Light Bouncing OFF Front Glass Mirror Facets)
 // -------------------------------------------------------------------------
 const PumpkinReflectionRaysShader = {
@@ -8192,12 +8281,17 @@ export function createVFXScene(container) {
     pRightHitFlare.renderOrder = 23;
     gPumpkinDiscoBall.add(pRightHitFlare);
 
-    // 5. Five Compact Center-Bottom Moving-Head Spotlights (Strobe in White on Alternating Beats)
+    // 5. Five Compact Center-Bottom Moving-Head Spotlights (Alternating Beat Rig)
+    // Group A (Inner pair): Narrow, punchy xenon strobe beams
     const pMiniBeamGeo = createMultiPlaneRayGeometry(8, 0.40, 2.6, 22.0);
     const pMiniCoreBeamGeo = createMultiPlaneRayGeometry(8, 0.18, 1.2, 22.0);
 
-    function createMiniWhiteSpotSetup(fixturePos, initialTargetPos) {
-        const fixture = createMovingHeadFixture(fixturePos, 0.55);
+    // Group B (Trio): Significantly wider, rich volumetric stadium fog beams
+    const pMiniBeamGeoB = createMultiPlaneRayGeometry(12, 0.85, 6.2, 22.0);
+    const pMiniCoreBeamGeoB = createMultiPlaneRayGeometry(12, 0.45, 3.4, 22.0);
+
+    function createMiniWhiteSpotSetup(fixturePos, initialTargetPos, isWideFoggy = false) {
+        const fixture = createMovingHeadFixture(fixturePos, isWideFoggy ? 0.65 : 0.55);
         gPumpkinDiscoBall.add(fixture.fixtureGroup);
 
         // Pure Xenon white lens optics and accent rings
@@ -8212,32 +8306,38 @@ export function createVFXScene(container) {
         targetObj.position.copy(initialTargetPos);
         gPumpkinDiscoBall.add(targetObj);
 
-        // Upward-shining directional spotlight
-        const spot = new THREE.SpotLight(0xffffff, 2.0, 35.0, Math.PI / 6.0, 0.75, 1.0);
+        // Upward-shining directional spotlight (wider cone angle & softer penumbra for Group B)
+        const spotAngle = isWideFoggy ? (Math.PI / 3.4) : (Math.PI / 6.0);
+        const spotPenumbra = isWideFoggy ? 0.90 : 0.75;
+        const spot = new THREE.SpotLight(0xffffff, isWideFoggy ? 2.4 : 2.0, 38.0, spotAngle, spotPenumbra, 1.0);
         spot.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
         spot.target = targetObj;
         gPumpkinDiscoBall.add(spot);
 
-        // Volumetric God-Ray Beams with VU Meter Stepped Ladder Shader
+        // Volumetric God-Ray Beams: Group A uses VU rays shader, Group B uses wide bright foggy shader
+        const beamGeo = isWideFoggy ? pMiniBeamGeoB : pMiniBeamGeo;
+        const coreBeamGeo = isWideFoggy ? pMiniCoreBeamGeoB : pMiniCoreBeamGeo;
+        const chosenShader = isWideFoggy ? PumpkinWhiteFoggyRaysShader : PumpkinWhiteVuRaysShader;
+
         const beamMat = new THREE.ShaderMaterial({
             uniforms: {
                 uColor: { value: new THREE.Color(0xffffff) },
                 uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: 1.5 },
+                uIntensity: { value: isWideFoggy ? 2.0 : 1.5 },
                 uTime: { value: 0.0 },
                 uVuLevel: { value: 0.0 },
                 uPulse: { value: 0.0 },
                 uTreble: { value: 0.0 },
                 uHit: { value: 1.0 }
             },
-            vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-            fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
+            vertexShader: chosenShader.vertexShader,
+            fragmentShader: chosenShader.fragmentShader,
             transparent: true,
             blending: THREE.AdditiveBlending,
             side: THREE.DoubleSide,
             depthWrite: false
         });
-        const beamMesh = new THREE.Mesh(pMiniBeamGeo, beamMat);
+        const beamMesh = new THREE.Mesh(beamGeo, beamMat);
         beamMesh.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
         beamMesh.renderOrder = 20;
         gPumpkinDiscoBall.add(beamMesh);
@@ -8246,26 +8346,26 @@ export function createVFXScene(container) {
             uniforms: {
                 uColor: { value: new THREE.Color(0xffffff) },
                 uCoreColor: { value: new THREE.Color(0xffffff) },
-                uIntensity: { value: 2.0 },
+                uIntensity: { value: isWideFoggy ? 2.6 : 2.0 },
                 uTime: { value: 0.0 },
                 uVuLevel: { value: 0.0 },
                 uPulse: { value: 0.0 },
                 uTreble: { value: 0.0 },
                 uHit: { value: 1.0 }
             },
-            vertexShader: PumpkinWhiteVuRaysShader.vertexShader,
-            fragmentShader: PumpkinWhiteVuRaysShader.fragmentShader,
+            vertexShader: chosenShader.vertexShader,
+            fragmentShader: chosenShader.fragmentShader,
             transparent: true,
             blending: THREE.AdditiveBlending,
             side: THREE.DoubleSide,
             depthWrite: false
         });
-        const coreBeamMesh = new THREE.Mesh(pMiniCoreBeamGeo, coreBeamMat);
+        const coreBeamMesh = new THREE.Mesh(coreBeamGeo, coreBeamMat);
         coreBeamMesh.position.copy(fixturePos).add(new THREE.Vector3(0, 0.69, 0));
         coreBeamMesh.renderOrder = 21;
         gPumpkinDiscoBall.add(coreBeamMesh);
 
-        // Underneath Front Surface Delicate Sparkle Glints (Where white beams touch mirror facets)
+        // Underneath Front Surface Delicate Sparkle Glints / Fog Bloom
         const hitFlare = new THREE.Sprite(new THREE.SpriteMaterial({
             map: starburstTex,
             color: 0xffffff,
@@ -8274,7 +8374,8 @@ export function createVFXScene(container) {
             opacity: 0.0,
             depthWrite: false
         }));
-        hitFlare.scale.set(1.3, 1.3, 1.0);
+        const flareBaseScale = isWideFoggy ? 2.2 : 1.3;
+        hitFlare.scale.set(flareBaseScale, flareBaseScale, 1.0);
         hitFlare.renderOrder = 23;
         hitFlare.visible = false;
         gPumpkinDiscoBall.add(hitFlare);
@@ -8288,19 +8389,20 @@ export function createVFXScene(container) {
             beamMesh,
             coreBeamMat,
             coreBeamMesh,
-            hitFlare
+            hitFlare,
+            isWideFoggy
         };
     }
 
     // Five-fixture array spaced at 2.4-unit intervals: [-4.8, -2.4, 0.0, +2.4, +4.8]
-    // Group A (2 existing lights at -2.4 and +2.4): Strobe on beat 1 & 3
-    const pMiniLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-2.4, -6.8, 5.8), new THREE.Vector3(-1.0, -2.8, 3.8));
-    const pMiniRight = createMiniWhiteSpotSetup(new THREE.Vector3(2.4, -6.8, 5.8), new THREE.Vector3(1.0, -2.8, 3.8));
+    // Group A (2 existing lights at -2.4 and +2.4): Crisp punchy strobe on beat 1 & 3
+    const pMiniLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-2.4, -6.8, 5.8), new THREE.Vector3(-1.0, -2.8, 3.8), false);
+    const pMiniRight = createMiniWhiteSpotSetup(new THREE.Vector3(2.4, -6.8, 5.8), new THREE.Vector3(1.0, -2.8, 3.8), false);
 
-    // Group B (3 new lights: Far-Left, Center, Far-Right): Strobe on alternate beat 2 & 4
-    const pMiniFarLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-4.8, -6.8, 5.8), new THREE.Vector3(-3.0, -2.8, 3.8));
-    const pMiniCenter = createMiniWhiteSpotSetup(new THREE.Vector3(0.0, -6.8, 5.8), new THREE.Vector3(0.0, -2.8, 3.8));
-    const pMiniFarRight = createMiniWhiteSpotSetup(new THREE.Vector3(4.8, -6.8, 5.8), new THREE.Vector3(3.0, -2.8, 3.8));
+    // Group B (3 lights: Far-Left, Center, Far-Right): Wide, shaded bright-foggy beam with longer fade cycle on alternate beat 2 & 4
+    const pMiniFarLeft = createMiniWhiteSpotSetup(new THREE.Vector3(-4.8, -6.8, 5.8), new THREE.Vector3(-3.0, -2.8, 3.8), true);
+    const pMiniCenter = createMiniWhiteSpotSetup(new THREE.Vector3(0.0, -6.8, 5.8), new THREE.Vector3(0.0, -2.8, 3.8), true);
+    const pMiniFarRight = createMiniWhiteSpotSetup(new THREE.Vector3(4.8, -6.8, 5.8), new THREE.Vector3(3.0, -2.8, 3.8), true);
 
     // Convergence Super-Bright Specular Reflection Flare (Ignites when both lights meet on the pumpkin surface)
     const pMeetFlare = new THREE.Sprite(new THREE.SpriteMaterial({
@@ -10037,8 +10139,8 @@ export function createVFXScene(container) {
             const timeSinceLastStrobeB = elapsedTime - pumpkinWhiteLightOnTimeB;
             const timeSinceLastStrobe = Math.min(timeSinceLastStrobeA, timeSinceLastStrobeB);
             const isSnareCrack = (deltaMid > 0.06 && rawMid > smoothedMid * 1.15 + 0.05);
-            // Crucial: Only allow an offbeat snare flash if the previous beat strobe has ALREADY finished and turned OFF (>200ms)!
-            const isOffbeatDrum = timeSinceLastStrobe > 0.20 && (isDeepKick || isSnareCrack || audio.isOnset);
+            // Crucial: Only allow an offbeat snare flash if previous strobe/fade has completed
+            const isOffbeatDrum = timeSinceLastStrobeA > 0.20 && timeSinceLastStrobeB > 0.45 && (isDeepKick || isSnareCrack || audio.isOnset);
 
             if (isNewBeat) {
                 pumpkinWhiteLightLastBeat = curBeatIdx;
@@ -10072,30 +10174,41 @@ export function createVFXScene(container) {
             pumpkinKickThump = Math.max(0.0, pumpkinKickThump - delta * 5.2);
 
             // High-Contrast Crisp Strobe Envelopes: Snaps ON on the beat, snaps OFF to complete darkness
-            // Strobe duration: ~130ms crisp ON, then 35ms ultra-fast shutter snap to 0.0 pure darkness
-            const onDuration = Math.min(0.16, Math.max(0.11, beatDuration * 0.30));
-            const shutterCloseDuration = 0.035;
+            // Group A (2 Inner Lights): Crisp ~130ms Strobe Snap on Beats 1 & 3
+            const onDurationA = Math.min(0.16, Math.max(0.11, beatDuration * 0.30));
+            const shutterCloseDurationA = 0.035;
 
-            // Group A (2 Inner Lights) Envelope
             const timeSinceBeatA = elapsedTime - pumpkinWhiteLightOnTimeA;
             let whiteLightFactorA = 0.0;
-            if (timeSinceBeatA >= 0.0 && timeSinceBeatA < onDuration) {
+            if (timeSinceBeatA >= 0.0 && timeSinceBeatA < onDurationA) {
                 whiteLightFactorA = 1.0; // Crisp 100% ON
-            } else if (timeSinceBeatA >= onDuration && timeSinceBeatA < onDuration + shutterCloseDuration) {
-                whiteLightFactorA = 1.0 - ((timeSinceBeatA - onDuration) / shutterCloseDuration);
+            } else if (timeSinceBeatA >= onDurationA && timeSinceBeatA < onDurationA + shutterCloseDurationA) {
+                whiteLightFactorA = 1.0 - ((timeSinceBeatA - onDurationA) / shutterCloseDurationA);
             } else {
                 whiteLightFactorA = 0.0; // Total 100% OFF between beats!
             }
 
-            // Group B (3 Outer & Center Lights) Envelope (Alternating Beat)
+            // Group B (3 Outer & Center Lights): Wide Shaded Bright-Foggy Bloom with Longer Fade In & Fade Out Cycle on Alternate Beats 2 & 4
             const timeSinceBeatB = elapsedTime - pumpkinWhiteLightOnTimeB;
+            const fadeBIn = Math.max(0.14, beatDuration * 0.32);    // ~160ms smooth organic swell in
+            const sustainB = Math.max(0.10, beatDuration * 0.22);   // ~110ms bright peak sustain
+            const fadeBOut = Math.max(0.24, beatDuration * 0.58);   // ~280ms long foggy fade out
+            const totalCycleB = fadeBIn + sustainB + fadeBOut;
+
             let whiteLightFactorB = 0.0;
-            if (timeSinceBeatB >= 0.0 && timeSinceBeatB < onDuration) {
-                whiteLightFactorB = 1.0; // Crisp 100% ON
-            } else if (timeSinceBeatB >= onDuration && timeSinceBeatB < onDuration + shutterCloseDuration) {
-                whiteLightFactorB = 1.0 - ((timeSinceBeatB - onDuration) / shutterCloseDuration);
+            if (timeSinceBeatB >= 0.0 && timeSinceBeatB < fadeBIn) {
+                // Smooth S-curve swell in (0.0 -> 1.0)
+                const tIn = timeSinceBeatB / fadeBIn;
+                whiteLightFactorB = 0.5 - 0.5 * Math.cos(tIn * Math.PI);
+            } else if (timeSinceBeatB >= fadeBIn && timeSinceBeatB < fadeBIn + sustainB) {
+                // Full luminous bright foggy peak
+                whiteLightFactorB = 1.0;
+            } else if (timeSinceBeatB >= fadeBIn + sustainB && timeSinceBeatB < totalCycleB) {
+                // Smooth cosine tail fade out (1.0 -> 0.0)
+                const tOut = (timeSinceBeatB - (fadeBIn + sustainB)) / fadeBOut;
+                whiteLightFactorB = 0.5 + 0.5 * Math.cos(tOut * Math.PI);
             } else {
-                whiteLightFactorB = 0.0; // Total 100% OFF between beats!
+                whiteLightFactorB = 0.0; // Total 0.0 OFF between cycles
             }
 
 
@@ -10426,8 +10539,9 @@ export function createVFXScene(container) {
                 item.coreBeamMesh.scale.set(1.0, dist / 22.0, 1.0);
 
                 if (whiteFactor > 0.001) {
-                    const beamPower = 0.90 * whiteFactor;
-                    const spotPower = 1.40 * whiteFactor;
+                    const isFoggy = item.isWideFoggy;
+                    const beamPower = (isFoggy ? 1.45 : 0.90) * whiteFactor;
+                    const spotPower = (isFoggy ? 2.20 : 1.40) * whiteFactor;
 
                     item.spot.intensity = spotPower;
 
@@ -10446,15 +10560,16 @@ export function createVFXScene(container) {
                     item.coreBeamMat.uniforms.uTime.value = elapsedTime;
                     item.coreBeamMat.uniforms.uHit.value = 1.0;
 
-                    const lensBright = 0.70 * whiteFactor;
+                    const lensBright = (isFoggy ? 0.95 : 0.70) * whiteFactor;
                     item.fixture.lensMat.color.setRGB(lensBright, lensBright, lensBright);
                     item.fixture.lensCoronaMat.color.setRGB(lensBright * 0.75, lensBright * 0.75, lensBright * 0.75);
                     item.fixture.lensCoreMat.color.setRGB(lensBright, lensBright, lensBright);
 
                     item.hitFlare.visible = true;
                     item.hitFlare.position.copy(targetPos);
-                    item.hitFlare.material.opacity = 0.30 * whiteFactor;
-                    const flareScale = 0.8 + whiteFactor * 0.30;
+                    const flareOpacity = (isFoggy ? 0.45 : 0.30) * whiteFactor;
+                    item.hitFlare.material.opacity = flareOpacity;
+                    const flareScale = isFoggy ? (1.6 + whiteFactor * 0.9) : (0.8 + whiteFactor * 0.30);
                     item.hitFlare.scale.set(flareScale, flareScale, 1.0);
                 } else {
                     item.spot.intensity = 0.0;
