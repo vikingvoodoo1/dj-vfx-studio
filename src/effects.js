@@ -4421,15 +4421,17 @@ function createBroodingStormCloudsTexture() {
     return tex;
 }
 
-// Procedural Forked Lightning Texture (512x1024)
+// Procedural Blinding Forked Lightning Texture (512x1024)
 function renderProceduralForkedLightning(canvas, startX = 256, endX = 256) {
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, 512, 1024);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'miter';
 
+    const branchNodes = [];
+
     function drawBranch(x1, y1, x2, y2, depth, maxDepth) {
-        const segs = 10 + Math.floor(Math.random() * 8);
+        const segs = 12 + Math.floor(Math.random() * 8);
         const dx = (x2 - x1) / segs;
         const dy = (y2 - y1) / segs;
         const points = [[x1, y1]];
@@ -4437,48 +4439,76 @@ function renderProceduralForkedLightning(canvas, startX = 256, endX = 256) {
         let curY = y1;
 
         for (let i = 1; i <= segs; i++) {
-            const jitter = (26.0 / (depth + 1.0)) * (1.0 - (i / segs) * 0.35);
-            const nx = (i === segs) ? x2 : (x1 + dx * i + (Math.random() - 0.5) * jitter * 2.4);
-            const ny = (i === segs) ? y2 : (y1 + dy * i + (Math.random() - 0.25) * 6.5);
+            const jitter = (34.0 / (depth + 1.0)) * (1.0 - (i / segs) * 0.35);
+            const nx = (i === segs) ? x2 : (x1 + dx * i + (Math.random() - 0.5) * jitter * 2.6);
+            const ny = (i === segs) ? y2 : (y1 + dy * i + (Math.random() - 0.25) * 7.5);
             points.push([nx, ny]);
 
             // Branching acute forks
-            if (depth < maxDepth && Math.random() < (0.36 - depth * 0.09) && i >= 2 && i <= segs - 2) {
-                const angle = (Math.random() > 0.5 ? 1 : -1) * (0.35 + Math.random() * 0.45);
-                const len = (1024 - ny) * (0.30 + Math.random() * 0.40);
+            if (depth < maxDepth && Math.random() < (0.42 - depth * 0.08) && i >= 2 && i <= segs - 2) {
+                const angle = (Math.random() > 0.5 ? 1 : -1) * (0.32 + Math.random() * 0.48);
+                const len = (1024 - ny) * (0.35 + Math.random() * 0.45);
                 const bx = nx + Math.sin(angle) * len;
                 const by = ny + Math.cos(angle) * len;
+                branchNodes.push({ x: nx, y: ny, r: Math.max(3.0, 10.0 - depth * 2.5) });
                 drawBranch(nx, ny, bx, by, depth + 1, maxDepth);
             }
             curX = nx;
             curY = ny;
         }
 
-        const baseW = Math.max(1.2, 5.2 - depth * 1.4);
+        const baseW = Math.max(1.8, 7.5 - depth * 1.8);
 
-        // Pass 1: Broad electric cyan/violet plasma atmospheric halo
-        ctx.strokeStyle = 'rgba(110, 190, 255, 0.35)';
-        ctx.lineWidth = baseW * 4.8;
+        // Pass 1: Ultra-wide deep atmospheric blue/violet ionized plasma halo
+        ctx.strokeStyle = 'rgba(80, 140, 255, 0.45)';
+        ctx.lineWidth = baseW * 8.5;
         ctx.beginPath();
         points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
         ctx.stroke();
 
-        // Pass 2: Intense cyan ionization sheath
-        ctx.strokeStyle = 'rgba(180, 235, 255, 0.78)';
-        ctx.lineWidth = baseW * 2.2;
+        // Pass 2: Vivid neon electric cyan discharge sheath
+        ctx.strokeStyle = 'rgba(120, 225, 255, 0.85)';
+        ctx.lineWidth = baseW * 4.2;
         ctx.beginPath();
         points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
         ctx.stroke();
 
-        // Pass 3: Blinding white-hot electric core
+        // Pass 3: Brilliant electric ice-blue core
+        ctx.strokeStyle = 'rgba(215, 250, 255, 0.96)';
+        ctx.lineWidth = baseW * 2.0;
+        ctx.beginPath();
+        points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+        ctx.stroke();
+
+        // Pass 4: Incandescent pure white-hot lightning filament
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = baseW * 0.95;
+        ctx.lineWidth = baseW * 1.1;
         ctx.beginPath();
         points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
         ctx.stroke();
     }
 
-    drawBranch(startX, 10, endX + (Math.random() - 0.5) * 80, 980, 0, 3);
+    // Main primary lightning trunk
+    drawBranch(startX, 10, endX + (Math.random() - 0.5) * 90, 990, 0, 3);
+
+    // Secondary parallel discharge branch (adds authentic multi-bolt complexity)
+    if (Math.random() > 0.3) {
+        const sideStartX = startX + (Math.random() > 0.5 ? 1 : -1) * (45 + Math.random() * 60);
+        drawBranch(sideStartX, 10, endX + (Math.random() - 0.5) * 140, 780 + Math.random() * 180, 1, 3);
+    }
+
+    // Pass 5: Blinding electrical burst nodes at branch junction points
+    branchNodes.forEach(node => {
+        const glow = ctx.createRadialGradient(node.x, node.y, 0, node.x, node.y, node.r * 2.2);
+        glow.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+        glow.addColorStop(0.35, 'rgba(160, 240, 255, 0.85)');
+        glow.addColorStop(0.75, 'rgba(80, 160, 255, 0.40)');
+        glow.addColorStop(1.0, 'transparent');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.r * 2.2, 0, Math.PI * 2);
+        ctx.fill();
+    });
 }
 
 // 3. Victorian Gothic Haunted Mansion Silhouette with Candlelit Windows (1024x1024)
@@ -4559,22 +4589,56 @@ function createHauntedManorTexture() {
     drawCellarGrate(730, 890);
     drawCellarGrate(820, 890);
 
-    // Left Wing: Steep Gothic Gable Roof
-    ctx.fillStyle = roofDark;
+    // Left Wing: Balanced Victorian Gothic Gable Roof (Sitting squarely atop roofline cornice at y = 460)
+    // Left slope (Moonlit faceted slate)
+    ctx.fillStyle = '#141f30';
     ctx.beginPath();
-    ctx.moveTo(130, 500);
-    ctx.lineTo(290, 280); // Gable peak
-    ctx.lineTo(450, 500);
+    ctx.moveTo(126, 460);
+    ctx.lineTo(286, 290); // Gable peak
+    ctx.lineTo(286, 460);
     ctx.closePath();
     ctx.fill();
 
-    // Left Wing Secondary Dormer Gable
+    // Right slope (Shadowed faceted slate)
+    ctx.fillStyle = roofDark;
     ctx.beginPath();
-    ctx.moveTo(210, 440);
-    ctx.lineTo(260, 360);
-    ctx.lineTo(310, 440);
+    ctx.moveTo(286, 290);
+    ctx.lineTo(446, 460);
+    ctx.lineTo(286, 460);
     ctx.closePath();
     ctx.fill();
+
+    // Stone verge coping & eave moulding
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(124, 462); ctx.lineTo(286, 290); ctx.lineTo(448, 462);
+    ctx.stroke();
+    ctx.fillStyle = stoneHighlight;
+    ctx.fillRect(124, 458, 324, 6); // Carved cornice eave
+
+    // Left Wing Gothic Dormer Gable Window
+    ctx.fillStyle = manorDark;
+    ctx.beginPath();
+    ctx.moveTo(250, 440); ctx.lineTo(286, 385); ctx.lineTo(322, 440);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // Dormer arched window opening
+    ctx.fillStyle = '#050810';
+    ctx.beginPath();
+    ctx.arc(286, 412, 12, Math.PI, 0);
+    ctx.fillRect(274, 412, 24, 22);
+    ctx.fill();
+    // Peak iron finial
+    ctx.strokeStyle = '#05070c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(286, 290); ctx.lineTo(286, 262);
+    ctx.moveTo(280, 272); ctx.lineTo(292, 272);
+    ctx.stroke();
 
     // Central Victorian 3-Story Mansard Tower
     // Tower walls
@@ -4622,39 +4686,81 @@ function createHauntedManorTexture() {
     ctx.moveTo(465, 188); ctx.lineTo(585, 188);
     ctx.stroke();
 
-    // Right Wing Roof & Tall Gothic Chimneys
-    ctx.fillStyle = roofDark;
+    // Right Wing Roof (Symmetrical, balanced Gothic Gable sitting squarely atop roofline cornice at y = 460)
+    // Left slope (Moonlit faceted slate)
+    ctx.fillStyle = '#141f30';
     ctx.beginPath();
-    ctx.moveTo(610, 500);
-    ctx.lineTo(680, 380);
-    ctx.lineTo(870, 500);
+    ctx.moveTo(604, 460);
+    ctx.lineTo(745, 290); // Matching gable peak
+    ctx.lineTo(745, 460);
     ctx.closePath();
     ctx.fill();
 
-    // Chimney 1 (Tall Left Chimney)
-    ctx.fillStyle = manorDark;
-    ctx.fillRect(720, 220, 45, 180);
+    // Right slope (Shadowed faceted slate)
+    ctx.fillStyle = roofDark;
+    ctx.beginPath();
+    ctx.moveTo(745, 290);
+    ctx.lineTo(886, 460);
+    ctx.lineTo(745, 460);
+    ctx.closePath();
+    ctx.fill();
+
+    // Stone verge coping & eave moulding
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(602, 462); ctx.lineTo(745, 290); ctx.lineTo(888, 462);
+    ctx.stroke();
     ctx.fillStyle = stoneHighlight;
-    ctx.fillRect(715, 215, 55, 8);
+    ctx.fillRect(602, 458, 286, 6); // Carved cornice eave
+
+    // Right Wing Gothic Dormer Gable Window
+    ctx.fillStyle = manorDark;
+    ctx.beginPath();
+    ctx.moveTo(709, 440); ctx.lineTo(745, 385); ctx.lineTo(781, 440);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    // Dormer arched window opening
+    ctx.fillStyle = '#050810';
+    ctx.beginPath();
+    ctx.arc(745, 412, 12, Math.PI, 0);
+    ctx.fillRect(733, 412, 24, 22);
+    ctx.fill();
+    // Peak iron finial
+    ctx.strokeStyle = '#05070c';
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(745, 290); ctx.lineTo(745, 262);
+    ctx.moveTo(739, 272); ctx.lineTo(751, 272);
+    ctx.stroke();
+
+    // Chimney 1 (Tall Left Chimney - Rising cleanly through roof pitch)
+    ctx.fillStyle = manorDark;
+    ctx.fillRect(675, 200, 44, 180);
+    ctx.fillStyle = stoneHighlight;
+    ctx.fillRect(670, 195, 54, 8);
     // Chimney pots
     ctx.fillStyle = '#060910';
-    ctx.fillRect(724, 195, 14, 22);
-    ctx.fillRect(742, 195, 14, 22);
+    ctx.fillRect(678, 175, 14, 22);
+    ctx.fillRect(696, 175, 14, 22);
 
-    // Chimney 2 (Secondary Right Chimney)
+    // Chimney 2 (Secondary Right Chimney - Rising near right roof hip)
     ctx.fillStyle = manorDark;
-    ctx.fillRect(810, 270, 40, 160);
+    ctx.fillRect(815, 240, 42, 160);
     ctx.fillStyle = stoneHighlight;
-    ctx.fillRect(805, 265, 50, 8);
+    ctx.fillRect(810, 235, 52, 8);
     // Chimney pot
     ctx.fillStyle = '#060910';
-    ctx.fillRect(822, 248, 15, 20);
+    ctx.fillRect(828, 218, 15, 20);
 
     // Grand Entrance Portico / Porch with Stone Columns & Carriage Lantern
     ctx.fillStyle = manorDark;
     ctx.fillRect(310, 600, 200, 200);
 
-    // Carved Double Wooden Doors
+    // Carved Double Wooden Doors (Centered at x = 410)
     ctx.fillStyle = '#080503';
     ctx.fillRect(360, 650, 100, 150);
     ctx.strokeStyle = '#1b120c';
@@ -4664,11 +4770,11 @@ function createHauntedManorTexture() {
     ctx.strokeRect(413, 655, 42, 65);
     ctx.strokeRect(413, 725, 42, 70);
 
-    // Iron Portico Lantern Hanging Bracket Hook
+    // Iron Portico Lantern Hanging Bracket Hook (Dead center at x = 410)
     ctx.strokeStyle = '#05070a';
     ctx.lineWidth = 3;
     ctx.beginPath();
-    ctx.moveTo(410, 595); ctx.lineTo(410, 608);
+    ctx.moveTo(410, 595); ctx.lineTo(410, 612);
     ctx.stroke();
 
     // Portico Pediment with sculpted gothic relief
@@ -4682,12 +4788,12 @@ function createHauntedManorTexture() {
     ctx.fillStyle = stoneHighlight;
     ctx.fillRect(300, 596, 220, 6);
 
-    // Fluted Entrance Columns
+    // Fluted Entrance Columns (Symmetrically spaced around central door divide at x = 410)
     ctx.fillStyle = stoneHighlight;
-    ctx.fillRect(320, 600, 18, 200);
-    ctx.fillRect(380, 600, 16, 200);
-    ctx.fillRect(440, 600, 16, 200);
-    ctx.fillRect(495, 600, 18, 200);
+    ctx.fillRect(318, 600, 18, 200); // Outer Left Column
+    ctx.fillRect(372, 600, 16, 200); // Inner Left Column (Opening: 388 to 432, center is exactly 410!)
+    ctx.fillRect(432, 600, 16, 200); // Inner Right Column
+    ctx.fillRect(494, 600, 18, 200); // Outer Right Column
 
     // =========================================================================
     // Base Manor Window Openings (Dark Recesses with Stone Frames & Tracery)
@@ -10643,10 +10749,10 @@ export function createVFXScene(container) {
     hauntedWindowsMesh.position.set(4.2, 3.5, -10.16);
     gHauntedManor.add(hauntedWindowsMesh);
 
-    // Grand Entrance Porch Hanging Carriage Lantern (Hangs directly in center of porch from ceiling beam)
+    // Grand Entrance Porch Hanging Carriage Lantern (Hangs directly in dead center of porch from ceiling beam)
     const hauntedPorchLanternTex = createHauntedPorchLanternTexture();
     const hauntedPorchLanternGroup = new THREE.Group();
-    hauntedPorchLanternGroup.position.set(1.41, 1.18, -10.05); // Exact center of porch ceiling beam
+    hauntedPorchLanternGroup.position.set(2.06, 1.82, -10.05); // Dead center of porch ceiling beam directly between columns 2 & 3
 
     const hauntedPorchLanternGeo = new THREE.PlaneGeometry(0.75, 1.5);
     hauntedPorchLanternGeo.translate(0, -0.75, 0); // Origin at top of chain so it swings naturally like a pendulum
@@ -10831,14 +10937,14 @@ export function createVFXScene(container) {
     const hauntedBatGroup = new THREE.Group();
 
     function respawnHauntedBat(bObj, fromScratch = false) {
-        // 3 Screen-Traversing Flight Types (Flying in and out of the scene):
-        // 0: High Sky Crosser (Moon & upper atmosphere, edge to edge)
+        // 3 Screen-Traversing Flight Types (Flying in and out of the scene with varied majestic speeds):
+        // 0: High Sky Crosser (Slow gliding across moon & upper atmosphere, edge to edge)
         // 1: Spire & Mansion Diver (Diagonal swoop over Victorian towers & weeping willows)
         // 2: Foreground Gate Swooper (Diving forward past iron gates into camera view)
         const type = Math.floor(Math.random() * 3);
         bObj.flightType = type;
         bObj.phase = Math.random() * Math.PI * 2.0;
-        bObj.flapSpeed = 10.0 + Math.random() * 6.5;
+        bObj.flapSpeed = 5.2 + Math.random() * 4.8; // Varied biological wing flap rhythm
 
         const fromLeft = Math.random() > 0.5;
         let startX, startY, startZ;
@@ -10846,34 +10952,34 @@ export function createVFXScene(container) {
         let speed;
 
         if (type === 0) {
-            // High Sky Crosser (Edge-to-Edge across moon and upper sky)
+            // High Sky Crosser (Slow majestic gliding edge-to-edge across moon and upper sky)
             startX = fromLeft ? (-36.0 - Math.random() * 8.0) : (36.0 + Math.random() * 8.0);
             endX = fromLeft ? (38.0 + Math.random() * 8.0) : (-38.0 - Math.random() * 8.0);
             startY = 5.5 + Math.random() * 6.0;
             endY = 4.5 + Math.random() * 6.5;
             startZ = -16.5 + (Math.random() - 0.5) * 2.5;
             endZ = -16.5 + (Math.random() - 0.5) * 2.5;
-            speed = 10.0 + Math.random() * 6.0;
+            speed = 2.4 + Math.random() * 2.4; // 2.4 to 4.8 units/s (gentle gliding)
             bObj.baseScale = 0.52 + Math.random() * 0.30;
         } else if (type === 1) {
-            // Mansion Spires Diver
+            // Mansion Spires Diver (Graceful swoops around gables and spires)
             startX = fromLeft ? (-34.0 - Math.random() * 6.0) : (34.0 + Math.random() * 6.0);
             endX = fromLeft ? (36.0 + Math.random() * 6.0) : (-36.0 - Math.random() * 6.0);
             startY = 2.0 + Math.random() * 7.5;
             endY = 0.5 + Math.random() * 6.5;
             startZ = -9.2 + (Math.random() - 0.5) * 3.5;
             endZ = -9.0 + (Math.random() - 0.5) * 3.5;
-            speed = 12.5 + Math.random() * 6.5;
+            speed = 3.6 + Math.random() * 2.8; // 3.6 to 6.4 units/s (moderate banking flight)
             bObj.baseScale = 0.85 + Math.random() * 0.40;
         } else {
-            // Foreground Gate Swooper (Diving past the stone pillars and wrought iron gates)
+            // Foreground Gate Swooper (Diving through the stone pillars and wrought iron gates into foreground)
             startX = fromLeft ? (-30.0 - Math.random() * 6.0) : (30.0 + Math.random() * 6.0);
             endX = fromLeft ? (32.0 + Math.random() * 6.0) : (-32.0 - Math.random() * 6.0);
             startY = 3.5 + Math.random() * 5.0;
             endY = -3.2 + Math.random() * 4.0;
             startZ = -5.5 + Math.random() * 4.0;
             endZ = 2.5 + Math.random() * 3.5;
-            speed = 14.5 + Math.random() * 7.5;
+            speed = 5.2 + Math.random() * 3.0; // 5.2 to 8.2 units/s (dynamic swoops)
             bObj.baseScale = 1.45 + Math.random() * 0.65;
         }
 
@@ -11038,12 +11144,12 @@ export function createVFXScene(container) {
     hauntedCandleLight.position.set(4.2, 3.8, -9.2);
     gHauntedManor.add(hauntedCandleLight);
 
-    // Warm Lantern Light at Grand Entrance Portico & Steps (Center of porch)
+    // Warm Lantern Light at Grand Entrance Portico & Steps (Dead center of porch directly above front doors)
     const hauntedLanternLight = new THREE.PointLight(0xffaa33, 1.8, 16.0, 1.5);
-    hauntedLanternLight.position.set(1.41, 0.45, -9.95);
+    hauntedLanternLight.position.set(2.06, 1.07, -9.95);
     gHauntedManor.add(hauntedLanternLight);
 
-    // ⚡ Cinematic Thunderstorm Lightning Directional Light
+    // ⚡ Cinematic Thunderstorm Lightning Directional Light (Intense Blinding Flash Capacity)
     const hauntedLightningLight = new THREE.DirectionalLight(0xddeeff, 0.0);
     hauntedLightningLight.position.set(0.0, 16.0, 6.0);
     gHauntedManor.add(hauntedLightningLight);
@@ -11051,7 +11157,7 @@ export function createVFXScene(container) {
     let hauntedLightningTimer = 0.0;
     let hauntedLastLightningTime = 0.0;
 
-    // 10. Dynamic Brooding Storm Scene (Clouds Floating at Top, Driving Rain, Procedural Forked Lightning Bolt)
+    // 10. Dynamic Brooding Storm Scene (Clouds Floating at Top, Multi-Layer Driving Rain, Blinding Lightning Flash)
     // 10a. Dark Brooding Cumulus Storm Clouds Floating Across Upper Sky
     const hauntedStormCloudsTex = createBroodingStormCloudsTexture();
     const hauntedStormCloudsGroup = new THREE.Group();
@@ -11073,41 +11179,85 @@ export function createVFXScene(container) {
     });
     gHauntedManor.add(hauntedStormCloudsGroup);
 
-    // 10b. Volumetric Driving Rain System (1400 Atmospheric Rain Streaks Driving With Wind)
-    const hauntedRainCount = 1400;
-    const hauntedRainGeo = new THREE.BufferGeometry();
-    const hauntedRainPos = new Float32Array(hauntedRainCount * 6);
-    const hauntedRainVel = new Float32Array(hauntedRainCount);
-    for (let r = 0; r < hauntedRainCount; r++) {
-        const rx = (Math.random() - 0.5) * 64.0;
-        const ry = -8.0 + Math.random() * 26.0;
-        const rz = -14.0 + Math.random() * 16.0;
-        const len = 0.85 + Math.random() * 0.95;
-        hauntedRainPos[r * 6] = rx;
-        hauntedRainPos[r * 6 + 1] = ry;
-        hauntedRainPos[r * 6 + 2] = rz;
-        hauntedRainPos[r * 6 + 3] = rx - 0.22;
-        hauntedRainPos[r * 6 + 4] = ry - len;
-        hauntedRainPos[r * 6 + 5] = rz;
-        hauntedRainVel[r] = 26.0 + Math.random() * 14.0;
+    // 10b. Realistic Multi-Layered Driving Rain System
+    // Layer 1: Foreground Heavy Driving Downpour (1,600 Streaks Falling In Front Of and Past Railings, z = -1.5 to +4.0)
+    const hauntedForeRainCount = 1600;
+    const hauntedForeRainGeo = new THREE.BufferGeometry();
+    const hauntedForeRainPos = new Float32Array(hauntedForeRainCount * 6);
+    const hauntedForeRainVel = new Float32Array(hauntedForeRainCount);
+    for (let r = 0; r < hauntedForeRainCount; r++) {
+        const rx = (Math.random() - 0.5) * 60.0;
+        const ry = -8.5 + Math.random() * 26.0;
+        // Spans right across foreground past railings (z = 0.0) up to +4.0!
+        const rz = -1.5 + Math.random() * 5.5;
+        const len = 1.6 + Math.random() * 1.6; // Longer foreground motion-blurred streaks
+        hauntedForeRainPos[r * 6] = rx;
+        hauntedForeRainPos[r * 6 + 1] = ry;
+        hauntedForeRainPos[r * 6 + 2] = rz;
+        hauntedForeRainPos[r * 6 + 3] = rx - 0.45;
+        hauntedForeRainPos[r * 6 + 4] = ry - len;
+        hauntedForeRainPos[r * 6 + 5] = rz;
+        hauntedForeRainVel[r] = 32.0 + Math.random() * 16.0;
     }
-    hauntedRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedRainPos, 3));
-    const hauntedRainMat = new THREE.LineBasicMaterial({
-        color: 0xc8e0ff,
+    hauntedForeRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedForeRainPos, 3));
+    const hauntedForeRainMat = new THREE.LineBasicMaterial({
+        color: 0xd8eeff,
         transparent: true,
         opacity: 0.0,
         depthWrite: false,
         blending: THREE.AdditiveBlending
     });
-    const hauntedRainLines = new THREE.LineSegments(hauntedRainGeo, hauntedRainMat);
-    gHauntedManor.add(hauntedRainLines);
+    const hauntedForeRainLines = new THREE.LineSegments(hauntedForeRainGeo, hauntedForeRainMat);
+    gHauntedManor.add(hauntedForeRainLines);
 
-    // 10c. Accurate Procedural Forked Lightning Bolt (Multi-Branch Electrical Tree Mesh)
+    // Layer 2: Deep Atmospheric Driving Rain (1,600 Streaks Over Estate & Manor, z = -15.5 to -1.5)
+    const hauntedMidRainCount = 1600;
+    const hauntedMidRainGeo = new THREE.BufferGeometry();
+    const hauntedMidRainPos = new Float32Array(hauntedMidRainCount * 6);
+    const hauntedMidRainVel = new Float32Array(hauntedMidRainCount);
+    for (let r = 0; r < hauntedMidRainCount; r++) {
+        const rx = (Math.random() - 0.5) * 64.0;
+        const ry = -8.5 + Math.random() * 28.0;
+        const rz = -15.5 + Math.random() * 14.0;
+        const len = 0.95 + Math.random() * 0.95;
+        hauntedMidRainPos[r * 6] = rx;
+        hauntedMidRainPos[r * 6 + 1] = ry;
+        hauntedMidRainPos[r * 6 + 2] = rz;
+        hauntedMidRainPos[r * 6 + 3] = rx - 0.32;
+        hauntedMidRainPos[r * 6 + 4] = ry - len;
+        hauntedMidRainPos[r * 6 + 5] = rz;
+        hauntedMidRainVel[r] = 24.0 + Math.random() * 14.0;
+    }
+    hauntedMidRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedMidRainPos, 3));
+    const hauntedMidRainMat = new THREE.LineBasicMaterial({
+        color: 0x98bcd8,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    const hauntedMidRainLines = new THREE.LineSegments(hauntedMidRainGeo, hauntedMidRainMat);
+    gHauntedManor.add(hauntedMidRainLines);
+
+    // 10c. Blinding Full-Sky Atmospheric Lightning Flash Plane (Massive ambient flash across entire screen)
+    const hauntedSkyFlashGeo = new THREE.PlaneGeometry(86.0, 52.0);
+    const hauntedSkyFlashMat = new THREE.MeshBasicMaterial({
+        color: 0xd2efff,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    const hauntedSkyFlashMesh = new THREE.Mesh(hauntedSkyFlashGeo, hauntedSkyFlashMat);
+    hauntedSkyFlashMesh.position.set(0.0, 7.5, -16.2);
+    gHauntedManor.add(hauntedSkyFlashMesh);
+
+    // 10d. Towering Procedural Forked Lightning Bolt (Multi-Branch Electrical Tree Mesh)
     const hauntedForkedLightningCanvas = document.createElement('canvas');
     hauntedForkedLightningCanvas.width = 512;
     hauntedForkedLightningCanvas.height = 1024;
     const hauntedForkedLightningTex = new THREE.CanvasTexture(hauntedForkedLightningCanvas);
-    const hauntedForkedLightningGeo = new THREE.PlaneGeometry(18.0, 24.0);
+    const hauntedForkedLightningGeo = new THREE.PlaneGeometry(26.0, 32.0); // Spans high sky down through spires!
     const hauntedForkedLightningMat = new THREE.MeshBasicMaterial({
         map: hauntedForkedLightningTex,
         transparent: true,
@@ -11117,7 +11267,7 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
     const hauntedForkedLightningMesh = new THREE.Mesh(hauntedForkedLightningGeo, hauntedForkedLightningMat);
-    hauntedForkedLightningMesh.position.set(2.0, 5.5, -15.4);
+    hauntedForkedLightningMesh.position.set(2.0, 6.0, -15.4);
     gHauntedManor.add(hauntedForkedLightningMesh);
 
     // Dynamic Weather State Machine: 'calm' -> 'gathering' -> 'storm' -> 'clearing'
@@ -13452,7 +13602,7 @@ export function createVFXScene(container) {
 
             // Organic candle flicker inside the hanging lantern
             const candleFlicker = 1.0 + Math.sin(elapsedTime * 15.0) * 0.18 + Math.cos(elapsedTime * 32.0) * 0.12 + (Math.random() - 0.5) * 0.14;
-            hauntedLanternLight.position.set(1.41 + Math.sin(lanternWindSwing) * 0.45, 0.45, -9.95);
+            hauntedLanternLight.position.set(2.06 + Math.sin(lanternWindSwing) * 0.45, 1.07, -9.95);
             hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4));
 
             // 2b. Wicked Flying Witch Flight Simulation (Pass 1: Left to Right across moon; Pass 2: Right to Left in front of manor, larger)
@@ -13512,7 +13662,7 @@ export function createVFXScene(container) {
 
 
             // 3. Flocks of 3D Articulated Flying Vampire Bats (Flying in and out of the scene)
-            const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.5 : 1.0;
+            const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.25 : 1.0;
             hauntedBats.forEach((b) => {
                 // Advance position along screen-traversing velocity vector
                 b.pos.x += b.velocity.x * batScatterBoost * delta;
@@ -13718,86 +13868,124 @@ export function createVFXScene(container) {
                 cm.position.set(floatX, floatY, -15.8 + i * 0.1);
             });
 
-            // Animate Volumetric Driving Rain (streaks fall fast, driven diagonally by wind)
-            hauntedRainMat.opacity = hauntedRainAlpha;
-            if (hauntedRainAlpha > 0.01) {
-                const rainPosAttr = hauntedRainGeo.attributes.position;
-                const windShift = -0.35 - (currentGust * 1.2);
-                for (let r = 0; r < hauntedRainCount; r++) {
-                    let topY = rainPosAttr.getY(r * 2);
-                    let topX = rainPosAttr.getX(r * 2);
-                    let topZ = rainPosAttr.getZ(r * 2);
+            // Animate Realistic Multi-Layered Driving Rain (Foreground up past railings + Deep Atmospheric sheets)
+            const windShift = -0.42 - (currentGust * 1.5);
 
-                    const fallSpeed = hauntedRainVel[r];
+            // Layer 1: Foreground Driving Downpour (Cutting right past railings, gate pillars, and camera)
+            if (hauntedRainAlpha > 0.01) {
+                hauntedForeRainMat.opacity = Math.min(0.95, hauntedRainAlpha * (0.95 + stormFlashPower * 0.75));
+                hauntedForeRainMat.color.setHex(stormFlashPower > 0.08 ? 0xffffff : 0xd8eeff);
+
+                const forePosAttr = hauntedForeRainGeo.attributes.position;
+                for (let r = 0; r < hauntedForeRainCount; r++) {
+                    let topY = forePosAttr.getY(r * 2);
+                    let topX = forePosAttr.getX(r * 2);
+                    let topZ = forePosAttr.getZ(r * 2);
+
+                    const fallSpeed = hauntedForeRainVel[r];
                     topY -= fallSpeed * delta;
-                    topX += windShift * fallSpeed * 0.35 * delta;
+                    topX += windShift * fallSpeed * 0.32 * delta;
 
                     // Wrap around when falling past bottom
-                    if (topY < -8.5) {
-                        topY = 16.0 + Math.random() * 4.0;
+                    if (topY < -8.8) {
+                        topY = 16.5 + Math.random() * 4.5;
+                        topX = (Math.random() - 0.5) * 60.0;
+                    }
+
+                    const dropLen = 1.85 + (fallSpeed / 48.0) * 0.8;
+                    const botX = topX + windShift * dropLen * 0.48;
+                    const botY = topY - dropLen;
+
+                    forePosAttr.setXYZ(r * 2, topX, topY, topZ);
+                    forePosAttr.setXYZ(r * 2 + 1, botX, botY, topZ);
+                }
+                forePosAttr.needsUpdate = true;
+
+                // Layer 2: Deep Atmospheric Driving Rain (Over estate, trees, and Victorian manor)
+                hauntedMidRainMat.opacity = Math.min(0.85, hauntedRainAlpha * (0.80 + stormFlashPower * 0.55));
+                hauntedMidRainMat.color.setHex(stormFlashPower > 0.08 ? 0xd0f0ff : 0x98bcd8);
+
+                const midPosAttr = hauntedMidRainGeo.attributes.position;
+                for (let r = 0; r < hauntedMidRainCount; r++) {
+                    let topY = midPosAttr.getY(r * 2);
+                    let topX = midPosAttr.getX(r * 2);
+                    let topZ = midPosAttr.getZ(r * 2);
+
+                    const fallSpeed = hauntedMidRainVel[r];
+                    topY -= fallSpeed * delta;
+                    topX += windShift * fallSpeed * 0.30 * delta;
+
+                    if (topY < -8.8) {
+                        topY = 16.5 + Math.random() * 4.5;
                         topX = (Math.random() - 0.5) * 64.0;
                     }
 
-                    const dropLen = 0.95;
-                    const botX = topX + windShift * dropLen * 0.45;
+                    const dropLen = 1.15;
+                    const botX = topX + windShift * dropLen * 0.44;
                     const botY = topY - dropLen;
 
-                    rainPosAttr.setXYZ(r * 2, topX, topY, topZ);
-                    rainPosAttr.setXYZ(r * 2 + 1, botX, botY, topZ);
+                    midPosAttr.setXYZ(r * 2, topX, topY, topZ);
+                    midPosAttr.setXYZ(r * 2 + 1, botX, botY, topZ);
                 }
-                rainPosAttr.needsUpdate = true;
+                midPosAttr.needsUpdate = true;
+            } else {
+                hauntedForeRainMat.opacity = 0.0;
+                hauntedMidRainMat.opacity = 0.0;
             }
 
-            // Animate Forked Lightning Bolt Mesh & Atmospheric Scene Illumination
+            // Animate Forked Lightning Bolt Mesh & Atmospheric Full-Sky Flash
             let stormFlashPower = 0.0;
             if (hauntedForkedLightningTimer > 0.0) {
                 hauntedForkedLightningTimer -= delta;
                 const lt = Math.max(0.0, hauntedForkedLightningTimer / 0.42);
 
-                // Multi-stroke electrical ionization profile
-                if (lt > 0.75) {
+                // Multi-stroke electrical ionization profile with blinding peak burst
+                if (lt > 0.72) {
                     // Stroke 1: Sharp leader strike
-                    stormFlashPower = 1.0 * ((lt - 0.75) / 0.25);
+                    stormFlashPower = 0.85 * ((lt - 0.72) / 0.28);
                     hauntedForkedLightningMat.opacity = stormFlashPower;
-                } else if (lt > 0.60) {
-                    // Restrike gap
-                    stormFlashPower = 0.3;
-                    hauntedForkedLightningMat.opacity = 0.35;
-                } else if (lt > 0.20) {
-                    // Stroke 2: Blinding main return stroke
-                    stormFlashPower = 1.0 * ((lt - 0.20) / 0.40);
-                    hauntedForkedLightningMat.opacity = stormFlashPower;
+                } else if (lt > 0.58) {
+                    // Restrike gap (brief dip)
+                    stormFlashPower = 0.35;
+                    hauntedForkedLightningMat.opacity = 0.45;
+                } else if (lt > 0.18) {
+                    // Stroke 2: BLINDING MAIN RETURN STROKE (100% full blinding output)
+                    stormFlashPower = 1.0;
+                    hauntedForkedLightningMat.opacity = 1.0;
                 } else {
                     // Atmospheric plasma afterglow fade
-                    stormFlashPower = 0.4 * (lt / 0.20);
-                    hauntedForkedLightningMat.opacity = stormFlashPower * 0.6;
+                    stormFlashPower = 0.55 * (lt / 0.18);
+                    hauntedForkedLightningMat.opacity = stormFlashPower * 0.8;
                 }
             } else {
                 hauntedForkedLightningMat.opacity = 0.0;
             }
 
             // Audio-triggered kick lightning or storm forked lightning
-            const audioFlash = (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) ? 0.8 : 0.0;
+            const audioFlash = (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) ? 0.95 : 0.0;
             if (audioFlash > 0.0) {
-                hauntedLightningTimer = 0.35;
+                hauntedLightningTimer = 0.38;
                 hauntedLastLightningTime = elapsedTime;
             }
             if (hauntedLightningTimer > 0.0) {
                 hauntedLightningTimer -= delta;
-                const alt = Math.max(0.0, hauntedLightningTimer / 0.35);
-                stormFlashPower = Math.max(stormFlashPower, alt * 0.9);
+                const alt = Math.max(0.0, hauntedLightningTimer / 0.38);
+                stormFlashPower = Math.max(stormFlashPower, alt * 1.0);
             }
 
-            // Accurate Lighting Shading for Weather & Lightning
-            const baseMoonPower = (hauntedWeatherState === 'storm' || hauntedWeatherState === 'gathering') ? 0.75 : 1.8;
-            hauntedMoonLight.intensity = baseMoonPower + stormFlashPower * 5.5;
-            hauntedLightningLight.intensity = stormFlashPower * 7.5;
-            hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + stormFlashPower * 0.5;
+            // Full-Sky Atmospheric Flash Plane (illuminates the entire night sky in brilliant electric cyan-white)
+            hauntedSkyFlashMat.opacity = stormFlashPower * 0.85;
 
-            // Fog ocean lights up radiantly under lightning flash
+            // Ultra-Vivid Lightning Rig Illumination: Blinding bursts across the estate grounds
+            const baseMoonPower = (hauntedWeatherState === 'storm' || hauntedWeatherState === 'gathering') ? 0.75 : 1.8;
+            hauntedMoonLight.intensity = baseMoonPower + stormFlashPower * 12.0;
+            hauntedLightningLight.intensity = stormFlashPower * 18.0; // Truly blinding lightning flash!
+            hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + stormFlashPower * 1.5;
+
+            // Fog ocean lights up radiantly under the blinding electric flash
             if (stormFlashPower > 0.05) {
                 hauntedPathFogPuffs.forEach(fp => {
-                    fp.mesh.material.opacity = Math.min(0.88, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.2));
+                    fp.mesh.material.opacity = Math.min(0.92, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.4));
                 });
             }
         }
