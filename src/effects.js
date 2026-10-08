@@ -10956,6 +10956,13 @@ export function createVFXScene(container) {
                 vhsLastPhraseSwitchTime = clock.getElapsedTime();
                 renderVhsTextCanvas(vhsCurrentPhraseIdx);
             }
+            if (index === 21) {
+                const now = clock.getElapsedTime();
+                hauntedWitchNextTime = now + 1.8; // Witch flies across moon within 1.8s!
+                hauntedNextGustTime = now + 1.2; // Sudden rushing wind gust within 1.2s!
+                hauntedFaultyTopNextTime = now + 1.0; // Top floor electrical blackout within 1.0s!
+                hauntedFaultyBottomNextTime = now + 2.4; // Bottom floor electrical blackout within 2.4s!
+            }
         }
     }
 
@@ -13112,14 +13119,6 @@ export function createVFXScene(container) {
             hauntedLeftGatePivot.rotation.y = -1.18 - (currentGust * 0.35) + calmSway;
             hauntedRightGatePivot.rotation.y = 1.18 + (currentGust * 0.35) - calmSway;
 
-            // 2. Faulty Electricity Wiring State for Right Wing Windows ("flicker black and back to how they are")
-            if (!hauntedFaultyActive && elapsedTime > hauntedNextFaultyTime) {
-                hauntedFaultyActive = true;
-                hauntedFaultyStartTime = elapsedTime;
-                hauntedFaultyDuration = 0.4 + Math.random() * 0.85; // 0.4s to 1.25s blackout/stutter
-                hauntedFaultyTarget = Math.floor(Math.random() * 3); // 0: downstairs right, 1: upstairs right, 2: all right windows
-                hauntedNextFaultyTime = elapsedTime + 3.0 + Math.random() * 5.5; // Next faulty event in 3 to 8.5s
-            }
 
             // 2. Independent Faulty Electricity Wiring for Right Wing Windows (Top and Bottom Floors Flicker Independently)
             if (!hauntedFaultyTopActive && elapsedTime > hauntedFaultyTopNextTime) {
@@ -13437,7 +13436,7 @@ export function createVFXScene(container) {
 
                 hauntedLightningLight.intensity = flashIntensity;
                 hauntedMoonLight.intensity = 1.8 + flashIntensity * 0.6;
-                hauntedLanternLight.intensity = Math.max(0.2, (1.8 + lanternFlicker) * (candleIntensity / 2.4)) + flashIntensity * 0.35;
+                hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + flashIntensity * 0.35;
             } else {
                 hauntedLightningLight.intensity = 0.0;
                 hauntedMoonLight.intensity = 1.8;
