@@ -11867,41 +11867,41 @@ export function createVFXScene(container) {
     hauntedSpecterGroup.add(hauntedSpecterMesh);
     gHauntedManor.add(hauntedSpecterGroup);
 
-    // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking Front of Manor Entrance)
+    // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking Front Driveway Approach to Manor)
     const hauntedGargoylesGroup = new THREE.Group();
-    const hauntedGargoyleGeo = new THREE.PlaneGeometry(2.6, 2.6);
+    const hauntedGargoyleGeo = new THREE.PlaneGeometry(3.2, 3.2);
     const hauntedGargoyleMat = new THREE.MeshBasicMaterial({
         map: hauntedGargoyleTex,
         transparent: true,
         depthWrite: false
     });
 
-    // Left Gargoyle perched on left staircase pedestal in front of manor
+    // Left Gargoyle perched proudly flanking front carriage approach
     const hauntedGargoyleLeft = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
-    hauntedGargoyleLeft.position.set(-1.2, -3.2, -9.4);
+    hauntedGargoyleLeft.position.set(-3.8, -3.0, -4.8);
     hauntedGargoylesGroup.add(hauntedGargoyleLeft);
 
-    // Right Gargoyle perched on right staircase pedestal in front of manor (Mirrored facing inward)
+    // Right Gargoyle perched proudly flanking front carriage approach (Mirrored facing inward)
     const hauntedGargoyleRight = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
-    hauntedGargoyleRight.position.set(5.3, -3.2, -9.4);
+    hauntedGargoyleRight.position.set(3.8, -3.0, -4.8);
     hauntedGargoyleRight.scale.x = -1.0;
     hauntedGargoylesGroup.add(hauntedGargoyleRight);
 
     // Cursed Glowing Eyes Sprites for Gargoyles
-    const cursedEyeGeo = new THREE.PlaneGeometry(0.55, 0.28);
+    const cursedEyeGeo = new THREE.PlaneGeometry(0.7, 0.35);
     const cursedEyeMat = new THREE.MeshBasicMaterial({
         map: hauntedRedEyesTex,
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        opacity: 0.85
+        opacity: 0.90
     });
     const hauntedGargoyleEyeLeft = new THREE.Mesh(cursedEyeGeo, cursedEyeMat);
-    hauntedGargoyleEyeLeft.position.set(-1.2, -2.95, -9.35);
+    hauntedGargoyleEyeLeft.position.set(-3.8, -2.75, -4.75);
     hauntedGargoylesGroup.add(hauntedGargoyleEyeLeft);
 
     const hauntedGargoyleEyeRight = new THREE.Mesh(cursedEyeGeo, cursedEyeMat.clone());
-    hauntedGargoyleEyeRight.position.set(5.3, -2.95, -9.35);
+    hauntedGargoyleEyeRight.position.set(3.8, -2.75, -4.75);
     hauntedGargoylesGroup.add(hauntedGargoyleEyeRight);
 
     gHauntedManor.add(hauntedGargoylesGroup);
@@ -15088,6 +15088,62 @@ export function createVFXScene(container) {
                 cm.position.set(floatX, floatY, -15.8 + i * 0.1);
             });
 
+            // Animate Forked Lightning Bolt Mesh & Atmospheric Full-Sky Flash (Computed first so rain can reflect lightning illumination)
+            let stormFlashPower = 0.0;
+            if (hauntedForkedLightningTimer > 0.0) {
+                hauntedForkedLightningTimer -= delta;
+                const lt = Math.max(0.0, hauntedForkedLightningTimer / 0.42);
+
+                // Multi-stroke electrical ionization profile with blinding peak burst
+                if (lt > 0.72) {
+                    // Stroke 1: Sharp leader strike
+                    stormFlashPower = 0.85 * ((lt - 0.72) / 0.28);
+                    hauntedForkedLightningMat.opacity = stormFlashPower;
+                } else if (lt > 0.58) {
+                    // Restrike gap (brief dip)
+                    stormFlashPower = 0.35;
+                    hauntedForkedLightningMat.opacity = 0.45;
+                } else if (lt > 0.18) {
+                    // Stroke 2: BLINDING MAIN RETURN STROKE (100% full blinding output)
+                    stormFlashPower = 1.0;
+                    hauntedForkedLightningMat.opacity = 1.0;
+                } else {
+                    // Atmospheric plasma afterglow fade
+                    stormFlashPower = 0.55 * (lt / 0.18);
+                    hauntedForkedLightningMat.opacity = stormFlashPower * 0.8;
+                }
+            } else {
+                hauntedForkedLightningMat.opacity = 0.0;
+            }
+
+            // Audio-triggered kick lightning or storm forked lightning
+            const audioFlash = (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) ? 0.95 : 0.0;
+            if (audioFlash > 0.0) {
+                hauntedLightningTimer = 0.38;
+                hauntedLastLightningTime = elapsedTime;
+            }
+            if (hauntedLightningTimer > 0.0) {
+                hauntedLightningTimer -= delta;
+                const alt = Math.max(0.0, hauntedLightningTimer / 0.38);
+                stormFlashPower = Math.max(stormFlashPower, alt * 1.0);
+            }
+
+            // Full-Sky Atmospheric Flash Plane (illuminates the entire night sky in brilliant electric cyan-white)
+            hauntedSkyFlashMat.opacity = stormFlashPower * 0.85;
+
+            // Ultra-Vivid Lightning Rig Illumination: Blinding bursts across the estate grounds
+            const baseMoonPower = (hauntedWeatherState === 'storm' || hauntedWeatherState === 'gathering') ? 0.75 : 1.8;
+            hauntedMoonLight.intensity = baseMoonPower + stormFlashPower * 12.0;
+            hauntedLightningLight.intensity = stormFlashPower * 18.0; // Truly blinding lightning flash!
+            hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + stormFlashPower * 1.5;
+
+            // Fog ocean lights up radiantly under the blinding electric flash
+            if (stormFlashPower > 0.05) {
+                hauntedPathFogPuffs.forEach(fp => {
+                    fp.mesh.material.opacity = Math.min(0.92, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.4));
+                });
+            }
+
             // Animate Realistic Multi-Layered Driving Rain (Foreground up past railings + Deep Atmospheric sheets)
             const windShift = -0.42 - (currentGust * 1.5);
 
@@ -15151,62 +15207,6 @@ export function createVFXScene(container) {
             } else {
                 hauntedForeRainMat.opacity = 0.0;
                 hauntedMidRainMat.opacity = 0.0;
-            }
-
-            // Animate Forked Lightning Bolt Mesh & Atmospheric Full-Sky Flash
-            let stormFlashPower = 0.0;
-            if (hauntedForkedLightningTimer > 0.0) {
-                hauntedForkedLightningTimer -= delta;
-                const lt = Math.max(0.0, hauntedForkedLightningTimer / 0.42);
-
-                // Multi-stroke electrical ionization profile with blinding peak burst
-                if (lt > 0.72) {
-                    // Stroke 1: Sharp leader strike
-                    stormFlashPower = 0.85 * ((lt - 0.72) / 0.28);
-                    hauntedForkedLightningMat.opacity = stormFlashPower;
-                } else if (lt > 0.58) {
-                    // Restrike gap (brief dip)
-                    stormFlashPower = 0.35;
-                    hauntedForkedLightningMat.opacity = 0.45;
-                } else if (lt > 0.18) {
-                    // Stroke 2: BLINDING MAIN RETURN STROKE (100% full blinding output)
-                    stormFlashPower = 1.0;
-                    hauntedForkedLightningMat.opacity = 1.0;
-                } else {
-                    // Atmospheric plasma afterglow fade
-                    stormFlashPower = 0.55 * (lt / 0.18);
-                    hauntedForkedLightningMat.opacity = stormFlashPower * 0.8;
-                }
-            } else {
-                hauntedForkedLightningMat.opacity = 0.0;
-            }
-
-            // Audio-triggered kick lightning or storm forked lightning
-            const audioFlash = (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) ? 0.95 : 0.0;
-            if (audioFlash > 0.0) {
-                hauntedLightningTimer = 0.38;
-                hauntedLastLightningTime = elapsedTime;
-            }
-            if (hauntedLightningTimer > 0.0) {
-                hauntedLightningTimer -= delta;
-                const alt = Math.max(0.0, hauntedLightningTimer / 0.38);
-                stormFlashPower = Math.max(stormFlashPower, alt * 1.0);
-            }
-
-            // Full-Sky Atmospheric Flash Plane (illuminates the entire night sky in brilliant electric cyan-white)
-            hauntedSkyFlashMat.opacity = stormFlashPower * 0.85;
-
-            // Ultra-Vivid Lightning Rig Illumination: Blinding bursts across the estate grounds
-            const baseMoonPower = (hauntedWeatherState === 'storm' || hauntedWeatherState === 'gathering') ? 0.75 : 1.8;
-            hauntedMoonLight.intensity = baseMoonPower + stormFlashPower * 12.0;
-            hauntedLightningLight.intensity = stormFlashPower * 18.0; // Truly blinding lightning flash!
-            hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + stormFlashPower * 1.5;
-
-            // Fog ocean lights up radiantly under the blinding electric flash
-            if (stormFlashPower > 0.05) {
-                hauntedPathFogPuffs.forEach(fp => {
-                    fp.mesh.material.opacity = Math.min(0.92, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.4));
-                });
             }
 
             // =========================================================================
