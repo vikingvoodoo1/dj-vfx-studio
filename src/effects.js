@@ -6048,7 +6048,543 @@ function createHauntedDirtPathTexture() {
     return tex;
 }
 
-// 7a. Vampire Bat Central Furry Body & Head with Glowing Eyes (128x256)
+// 6b. Haunted Victorian Graveyard Texture with Runed Headstones & Celtic Crosses (1024x512)
+function createHauntedGraveyardTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 512);
+
+    const stoneDark = '#101722';
+    const stoneMid = '#1c2838';
+    const stoneHighlight = '#3d526e';
+    const mossDark = '#091512';
+    const runeGlow = 'rgba(50, 240, 200, 0.85)';
+
+    function drawHeadstone(x, y, w, h, rot, label) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+
+        // Ground shadow
+        ctx.fillStyle = '#020408';
+        ctx.beginPath();
+        ctx.ellipse(0, h * 0.5 + 4, w * 0.65, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Main stone slab
+        ctx.fillStyle = stoneMid;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2, h / 2);
+        ctx.lineTo(-w / 2, -h / 2 + w / 2);
+        ctx.arc(0, -h / 2 + w / 2, w / 2, Math.PI, 0);
+        ctx.lineTo(w / 2, h / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Shadowed right face
+        ctx.fillStyle = stoneDark;
+        ctx.beginPath();
+        ctx.moveTo(0, -h / 2);
+        ctx.arc(0, -h / 2 + w / 2, w / 2, -Math.PI / 2, 0);
+        ctx.lineTo(w / 2, h / 2);
+        ctx.lineTo(0, h / 2);
+        ctx.closePath();
+        ctx.fill();
+
+        // Moonlit left edge highlight
+        ctx.strokeStyle = stoneHighlight;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(-w / 2, h / 2);
+        ctx.lineTo(-w / 2, -h / 2 + w / 2);
+        ctx.arc(0, -h / 2 + w / 2, w / 2, Math.PI, Math.PI * 1.5);
+        ctx.stroke();
+
+        // Cracks
+        ctx.strokeStyle = '#080d14';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(-w * 0.2, -h * 0.1);
+        ctx.lineTo(-w * 0.05, h * 0.1);
+        ctx.lineTo(-w * 0.25, h * 0.3);
+        ctx.stroke();
+
+        // Moss creepers along base
+        ctx.fillStyle = mossDark;
+        ctx.beginPath();
+        ctx.ellipse(0, h * 0.45, w * 0.45, 12, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Carved Gothic Runes on stone face
+        ctx.strokeStyle = runeGlow;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(0, -h * 0.15); ctx.lineTo(0, h * 0.15);
+        ctx.moveTo(-w * 0.2, -h * 0.05); ctx.lineTo(w * 0.2, -h * 0.05);
+        ctx.moveTo(-w * 0.15, h * 0.08); ctx.lineTo(w * 0.15, h * 0.08);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    function drawCelticCross(x, y, scale, rot) {
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.scale(scale, scale);
+
+        // Stepped base
+        ctx.fillStyle = stoneDark;
+        ctx.fillRect(-45, 110, 90, 25);
+        ctx.fillStyle = stoneMid;
+        ctx.fillRect(-35, 90, 70, 22);
+        ctx.fillStyle = stoneHighlight;
+        ctx.fillRect(-35, 90, 70, 4);
+
+        // Shaft
+        ctx.fillStyle = stoneMid;
+        ctx.fillRect(-14, -80, 28, 175);
+        ctx.fillStyle = stoneHighlight;
+        ctx.fillRect(-14, -80, 7, 175);
+
+        // Arms
+        ctx.fillStyle = stoneMid;
+        ctx.fillRect(-55, -35, 110, 24);
+        ctx.fillStyle = stoneHighlight;
+        ctx.fillRect(-55, -35, 110, 4);
+
+        // Celtic Ring
+        ctx.strokeStyle = stoneHighlight;
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(0, -23, 36, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Glowing Celtic rune in center
+        ctx.strokeStyle = runeGlow;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.arc(0, -23, 14, 0, Math.PI * 2);
+        ctx.moveTo(-10, -23); ctx.lineTo(10, -23);
+        ctx.moveTo(0, -33); ctx.lineTo(0, -13);
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Crypt / Mausoleum in background
+    ctx.fillStyle = '#080d16';
+    ctx.beginPath();
+    ctx.moveTo(480, 460);
+    ctx.lineTo(480, 240);
+    ctx.lineTo(600, 160);
+    ctx.lineTo(720, 240);
+    ctx.lineTo(720, 460);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(475, 244); ctx.lineTo(600, 160); ctx.lineTo(725, 244);
+    ctx.stroke();
+    // Crypt portal
+    ctx.fillStyle = '#020306';
+    ctx.beginPath();
+    ctx.arc(600, 340, 45, Math.PI, 0);
+    ctx.fillRect(555, 340, 90, 120);
+    ctx.fill();
+    ctx.strokeStyle = '#182436';
+    ctx.lineWidth = 3;
+    for (let bx = 565; bx <= 635; bx += 14) {
+        ctx.beginPath(); ctx.moveTo(bx, 310); ctx.lineTo(bx, 460); ctx.stroke();
+    }
+
+    // Headstones across graveyard
+    drawHeadstone(140, 360, 85, 140, -0.12, 'RIP');
+    drawCelticCross(310, 330, 1.15, 0.06);
+    drawHeadstone(430, 380, 75, 120, -0.05, '1842');
+    drawHeadstone(780, 370, 90, 150, 0.10, 'MEMENTO');
+    drawCelticCross(920, 340, 0.95, -0.08);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// 6c. Will-o'-the-Wisp Spirit Orb Particle Texture (256x256)
+function createWillOTheWispTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const cx = 128, cy = 128;
+    ctx.clearRect(0, 0, 256, 256);
+
+    const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 120);
+    grad.addColorStop(0.0, 'rgba(255, 255, 255, 1.0)');
+    grad.addColorStop(0.18, 'rgba(120, 255, 230, 0.95)');
+    grad.addColorStop(0.45, 'rgba(40, 220, 190, 0.65)');
+    grad.addColorStop(0.75, 'rgba(20, 140, 220, 0.25)');
+    grad.addColorStop(1.0, 'rgba(10, 80, 180, 0.0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 120, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 6d. Spectral Wandering Apparition / Phantom Wraith Texture (512x1024)
+function createHauntedSpecterTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 1024);
+    const cx = 256;
+
+    // Ethereal floating spectral aura
+    const auraGrad = ctx.createRadialGradient(cx, 400, 50, cx, 500, 250);
+    auraGrad.addColorStop(0.0, 'rgba(160, 225, 255, 0.45)');
+    auraGrad.addColorStop(0.5, 'rgba(90, 175, 235, 0.20)');
+    auraGrad.addColorStop(1.0, 'rgba(40, 100, 180, 0.0)');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(cx, 500, 250, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Flowing Diaphanous Burial Shroud
+    ctx.fillStyle = 'rgba(205, 235, 255, 0.55)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, 200);
+    ctx.bezierCurveTo(cx - 110, 340, cx - 160, 550, cx - 140, 800);
+    ctx.bezierCurveTo(cx - 100, 880, cx - 80, 780, cx - 40, 850);
+    ctx.bezierCurveTo(cx - 10, 920, cx + 20, 790, cx + 50, 870);
+    ctx.bezierCurveTo(cx + 90, 940, cx + 110, 820, cx + 150, 810);
+    ctx.bezierCurveTo(cx + 170, 560, cx + 120, 350, cx + 30, 200);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner brighter spectral core folds
+    ctx.fillStyle = 'rgba(235, 250, 255, 0.65)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 18, 220);
+    ctx.bezierCurveTo(cx - 60, 360, cx - 80, 540, cx - 45, 750);
+    ctx.bezierCurveTo(cx, 780, cx + 10, 680, cx + 45, 760);
+    ctx.bezierCurveTo(cx + 80, 550, cx + 60, 360, cx + 18, 220);
+    ctx.closePath();
+    ctx.fill();
+
+    // Translucent Reaching Ghostly Arms
+    ctx.strokeStyle = 'rgba(215, 240, 255, 0.45)';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx - 35, 290);
+    ctx.quadraticCurveTo(cx - 120, 340, cx - 155, 390);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx + 35, 290);
+    ctx.quadraticCurveTo(cx + 120, 340, cx + 155, 390);
+    ctx.stroke();
+
+    // Pale Glowing Ghostly Head & Eye Sockets
+    ctx.fillStyle = 'rgba(240, 250, 255, 0.85)';
+    ctx.beginPath();
+    ctx.ellipse(cx, 160, 36, 48, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#0a1422';
+    ctx.beginPath();
+    ctx.ellipse(cx - 13, 155, 7, 10, -0.1, 0, Math.PI * 2);
+    ctx.ellipse(cx + 13, 155, 7, 10, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Glowing cyan eye embers
+    ctx.fillStyle = 'rgba(80, 255, 230, 0.95)';
+    ctx.beginPath();
+    ctx.arc(cx - 13, 156, 3, 0, Math.PI * 2);
+    ctx.arc(cx + 13, 156, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 6e. Gothic Watcher Gargoyle Statue Texture (512x512)
+function createHauntedGargoyleTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 512);
+    const cx = 256;
+
+    const graniteDark = '#0e1520';
+    const graniteMid = '#1a2636';
+    const graniteHighlight = '#3c526d';
+
+    // Stone Plinth / Pier Cap at Base
+    ctx.fillStyle = graniteMid;
+    ctx.fillRect(cx - 130, 420, 260, 55);
+    ctx.fillStyle = graniteHighlight;
+    ctx.fillRect(cx - 135, 410, 270, 14);
+    ctx.fillRect(cx - 120, 470, 240, 16);
+
+    // Weathered Gargoyle Hunched Body
+    ctx.fillStyle = graniteMid;
+    ctx.beginPath();
+    ctx.ellipse(cx, 320, 75, 95, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crouching Legs & Talons
+    ctx.fillStyle = graniteDark;
+    ctx.beginPath();
+    ctx.ellipse(cx - 75, 370, 38, 55, -0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = graniteHighlight;
+    ctx.fillRect(cx - 100, 405, 14, 18);
+    ctx.fillRect(cx - 82, 405, 14, 18);
+    ctx.fillRect(cx - 64, 405, 14, 18);
+
+    ctx.fillStyle = graniteDark;
+    ctx.beginPath();
+    ctx.ellipse(cx + 75, 370, 38, 55, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = graniteHighlight;
+    ctx.fillRect(cx + 50, 405, 14, 18);
+    ctx.fillRect(cx + 68, 405, 14, 18);
+    ctx.fillRect(cx + 86, 405, 14, 18);
+
+    // Folded Leathery Bat Wings
+    ctx.fillStyle = graniteDark;
+    ctx.beginPath();
+    ctx.moveTo(cx - 40, 260);
+    ctx.bezierCurveTo(cx - 160, 200, cx - 210, 120, cx - 220, 60);
+    ctx.bezierCurveTo(cx - 170, 140, cx - 130, 200, cx - 140, 270);
+    ctx.bezierCurveTo(cx - 100, 280, cx - 70, 310, cx - 40, 320);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = graniteHighlight;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.moveTo(cx + 40, 260);
+    ctx.bezierCurveTo(cx + 160, 200, cx + 210, 120, cx + 220, 60);
+    ctx.bezierCurveTo(cx + 170, 140, cx + 130, 200, cx + 140, 270);
+    ctx.bezierCurveTo(cx + 100, 280, cx + 70, 310, cx + 40, 320);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = graniteHighlight;
+    ctx.lineWidth = 3.5;
+    ctx.stroke();
+
+    // Gargoyle Horned Head
+    ctx.fillStyle = graniteMid;
+    ctx.beginPath();
+    ctx.ellipse(cx, 210, 55, 60, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Horns
+    ctx.fillStyle = graniteDark;
+    ctx.beginPath();
+    ctx.moveTo(cx - 35, 180); ctx.lineTo(cx - 65, 115); ctx.lineTo(cx - 20, 165); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 35, 180); ctx.lineTo(cx + 65, 115); ctx.lineTo(cx + 20, 165); ctx.fill();
+
+    // Fanged Maw
+    ctx.fillStyle = '#060a10';
+    ctx.beginPath();
+    ctx.arc(cx, 235, 24, 0, Math.PI);
+    ctx.fill();
+    ctx.fillStyle = graniteHighlight;
+    ctx.fillRect(cx - 14, 232, 6, 12);
+    ctx.fillRect(cx + 8, 232, 6, 12);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 6f. Jack-O'-Lantern Pathway Guardian Texture (512x512)
+function createHauntedPumpkinTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 512);
+    const cx = 256, cy = 290;
+
+    // Ground shadow
+    ctx.fillStyle = '#020306';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 130, 175, 32, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Green stem
+    ctx.fillStyle = '#22381e';
+    ctx.beginPath();
+    ctx.moveTo(cx - 16, cy - 130);
+    ctx.bezierCurveTo(cx - 30, cy - 190, cx - 10, cy - 230, cx + 25, cy - 240);
+    ctx.bezierCurveTo(cx + 35, cy - 235, cx + 15, cy - 190, cx + 14, cy - 130);
+    ctx.closePath();
+    ctx.fill();
+
+    // Ribbed pumpkin lobes
+    const lobes = [
+        { x: cx - 110, rx: 72, ry: 130, col: '#bf4b08', shade: '#8a3203' },
+        { x: cx + 110, rx: 72, ry: 130, col: '#bf4b08', shade: '#8a3203' },
+        { x: cx - 60, rx: 82, ry: 140, col: '#d95a0a', shade: '#9e3c04' },
+        { x: cx + 60, rx: 82, ry: 140, col: '#d95a0a', shade: '#9e3c04' },
+        { x: cx, rx: 90, ry: 145, col: '#f26d10', shade: '#b84806' }
+    ];
+
+    lobes.forEach(l => {
+        const lGrad = ctx.createRadialGradient(l.x - 20, cy - 40, 15, l.x, cy, l.ry);
+        lGrad.addColorStop(0.0, l.col);
+        lGrad.addColorStop(0.85, l.shade);
+        lGrad.addColorStop(1.0, '#591f02');
+        ctx.fillStyle = lGrad;
+        ctx.beginPath();
+        ctx.ellipse(l.x, cy, l.rx, l.ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    // Jagged Carved Jack-O'-Lantern Face
+    ctx.fillStyle = '#040201';
+    ctx.beginPath();
+    ctx.moveTo(cx - 75, cy - 65); ctx.lineTo(cx - 25, cy - 45); ctx.lineTo(cx - 65, cy - 15); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 75, cy - 65); ctx.lineTo(cx + 25, cy - 45); ctx.lineTo(cx + 65, cy - 15); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 25); ctx.lineTo(cx - 18, cy + 5); ctx.lineTo(cx + 18, cy + 5); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx - 105, cy + 25);
+    ctx.lineTo(cx - 70, cy + 60); ctx.lineTo(cx - 50, cy + 40);
+    ctx.lineTo(cx - 20, cy + 68); ctx.lineTo(cx, cy + 42);
+    ctx.lineTo(cx + 20, cy + 68); ctx.lineTo(cx + 50, cy + 40);
+    ctx.lineTo(cx + 70, cy + 60); ctx.lineTo(cx + 105, cy + 25);
+    ctx.lineTo(cx + 80, cy + 85); ctx.lineTo(cx + 45, cy + 65); ctx.lineTo(cx + 25, cy + 88);
+    ctx.lineTo(cx - 25, cy + 88); ctx.lineTo(cx - 45, cy + 65); ctx.lineTo(cx - 80, cy + 85);
+    ctx.closePath();
+    ctx.fill();
+
+    // Hot Flaming Candle Glow inside Carvings
+    ctx.fillStyle = 'rgba(255, 205, 75, 0.95)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 70, cy - 60); ctx.lineTo(cx - 30, cy - 45); ctx.lineTo(cx - 60, cy - 20); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 70, cy - 60); ctx.lineTo(cx + 30, cy - 45); ctx.lineTo(cx + 60, cy - 20); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 20); ctx.lineTo(cx - 14, cy + 3); ctx.lineTo(cx + 14, cy + 3); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy + 55, 38, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 6g. Possessed Gnarled Bare Silhouette Tree Texture (512x1024)
+function createHauntedGnarledTreeTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 1024;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 1024);
+    const cx = 256;
+
+    ctx.fillStyle = '#05080e';
+    ctx.strokeStyle = '#05080e';
+    ctx.lineCap = 'round';
+
+    // Trunk
+    ctx.beginPath();
+    ctx.moveTo(cx - 140, 1024);
+    ctx.bezierCurveTo(cx - 90, 880, cx - 60, 720, cx - 45, 520);
+    ctx.bezierCurveTo(cx - 35, 380, cx - 20, 260, cx, 150);
+    ctx.bezierCurveTo(cx + 20, 260, cx + 35, 380, cx + 45, 520);
+    ctx.bezierCurveTo(cx + 60, 720, cx + 90, 880, cx + 140, 1024);
+    ctx.closePath();
+    ctx.fill();
+
+    function drawBranch(x1, y1, x2, y2, x3, y3, w) {
+        ctx.lineWidth = w;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.bezierCurveTo(x2, y2, (x2 + x3) / 2, (y2 + y3) / 2, x3, y3);
+        ctx.stroke();
+    }
+
+    drawBranch(cx - 40, 550, cx - 140, 480, cx - 220, 360, 26);
+    drawBranch(cx - 220, 360, cx - 260, 300, cx - 240, 200, 16);
+    drawBranch(cx - 220, 360, cx - 180, 280, cx - 150, 180, 14);
+    drawBranch(cx - 30, 420, cx - 120, 340, cx - 190, 260, 20);
+
+    drawBranch(cx + 40, 530, cx + 150, 460, cx + 230, 340, 26);
+    drawBranch(cx + 230, 340, cx + 270, 270, cx + 250, 180, 16);
+    drawBranch(cx + 230, 340, cx + 190, 260, cx + 160, 170, 14);
+    drawBranch(cx + 25, 390, cx + 110, 310, cx + 180, 230, 20);
+
+    drawBranch(cx, 220, cx - 70, 140, cx - 110, 60, 18);
+    drawBranch(cx, 220, cx + 70, 130, cx + 100, 50, 18);
+    drawBranch(cx, 180, cx + 15, 90, cx + 30, 20, 14);
+
+    // Dark Knots & Hollow Eye Cavities
+    ctx.fillStyle = '#020306';
+    ctx.beginPath(); ctx.ellipse(cx - 15, 620, 22, 35, 0.1, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx + 12, 480, 18, 28, -0.15, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(cx - 8, 350, 14, 22, 0.05, 0, Math.PI * 2); ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 6h. Predatory Glowing Creature Eyes Sprite Texture (256x128)
+function createHauntedEyesTexture(isRed = false) {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 128;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 256, 128);
+
+    function drawEye(cx, cy) {
+        const auraGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 38);
+        if (isRed) {
+            auraGrad.addColorStop(0.0, 'rgba(255, 60, 60, 0.95)');
+            auraGrad.addColorStop(0.5, 'rgba(220, 20, 20, 0.50)');
+            auraGrad.addColorStop(1.0, 'rgba(150, 0, 0, 0.0)');
+        } else {
+            auraGrad.addColorStop(0.0, 'rgba(255, 235, 80, 0.95)');
+            auraGrad.addColorStop(0.5, 'rgba(255, 170, 20, 0.50)');
+            auraGrad.addColorStop(1.0, 'rgba(180, 100, 0, 0.0)');
+        }
+        ctx.fillStyle = auraGrad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = isRed ? '#ff2222' : '#ffdd33';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 22, 14, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#050202';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 4, 13, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    drawEye(74, 64);
+    drawEye(182, 64);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
 function createHauntedBatBodyTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -10813,6 +11349,14 @@ export function createVFXScene(container) {
     const hauntedBatWingTex = createHauntedBatWingTexture();
     const hauntedWitchTex = createHauntedWitchTexture();
     const hauntedMistTex = createHauntedMistPuffTexture();
+    const hauntedGraveyardTex = createHauntedGraveyardTexture();
+    const hauntedWispTex = createWillOTheWispTexture();
+    const hauntedSpecterTex = createHauntedSpecterTexture();
+    const hauntedGargoyleTex = createHauntedGargoyleTexture();
+    const hauntedPumpkinTex = createHauntedPumpkinTexture();
+    const hauntedGnarledTreeTex = createHauntedGnarledTreeTexture();
+    const hauntedRedEyesTex = createHauntedEyesTexture(true);
+    const hauntedYellowEyesTex = createHauntedEyesTexture(false);
 
     // 2. Layer 1: Gothic Night Sky Backdrop & Glowing Full Moon (z = -28.0, 160x95 full-screen span)
     const hauntedSkyGeo = new THREE.PlaneGeometry(160.0, 95.0);
@@ -10971,6 +11515,202 @@ export function createVFXScene(container) {
     hauntedPathMesh.position.set(0.0, -7.5, -5.0);
     hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.08;
     gHauntedManor.add(hauntedPathMesh);
+
+    // =========================================================================
+    // 5b. Spooky Middle Ground Features (React to Music & Beats)
+    // =========================================================================
+
+    // 1. Haunted Graveyard with Runed Headstones & Celtic Crosses (Left Middle Lawn, z = -5.5)
+    const hauntedGraveyardGroup = new THREE.Group();
+    const hauntedGraveyardGeo = new THREE.PlaneGeometry(13.2, 6.6);
+    const hauntedGraveyardMat = new THREE.MeshBasicMaterial({
+        map: hauntedGraveyardTex,
+        transparent: true,
+        depthWrite: false
+    });
+    const hauntedGraveyardMesh = new THREE.Mesh(hauntedGraveyardGeo, hauntedGraveyardMat);
+    hauntedGraveyardMesh.position.set(-8.8, -4.2, -5.5);
+    hauntedGraveyardMesh.rotation.x = 0.08;
+    hauntedGraveyardGroup.add(hauntedGraveyardMesh);
+
+    // Floating Will-o'-the-Wisps (Spirit Orbs) hovering above the graves
+    const hauntedWispGeo = new THREE.PlaneGeometry(1.6, 1.6);
+    const hauntedWispMat = new THREE.MeshBasicMaterial({
+        map: hauntedWispTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.85
+    });
+    const hauntedWispData = [
+        { bx: -12.2, by: -3.8, bz: -5.2, speedX: 1.2, speedY: 1.8, phase: 0.0 },
+        { bx: -10.5, by: -3.2, bz: -5.8, speedX: 1.5, speedY: 2.1, phase: 1.2 },
+        { bx: -8.8, by: -2.8, bz: -5.0, speedX: 1.1, speedY: 1.6, phase: 2.4 },
+        { bx: -7.2, by: -3.4, bz: -5.4, speedX: 1.7, speedY: 2.3, phase: 3.6 },
+        { bx: -6.0, by: -3.9, bz: -4.8, speedX: 1.3, speedY: 1.7, phase: 4.8 },
+        { bx: -9.8, by: -2.4, bz: -6.2, speedX: 0.9, speedY: 1.4, phase: 5.5 },
+        { bx: -11.4, by: -3.5, bz: -4.6, speedX: 1.4, speedY: 1.9, phase: 0.8 }
+    ];
+    const hauntedWispMeshes = hauntedWispData.map((d) => {
+        const mesh = new THREE.Mesh(hauntedWispGeo, hauntedWispMat.clone());
+        mesh.position.set(d.bx, d.by, d.bz);
+        hauntedGraveyardGroup.add(mesh);
+        return mesh;
+    });
+
+    // Spirit Orb Bioluminescent Glow Light (Casting spectral cyan-emerald glow on graves & grass)
+    const hauntedWispLight = new THREE.PointLight(0x28ffd0, 1.2, 12.0);
+    hauntedWispLight.position.set(-8.8, -3.2, -5.2);
+    hauntedGraveyardGroup.add(hauntedWispLight);
+    gHauntedManor.add(hauntedGraveyardGroup);
+
+    // 2. Spectral Wandering Apparition / Phantom Wraith (Right Middle Lawn, z = -6.2)
+    const hauntedSpecterGroup = new THREE.Group();
+    const hauntedSpecterGeo = new THREE.PlaneGeometry(4.2, 8.4);
+    const hauntedSpecterMat = new THREE.MeshBasicMaterial({
+        map: hauntedSpecterTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.40
+    });
+    const hauntedSpecterMesh = new THREE.Mesh(hauntedSpecterGeo, hauntedSpecterMat);
+    hauntedSpecterMesh.position.set(9.2, -2.4, -6.2);
+    hauntedSpecterGroup.add(hauntedSpecterMesh);
+    gHauntedManor.add(hauntedSpecterGroup);
+
+    // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking driveway entry)
+    const hauntedGargoylesGroup = new THREE.Group();
+    const hauntedGargoyleGeo = new THREE.PlaneGeometry(2.8, 2.8);
+    const hauntedGargoyleMat = new THREE.MeshBasicMaterial({
+        map: hauntedGargoyleTex,
+        transparent: true,
+        depthWrite: false
+    });
+
+    // Left Gargoyle
+    const hauntedGargoyleLeft = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
+    hauntedGargoyleLeft.position.set(-5.4, -3.4, -3.8);
+    hauntedGargoylesGroup.add(hauntedGargoyleLeft);
+
+    // Right Gargoyle (Mirrored facing inward toward the driveway)
+    const hauntedGargoyleRight = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
+    hauntedGargoyleRight.position.set(5.6, -3.4, -3.8);
+    hauntedGargoyleRight.scale.x = -1.0;
+    hauntedGargoylesGroup.add(hauntedGargoyleRight);
+
+    // Cursed Glowing Eyes Sprites for Gargoyles
+    const cursedEyeGeo = new THREE.PlaneGeometry(0.7, 0.35);
+    const cursedEyeMat = new THREE.MeshBasicMaterial({
+        map: hauntedRedEyesTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.85
+    });
+    const hauntedGargoyleEyeLeft = new THREE.Mesh(cursedEyeGeo, cursedEyeMat);
+    hauntedGargoyleEyeLeft.position.set(-5.4, -3.15, -3.75);
+    hauntedGargoylesGroup.add(hauntedGargoyleEyeLeft);
+
+    const hauntedGargoyleEyeRight = new THREE.Mesh(cursedEyeGeo, cursedEyeMat.clone());
+    hauntedGargoyleEyeRight.position.set(5.6, -3.15, -3.75);
+    hauntedGargoylesGroup.add(hauntedGargoyleEyeRight);
+
+    gHauntedManor.add(hauntedGargoylesGroup);
+
+    // 4. Jack-O'-Lantern Pathway Guardians (Lining the carriage road curbstones)
+    const hauntedPumpkinsGroup = new THREE.Group();
+    const pumpkinGeo = new THREE.PlaneGeometry(1.4, 1.4);
+    const pumpkinMat = new THREE.MeshBasicMaterial({
+        map: hauntedPumpkinTex,
+        transparent: true,
+        depthWrite: false
+    });
+
+    const pumpkinConfigs = [
+        { x: -2.6, y: -4.85, z: -1.8, scale: 1.25, rotZ: 0.04 },
+        { x: -3.6, y: -4.95, z: -3.6, scale: 1.15, rotZ: -0.06 },
+        { x: -2.8, y: -5.05, z: -5.6, scale: 1.05, rotZ: 0.05 },
+        { x: 2.7, y: -4.85, z: -2.0, scale: 1.20, rotZ: -0.05 },
+        { x: 3.8, y: -4.95, z: -3.8, scale: 1.10, rotZ: 0.06 },
+        { x: 3.1, y: -5.05, z: -5.8, scale: 1.00, rotZ: -0.04 }
+    ];
+
+    const hauntedPumpkinMeshes = pumpkinConfigs.map((cfg) => {
+        const mesh = new THREE.Mesh(pumpkinGeo, pumpkinMat.clone());
+        mesh.position.set(cfg.x, cfg.y, cfg.z);
+        mesh.scale.setScalar(cfg.scale);
+        mesh.rotation.z = cfg.rotZ;
+        hauntedPumpkinsGroup.add(mesh);
+        return mesh;
+    });
+
+    // Warm pumpkin lantern candlelight casting dynamic reflections onto the wet cobblestones
+    const hauntedPumpkinLeftLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
+    hauntedPumpkinLeftLight.position.set(-3.2, -4.5, -3.6);
+    hauntedPumpkinsGroup.add(hauntedPumpkinLeftLight);
+
+    const hauntedPumpkinRightLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
+    hauntedPumpkinRightLight.position.set(3.4, -4.5, -3.8);
+    hauntedPumpkinsGroup.add(hauntedPumpkinRightLight);
+
+    gHauntedManor.add(hauntedPumpkinsGroup);
+
+    // 5. Possessed Gnarled Trees with Watching Eyes (Flanking middle ground, z = -6.5)
+    const hauntedGnarledTreesGroup = new THREE.Group();
+    const gnarledTreeGeo = new THREE.PlaneGeometry(7.5, 15.0);
+    const gnarledTreeMat = new THREE.MeshBasicMaterial({
+        map: hauntedGnarledTreeTex,
+        transparent: true,
+        depthWrite: false
+    });
+
+    // Left Gnarled Tree
+    const hauntedGnarledTreeLeft = new THREE.Mesh(gnarledTreeGeo, gnarledTreeMat);
+    hauntedGnarledTreeLeft.position.set(-14.2, -1.2, -6.5);
+    hauntedGnarledTreesGroup.add(hauntedGnarledTreeLeft);
+
+    // Right Gnarled Tree (Mirrored)
+    const hauntedGnarledTreeRight = new THREE.Mesh(gnarledTreeGeo, gnarledTreeMat);
+    hauntedGnarledTreeRight.position.set(14.2, -1.2, -6.5);
+    hauntedGnarledTreeRight.scale.x = -1.0;
+    hauntedGnarledTreesGroup.add(hauntedGnarledTreeRight);
+
+    // Watching Eyes in Tree Hollows (3 pairs on left, 3 pairs on right)
+    const treeEyeGeo = new THREE.PlaneGeometry(0.85, 0.42);
+    const treeEyeRedMat = new THREE.MeshBasicMaterial({
+        map: hauntedRedEyesTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.90
+    });
+    const treeEyeYellowMat = new THREE.MeshBasicMaterial({
+        map: hauntedYellowEyesTex,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        opacity: 0.90
+    });
+
+    const treeEyePositions = [
+        { x: -14.3, y: -2.8, z: -6.4, isRed: false },
+        { x: -13.9, y: -0.6, z: -6.4, isRed: true },
+        { x: -14.6, y: 1.4, z: -6.4, isRed: false },
+        { x: 14.3, y: -2.8, z: -6.4, isRed: true },
+        { x: 13.9, y: -0.6, z: -6.4, isRed: false },
+        { x: 14.6, y: 1.4, z: -6.4, isRed: true }
+    ];
+
+    const hauntedTreeEyeMeshes = treeEyePositions.map(pos => {
+        const eyeMat = pos.isRed ? treeEyeRedMat.clone() : treeEyeYellowMat.clone();
+        const eyeMesh = new THREE.Mesh(treeEyeGeo, eyeMat);
+        eyeMesh.position.set(pos.x, pos.y, pos.z);
+        hauntedGnarledTreesGroup.add(eyeMesh);
+        return eyeMesh;
+    });
+
+    gHauntedManor.add(hauntedGnarledTreesGroup);
 
     // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Lowered a Touch, z = 0.0)
     // Height lowered from 16.5 to 13.8 at y = -3.2, keeping bottom well below screen edge (zero bottom gap) while opening the view!
@@ -14180,6 +14920,63 @@ export function createVFXScene(container) {
                     fp.mesh.material.opacity = Math.min(0.92, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.4));
                 });
             }
+
+            // =========================================================================
+            // Dynamic Audio Animation for 5 Middle Ground Elements
+            // =========================================================================
+
+            // 1. Haunted Graveyard & Floating Will-o'-the-Wisps (Spirit Orbs)
+            const wispBassFlare = Math.min(2.0, 1.0 + bassPop * 1.6 + bassImpact * 0.8);
+            hauntedWispMeshes.forEach((wm, i) => {
+                const wd = hauntedWispData[i];
+                const wTime = elapsedTime * wd.speedX + wd.phase;
+                const floatX = wd.bx + Math.sin(wTime) * 0.65;
+                const floatY = wd.by + Math.sin(elapsedTime * wd.speedY + wd.phase) * 0.50 + (bassPop * 0.45);
+                const floatZ = wd.bz + Math.cos(wTime * 0.8) * 0.35;
+                wm.position.set(floatX, floatY, floatZ);
+                wm.scale.setScalar(wispBassFlare * (0.85 + Math.sin(elapsedTime * 3.5 + i) * 0.15));
+                wm.material.opacity = Math.min(1.0, 0.65 + bassPop * 0.45);
+            });
+            hauntedWispLight.intensity = (1.2 + bassPop * 2.8 + bassImpact * 1.5) * (0.8 + Math.sin(elapsedTime * 4.0) * 0.2);
+
+            // 2. Spectral Wandering Apparition / Phantom Wraith
+            const specterDriftX = 9.2 + Math.sin(elapsedTime * 0.35) * 2.4;
+            const specterDriftY = -2.4 + Math.sin(elapsedTime * 0.70) * 0.45 + Math.cos(elapsedTime * 0.35) * 0.25;
+            const specterDriftZ = -6.2 + Math.cos(elapsedTime * 0.35) * 0.8;
+            hauntedSpecterMesh.position.set(specterDriftX, specterDriftY, specterDriftZ);
+            hauntedSpecterMesh.rotation.z = Math.sin(elapsedTime * 0.5) * 0.05;
+            const audioMidSurge = audio.smoothedMid || 0;
+            const specterAlpha = Math.min(0.95, 0.28 + (audio.overall || 0) * 0.55 + audioMidSurge * 0.45 + transient * 0.35);
+            hauntedSpecterMat.opacity = specterAlpha;
+
+            // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes
+            const gargoyleEyeSurge = Math.min(2.5, 0.65 + bassPop * 1.5 + transient * 1.2);
+            hauntedGargoyleEyeLeft.scale.setScalar(gargoyleEyeSurge);
+            hauntedGargoyleEyeRight.scale.setScalar(gargoyleEyeSurge);
+            cursedEyeMat.opacity = Math.min(1.0, 0.70 + bassPop * 0.35);
+
+            // 4. Jack-O'-Lantern Pathway Guardians
+            const pumpkinFlicker = 1.0 + Math.sin(elapsedTime * 22.0) * 0.22 + Math.cos(elapsedTime * 43.0) * 0.15;
+            const pumpkinBassGlow = Math.min(2.8, pumpkinFlicker + bassPop * 2.2 + bassImpact * 1.2);
+            hauntedPumpkinLeftLight.intensity = 1.2 * pumpkinBassGlow;
+            hauntedPumpkinRightLight.intensity = 1.2 * pumpkinBassGlow;
+            hauntedPumpkinMeshes.forEach((pm, i) => {
+                pm.scale.setScalar(pumpkinConfigs[i].scale * (1.0 + bassPop * 0.12));
+            });
+
+            // 5. Possessed Gnarled Trees with Watching Eyes
+            const treeBassSway = Math.sin(elapsedTime * 0.8) * 0.02 + (bassPop * 0.03);
+            hauntedGnarledTreeLeft.rotation.z = treeBassSway;
+            hauntedGnarledTreeRight.rotation.z = -treeBassSway;
+
+            const treblePulse = audio.smoothedTreble || 0;
+            const blinkCycle = Math.sin(elapsedTime * 1.8);
+            const isBlinking = blinkCycle > 0.94;
+            const eyeOpenScale = isBlinking ? 0.05 : Math.min(1.8, 0.85 + treblePulse * 1.4 + transient * 0.6);
+            hauntedTreeEyeMeshes.forEach((tem) => {
+                tem.scale.y = eyeOpenScale;
+                tem.scale.x = isBlinking ? 0.5 : (1.0 + treblePulse * 0.4);
+            });
         }
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
