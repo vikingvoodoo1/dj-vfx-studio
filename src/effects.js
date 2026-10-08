@@ -4386,9 +4386,9 @@ function createHauntedManorTexture() {
     ctx.fillRect(495, 600, 18, 200);
 
     // =========================================================================
-    // Glowing Arched Gothic Windows (Warm Candlelight & Ghostly Amber Glow)
+    // Base Manor Window Openings (Dark Recesses with Stone Frames & Tracery)
     // =========================================================================
-    function drawArchedWindow(x, y, w, h, isGhostly = false) {
+    function drawArchedWindow(x, y, w, h) {
         ctx.save();
         // Stone frame shadow
         ctx.fillStyle = '#05070c';
@@ -4400,20 +4400,8 @@ function createHauntedManorTexture() {
         ctx.closePath();
         ctx.fill();
 
-        // Glowing window interior (Warm Amber Candlelight or Ghostly Cyan)
-        const winGrad = ctx.createRadialGradient(x + w / 2, y + h / 2, 2, x + w / 2, y + h / 2, Math.max(w, h));
-        if (isGhostly) {
-            winGrad.addColorStop(0.0, '#ffffff');
-            winGrad.addColorStop(0.3, '#77ffcc');
-            winGrad.addColorStop(0.7, '#22aa77');
-            winGrad.addColorStop(1.0, '#0a3320');
-        } else {
-            winGrad.addColorStop(0.0, '#ffffff');
-            winGrad.addColorStop(0.25, '#ffdd66');
-            winGrad.addColorStop(0.65, '#ff8800');
-            winGrad.addColorStop(1.0, '#993300');
-        }
-        ctx.fillStyle = winGrad;
+        // Dark interior recess
+        ctx.fillStyle = '#030509';
         ctx.beginPath();
         ctx.moveTo(x, y + h);
         ctx.lineTo(x, y + w / 2);
@@ -4457,13 +4445,284 @@ function createHauntedManorTexture() {
     // Tower Windows (High Dormers & Attic Window)
     drawArchedWindow(490, 390, 36, 65);
     drawArchedWindow(535, 390, 36, 65);
-    // Tower Upper Ghostly Attic Window
-    drawArchedWindow(510, 230, 32, 55, true);
+    drawArchedWindow(510, 230, 32, 55);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
+}
+
+// Helper: Draw Animated Dancing Zombie Silhouette inside Window
+function drawDancingZombie(ctx, cx, cy, type, danceTime, audioBeat) {
+    ctx.save();
+    ctx.fillStyle = '#010204'; // Pure solid dark zombie silhouette
+    ctx.strokeStyle = '#010204';
+
+    if (type === 0) {
+        // Zombie 1: Thriller Undead Groove (Bent arms, swaying shoulders, tilted head bobbing)
+        const sway = Math.sin(danceTime * 3.2) * 4.5;
+        const bob = Math.abs(Math.sin(danceTime * 6.4)) * 3;
+        const torsoX = cx + sway;
+        const torsoY = cy - 22 - bob;
+
+        // Legs
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 5, cy); ctx.lineTo(torsoX - 4, torsoY + 12);
+        ctx.moveTo(cx + 5, cy); ctx.lineTo(torsoX + 4, torsoY + 12);
+        ctx.stroke();
+
+        // Tattered torso
+        ctx.beginPath();
+        ctx.ellipse(torsoX, torsoY, 7, 12, sway * 0.05, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head tilted eerily
+        ctx.beginPath();
+        ctx.arc(torsoX + sway * 0.35, torsoY - 17, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Classic Thriller arms (extended with bent wrists and limp zombie claws)
+        ctx.lineWidth = 2.5;
+        // Left arm
+        ctx.beginPath();
+        ctx.moveTo(torsoX - 5, torsoY - 7);
+        ctx.lineTo(torsoX - 16, torsoY - 3);
+        ctx.lineTo(torsoX - 18, torsoY + 4);
+        ctx.stroke();
+        // Right arm
+        ctx.beginPath();
+        ctx.moveTo(torsoX + 5, torsoY - 7);
+        ctx.lineTo(torsoX + 14, torsoY - 1);
+        ctx.lineTo(torsoX + 16, torsoY + 6);
+        ctx.stroke();
+    } else if (type === 1) {
+        // Zombie 2: Rave Boogie Zombie (Arms raised waving high, hip bouncing to the disco beat)
+        const bounce = Math.abs(Math.sin(danceTime * 4.5)) * 4;
+        const hipSway = Math.sin(danceTime * 4.5) * 5.5;
+        const torsoX = cx + hipSway * 0.45;
+        const torsoY = cy - 22 - bounce;
+
+        // Legs stepping to the beat
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, cy); ctx.lineTo(torsoX - 4, torsoY + 12);
+        ctx.moveTo(cx + 6, cy); ctx.lineTo(torsoX + 4, torsoY + 12);
+        ctx.stroke();
+
+        // Torso
+        ctx.beginPath();
+        ctx.ellipse(torsoX, torsoY, 7.5, 12, hipSway * 0.04, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Head bobbing
+        ctx.beginPath();
+        ctx.arc(torsoX, torsoY - 17, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Arms waving up in the air
+        const armWave = Math.sin(danceTime * 4.5) * 7.5;
+        ctx.lineWidth = 2.5;
+        // Left arm waving up
+        ctx.beginPath();
+        ctx.moveTo(torsoX - 5, torsoY - 7);
+        ctx.lineTo(torsoX - 13, torsoY - 18 + armWave * 0.4);
+        ctx.lineTo(torsoX - 17 + armWave, torsoY - 26);
+        ctx.stroke();
+        // Right arm waving up
+        ctx.beginPath();
+        ctx.moveTo(torsoX + 5, torsoY - 7);
+        ctx.lineTo(torsoX + 13, torsoY - 18 - armWave * 0.4);
+        ctx.lineTo(torsoX + 17 - armWave, torsoY - 26);
+        ctx.stroke();
+    } else {
+        // Zombie 3: Undead Headbanger (Torso bending forward and snapping back, wild headbang)
+        const bang = Math.sin(danceTime * 5.5);
+        const torsoX = cx;
+        const torsoY = cy - 22 + (bang > 0 ? bang * 2.5 : 0);
+
+        // Legs
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(cx - 6, cy); ctx.lineTo(cx - 3, torsoY + 12);
+        ctx.moveTo(cx + 6, cy); ctx.lineTo(cx + 3, torsoY + 12);
+        ctx.stroke();
+
+        // Torso rocking
+        ctx.beginPath();
+        ctx.ellipse(torsoX, torsoY, 7, 12, bang * 0.15, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Headbanging head
+        const headY = torsoY - 16 + bang * 4.5;
+        ctx.beginPath();
+        ctx.arc(torsoX + bang * 2, headY, 6, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Wild dangling arms swinging with the headbang
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(torsoX - 5, torsoY - 7);
+        ctx.lineTo(torsoX - 12 - bang * 4, torsoY + 4);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(torsoX + 5, torsoY - 7);
+        ctx.lineTo(torsoX + 12 + bang * 4, torsoY + 4);
+        ctx.stroke();
+    }
+
+    ctx.restore();
+}
+
+// Render Dynamic Haunted Manor Windows (Disco Lights, Dancing Zombies, Faulty Electricity, Candlelight)
+function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
+    ctx.clearRect(0, 0, 1024, 1024);
+
+    const danceTime = elapsedTime * 3.8;
+    const bassImpact = audio.bassImpact || 0;
+
+    // Helper: Draw Arched Window Aperture
+    function fillArchedPath(x, y, w, h) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + h);
+        ctx.lineTo(x, y + w / 2);
+        ctx.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0);
+        ctx.lineTo(x + w, y + h);
+        ctx.closePath();
+    }
+
+    // Helper: Draw Gothic Mullions / Transoms
+    function drawMullions(x, y, w, h) {
+        ctx.strokeStyle = '#020306';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h);
+        ctx.moveTo(x, y + h * 0.45); ctx.lineTo(x + w, y + h * 0.45);
+        ctx.moveTo(x, y + h * 0.75); ctx.lineTo(x + w, y + h * 0.75);
+        ctx.stroke();
+    }
+
+    // 1. LEFT UPSTAIRS WINDOWS: DISCO PARTY WITH DANCING ZOMBIES (Windows 1, 2, 3)
+    const discoWindows = [
+        { x: 200, y: 510, w: 44, h: 75, zombie: 0, phase: 0.0 },
+        { x: 260, y: 510, w: 44, h: 75, zombie: 1, phase: 0.35 },
+        { x: 340, y: 510, w: 44, h: 75, zombie: 2, phase: 0.70 }
+    ];
+
+    discoWindows.forEach((dw, idx) => {
+        const cx = dw.x + dw.w / 2;
+        const cy = dw.y + dw.h;
+
+        // Vivid cycling disco light colors
+        const lightGrad = ctx.createRadialGradient(
+            cx + Math.sin(elapsedTime * 4.0 + dw.phase * 6.0) * 14,
+            dw.y + dw.h * 0.4 + Math.cos(elapsedTime * 3.5) * 10,
+            2,
+            cx,
+            dw.y + dw.h * 0.5,
+            Math.max(dw.w, dw.h)
+        );
+
+        // Vibrant neon club disco light gradients
+        if (idx === 0) {
+            // Electric Magenta / Neon Violet Disco
+            lightGrad.addColorStop(0.0, '#ffffff');
+            lightGrad.addColorStop(0.3, '#ff00aa');
+            lightGrad.addColorStop(0.7, '#9900ee');
+            lightGrad.addColorStop(1.0, '#330055');
+        } else if (idx === 1) {
+            // Neon Cyan / Acid Emerald Disco
+            lightGrad.addColorStop(0.0, '#ffffff');
+            lightGrad.addColorStop(0.3, '#00f5ff');
+            lightGrad.addColorStop(0.7, '#00dd77');
+            lightGrad.addColorStop(1.0, '#003322');
+        } else {
+            // Vivid Laser Gold / Neon Orange Disco
+            lightGrad.addColorStop(0.0, '#ffffff');
+            lightGrad.addColorStop(0.3, '#ffee00');
+            lightGrad.addColorStop(0.7, '#ff5500');
+            lightGrad.addColorStop(1.0, '#441100');
+        }
+
+        // Fill disco light background
+        ctx.fillStyle = lightGrad;
+        fillArchedPath(dw.x, dw.y, dw.w, dw.h);
+        ctx.fill();
+
+        // Dancing Zombie Silhouette inside the glowing window
+        drawDancingZombie(ctx, cx, cy - 2, dw.zombie, danceTime + idx * 1.5, bassImpact);
+
+        // Window mullions in front of zombie
+        drawMullions(dw.x, dw.y, dw.w, dw.h);
+    });
+
+    // 2. RIGHT WINDOWS: FAULTY ELECTRICITY & BLACKOUTS (Random spooky flickering to pitch black)
+    const rightWindows = [
+        { x: 630, y: 510, w: 44, h: 75, id: 0 },
+        { x: 710, y: 510, w: 44, h: 75, id: 1 },
+        { x: 790, y: 510, w: 44, h: 75, id: 2 },
+        { x: 620, y: 650, w: 48, h: 85, id: 3 },
+        { x: 700, y: 650, w: 48, h: 85, id: 4 },
+        { x: 780, y: 650, w: 48, h: 85, id: 5 },
+        { x: 530, y: 650, w: 48, h: 85, id: 6 }
+    ];
+
+    rightWindows.forEach((rw) => {
+        const isFaultyWindow = (faultyState.active && (faultyState.target === 2 || (rw.id % 2 === faultyState.target)));
+        let candleFactor = 1.0;
+
+        if (isFaultyWindow) {
+            candleFactor = faultyState.factor; // Drops to 0.0 (PITCH BLACK!)
+        }
+
+        if (candleFactor <= 0.05) {
+            // PITCH BLACK (Power Cut / Faulty Electrical Blackout!)
+            ctx.fillStyle = '#020306';
+            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
+            ctx.fill();
+        } else {
+            // Warm Candlelight Glow (Modulated by electrical factor)
+            const cGrad = ctx.createRadialGradient(rw.x + rw.w / 2, rw.y + rw.h / 2, 2, rw.x + rw.w / 2, rw.y + rw.h / 2, Math.max(rw.w, rw.h));
+            cGrad.addColorStop(0.0, `rgba(255, 255, 255, ${candleFactor})`);
+            cGrad.addColorStop(0.25, `rgba(255, 220, 100, ${candleFactor})`);
+            cGrad.addColorStop(0.65, `rgba(255, 136, 0, ${candleFactor * 0.85})`);
+            cGrad.addColorStop(1.0, `rgba(120, 40, 0, ${candleFactor * 0.6})`);
+            ctx.fillStyle = cGrad;
+            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
+            ctx.fill();
+        }
+
+        drawMullions(rw.x, rw.y, rw.w, rw.h);
+    });
+
+    // 3. LEFT DOWNSTAIRS WINDOWS & TOWER WINDOWS
+    const otherWindows = [
+        { x: 200, y: 650, w: 48, h: 85, isGhost: false },
+        { x: 260, y: 650, w: 48, h: 85, isGhost: false },
+        { x: 490, y: 390, w: 36, h: 65, isGhost: false },
+        { x: 535, y: 390, w: 36, h: 65, isGhost: false },
+        { x: 510, y: 230, w: 32, h: 55, isGhost: true } // Tower attic
+    ];
+
+    otherWindows.forEach((ow) => {
+        const oGrad = ctx.createRadialGradient(ow.x + ow.w / 2, ow.y + ow.h / 2, 2, ow.x + ow.w / 2, ow.y + ow.h / 2, Math.max(ow.w, ow.h));
+        if (ow.isGhost) {
+            oGrad.addColorStop(0.0, '#ffffff');
+            oGrad.addColorStop(0.3, '#77ffcc');
+            oGrad.addColorStop(0.7, '#22aa77');
+            oGrad.addColorStop(1.0, '#0a3320');
+        } else {
+            oGrad.addColorStop(0.0, '#ffffff');
+            oGrad.addColorStop(0.25, '#ffdd66');
+            oGrad.addColorStop(0.65, '#ff8800');
+            oGrad.addColorStop(1.0, '#993300');
+        }
+        ctx.fillStyle = oGrad;
+        fillArchedPath(ow.x, ow.y, ow.w, ow.h);
+        ctx.fill();
+        drawMullions(ow.x, ow.y, ow.w, ow.h);
+    });
 }
 
 // 4. Spooky Gnarled Bare Forest Trees & Overhanging Twisted Branches (2048x1024 - Full Screen Span)
@@ -4782,75 +5041,77 @@ function createHauntedGrassTuftTexture() {
 
     ctx.clearRect(0, 0, 512, 512);
 
-    // Helper: Draw organic tapered curved grass blade with moonlight specular highlight
-    function drawBlade(rootX, rootY, tipX, tipY, ctrlX, ctrlY, baseW, tipW, color, highlightCol = null) {
+    // Helper: Draw organic tapered grass blade with graceful natural droop/curve at the tip
+    function drawCurvedBlade(rootX, rootY, midX, midY, tipX, tipY, baseW, tipW, color, highlightCol = null) {
         ctx.beginPath();
         ctx.moveTo(rootX - baseW / 2, rootY);
-        ctx.quadraticCurveTo(ctrlX - baseW / 4, ctrlY, tipX - tipW / 2, tipY);
+        ctx.quadraticCurveTo(midX - baseW / 3, midY, tipX - tipW / 2, tipY);
         ctx.lineTo(tipX + tipW / 2, tipY);
-        ctx.quadraticCurveTo(ctrlX + baseW / 4, ctrlY, rootX + baseW / 2, rootY);
+        ctx.quadraticCurveTo(midX + baseW / 3, midY, rootX + baseW / 2, rootY);
         ctx.closePath();
         ctx.fillStyle = color;
         ctx.fill();
 
         if (highlightCol) {
             ctx.beginPath();
-            ctx.moveTo((rootX + tipX) / 2, (rootY + tipY) / 2);
-            ctx.quadraticCurveTo(ctrlX, ctrlY, tipX, tipY);
+            ctx.moveTo((rootX + midX) / 2, (rootY + midY) / 2);
+            ctx.quadraticCurveTo(midX, midY, tipX, tipY);
             ctx.strokeStyle = highlightCol;
-            ctx.lineWidth = 1.2;
+            ctx.lineWidth = 1.0;
             ctx.stroke();
         }
     }
 
     const cx = 256, cy = 512;
 
-    // 1. Deep background blades (pitch obsidian night-green)
-    const bgCol = '#020403';
-    drawBlade(cx - 50, cy, cx - 180, cy - 320, cx - 110, cy - 180, 8, 1, bgCol);
-    drawBlade(cx + 60, cy, cx + 190, cy - 310, cx + 120, cy - 170, 8, 1, bgCol);
-    drawBlade(cx - 30, cy, cx - 120, cy - 410, cx - 65, cy - 240, 9, 1, bgCol);
-    drawBlade(cx + 40, cy, cx + 130, cy - 400, cx + 80, cy - 230, 9, 1, bgCol);
-    drawBlade(cx, cy, cx - 20, cy - 460, cx - 5, cy - 260, 10, 1, bgCol);
+    // 1. Deep background blades (pure dark obsidian charcoal - no green)
+    const bgCol = '#010203';
+    // Graceful arching curves to left and right
+    drawCurvedBlade(cx - 40, cy, cx - 110, cy - 180, cx - 170, cy - 250, 7, 0.8, bgCol);
+    drawCurvedBlade(cx + 45, cy, cx + 115, cy - 175, cx + 180, cy - 245, 7, 0.8, bgCol);
+    drawCurvedBlade(cx - 20, cy, cx - 65, cy - 220, cx - 110, cy - 310, 8, 0.8, bgCol);
+    drawCurvedBlade(cx + 25, cy, cx + 70, cy - 215, cx + 120, cy - 305, 8, 0.8, bgCol);
+    drawCurvedBlade(cx, cy, cx - 10, cy - 240, cx - 30, cy - 340, 8, 0.8, bgCol);
 
-    // 2. Midground wild blades (deep dark shadow swamp-moss)
-    const midCol = '#040905';
-    const midHigh = 'rgba(70, 100, 80, 0.16)';
-    drawBlade(cx - 70, cy, cx - 220, cy - 260, cx - 160, cy - 140, 7, 0.8, midCol, midHigh);
-    drawBlade(cx + 70, cy, cx + 230, cy - 250, cx + 170, cy - 140, 7, 0.8, midCol, midHigh);
-    drawBlade(cx - 40, cy, cx - 150, cy - 370, cx - 110, cy - 210, 8, 0.8, midCol, midHigh);
-    drawBlade(cx + 35, cy, cx + 160, cy - 365, cx + 115, cy - 210, 8, 0.8, midCol, midHigh);
-    drawBlade(cx - 15, cy, cx - 60, cy - 470, cx - 40, cy - 280, 9, 0.8, midCol, midHigh);
-    drawBlade(cx + 20, cy, cx + 70, cy - 460, cx + 50, cy - 280, 9, 0.8, midCol, midHigh);
+    // 2. Midground wild drooping blades (dark shadow peat/slate)
+    const midCol = '#030508';
+    const midHigh = 'rgba(100, 130, 160, 0.12)';
+    drawCurvedBlade(cx - 60, cy, cx - 140, cy - 150, cx - 210, cy - 210, 6, 0.6, midCol, midHigh);
+    drawCurvedBlade(cx + 60, cy, cx + 145, cy - 145, cx + 215, cy - 205, 6, 0.6, midCol, midHigh);
+    drawCurvedBlade(cx - 30, cy, cx - 95, cy - 200, cx - 145, cy - 280, 7, 0.6, midCol, midHigh);
+    drawCurvedBlade(cx + 30, cy, cx + 100, cy - 195, cx + 150, cy - 275, 7, 0.6, midCol, midHigh);
+    drawCurvedBlade(cx - 10, cy, cx - 40, cy - 230, cx - 75, cy - 330, 7, 0.6, midCol, midHigh);
+    drawCurvedBlade(cx + 15, cy, cx + 45, cy - 225, cx + 80, cy - 325, 7, 0.6, midCol, midHigh);
 
-    // 3. Foreground prominent blades (dark charcoal-moss with faint moonlit night sheen)
-    const foreCol = '#07120a';
-    const moonGlaze = 'rgba(140, 175, 205, 0.22)';
-    drawBlade(cx - 90, cy, cx - 240, cy - 190, cx - 180, cy - 110, 6, 0.6, foreCol, moonGlaze);
-    drawBlade(cx + 90, cy, cx + 245, cy - 180, cx + 185, cy - 105, 6, 0.6, foreCol, moonGlaze);
-    drawBlade(cx - 55, cy, cx - 190, cy - 330, cx - 140, cy - 190, 7, 0.6, foreCol, moonGlaze);
-    drawBlade(cx + 50, cy, cx + 195, cy - 320, cx + 145, cy - 185, 7, 0.6, foreCol, moonGlaze);
-    drawBlade(cx - 25, cy, cx - 95, cy - 440, cx - 70, cy - 260, 8, 0.6, foreCol, moonGlaze);
-    drawBlade(cx + 10, cy, cx + 90, cy - 435, cx + 60, cy - 255, 8, 0.6, foreCol, moonGlaze);
-    drawBlade(cx - 5, cy, cx + 15, cy - 495, cx + 5, cy - 300, 8, 0.6, foreCol, moonGlaze);
+    // 3. Foreground prominent weeping blades (dark asphalt with subtle cold moonlight glaze on drooping tips)
+    const foreCol = '#05080e';
+    const moonGlaze = 'rgba(130, 165, 195, 0.18)';
+    drawCurvedBlade(cx - 75, cy, cx - 160, cy - 120, cx - 230, cy - 160, 5, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx + 75, cy, cx + 165, cy - 115, cx + 235, cy - 155, 5, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx - 45, cy, cx - 120, cy - 170, cx - 175, cy - 240, 6, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx + 40, cy, cx + 125, cy - 165, cx + 180, cy - 235, 6, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx - 18, cy, cx - 55, cy - 210, cx - 90, cy - 300, 6, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx + 10, cy, cx + 55, cy - 205, cx + 85, cy - 295, 6, 0.5, foreCol, moonGlaze);
+    drawCurvedBlade(cx - 4, cy, cx + 15, cy - 235, cx + 35, cy - 335, 6, 0.5, foreCol, moonGlaze);
 
-    // Wild seed heads / delicate fescue plumes at tallest blade tips
-    function drawSeedHead(tx, ty, rot) {
+    // Wild weeping seed heads drooping with the natural arching tips
+    function drawDroopingSeedHead(tx, ty, rot) {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate(rot);
-        ctx.fillStyle = 'rgba(90, 120, 100, 0.28)';
+        ctx.fillStyle = 'rgba(80, 105, 130, 0.22)';
         for (let s = 0; s < 5; s++) {
             ctx.beginPath();
-            ctx.ellipse((s % 2 === 0 ? -3 : 3), -s * 6, 2, 4, (s % 2 === 0 ? -0.4 : 0.4), 0, Math.PI * 2);
+            ctx.ellipse((s % 2 === 0 ? -2.5 : 2.5), -s * 5, 1.8, 3.5, (s % 2 === 0 ? -0.35 : 0.35), 0, Math.PI * 2);
             ctx.fill();
         }
         ctx.restore();
     }
-    drawSeedHead(cx - 20, cy - 460, -0.15);
-    drawSeedHead(cx - 60, cy - 470, -0.3);
-    drawSeedHead(cx + 70, cy - 460, 0.25);
-    drawSeedHead(cx + 15, cy - 495, 0.1);
+    drawDroopingSeedHead(cx - 110, cy - 310, -0.6);
+    drawDroopingSeedHead(cx + 120, cy - 305, 0.6);
+    drawDroopingSeedHead(cx - 75, cy - 330, -0.45);
+    drawDroopingSeedHead(cx + 80, cy - 325, 0.45);
+    drawDroopingSeedHead(cx + 35, cy - 335, 0.25);
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -4858,79 +5119,116 @@ function createHauntedGrassTuftTexture() {
     return tex;
 }
 
-// 6. Winding Overgrown Estate Dirt Path with Moonlit Puddle Reflections (2048x1024 - Full Ground Span)
+// 6. Curving Gothic Carriage Road from Manor to Gate with Moonlit Reflections (2048x1024)
 function createHauntedDirtPathTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Dark desolate earth background spanning entire ground
-    ctx.fillStyle = '#05080e';
+    // Dark desolate earth background spanning entire grounds
+    ctx.fillStyle = '#04070c';
     ctx.fillRect(0, 0, 2048, 1024);
 
     // Subtle dark soil grain and ground variation
-    for (let g = 0; g < 400; g++) {
+    for (let g = 0; g < 450; g++) {
         const gx = Math.random() * 2048;
         const gy = Math.random() * 1024;
         const gr = 2 + Math.random() * 6;
-        ctx.fillStyle = Math.random() > 0.5 ? '#080d16' : '#030509';
+        ctx.fillStyle = Math.random() > 0.5 ? '#060a12' : '#020408';
         ctx.beginPath();
         ctx.arc(gx, gy, gr, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Dirt road perspective corridor: wide at foreground bottom (600 -> 1448),
-    // funneling through gates at y: 512 (880 -> 1168), curving to manor on right at top (1250 -> 1500)
+    // Curving Gothic Carriage Road (Graceful S-curve from Manor at top-right to Gates at bottom-center):
+    // Top at Manor steps (y: 0, x: 1320 -> 1520)
+    // Curves out to right (y: 220, x: 1440 -> 1680)
+    // Sweeps inward across center (y: 500, x: 780 -> 1080)
+    // Sweeps through center-left (y: 720, x: 700 -> 1020)
+    // Curves back into center gate opening (y: 1024, x: 800 -> 1248)
     ctx.beginPath();
-    ctx.moveTo(600, 1024);
-    ctx.quadraticCurveTo(840, 750, 880, 512);
-    ctx.quadraticCurveTo(920, 250, 1250, 0);
-    ctx.lineTo(1500, 0);
-    ctx.quadraticCurveTo(1240, 250, 1168, 512);
-    ctx.quadraticCurveTo(1220, 750, 1448, 1024);
+    // Left boundary of curving road
+    ctx.moveTo(800, 1024);
+    ctx.bezierCurveTo(720, 850, 680, 680, 780, 500);
+    ctx.bezierCurveTo(860, 350, 1260, 300, 1320, 0);
+    // Across top at manor
+    ctx.lineTo(1540, 0);
+    // Right boundary of curving road
+    ctx.bezierCurveTo(1480, 300, 1140, 350, 1080, 500);
+    ctx.bezierCurveTo(1020, 680, 1160, 850, 1248, 1024);
     ctx.closePath();
-    ctx.fillStyle = '#0a101c';
+    ctx.fillStyle = '#080d16';
     ctx.fill();
 
-    // Wheel Rut 1 (Left Track)
-    ctx.beginPath();
-    ctx.moveTo(760, 1024);
-    ctx.quadraticCurveTo(910, 750, 930, 512);
-    ctx.quadraticCurveTo(960, 250, 1310, 0);
-    ctx.lineWidth = 42;
-    ctx.strokeStyle = '#070b14';
+    // Dark stone border curbing along both winding edges
+    ctx.lineWidth = 14;
+    ctx.strokeStyle = '#03050a';
     ctx.stroke();
 
-    // Wheel Rut 2 (Right Track)
+    // Weathered Dark Cobblestones and Flagstone Pattern along the road
+    for (let c = 0; c < 350; c++) {
+        const t = Math.random();
+        // Path centerline interpolation along S-curve
+        const py = t * 1024;
+        let px;
+        if (t < 0.45) {
+            // Lower half (gates to center curve)
+            const lt = t / 0.45;
+            px = 1024 + (1.0 - lt) * 0 + Math.sin(lt * Math.PI) * -240;
+        } else {
+            // Upper half (center curve to manor)
+            const ut = (t - 0.45) / 0.55;
+            px = 780 + ut * 650 + Math.sin(ut * Math.PI) * 160;
+        }
+        const offset = (Math.random() - 0.5) * (140 + t * 60);
+        const stoneX = px + offset;
+        const stoneY = py;
+        const stoneR = 4 + Math.random() * 9;
+
+        ctx.fillStyle = Math.random() > 0.4 ? '#0c1320' : '#060a12';
+        ctx.beginPath();
+        ctx.ellipse(stoneX, stoneY, stoneR * 1.4, stoneR, Math.random() * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Deep Dark Curving Wheel Rut 1 (Left Track)
     ctx.beginPath();
-    ctx.moveTo(1280, 1024);
-    ctx.quadraticCurveTo(1140, 750, 1118, 512);
-    ctx.quadraticCurveTo(1180, 250, 1440, 0);
-    ctx.lineWidth = 42;
-    ctx.strokeStyle = '#070b14';
+    ctx.moveTo(900, 1024);
+    ctx.bezierCurveTo(800, 850, 760, 680, 860, 500);
+    ctx.bezierCurveTo(940, 350, 1340, 300, 1380, 0);
+    ctx.lineWidth = 36;
+    ctx.strokeStyle = '#05080e';
     ctx.stroke();
 
-    // Cold Silver Moonlit Puddle Reflections along wheel ruts
-    const puddles = [
-        { x: 820, y: 840, rx: 65, ry: 24, rot: 0.12 },
-        { x: 1240, y: 810, rx: 60, ry: 22, rot: -0.1 },
-        { x: 920, y: 620, rx: 48, ry: 18, rot: 0.14 },
-        { x: 1130, y: 580, rx: 44, ry: 16, rot: -0.09 },
-        { x: 960, y: 440, rx: 36, ry: 13, rot: 0.10 },
-        { x: 1110, y: 400, rx: 32, ry: 11, rot: -0.07 },
-        { x: 1040, y: 280, rx: 26, ry: 9, rot: 0.05 },
-        { x: 1200, y: 230, rx: 24, ry: 8, rot: -0.05 },
-        { x: 1320, y: 120, rx: 20, ry: 7, rot: 0.04 }
+    // Deep Dark Curving Wheel Rut 2 (Right Track)
+    ctx.beginPath();
+    ctx.moveTo(1150, 1024);
+    ctx.bezierCurveTo(1060, 850, 980, 680, 1000, 500);
+    ctx.bezierCurveTo(1060, 350, 1420, 300, 1480, 0);
+    ctx.lineWidth = 36;
+    ctx.strokeStyle = '#05080e';
+    ctx.stroke();
+
+    // Cold Silver Moonlit Puddle Reflections along the curving wheel ruts
+    const curvingPuddles = [
+        { x: 1024, y: 960, rx: 65, ry: 24, rot: 0.05 },
+        { x: 920, y: 880, rx: 55, ry: 20, rot: -0.15 },
+        { x: 800, y: 720, rx: 50, ry: 18, rot: 0.22 },
+        { x: 840, y: 560, rx: 46, ry: 17, rot: -0.18 },
+        { x: 960, y: 440, rx: 40, ry: 15, rot: 0.12 },
+        { x: 1140, y: 320, rx: 36, ry: 14, rot: 0.25 },
+        { x: 1360, y: 210, rx: 32, ry: 12, rot: -0.1 },
+        { x: 1420, y: 90, rx: 28, ry: 10, rot: 0.08 }
     ];
 
-    puddles.forEach(p => {
+    curvingPuddles.forEach(p => {
         ctx.save();
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
         const pGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, p.rx);
-        pGrad.addColorStop(0.0, 'rgba(220, 238, 255, 0.48)');
-        pGrad.addColorStop(0.5, 'rgba(145, 190, 242, 0.22)');
+        pGrad.addColorStop(0.0, 'rgba(215, 235, 255, 0.45)');
+        pGrad.addColorStop(0.5, 'rgba(140, 180, 235, 0.20)');
         pGrad.addColorStop(1.0, 'transparent');
         ctx.fillStyle = pGrad;
         ctx.beginPath();
@@ -10001,19 +10299,26 @@ export function createVFXScene(container) {
     hauntedManorMesh.position.set(4.2, 3.5, -10.2);
     gHauntedManor.add(hauntedManorMesh);
 
-    // Separate Candlelight Windows Glow Overlay (flickering candle glow & lightning reaction)
+    // Dynamic Illuminated Windows Overlay (Disco Lights, Dancing Zombies, Faulty Electricity, Candlelight)
+    const hauntedWindowsCanvas = document.createElement('canvas');
+    hauntedWindowsCanvas.width = 1024;
+    hauntedWindowsCanvas.height = 1024;
+    const hauntedWindowsCtx = hauntedWindowsCanvas.getContext('2d');
+    const hauntedWindowsTex = new THREE.CanvasTexture(hauntedWindowsCanvas);
+    hauntedWindowsTex.wrapS = THREE.ClampToEdgeWrapping;
+    hauntedWindowsTex.wrapT = THREE.ClampToEdgeWrapping;
+
     const hauntedWindowsMat = new THREE.MeshBasicMaterial({
-        map: hauntedManorTex,
+        map: hauntedWindowsTex,
         transparent: true,
-        blending: THREE.AdditiveBlending,
         depthWrite: false,
-        opacity: 0.65
+        side: THREE.DoubleSide
     });
     const hauntedWindowsMesh = new THREE.Mesh(hauntedManorGeo, hauntedWindowsMat);
     hauntedWindowsMesh.position.set(4.2, 3.5, -10.16);
     gHauntedManor.add(hauntedWindowsMesh);
 
-    // 5. Layer 5: Winding Estate Dirt Road / Driveway (Ground Plane: 110x75 full terrain span)
+    // 5. Layer 5: Winding Curving Estate Road / Driveway (Ground Plane: 110x75 full terrain span)
     const hauntedPathGeo = new THREE.PlaneGeometry(110.0, 75.0);
     const hauntedPathMat = new THREE.MeshStandardMaterial({
         map: hauntedPathTex,
@@ -10024,29 +10329,29 @@ export function createVFXScene(container) {
     });
     const hauntedPathMesh = new THREE.Mesh(hauntedPathGeo, hauntedPathMat);
     hauntedPathMesh.position.set(0.0, -7.5, -5.0);
-    hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.08; // Flatter slope so terrain doesn't clip lower ground floor
+    hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.08;
     gHauntedManor.add(hauntedPathMesh);
 
-    // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Brought Forward to z = +2.5)
-    // Sits in immediate foreground eliminating any bottom gap; height 16.0 extends well below screen bottom!
-    const hauntedFenceGeo = new THREE.PlaneGeometry(24.0, 16.0);
+    // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Repositioned to z = 0.0)
+    // Pushed back slightly so the full inward swing arc is completely visible within the frame, with height 16.5 leaving zero bottom gap!
+    const hauntedFenceGeo = new THREE.PlaneGeometry(26.0, 16.5);
     const hauntedFenceMat = new THREE.MeshBasicMaterial({
         map: hauntedFenceTex,
         transparent: true,
         depthWrite: false
     });
     const hauntedFenceLeftMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceLeftMesh.position.set(-15.8, -2.2, 2.5);
+    hauntedFenceLeftMesh.position.set(-16.0, -2.4, 0.0);
     gHauntedManor.add(hauntedFenceLeftMesh);
 
     // Mirrored Right Perimeter Fence Railings
     const hauntedFenceRightMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceRightMesh.position.set(15.8, -2.2, 2.5);
+    hauntedFenceRightMesh.position.set(16.0, -2.4, 0.0);
     hauntedFenceRightMesh.scale.set(-1.0, 1.0, 1.0);
     gHauntedManor.add(hauntedFenceRightMesh);
 
-    // Articulated Swinging Gates (Width 4.2, Height 14.5; meets in center at z = +2.5)
-    const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 14.5);
+    // Articulated Swinging Gates (Width 4.2, Height 13.5; swinging wide open on 3D hinges at z = 0.0)
+    const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 13.5);
     const hauntedGateWingMat = new THREE.MeshBasicMaterial({
         map: hauntedGateWingTex,
         transparent: true,
@@ -10054,29 +10359,29 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
 
-    // Left Gate Wing Pivot (Hinge at x = -3.8)
+    // Left Gate Wing Pivot (Hinge at x = -3.8, z = 0.0)
     const hauntedLeftGatePivot = new THREE.Group();
-    hauntedLeftGatePivot.position.set(-3.8, -2.2, 2.5);
+    hauntedLeftGatePivot.position.set(-3.8, -2.4, 0.0);
     const hauntedLeftGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
     hauntedLeftGateMesh.position.set(2.1, 0, 0); // Offset so hinge is at pivot origin
     hauntedLeftGatePivot.add(hauntedLeftGateMesh);
     gHauntedManor.add(hauntedLeftGatePivot);
 
-    // Right Gate Wing Pivot (Hinge at x = +3.8)
+    // Right Gate Wing Pivot (Hinge at x = +3.8, z = 0.0)
     const hauntedRightGatePivot = new THREE.Group();
-    hauntedRightGatePivot.position.set(3.8, -2.2, 2.5);
+    hauntedRightGatePivot.position.set(3.8, -2.4, 0.0);
     const hauntedRightGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
     hauntedRightGateMesh.position.set(-2.1, 0, 0); // Offset so hinge is at pivot origin
     hauntedRightGateMesh.scale.set(-1.0, 1.0, 1.0);
     hauntedRightGatePivot.add(hauntedRightGateMesh);
     gHauntedManor.add(hauntedRightGatePivot);
 
-    // 6b. Realistic Dark Wild Cemetery Grass along Fence Line (76 Animated Clumps with Sudden Wind Gusts)
+    // 6b. Realistic Dark Cemetery Wild Grass along Fence Line (Aligned to Front of Fence at z = +0.08, Reduced Height 2.6)
     const hauntedGrassTufts = [];
     const hauntedGrassGroup = new THREE.Group();
-    const hauntedGrassGeo = new THREE.PlaneGeometry(2.8, 3.8);
+    const hauntedGrassGeo = new THREE.PlaneGeometry(2.4, 2.6);
     // Translate geometry vertically so origin/pivot is at bottom root of the grass tuft
-    hauntedGrassGeo.translate(0, 1.9, 0);
+    hauntedGrassGeo.translate(0, 1.3, 0);
 
     const hauntedGrassMat = new THREE.MeshBasicMaterial({
         map: hauntedGrassTex,
@@ -10099,9 +10404,9 @@ export function createVFXScene(container) {
             gx = 3.6 + t * 22.4;
         }
 
-        const gy = -6.8 + (Math.random() - 0.5) * 0.22;
-        const gz = 2.55 + (Math.random() - 0.5) * 0.15;
-        const scale = 0.95 + Math.random() * 0.45;
+        const gy = -6.4 + (Math.random() - 0.5) * 0.18;
+        const gz = 0.08 + (Math.random() - 0.5) * 0.08; // Aligned directly in front of fence rails
+        const scale = 0.95 + Math.random() * 0.35;
         const scaleX = scale * (Math.random() > 0.5 ? 1.0 : -1.0);
         const baseRot = (Math.random() - 0.5) * 0.12;
 
@@ -10353,6 +10658,13 @@ export function createVFXScene(container) {
     let hauntedFlickerDuration = 0.0;
     let hauntedNextFlickerTime = 3.5;
     let hauntedFlickerType = 0;
+
+    // Dedicated Faulty Electricity Wiring State for Right Wing Windows ("flicker black and back to how they are")
+    let hauntedFaultyActive = false;
+    let hauntedFaultyStartTime = 0.0;
+    let hauntedFaultyDuration = 0.8;
+    let hauntedFaultyTarget = 0; // 0: downstairs right, 1: upstairs right, 2: all right windows
+    let hauntedNextFaultyTime = 2.5;
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -12570,58 +12882,59 @@ export function createVFXScene(container) {
                 }
             }
 
-            // Gates creaking and swinging in the wind gusts
+            // Gates creaking and swinging wide open inward into the curving driveway
             const calmSway = Math.sin(elapsedTime * 0.35) * 0.04;
-            hauntedLeftGatePivot.rotation.y = -0.72 - (currentGust * 0.32) + calmSway;
-            hauntedRightGatePivot.rotation.y = 0.76 + (currentGust * 0.30) - calmSway;
+            hauntedLeftGatePivot.rotation.y = -1.18 - (currentGust * 0.35) + calmSway;
+            hauntedRightGatePivot.rotation.y = 1.18 + (currentGust * 0.35) - calmSway;
 
-            // 2. Random eerie haunted manor window light flicker ("flicker randomly every now and then")
-            if (!hauntedFlickerActive && elapsedTime > hauntedNextFlickerTime) {
-                hauntedFlickerActive = true;
-                hauntedFlickerStartTime = elapsedTime;
-                hauntedFlickerDuration = 0.5 + Math.random() * 1.2;
-                hauntedFlickerType = Math.floor(Math.random() * 3);
-                hauntedNextFlickerTime = elapsedTime + 4.0 + Math.random() * 7.0;
+            // 2. Faulty Electricity Wiring State for Right Wing Windows ("flicker black and back to how they are")
+            if (!hauntedFaultyActive && elapsedTime > hauntedNextFaultyTime) {
+                hauntedFaultyActive = true;
+                hauntedFaultyStartTime = elapsedTime;
+                hauntedFaultyDuration = 0.4 + Math.random() * 0.85; // 0.4s to 1.25s blackout/stutter
+                hauntedFaultyTarget = Math.floor(Math.random() * 3); // 0: downstairs right, 1: upstairs right, 2: all right windows
+                hauntedNextFaultyTime = elapsedTime + 3.0 + Math.random() * 5.5; // Next faulty event in 3 to 8.5s
             }
 
-            let candleIntensity = 2.4;
-            let windowOpacity = 0.85;
-
-            if (hauntedFlickerActive) {
-                const fProgress = (elapsedTime - hauntedFlickerStartTime) / hauntedFlickerDuration;
+            let rightFaultyFactor = 1.0;
+            if (hauntedFaultyActive) {
+                const fProgress = (elapsedTime - hauntedFaultyStartTime) / hauntedFaultyDuration;
                 if (fProgress >= 1.0) {
-                    hauntedFlickerActive = false;
+                    hauntedFaultyActive = false;
+                    rightFaultyFactor = 1.0;
                 } else {
-                    const noise = Math.sin(elapsedTime * 48.0) * Math.cos(elapsedTime * 32.0);
-                    if (hauntedFlickerType === 0) {
-                        const stutter = noise > 0.05 ? (0.2 + 0.8 * Math.random()) : 0.04;
-                        candleIntensity = 2.4 * stutter;
-                        windowOpacity = 0.85 * stutter;
-                    } else if (hauntedFlickerType === 1) {
-                        const dip = (fProgress > 0.15 && fProgress < 0.70) ? 0.05 : (0.35 + 0.65 * Math.random());
-                        candleIntensity = 2.4 * dip;
-                        windowOpacity = 0.85 * dip;
+                    // Erratic rapid electrical blackout stutter (pitch black with brief electrical arc sparks)
+                    const arcNoise = Math.sin(elapsedTime * 65.0) * Math.cos(elapsedTime * 45.0);
+                    if (arcNoise > 0.45) {
+                        rightFaultyFactor = 0.3; // brief weak electrical buzz spark
+                    } else if (arcNoise > 0.3) {
+                        rightFaultyFactor = 0.85; // brief pop
                     } else {
-                        const surge = Math.sin(fProgress * Math.PI);
-                        const stutter = (Math.random() > 0.2) ? (1.0 + surge * 0.9) : 0.1;
-                        candleIntensity = 2.4 * stutter;
-                        windowOpacity = Math.min(1.0, 0.85 * stutter);
+                        rightFaultyFactor = 0.0; // PITCH BLACK! Completely unlit window!
                     }
                 }
-            } else {
-                const gentleSway = Math.sin(elapsedTime * 3.2) * 0.07 + Math.cos(elapsedTime * 4.8) * 0.04;
-                candleIntensity = 2.4 * (1.0 + gentleSway) + (audio.smoothedTreble || 0) * 0.35;
-                windowOpacity = 0.85 * (1.0 + gentleSway * 0.5);
             }
 
-            hauntedCandleLight.intensity = Math.max(0.08, candleIntensity);
-            hauntedWindowsMat.opacity = Math.max(0.05, Math.min(1.0, windowOpacity));
+            const faultyState = {
+                active: hauntedFaultyActive,
+                factor: rightFaultyFactor,
+                target: hauntedFaultyTarget
+            };
+
+            // Render Dynamic Windows Canvas: Disco Lights & Dancing Zombies (left upstairs) + Faulty Electricity (right) + Candlelight
+            renderHauntedManorWindows(hauntedWindowsCtx, elapsedTime, audio, faultyState);
+            hauntedWindowsTex.needsUpdate = true;
+
+            // Atmospheric Candle & Lantern Lights
+            const gentleSway = Math.sin(elapsedTime * 3.2) * 0.07 + Math.cos(elapsedTime * 4.8) * 0.04;
+            const candleIntensity = 2.4 * (1.0 + gentleSway) + (audio.smoothedTreble || 0) * 0.35;
+            hauntedCandleLight.intensity = Math.max(0.08, candleIntensity * rightFaultyFactor);
 
             // Entrance carriage porch lantern subtle flicker
             const lanternFlicker = Math.sin(elapsedTime * 5.4) * 0.12 + Math.cos(elapsedTime * 8.1) * 0.08;
             hauntedLanternLight.intensity = Math.max(0.2, (1.8 + lanternFlicker) * (candleIntensity / 2.4));
 
-            // 2b. Wicked Flying Witch Flight Simulation (2 Passes: across moon behind manor, then larger in front of manor)
+            // 2b. Wicked Flying Witch Flight Simulation (Pass 1: Left to Right across moon behind manor; Pass 2: Right to Left in front of manor, larger)
             if (hauntedWitchState === 'idle') {
                 hauntedWitchGroup.visible = false;
                 if (elapsedTime > hauntedWitchNextTime) {
@@ -12630,11 +12943,11 @@ export function createVFXScene(container) {
                     hauntedWitchGroup.visible = true;
                     // Pass 1: In front of moon (z = -17.5) and BEHIND manor (z = -10.2)
                     hauntedWitchGroup.position.z = -15.5;
-                    hauntedWitchGroup.scale.set(1.1, 1.1, 1.1);
+                    hauntedWitchGroup.scale.set(1.1, 1.1, 1.1); // Facing right (+X)
                 }
             } else if (hauntedWitchState === 'pass1_background') {
                 hauntedWitchGroup.visible = true;
-                hauntedWitchX += 11.5 * delta;
+                hauntedWitchX += 11.5 * delta; // Flies LEFT TO RIGHT
                 // High soaring flight across sky, silhouettes cleanly across full moon!
                 const witchY = 5.6 + Math.sin(hauntedWitchX * 0.18) * 0.45;
                 hauntedWitchGroup.position.set(hauntedWitchX, witchY, -15.5);
@@ -12643,28 +12956,28 @@ export function createVFXScene(container) {
                 if (hauntedWitchX > 32.0) {
                     hauntedWitchState = 'between_passes';
                     hauntedWitchGroup.visible = false;
-                    hauntedWitchBetweenTimer = 3.2; // Short pause before return pass
+                    hauntedWitchBetweenTimer = 2.8; // Short pause before return pass
                 }
             } else if (hauntedWitchState === 'between_passes') {
                 hauntedWitchGroup.visible = false;
                 hauntedWitchBetweenTimer -= delta;
                 if (hauntedWitchBetweenTimer <= 0) {
                     hauntedWitchState = 'pass2_foreground';
-                    hauntedWitchX = -26.0;
+                    hauntedWitchX = 28.0; // STARTS ON THE RIGHT!
                     hauntedWitchGroup.visible = true;
                     // Pass 2: In FRONT of manor (z = -10.2) at z = -5.5, scaled LARGER (2.4x scale)
                     hauntedWitchGroup.position.z = -5.5;
-                    hauntedWitchGroup.scale.set(2.4, 2.4, 2.4);
+                    hauntedWitchGroup.scale.set(-2.4, 2.4, 2.4); // Flips X so she faces LEFT in flight direction!
                 }
             } else if (hauntedWitchState === 'pass2_foreground') {
                 hauntedWitchGroup.visible = true;
-                hauntedWitchX += 13.0 * delta;
-                // Swooping dynamic flight in front of manor windows and portico
+                hauntedWitchX -= 12.5 * delta; // Flies RIGHT TO LEFT!
+                // Dynamic swooping trajectory in front of the illuminated manor windows and entrance portico
                 const witchY = 2.4 + Math.sin(hauntedWitchX * 0.22) * 0.85;
                 hauntedWitchGroup.position.set(hauntedWitchX, witchY, -5.5);
-                hauntedWitchGroup.rotation.z = Math.cos(hauntedWitchX * 0.22) * 0.12;
+                hauntedWitchGroup.rotation.z = -Math.cos(hauntedWitchX * 0.22) * 0.12;
 
-                if (hauntedWitchX > 26.0) {
+                if (hauntedWitchX < -28.0) {
                     hauntedWitchState = 'idle';
                     hauntedWitchGroup.visible = false;
                     // Next appearance: every 24s to 38s
@@ -12676,15 +12989,19 @@ export function createVFXScene(container) {
             if (hauntedWitchGroup.visible) {
                 const spAttr = hauntedWitchSparkleGeo.attributes.position;
                 const spArr = spAttr.array;
+                const isFlyingLeft = (hauntedWitchState === 'pass2_foreground');
                 for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
                     hauntedWitchSparkleLife[sp] += delta * 2.2;
                     if (hauntedWitchSparkleLife[sp] > 1.0) {
                         hauntedWitchSparkleLife[sp] = 0.0;
-                        spArr[sp * 3] = -1.2 + (Math.random() - 0.5) * 0.3;
+                        // Spawn at broom bristles (local tail coordinate)
+                        const tailX = isFlyingLeft ? 1.2 : -1.2;
+                        spArr[sp * 3] = tailX + (Math.random() - 0.5) * 0.3;
                         spArr[sp * 3 + 1] = -0.4 + (Math.random() - 0.5) * 0.3;
                         spArr[sp * 3 + 2] = (Math.random() - 0.5) * 0.2;
                     } else {
-                        spArr[sp * 3] -= delta * 1.5;
+                        // Drift backward relative to flight direction
+                        spArr[sp * 3] += (isFlyingLeft ? delta * 1.5 : -delta * 1.5);
                         spArr[sp * 3 + 1] += (Math.random() - 0.5) * 0.15 * delta;
                     }
                 }
@@ -12761,24 +13078,23 @@ export function createVFXScene(container) {
                 if (fp.progress > 1.0) fp.progress -= 1.0;
 
                 const p = fp.progress;
-                // Z position moves continuously forward from deep terrain (z = -18.0) through gates (z = +2.5) to foreground (z = +6.0)
-                const pZ = -18.0 + p * 24.0;
+                // Z position moves continuously forward from deep terrain (z = -18.0) through gates (z = 0.0) to foreground (z = +5.0)
+                const pZ = -18.0 + p * 23.0;
 
                 let pX = 0.0;
                 if (fp.isWideBlanket) {
-                    // Wide blanket across the sides of the path from one side of the screen to the other (-26.0 to +26.0)
                     pX = fp.xCenter + fp.xSpread + Math.sin(p * 3.5 + fp.phase) * 1.8 + (fp.driftSpeed * elapsedTime * 0.5) % 8.0 + lateralWindDrift;
                     if (pX > 26.0) pX = -26.0 + (pX - 26.0);
                     if (pX < -26.0) pX = 26.0 - (-26.0 - pX);
                 } else {
                     // Path and gate stream: curves from driveway into gate, then fans out across entire screen floor
-                    if (pZ < 2.5) {
-                        const approachT = (pZ - (-18.0)) / (2.5 - (-18.0));
+                    if (pZ < 0.0) {
+                        const approachT = (pZ - (-18.0)) / (0.0 - (-18.0));
                         pX = (2.2 * (1.0 - approachT)) + fp.xSpread * 0.6;
-                        if (pZ > 0.0) pX *= 0.55; // Channel through gate opening
+                        if (pZ > -3.0) pX *= 0.55; // Channel through gate opening
                     } else {
                         // Spilling through gates into immediate foreground: billows wide across bottom of screen
-                        const spillT = (pZ - 2.5) / (6.0 - 2.5);
+                        const spillT = pZ / 5.0;
                         pX = (fp.xSpread * (1.2 + spillT * 3.2)) + Math.sin(p * 4.0 + fp.phase) * (2.2 * spillT) + lateralWindDrift;
                     }
                 }
