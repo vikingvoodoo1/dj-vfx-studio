@@ -4805,17 +4805,17 @@ function createHauntedGrassTuftTexture() {
 
     const cx = 256, cy = 512;
 
-    // 1. Deep background blades (darkest gothic black-green)
-    const bgCol = '#040b07';
+    // 1. Deep background blades (pitch obsidian night-green)
+    const bgCol = '#020403';
     drawBlade(cx - 50, cy, cx - 180, cy - 320, cx - 110, cy - 180, 8, 1, bgCol);
     drawBlade(cx + 60, cy, cx + 190, cy - 310, cx + 120, cy - 170, 8, 1, bgCol);
     drawBlade(cx - 30, cy, cx - 120, cy - 410, cx - 65, cy - 240, 9, 1, bgCol);
     drawBlade(cx + 40, cy, cx + 130, cy - 400, cx + 80, cy - 230, 9, 1, bgCol);
     drawBlade(cx, cy, cx - 20, cy - 460, cx - 5, cy - 260, 10, 1, bgCol);
 
-    // 2. Midground wild blades (dark swamp moss green)
-    const midCol = '#0a1a11';
-    const midHigh = 'rgba(120, 180, 140, 0.25)';
+    // 2. Midground wild blades (deep dark shadow swamp-moss)
+    const midCol = '#040905';
+    const midHigh = 'rgba(70, 100, 80, 0.16)';
     drawBlade(cx - 70, cy, cx - 220, cy - 260, cx - 160, cy - 140, 7, 0.8, midCol, midHigh);
     drawBlade(cx + 70, cy, cx + 230, cy - 250, cx + 170, cy - 140, 7, 0.8, midCol, midHigh);
     drawBlade(cx - 40, cy, cx - 150, cy - 370, cx - 110, cy - 210, 8, 0.8, midCol, midHigh);
@@ -4823,9 +4823,9 @@ function createHauntedGrassTuftTexture() {
     drawBlade(cx - 15, cy, cx - 60, cy - 470, cx - 40, cy - 280, 9, 0.8, midCol, midHigh);
     drawBlade(cx + 20, cy, cx + 70, cy - 460, cx + 50, cy - 280, 9, 0.8, midCol, midHigh);
 
-    // 3. Foreground prominent blades (dark moss with cool silver moonlight glints on tips)
-    const foreCol = '#11291b';
-    const moonGlaze = 'rgba(195, 225, 255, 0.45)';
+    // 3. Foreground prominent blades (dark charcoal-moss with faint moonlit night sheen)
+    const foreCol = '#07120a';
+    const moonGlaze = 'rgba(140, 175, 205, 0.22)';
     drawBlade(cx - 90, cy, cx - 240, cy - 190, cx - 180, cy - 110, 6, 0.6, foreCol, moonGlaze);
     drawBlade(cx + 90, cy, cx + 245, cy - 180, cx + 185, cy - 105, 6, 0.6, foreCol, moonGlaze);
     drawBlade(cx - 55, cy, cx - 190, cy - 330, cx - 140, cy - 190, 7, 0.6, foreCol, moonGlaze);
@@ -4839,7 +4839,7 @@ function createHauntedGrassTuftTexture() {
         ctx.save();
         ctx.translate(tx, ty);
         ctx.rotate(rot);
-        ctx.fillStyle = 'rgba(150, 190, 160, 0.55)';
+        ctx.fillStyle = 'rgba(90, 120, 100, 0.28)';
         for (let s = 0; s < 5; s++) {
             ctx.beginPath();
             ctx.ellipse((s % 2 === 0 ? -3 : 3), -s * 6, 2, 4, (s % 2 === 0 ? -0.4 : 0.4), 0, Math.PI * 2);
@@ -4945,62 +4945,311 @@ function createHauntedDirtPathTexture() {
     return tex;
 }
 
-// 7. Spooky Flying Vampire Bat Silhouette (256x256)
-function createHauntedBatTexture() {
+// 7a. Vampire Bat Central Furry Body & Head with Glowing Eyes (128x256)
+function createHauntedBatBodyTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 128;
+    canvas.height = 256;
+    const ctx = canvas.getContext('2d');
+    const cx = 64, cy = 128;
+
+    ctx.clearRect(0, 0, 128, 256);
+    ctx.fillStyle = '#030509';
+
+    // Furry Torso
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 15, 22, 38, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tucked Feet / Claws
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy + 50); ctx.lineTo(cx - 14, cy + 62); ctx.lineTo(cx - 6, cy + 56); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(cx + 10, cy + 50); ctx.lineTo(cx + 14, cy + 62); ctx.lineTo(cx + 6, cy + 56); ctx.fill();
+
+    // Furry Neck Ruff & Head
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 22, 18, 16, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Large Pointed Bat Ears
+    // Left ear
+    ctx.beginPath();
+    ctx.moveTo(cx - 14, cy - 26);
+    ctx.lineTo(cx - 22, cy - 62);
+    ctx.lineTo(cx - 4, cy - 36);
+    ctx.closePath();
+    ctx.fill();
+    // Right ear
+    ctx.beginPath();
+    ctx.moveTo(cx + 14, cy - 26);
+    ctx.lineTo(cx + 22, cy - 62);
+    ctx.lineTo(cx + 4, cy - 36);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner ear ridges
+    ctx.strokeStyle = '#0e1624';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(cx - 12, cy - 32); ctx.lineTo(cx - 17, cy - 54); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(cx + 12, cy - 32); ctx.lineTo(cx + 17, cy - 54); ctx.stroke();
+
+    // Glowing Crimson Eyes
+    ctx.fillStyle = '#ff2233';
+    ctx.beginPath(); ctx.arc(cx - 7, cy - 22, 2.8, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.arc(cx + 7, cy - 22, 2.8, 0, Math.PI * 2); ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// 7b. Vampire Bat Single Articulated Wing (256x256 - Left Wing, Rooted at right edge)
+function createHauntedBatWingTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
     canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    const cx = 128, cy = 128;
 
     ctx.clearRect(0, 0, 256, 256);
-    ctx.fillStyle = '#040609';
 
-    // Central Bat Body & Furry Head with Pointed Ears
+    // Shoulder root connects at right edge (245, 128)
+    const rootX = 245, rootY = 128;
+
+    // Leathery dark membrane
+    ctx.fillStyle = '#04070d';
     ctx.beginPath();
-    ctx.ellipse(cx, cy + 4, 12, 26, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // Head
-    ctx.beginPath();
-    ctx.arc(cx, cy - 24, 11, 0, Math.PI * 2);
-    ctx.fill();
-    // Left & Right Pointed Bat Ears
-    ctx.beginPath();
-    ctx.moveTo(cx - 9, cy - 26);
-    ctx.lineTo(cx - 14, cy - 42);
-    ctx.lineTo(cx - 4, cy - 30);
-    ctx.closePath();
-    ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(cx + 9, cy - 26);
-    ctx.lineTo(cx + 14, cy - 42);
-    ctx.lineTo(cx + 4, cy - 30);
+    ctx.moveTo(rootX, rootY);
+    // Upper arm bone leading to elbow/knuckle
+    ctx.quadraticCurveTo(150, 60, 40, 95); // main wing tip apex (Digit II)
+    // Scalloped trailing membrane edges between finger struts
+    ctx.quadraticCurveTo(75, 125, 90, 160); // Digit III strut tip
+    ctx.quadraticCurveTo(125, 150, 145, 185); // Digit IV strut tip
+    ctx.quadraticCurveTo(180, 165, 205, 195); // Digit V strut tip
+    ctx.quadraticCurveTo(230, 160, rootX, rootY + 45); // flank connection
     ctx.closePath();
     ctx.fill();
 
-    // Left Scalloped Vampire Wing
+    // Slender finger bones radiating from knuckle (130, 80)
+    ctx.strokeStyle = '#0e1624';
+    ctx.lineWidth = 2.5;
+    // Arm bone
+    ctx.beginPath(); ctx.moveTo(rootX, rootY); ctx.quadraticCurveTo(185, 95, 130, 80); ctx.stroke();
+    // Digit II (wing tip)
+    ctx.beginPath(); ctx.moveTo(130, 80); ctx.quadraticCurveTo(80, 85, 40, 95); ctx.stroke();
+    // Digit III
+    ctx.beginPath(); ctx.moveTo(130, 80); ctx.quadraticCurveTo(105, 125, 90, 160); ctx.stroke();
+    // Digit IV
+    ctx.beginPath(); ctx.moveTo(130, 80); ctx.quadraticCurveTo(138, 140, 145, 185); ctx.stroke();
+    // Digit V
+    ctx.beginPath(); ctx.moveTo(130, 80); ctx.quadraticCurveTo(175, 150, 205, 195); ctx.stroke();
+
+    // Subtle moonlit rim specular highlight along leading edge
+    ctx.strokeStyle = 'rgba(195, 225, 255, 0.35)';
+    ctx.lineWidth = 1.8;
     ctx.beginPath();
-    ctx.moveTo(cx - 10, cy - 8);
-    // Upper wing bone curving up and out
-    ctx.quadraticCurveTo(cx - 60, cy - 48, cx - 120, cy - 20); // Wing tip apex
-    // 4 Scalloped wing membranes between finger struts
-    ctx.quadraticCurveTo(cx - 96, cy - 2, cx - 88, cy + 18);
-    ctx.quadraticCurveTo(cx - 72, cy + 6, cx - 58, cy + 24);
-    ctx.quadraticCurveTo(cx - 42, cy + 12, cx - 30, cy + 26);
-    ctx.quadraticCurveTo(cx - 18, cy + 16, cx - 8, cy + 20);
+    ctx.moveTo(rootX, rootY - 4);
+    ctx.quadraticCurveTo(150, 56, 40, 95);
+    ctx.stroke();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// 7c. Wicked Flying Witch on Broomstick Silhouette with Black Cat & Trailing Cape (512x512)
+function createHauntedWitchTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    ctx.clearRect(0, 0, 512, 512);
+
+    ctx.save();
+    // Rotate canvas slightly (-7 deg) so flight vector leans naturally forward
+    ctx.translate(256, 256);
+    ctx.rotate(-0.12);
+    ctx.translate(-256, -256);
+
+    const silhouetteCol = '#020306';
+    ctx.fillStyle = silhouetteCol;
+    ctx.strokeStyle = silhouetteCol;
+
+    // 1. Long Gnarled Wooden Broomstick Handle
+    ctx.lineWidth = 7;
+    ctx.beginPath();
+    ctx.moveTo(80, 310);
+    ctx.lineTo(440, 195);
+    ctx.stroke();
+
+    // Curved front tip of broom handle
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.moveTo(440, 195);
+    ctx.quadraticCurveTo(465, 185, 475, 165);
+    ctx.stroke();
+
+    // 2. Thick Frayed Twig Bristles / Broomtail at Rear
+    ctx.beginPath();
+    ctx.moveTo(140, 290);
+    ctx.quadraticCurveTo(80, 295, 30, 260); // top flared twigs
+    ctx.lineTo(20, 280);
+    ctx.quadraticCurveTo(60, 315, 25, 335); // center frayed twigs
+    ctx.lineTo(35, 350);
+    ctx.quadraticCurveTo(90, 340, 135, 315); // bottom twigs
     ctx.closePath();
     ctx.fill();
 
-    // Right Scalloped Vampire Wing
+    // Extra wild bristled twig wisps shooting back
+    ctx.lineWidth = 2.5;
+    for (let tw = 0; tw < 9; tw++) {
+        ctx.beginPath();
+        ctx.moveTo(130, 295 + tw * 2.5);
+        ctx.quadraticCurveTo(70, 305 + (tw - 4) * 12, 15 + (tw % 3) * 8, 260 + tw * 11);
+        ctx.stroke();
+    }
+
+    // Twig binding ropes
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = '#121926';
+    ctx.beginPath(); ctx.moveTo(130, 288); ctx.lineTo(135, 315); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(142, 285); ctx.lineTo(147, 312); ctx.stroke();
+    ctx.strokeStyle = silhouetteCol;
+
+    // 3. Black Cat Perched on Rear of Broomstick
     ctx.beginPath();
-    ctx.moveTo(cx + 10, cy - 8);
-    ctx.quadraticCurveTo(cx + 60, cy - 48, cx + 120, cy - 20); // Wing tip apex
-    ctx.quadraticCurveTo(cx + 96, cy - 2, cx + 88, cy + 18);
-    ctx.quadraticCurveTo(cx + 72, cy + 6, cx + 58, cy + 24);
-    ctx.quadraticCurveTo(cx + 42, cy + 12, cx + 30, cy + 26);
-    ctx.quadraticCurveTo(cx + 18, cy + 16, cx + 8, cy + 20);
+    // Cat body
+    ctx.ellipse(175, 275, 14, 18, 0.4, 0, Math.PI * 2);
+    ctx.fill();
+    // Cat head
+    ctx.beginPath();
+    ctx.arc(188, 258, 9, 0, Math.PI * 2);
+    ctx.fill();
+    // Pointed cat ears
+    ctx.beginPath();
+    ctx.moveTo(182, 254); ctx.lineTo(184, 242); ctx.lineTo(188, 251); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(189, 251); ctx.lineTo(194, 243); ctx.lineTo(196, 255); ctx.fill();
+    // Long curling cat tail whipping back
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(164, 282);
+    ctx.quadraticCurveTo(145, 275, 140, 250);
+    ctx.quadraticCurveTo(138, 235, 150, 230);
+    ctx.stroke();
+
+    // 4. Slender Witch Silhouette
+    // Legs & Pointed Witch Boots tucked beneath broom
+    ctx.beginPath();
+    ctx.moveTo(235, 285);
+    ctx.lineTo(255, 335); // knee
+    ctx.lineTo(285, 360); // ankle
+    ctx.lineTo(315, 365); // pointed curved toe
+    ctx.quadraticCurveTo(325, 355, 305, 350);
+    ctx.lineTo(270, 325);
+    ctx.lineTo(255, 280);
     ctx.closePath();
     ctx.fill();
+
+    // Billowing ragged tattered dress skirt & cape billowing backwards
+    ctx.beginPath();
+    ctx.moveTo(250, 250); // waist
+    ctx.quadraticCurveTo(180, 260, 110, 290); // billowing cape top edge
+    ctx.lineTo(85, 310); // torn cape tail
+    ctx.quadraticCurveTo(130, 335, 120, 360); // ragged hem spike 1
+    ctx.lineTo(145, 345);
+    ctx.quadraticCurveTo(180, 370, 170, 395); // ragged hem spike 2
+    ctx.lineTo(200, 360);
+    ctx.quadraticCurveTo(230, 380, 225, 355);
+    ctx.lineTo(260, 320); // hip
+    ctx.closePath();
+    ctx.fill();
+
+    // Torso & Arching Back leaning eagerly forward
+    ctx.beginPath();
+    ctx.moveTo(235, 255);
+    ctx.quadraticCurveTo(240, 205, 280, 185); // curved spine / back
+    ctx.lineTo(315, 205); // chest
+    ctx.lineTo(265, 270);
+    ctx.closePath();
+    ctx.fill();
+
+    // Arms stretching forward gripping the broomstick
+    ctx.lineWidth = 9;
+    ctx.beginPath();
+    ctx.moveTo(290, 195); // shoulder
+    ctx.lineTo(335, 225); // elbow
+    ctx.lineTo(365, 218); // hands on broom
+    ctx.stroke();
+
+    // Witch Head & Profile with Hooked Nose and Pointed Chin
+    ctx.beginPath();
+    ctx.moveTo(295, 180); // neck
+    ctx.lineTo(325, 175); // chin
+    ctx.lineTo(345, 170); // long hooked nose
+    ctx.lineTo(325, 155); // forehead
+    ctx.lineTo(290, 160); // back of skull
+    ctx.closePath();
+    ctx.fill();
+
+    // Long Straggly Hair streaming backward in the slipstream
+    ctx.beginPath();
+    ctx.moveTo(300, 165);
+    ctx.quadraticCurveTo(250, 170, 190, 195);
+    ctx.lineTo(180, 205);
+    ctx.quadraticCurveTo(240, 190, 295, 180);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Iconic Tall Conical Witch Hat with Crooked Tip
+    // Wide curved hat brim
+    ctx.beginPath();
+    ctx.ellipse(315, 160, 52, 13, -0.22, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Tall pointed hat cone with bent crooked tip pointing backwards
+    ctx.beginPath();
+    ctx.moveTo(280, 155);
+    ctx.quadraticCurveTo(265, 110, 220, 85); // curved back of cone
+    ctx.lineTo(205, 80); // sharp tip
+    ctx.quadraticCurveTo(235, 95, 270, 125);
+    ctx.lineTo(335, 148); // front base
+    ctx.closePath();
+    ctx.fill();
+
+    // Hat band ribbon fluttering behind
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#2d1b4e'; // dark purple ribbon
+    ctx.beginPath();
+    ctx.moveTo(282, 155);
+    ctx.quadraticCurveTo(250, 160, 210, 175);
+    ctx.stroke();
+
+    // Glowing Witch Eye & Cat Eye (faint eerie magical amber/violet glint)
+    ctx.fillStyle = '#ffaa00';
+    ctx.beginPath(); ctx.arc(325, 165, 2.5, 0, Math.PI * 2); ctx.fill(); // Witch eye
+    ctx.fillStyle = '#77ff33';
+    ctx.beginPath(); ctx.arc(190, 256, 1.8, 0, Math.PI * 2); ctx.fill(); // Cat eye
+
+    // Subtle moonlit rim light on top edges
+    ctx.strokeStyle = 'rgba(210, 235, 255, 0.45)';
+    ctx.lineWidth = 2.0;
+    // Hat rim highlight
+    ctx.beginPath();
+    ctx.moveTo(205, 80);
+    ctx.quadraticCurveTo(235, 95, 270, 125);
+    ctx.lineTo(335, 148);
+    ctx.stroke();
+    // Spine highlight
+    ctx.beginPath();
+    ctx.moveTo(280, 185);
+    ctx.quadraticCurveTo(240, 205, 235, 255);
+    ctx.stroke();
+
+    ctx.restore();
 
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
@@ -9635,7 +9884,9 @@ export function createVFXScene(container) {
     const hauntedGateWingTex = createHauntedGateWingTexture();
     const hauntedGrassTex = createHauntedGrassTuftTexture();
     const hauntedPathTex = createHauntedDirtPathTexture();
-    const hauntedBatTex = createHauntedBatTexture();
+    const hauntedBatBodyTex = createHauntedBatBodyTexture();
+    const hauntedBatWingTex = createHauntedBatWingTexture();
+    const hauntedWitchTex = createHauntedWitchTexture();
     const hauntedMistTex = createHauntedMistPuffTexture();
 
     // 2. Layer 1: Gothic Night Sky Backdrop & Glowing Full Moon (z = -28.0, 160x95 full-screen span)
@@ -9648,8 +9899,8 @@ export function createVFXScene(container) {
     hauntedSkyMesh.position.set(0, 4.0, -28.0);
     gHauntedManor.add(hauntedSkyMesh);
 
-    // Glowing Full Moon Disc (Left-Center in the stormy sky)
-    const hauntedMoonPos = new THREE.Vector3(-3.4, 5.8, -23.5);
+    // Glowing Full Moon Disc (Brought in closer at z = -17.5 for grand dramatic presence!)
+    const hauntedMoonPos = new THREE.Vector3(-3.2, 5.5, -17.5);
     const hauntedMoonGeo = new THREE.PlaneGeometry(8.2, 8.2);
     const hauntedMoonMat = new THREE.MeshBasicMaterial({
         map: hauntedMoonTex,
@@ -9674,7 +9925,7 @@ export function createVFXScene(container) {
     hauntedCoronaMesh.position.set(hauntedMoonPos.x, hauntedMoonPos.y, hauntedMoonPos.z - 0.2);
     gHauntedManor.add(hauntedCoronaMesh);
 
-    // Drifting Stormy Moonlit Cloud Plane (Layer 2: z = -22.0, 160x65 full-screen span)
+    // Drifting Stormy Moonlit Cloud Plane (Layer 2: z = -18.0, 160x65 full-screen span)
     const hauntedCloudGeo = new THREE.PlaneGeometry(160.0, 65.0);
     const hauntedCloudMat1 = new THREE.MeshBasicMaterial({
         map: hauntedSkyTex,
@@ -9684,13 +9935,62 @@ export function createVFXScene(container) {
         blending: THREE.AdditiveBlending
     });
     const hauntedCloudMesh1 = new THREE.Mesh(hauntedCloudGeo, hauntedCloudMat1);
-    hauntedCloudMesh1.position.set(0, 6.0, -22.0);
+    hauntedCloudMesh1.position.set(0, 6.0, -18.0);
     gHauntedManor.add(hauntedCloudMesh1);
 
-    // 3. Layer 3: Victorian Gothic Haunted Mansion Facade (z = -14.5)
-    // Elevated atop the estate hillside so the entire ground floor, grand entrance portico,
-    // hanging carriage lantern, balustrade terrace, and stone steps are completely visible!
-    const hauntedManorGeo = new THREE.PlaneGeometry(21.0, 19.0);
+    // 2b. Wicked Flying Witch on Broomstick with Trailing Cape, Black Cat & Magic Sparkles
+    const hauntedWitchGroup = new THREE.Group();
+    const hauntedWitchGeo = new THREE.PlaneGeometry(4.2, 3.2);
+    const hauntedWitchMat = new THREE.MeshBasicMaterial({
+        map: hauntedWitchTex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+    const hauntedWitchMesh = new THREE.Mesh(hauntedWitchGeo, hauntedWitchMat);
+    hauntedWitchGroup.add(hauntedWitchMesh);
+
+    // Trailing Magical Sparkle Particles from broom bristles
+    const hauntedWitchSparkleCount = 36;
+    const hauntedWitchSparkleGeo = new THREE.BufferGeometry();
+    const hauntedWitchSparklePos = new Float32Array(hauntedWitchSparkleCount * 3);
+    const hauntedWitchSparkleLife = new Float32Array(hauntedWitchSparkleCount);
+    for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
+        hauntedWitchSparklePos[sp * 3] = -1.2 + (Math.random() - 0.5) * 0.4;
+        hauntedWitchSparklePos[sp * 3 + 1] = -0.4 + (Math.random() - 0.5) * 0.4;
+        hauntedWitchSparklePos[sp * 3 + 2] = 0;
+        hauntedWitchSparkleLife[sp] = Math.random();
+    }
+    hauntedWitchSparkleGeo.setAttribute('position', new THREE.BufferAttribute(hauntedWitchSparklePos, 3));
+    const hauntedWitchSparkleMat = new THREE.PointsMaterial({
+        color: 0xc084fc, // Luminous violet magic sparks
+        size: 0.75,
+        transparent: true,
+        opacity: 0.85,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const hauntedWitchSparkles = new THREE.Points(hauntedWitchSparkleGeo, hauntedWitchSparkleMat);
+    hauntedWitchGroup.add(hauntedWitchSparkles);
+    hauntedWitchGroup.visible = false;
+    gHauntedManor.add(hauntedWitchGroup);
+
+    // 3. Layer 3: Spooky Gnarled Bare Forest Trees & Overhanging Limbs (z = -13.0, 76x38 span)
+    // Sits in middle-ground framing the sky and full moon BEHIND the manor so it never cuts into the lower ground floor!
+    const hauntedTreesGeo = new THREE.PlaneGeometry(76.0, 38.0);
+    const hauntedTreesMat = new THREE.MeshBasicMaterial({
+        map: hauntedTreesTex,
+        transparent: true,
+        depthWrite: false
+    });
+    const hauntedTreesMesh = new THREE.Mesh(hauntedTreesGeo, hauntedTreesMat);
+    hauntedTreesMesh.position.set(0.0, 4.4, -13.0);
+    gHauntedManor.add(hauntedTreesMesh);
+
+    // 4. Layer 4: Victorian Gothic Haunted Mansion Facade (Brought in closer at z = -10.2)
+    // Elevated on estate hillside showing complete ground floor: entrance portico, carved doors,
+    // hanging lantern, 6 ground-floor windows, balustrade terrace, and cascading stone staircase!
+    const hauntedManorGeo = new THREE.PlaneGeometry(21.5, 19.5);
     const hauntedManorMat = new THREE.MeshBasicMaterial({
         map: hauntedManorTex,
         transparent: true,
@@ -9698,7 +9998,7 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
     const hauntedManorMesh = new THREE.Mesh(hauntedManorGeo, hauntedManorMat);
-    hauntedManorMesh.position.set(4.8, 3.8, -14.5);
+    hauntedManorMesh.position.set(4.2, 3.5, -10.2);
     gHauntedManor.add(hauntedManorMesh);
 
     // Separate Candlelight Windows Glow Overlay (flickering candle glow & lightning reaction)
@@ -9710,20 +10010,8 @@ export function createVFXScene(container) {
         opacity: 0.65
     });
     const hauntedWindowsMesh = new THREE.Mesh(hauntedManorGeo, hauntedWindowsMat);
-    hauntedWindowsMesh.position.set(4.8, 3.8, -14.46);
+    hauntedWindowsMesh.position.set(4.2, 3.5, -10.16);
     gHauntedManor.add(hauntedWindowsMesh);
-
-    // 4. Layer 4: Spooky Gnarled Bare Forest Trees & Overhanging Twisted Limbs (z = -9.2, 68x34 full-screen span)
-    // Heavy gnarled oak branches framing the glowing moon and spanning completely across the top and sides!
-    const hauntedTreesGeo = new THREE.PlaneGeometry(68.0, 34.0);
-    const hauntedTreesMat = new THREE.MeshBasicMaterial({
-        map: hauntedTreesTex,
-        transparent: true,
-        depthWrite: false
-    });
-    const hauntedTreesMesh = new THREE.Mesh(hauntedTreesGeo, hauntedTreesMat);
-    hauntedTreesMesh.position.set(0.0, 3.8, -9.2);
-    gHauntedManor.add(hauntedTreesMesh);
 
     // 5. Layer 5: Winding Estate Dirt Road / Driveway (Ground Plane: 110x75 full terrain span)
     const hauntedPathGeo = new THREE.PlaneGeometry(110.0, 75.0);
@@ -9735,60 +10023,60 @@ export function createVFXScene(container) {
         depthWrite: false
     });
     const hauntedPathMesh = new THREE.Mesh(hauntedPathGeo, hauntedPathMat);
-    hauntedPathMesh.position.set(0.0, -6.8, -9.5);
-    hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.16; // Tilted towards camera
+    hauntedPathMesh.position.set(0.0, -7.5, -5.0);
+    hauntedPathMesh.rotation.x = -Math.PI / 2 + 0.08; // Flatter slope so terrain doesn't clip lower ground floor
     gHauntedManor.add(hauntedPathMesh);
 
-    // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Foreground z = -1.2)
-    // A. Left Perimeter Fence Railings (spanning 22 units wide, from screen edge to gate hinge post at x = -3.8)
-    const hauntedFenceGeo = new THREE.PlaneGeometry(22.0, 13.5);
+    // 6. Layer 6: Extended Wrought-Iron Cemetery Fencing & Articulated Swinging Gates (Brought Forward to z = +2.5)
+    // Sits in immediate foreground eliminating any bottom gap; height 16.0 extends well below screen bottom!
+    const hauntedFenceGeo = new THREE.PlaneGeometry(24.0, 16.0);
     const hauntedFenceMat = new THREE.MeshBasicMaterial({
         map: hauntedFenceTex,
         transparent: true,
         depthWrite: false
     });
     const hauntedFenceLeftMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceLeftMesh.position.set(-14.8, -1.8, -1.2);
+    hauntedFenceLeftMesh.position.set(-15.8, -2.2, 2.5);
     gHauntedManor.add(hauntedFenceLeftMesh);
 
-    // B. Right Perimeter Fence Railings (mirrored so terminal gatepost faces the driveway at x = +3.8)
+    // Mirrored Right Perimeter Fence Railings
     const hauntedFenceRightMesh = new THREE.Mesh(hauntedFenceGeo, hauntedFenceMat);
-    hauntedFenceRightMesh.position.set(14.8, -1.8, -1.2);
+    hauntedFenceRightMesh.position.set(15.8, -2.2, 2.5);
     hauntedFenceRightMesh.scale.set(-1.0, 1.0, 1.0);
     gHauntedManor.add(hauntedFenceRightMesh);
 
-    // C. Left Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = -3.8)
-    const hauntedLeftGatePivot = new THREE.Group();
-    hauntedLeftGatePivot.position.set(-3.8, -1.8, -1.2);
-
-    const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 12.0);
+    // Articulated Swinging Gates (Width 4.2, Height 14.5; meets in center at z = +2.5)
+    const hauntedGateWingGeo = new THREE.PlaneGeometry(4.2, 14.5);
     const hauntedGateWingMat = new THREE.MeshBasicMaterial({
         map: hauntedGateWingTex,
         transparent: true,
         depthWrite: false,
         side: THREE.DoubleSide
     });
+
+    // Left Gate Wing Pivot (Hinge at x = -3.8)
+    const hauntedLeftGatePivot = new THREE.Group();
+    hauntedLeftGatePivot.position.set(-3.8, -2.2, 2.5);
     const hauntedLeftGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
     hauntedLeftGateMesh.position.set(2.1, 0, 0); // Offset so hinge is at pivot origin
     hauntedLeftGatePivot.add(hauntedLeftGateMesh);
     gHauntedManor.add(hauntedLeftGatePivot);
 
-    // D. Right Articulated Swinging Gate Wing (Rotates realistically on hinge post at x = +3.8)
+    // Right Gate Wing Pivot (Hinge at x = +3.8)
     const hauntedRightGatePivot = new THREE.Group();
-    hauntedRightGatePivot.position.set(3.8, -1.8, -1.2);
-
+    hauntedRightGatePivot.position.set(3.8, -2.2, 2.5);
     const hauntedRightGateMesh = new THREE.Mesh(hauntedGateWingGeo, hauntedGateWingMat);
     hauntedRightGateMesh.position.set(-2.1, 0, 0); // Offset so hinge is at pivot origin
     hauntedRightGateMesh.scale.set(-1.0, 1.0, 1.0);
     hauntedRightGatePivot.add(hauntedRightGateMesh);
     gHauntedManor.add(hauntedRightGatePivot);
 
-    // E. Realistic Animated Wind-Blown Dark Cemetery Wild Grass along Fence Line (76 animated clumps)
+    // 6b. Realistic Dark Wild Cemetery Grass along Fence Line (76 Animated Clumps with Sudden Wind Gusts)
     const hauntedGrassTufts = [];
     const hauntedGrassGroup = new THREE.Group();
-    const hauntedGrassGeo = new THREE.PlaneGeometry(2.4, 3.2);
-    // Translate geometry vertically so origin/pivot is at bottom center of the grass tuft (roots anchored in ground)
-    hauntedGrassGeo.translate(0, 1.6, 0);
+    const hauntedGrassGeo = new THREE.PlaneGeometry(2.8, 3.8);
+    // Translate geometry vertically so origin/pivot is at bottom root of the grass tuft
+    hauntedGrassGeo.translate(0, 1.9, 0);
 
     const hauntedGrassMat = new THREE.MeshBasicMaterial({
         map: hauntedGrassTex,
@@ -9800,23 +10088,22 @@ export function createVFXScene(container) {
     const numGrassTufts = 76;
     for (let g = 0; g < numGrassTufts; g++) {
         const tuftMesh = new THREE.Mesh(hauntedGrassGeo, hauntedGrassMat.clone());
-        let gx, gz;
+        let gx;
         if (g < 38) {
-            // Left fence line: spanning from off-screen left (-24.0) up to gatepost (-3.6)
+            // Left fence line: spanning from off-screen left (-26.0) up to gatepost (-3.6)
             const t = g / 37;
-            gx = -24.0 + t * 20.4;
-            gz = -1.15 + (Math.random() - 0.5) * 0.25;
+            gx = -26.0 + t * 22.4;
         } else {
-            // Right fence line: spanning from gatepost (+3.6) to off-screen right (+24.0)
+            // Right fence line: spanning from gatepost (+3.6) to off-screen right (+26.0)
             const t = (g - 38) / 37;
-            gx = 3.6 + t * 20.4;
-            gz = -1.15 + (Math.random() - 0.5) * 0.25;
+            gx = 3.6 + t * 22.4;
         }
 
-        const gy = -5.85 + (Math.random() - 0.5) * 0.25;
-        const scale = 0.85 + Math.random() * 0.45;
-        const scaleX = scale * (Math.random() > 0.5 ? 1.0 : -1.0); // Flip horizontally for natural organic variety
-        const baseRot = (Math.random() - 0.5) * 0.15;
+        const gy = -6.8 + (Math.random() - 0.5) * 0.22;
+        const gz = 2.55 + (Math.random() - 0.5) * 0.15;
+        const scale = 0.95 + Math.random() * 0.45;
+        const scaleX = scale * (Math.random() > 0.5 ? 1.0 : -1.0);
+        const baseRot = (Math.random() - 0.5) * 0.12;
 
         tuftMesh.position.set(gx, gy, gz);
         tuftMesh.scale.set(scaleX, scale, 1.0);
@@ -9828,18 +10115,25 @@ export function createVFXScene(container) {
             baseRot: baseRot,
             baseScaleX: Math.abs(scaleX),
             baseScaleY: scale,
-            speed: 1.8 + Math.random() * 1.6,
+            idleSpeed: 0.35 + Math.random() * 0.35, // Slow calm idle breathing
             phase: Math.random() * Math.PI * 2.0,
-            windFactor: 0.8 + Math.random() * 0.5
+            windFactor: 0.85 + Math.random() * 0.55
         });
     }
     gHauntedManor.add(hauntedGrassGroup);
 
-    // 7. Layer 7: Flocks of 3D Flying Vampire Bats (32 dynamic bat instances)
+    // 7. Layer 7: Flocks of 3D Articulated Flying Vampire Bats (32 dynamic bats with hinged flapping wings)
     const hauntedBatCount = 32;
-    const hauntedBatGeo = new THREE.PlaneGeometry(1.4, 0.95);
-    const hauntedBatMat = new THREE.MeshBasicMaterial({
-        map: hauntedBatTex,
+    const hauntedBatBodyGeo = new THREE.PlaneGeometry(0.38, 0.72);
+    const hauntedBatBodyMat = new THREE.MeshBasicMaterial({
+        map: hauntedBatBodyTex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+    const hauntedBatWingGeo = new THREE.PlaneGeometry(0.85, 0.85);
+    const hauntedBatWingMat = new THREE.MeshBasicMaterial({
+        map: hauntedBatWingTex,
         transparent: true,
         depthWrite: false,
         side: THREE.DoubleSide
@@ -9849,44 +10143,69 @@ export function createVFXScene(container) {
     const hauntedBatGroup = new THREE.Group();
 
     for (let b = 0; b < hauntedBatCount; b++) {
-        const batMesh = new THREE.Mesh(hauntedBatGeo, hauntedBatMat.clone());
+        const batRoot = new THREE.Group();
+
+        // Central furry bat torso & head with crimson eyes
+        const bodyMesh = new THREE.Mesh(hauntedBatBodyGeo, hauntedBatBodyMat);
+        batRoot.add(bodyMesh);
+
+        // Articulated Left Wing (Shoulder Hinge at x = -0.10)
+        const leftWingPivot = new THREE.Group();
+        leftWingPivot.position.set(-0.10, 0.04, 0);
+        const leftWingMesh = new THREE.Mesh(hauntedBatWingGeo, hauntedBatWingMat);
+        leftWingMesh.position.set(-0.42, 0, 0);
+        leftWingPivot.add(leftWingMesh);
+        batRoot.add(leftWingPivot);
+
+        // Articulated Right Wing (Shoulder Hinge at x = +0.10, Mirrored)
+        const rightWingPivot = new THREE.Group();
+        rightWingPivot.position.set(0.10, 0.04, 0);
+        const rightWingMesh = new THREE.Mesh(hauntedBatWingGeo, hauntedBatWingMat);
+        rightWingMesh.position.set(0.42, 0, 0);
+        rightWingMesh.scale.x = -1.0;
+        rightWingPivot.add(rightWingMesh);
+        batRoot.add(rightWingPivot);
+
         let flightType = 0; // 0: Moon Swarm, 1: Manor Spires, 2: Swooping Foreground
         let basePos = new THREE.Vector3();
         let scale = 1.0;
-        let flapSpeed = 10.0 + Math.random() * 8.0;
+        let flapSpeed = 9.0 + Math.random() * 6.0;
         let orbitRadius = 2.0 + Math.random() * 4.0;
-        let orbitSpeed = 0.6 + Math.random() * 0.9;
+        let orbitSpeed = 0.55 + Math.random() * 0.75;
         let phase = Math.random() * Math.PI * 2.0;
 
         if (b < 12) {
-            // Moon Swarm (Fluttering and circling across the full moon disc)
+            // Moon Swarm (Fluttering and circling across the full moon disc at z = -16.5)
             flightType = 0;
-            basePos.set(-3.4 + (Math.random() - 0.5) * 4.0, 5.8 + (Math.random() - 0.5) * 3.5, -21.0 - Math.random() * 2.0);
-            scale = 0.45 + Math.random() * 0.35; // Distant scale
-            orbitRadius = 1.2 + Math.random() * 3.2;
-            orbitSpeed = 0.8 + Math.random() * 1.2;
+            basePos.set(-3.2 + (Math.random() - 0.5) * 4.0, 5.5 + (Math.random() - 0.5) * 3.5, -16.0 - Math.random() * 1.5);
+            scale = 0.48 + Math.random() * 0.32;
+            orbitRadius = 1.2 + Math.random() * 3.0;
+            orbitSpeed = 0.75 + Math.random() * 1.0;
         } else if (b < 22) {
-            // Manor Spires Swarm (Circling the Victorian haunted mansion towers)
+            // Manor Spires Swarm (Circling the Victorian haunted mansion spires at z = -9.0)
             flightType = 1;
-            basePos.set(3.8 + (Math.random() - 0.5) * 6.0, 4.2 + (Math.random() - 0.5) * 4.0, -13.5 - Math.random() * 2.0);
-            scale = 0.75 + Math.random() * 0.40; // Midground scale
-            orbitRadius = 2.5 + Math.random() * 4.0;
-            orbitSpeed = 0.7 + Math.random() * 0.8;
+            basePos.set(4.2 + (Math.random() - 0.5) * 5.5, 4.5 + (Math.random() - 0.5) * 4.0, -9.2 - Math.random() * 1.5);
+            scale = 0.78 + Math.random() * 0.38;
+            orbitRadius = 2.4 + Math.random() * 3.8;
+            orbitSpeed = 0.65 + Math.random() * 0.75;
         } else {
-            // Swooping Foreground Bats (Diving dramatically down through the gates towards camera!)
+            // Swooping Foreground Bats (Diving dramatically down through the foreground gates!)
             flightType = 2;
-            basePos.set((Math.random() - 0.5) * 8.0, 1.0 + (Math.random() - 0.5) * 3.0, -6.0);
-            scale = 1.35 + Math.random() * 0.65; // Foreground large scale
-            orbitRadius = 4.5 + Math.random() * 5.0;
-            orbitSpeed = 0.9 + Math.random() * 0.7;
+            basePos.set((Math.random() - 0.5) * 7.5, 1.2 + (Math.random() - 0.5) * 2.8, -1.0);
+            scale = 1.35 + Math.random() * 0.65;
+            orbitRadius = 4.2 + Math.random() * 4.5;
+            orbitSpeed = 0.85 + Math.random() * 0.65;
         }
 
-        batMesh.scale.set(scale, scale, scale);
-        batMesh.position.copy(basePos);
-        hauntedBatGroup.add(batMesh);
+        batRoot.scale.set(scale, scale, scale);
+        batRoot.position.copy(basePos);
+        hauntedBatGroup.add(batRoot);
 
         hauntedBats.push({
-            mesh: batMesh,
+            batRoot,
+            bodyMesh,
+            leftWingPivot,
+            rightWingPivot,
             flightType,
             basePos,
             baseScale: scale,
@@ -9990,21 +10309,21 @@ export function createVFXScene(container) {
     // 9. Dedicated Haunted Lighting Rig
     // Cool Moonlight Directional Fixture
     const hauntedMoonLight = new THREE.DirectionalLight(0xb8d4f8, 1.8);
-    hauntedMoonLight.position.set(-3.4, 8.5, -10.0);
+    hauntedMoonLight.position.set(-3.2, 8.5, -12.0);
     gHauntedManor.add(hauntedMoonLight);
 
     // Gothic Dark Ambient Atmospheric Light
     const hauntedAmbientLight = new THREE.AmbientLight(0x0a1222, 0.45);
     gHauntedManor.add(hauntedAmbientLight);
 
-    // Warm Candlelight Point Light at Manor Windows (elevated to match raised manor)
+    // Warm Candlelight Point Light at Manor Windows (positioned at new manor coordinates)
     const hauntedCandleLight = new THREE.PointLight(0xff9922, 2.5, 24.0, 1.2);
-    hauntedCandleLight.position.set(4.8, 4.2, -13.0);
+    hauntedCandleLight.position.set(4.2, 3.8, -9.2);
     gHauntedManor.add(hauntedCandleLight);
 
     // Warm Lantern Light at Grand Entrance Portico & Steps
     const hauntedLanternLight = new THREE.PointLight(0xffaa33, 1.8, 16.0, 1.5);
-    hauntedLanternLight.position.set(4.2, 2.6, -13.2);
+    hauntedLanternLight.position.set(3.6, 2.3, -9.3);
     gHauntedManor.add(hauntedLanternLight);
 
     // ⚡ Cinematic Thunderstorm Lightning Directional Light
@@ -10014,6 +10333,19 @@ export function createVFXScene(container) {
 
     let hauntedLightningTimer = 0.0;
     let hauntedLastLightningTime = 0.0;
+
+    // Wicked Flying Witch State Machine (2 Passes: across moon behind manor, then larger in front of manor)
+    let hauntedWitchState = 'idle'; // 'idle', 'pass1_background', 'between_passes', 'pass2_foreground'
+    let hauntedWitchX = -32.0;
+    let hauntedWitchNextTime = 4.5; // Appears shortly after scene start!
+    let hauntedWitchBetweenTimer = 0.0;
+
+    // Sudden & Random Wind Gust State (Slow, eerie stillness broken by sudden wind gusts)
+    let hauntedGustActive = false;
+    let hauntedGustStartTime = 0.0;
+    let hauntedGustDuration = 2.2;
+    let hauntedGustStrength = 0.0;
+    let hauntedNextGustTime = 3.0;
 
     // Random Haunted Manor Window Light Flicker State ("flicker randomly every now and then")
     let hauntedFlickerActive = false;
@@ -12211,24 +12543,45 @@ export function createVFXScene(container) {
             // 1. Slow, atmospheric moonlit cloud drift
             hauntedCloudMesh1.position.x = Math.sin(elapsedTime * 0.08) * 3.5;
 
-            // 1b. Organic slow gate swinging creak in the wind
-            const windTime = elapsedTime * 0.42;
-            const windGust = Math.sin(windTime) * 0.22 + Math.sin(windTime * 2.1 + 0.5) * 0.08 + Math.sin(windTime * 0.35 + 1.2) * 0.12;
+            // 1b. Sudden & Random Wind Gust Simulation
+            // The eerie night is calm and still, broken periodically by sudden rushing gusts of wind!
+            if (!hauntedGustActive && elapsedTime > hauntedNextGustTime) {
+                hauntedGustActive = true;
+                hauntedGustStartTime = elapsedTime;
+                hauntedGustDuration = 2.0 + Math.random() * 2.2; // 2.0s to 4.2s gust duration
+                hauntedGustStrength = 0.32 + Math.random() * 0.38 + (bassImpact * 0.35); // Gust peak strength
+                hauntedNextGustTime = elapsedTime + 4.5 + Math.random() * 7.5; // Next gust in 4.5s to 12s
+            }
 
-            // Left gate swings open inward (~ -42 deg) with gentle wind creaking
-            hauntedLeftGatePivot.rotation.y = -0.72 + windGust;
+            let currentGust = 0.0;
+            if (hauntedGustActive) {
+                const gProgress = (elapsedTime - hauntedGustStartTime) / hauntedGustDuration;
+                if (gProgress >= 1.0) {
+                    hauntedGustActive = false;
+                } else {
+                    // Sudden steep rise in first 20%, peaking with shivering air rush, then slow relaxation
+                    if (gProgress < 0.20) {
+                        currentGust = hauntedGustStrength * Math.sin((gProgress / 0.20) * Math.PI * 0.5);
+                    } else {
+                        const relax = (1.0 - gProgress) / 0.80;
+                        currentGust = hauntedGustStrength * (relax * relax);
+                    }
+                    currentGust *= (1.0 + Math.sin(elapsedTime * 14.0) * 0.14);
+                }
+            }
 
-            // Right gate swings open inward (~ +44 deg) with slightly resisted phase
-            const windGustRight = Math.sin(windTime * 0.95 + 0.8) * 0.20 + Math.sin(windTime * 1.8 + 1.1) * 0.07;
-            hauntedRightGatePivot.rotation.y = 0.76 - windGustRight;
+            // Gates creaking and swinging in the wind gusts
+            const calmSway = Math.sin(elapsedTime * 0.35) * 0.04;
+            hauntedLeftGatePivot.rotation.y = -0.72 - (currentGust * 0.32) + calmSway;
+            hauntedRightGatePivot.rotation.y = 0.76 + (currentGust * 0.30) - calmSway;
 
             // 2. Random eerie haunted manor window light flicker ("flicker randomly every now and then")
             if (!hauntedFlickerActive && elapsedTime > hauntedNextFlickerTime) {
                 hauntedFlickerActive = true;
                 hauntedFlickerStartTime = elapsedTime;
-                hauntedFlickerDuration = 0.5 + Math.random() * 1.2; // 0.5s to 1.7s duration
+                hauntedFlickerDuration = 0.5 + Math.random() * 1.2;
                 hauntedFlickerType = Math.floor(Math.random() * 3);
-                hauntedNextFlickerTime = elapsedTime + 4.0 + Math.random() * 7.0; // Random interval: every 4 to 11s!
+                hauntedNextFlickerTime = elapsedTime + 4.0 + Math.random() * 7.0;
             }
 
             let candleIntensity = 2.4;
@@ -12241,17 +12594,14 @@ export function createVFXScene(container) {
                 } else {
                     const noise = Math.sin(elapsedTime * 48.0) * Math.cos(elapsedTime * 32.0);
                     if (hauntedFlickerType === 0) {
-                        // Rapid erratic electrical / candle stutter
                         const stutter = noise > 0.05 ? (0.2 + 0.8 * Math.random()) : 0.04;
                         candleIntensity = 2.4 * stutter;
                         windowOpacity = 0.85 * stutter;
                     } else if (hauntedFlickerType === 1) {
-                        // Sudden blackout / brownout dip (house goes almost pitch dark!)
                         const dip = (fProgress > 0.15 && fProgress < 0.70) ? 0.05 : (0.35 + 0.65 * Math.random());
                         candleIntensity = 2.4 * dip;
                         windowOpacity = 0.85 * dip;
                     } else {
-                        // Ghostly eerie surge followed by rapid drop
                         const surge = Math.sin(fProgress * Math.PI);
                         const stutter = (Math.random() > 0.2) ? (1.0 + surge * 0.9) : 0.1;
                         candleIntensity = 2.4 * stutter;
@@ -12259,7 +12609,6 @@ export function createVFXScene(container) {
                     }
                 }
             } else {
-                // Gentle living candle warmth between random flicker events
                 const gentleSway = Math.sin(elapsedTime * 3.2) * 0.07 + Math.cos(elapsedTime * 4.8) * 0.04;
                 candleIntensity = 2.4 * (1.0 + gentleSway) + (audio.smoothedTreble || 0) * 0.35;
                 windowOpacity = 0.85 * (1.0 + gentleSway * 0.5);
@@ -12272,50 +12621,137 @@ export function createVFXScene(container) {
             const lanternFlicker = Math.sin(elapsedTime * 5.4) * 0.12 + Math.cos(elapsedTime * 8.1) * 0.08;
             hauntedLanternLight.intensity = Math.max(0.2, (1.8 + lanternFlicker) * (candleIntensity / 2.4));
 
-            // 3. Flocks of 3D flying vampire bats with dynamic wing flaps & flocking
+            // 2b. Wicked Flying Witch Flight Simulation (2 Passes: across moon behind manor, then larger in front of manor)
+            if (hauntedWitchState === 'idle') {
+                hauntedWitchGroup.visible = false;
+                if (elapsedTime > hauntedWitchNextTime) {
+                    hauntedWitchState = 'pass1_background';
+                    hauntedWitchX = -32.0;
+                    hauntedWitchGroup.visible = true;
+                    // Pass 1: In front of moon (z = -17.5) and BEHIND manor (z = -10.2)
+                    hauntedWitchGroup.position.z = -15.5;
+                    hauntedWitchGroup.scale.set(1.1, 1.1, 1.1);
+                }
+            } else if (hauntedWitchState === 'pass1_background') {
+                hauntedWitchGroup.visible = true;
+                hauntedWitchX += 11.5 * delta;
+                // High soaring flight across sky, silhouettes cleanly across full moon!
+                const witchY = 5.6 + Math.sin(hauntedWitchX * 0.18) * 0.45;
+                hauntedWitchGroup.position.set(hauntedWitchX, witchY, -15.5);
+                hauntedWitchGroup.rotation.z = Math.cos(hauntedWitchX * 0.18) * 0.08;
+
+                if (hauntedWitchX > 32.0) {
+                    hauntedWitchState = 'between_passes';
+                    hauntedWitchGroup.visible = false;
+                    hauntedWitchBetweenTimer = 3.2; // Short pause before return pass
+                }
+            } else if (hauntedWitchState === 'between_passes') {
+                hauntedWitchGroup.visible = false;
+                hauntedWitchBetweenTimer -= delta;
+                if (hauntedWitchBetweenTimer <= 0) {
+                    hauntedWitchState = 'pass2_foreground';
+                    hauntedWitchX = -26.0;
+                    hauntedWitchGroup.visible = true;
+                    // Pass 2: In FRONT of manor (z = -10.2) at z = -5.5, scaled LARGER (2.4x scale)
+                    hauntedWitchGroup.position.z = -5.5;
+                    hauntedWitchGroup.scale.set(2.4, 2.4, 2.4);
+                }
+            } else if (hauntedWitchState === 'pass2_foreground') {
+                hauntedWitchGroup.visible = true;
+                hauntedWitchX += 13.0 * delta;
+                // Swooping dynamic flight in front of manor windows and portico
+                const witchY = 2.4 + Math.sin(hauntedWitchX * 0.22) * 0.85;
+                hauntedWitchGroup.position.set(hauntedWitchX, witchY, -5.5);
+                hauntedWitchGroup.rotation.z = Math.cos(hauntedWitchX * 0.22) * 0.12;
+
+                if (hauntedWitchX > 26.0) {
+                    hauntedWitchState = 'idle';
+                    hauntedWitchGroup.visible = false;
+                    // Next appearance: every 24s to 38s
+                    hauntedWitchNextTime = elapsedTime + 24.0 + Math.random() * 14.0;
+                }
+            }
+
+            // Animate trailing magic stardust particles behind broomstick
+            if (hauntedWitchGroup.visible) {
+                const spAttr = hauntedWitchSparkleGeo.attributes.position;
+                const spArr = spAttr.array;
+                for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
+                    hauntedWitchSparkleLife[sp] += delta * 2.2;
+                    if (hauntedWitchSparkleLife[sp] > 1.0) {
+                        hauntedWitchSparkleLife[sp] = 0.0;
+                        spArr[sp * 3] = -1.2 + (Math.random() - 0.5) * 0.3;
+                        spArr[sp * 3 + 1] = -0.4 + (Math.random() - 0.5) * 0.3;
+                        spArr[sp * 3 + 2] = (Math.random() - 0.5) * 0.2;
+                    } else {
+                        spArr[sp * 3] -= delta * 1.5;
+                        spArr[sp * 3 + 1] += (Math.random() - 0.5) * 0.15 * delta;
+                    }
+                }
+                spAttr.needsUpdate = true;
+            }
+
+            // 3. Flocks of 3D Articulated Flying Vampire Bats (Realistic biological wing flapping & flight trajectories)
             const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.6 : 1.0;
             hauntedBats.forEach((b) => {
                 b.angle += (b.orbitSpeed * 0.65 * batScatterBoost) * delta;
                 const ang = b.angle;
 
                 if (b.flightType === 0) {
-                    // Moon swarm: swirling figure-eight / ellipse across glowing moon
-                    b.mesh.position.x = b.basePos.x + Math.sin(ang) * b.orbitRadius;
-                    b.mesh.position.y = b.basePos.y + Math.cos(ang * 1.4) * (b.orbitRadius * 0.65);
-                    b.mesh.position.z = b.basePos.z + Math.sin(ang * 0.8) * 1.2;
-                    // Bank into curve
-                    b.mesh.rotation.z = -Math.cos(ang) * 0.35;
+                    // Moon swarm: circling across full moon disc (z = -16.0 to -17.5)
+                    b.batRoot.position.x = b.basePos.x + Math.sin(ang) * b.orbitRadius;
+                    b.batRoot.position.y = b.basePos.y + Math.cos(ang * 1.3) * (b.orbitRadius * 0.65);
+                    b.batRoot.position.z = b.basePos.z + Math.sin(ang * 0.8) * 1.0;
+                    b.batRoot.rotation.z = -Math.cos(ang) * 0.35;
+                    b.batRoot.rotation.y = Math.sin(ang) * 0.25;
                 } else if (b.flightType === 1) {
-                    // Manor spires: circular flight around the gothic roof & tower
-                    b.mesh.position.x = b.basePos.x + Math.sin(ang) * (b.orbitRadius * 1.3);
-                    b.mesh.position.y = b.basePos.y + Math.sin(ang * 1.8 + b.phase) * (b.altitudeWave * 0.8);
-                    b.mesh.position.z = b.basePos.z + Math.cos(ang) * (b.orbitRadius * 0.9);
-                    b.mesh.rotation.z = -Math.cos(ang) * 0.40;
+                    // Manor spires: circular flight around gothic roof & spires (z = -9.2)
+                    b.batRoot.position.x = b.basePos.x + Math.sin(ang) * (b.orbitRadius * 1.2);
+                    b.batRoot.position.y = b.basePos.y + Math.sin(ang * 1.8 + b.phase) * (b.altitudeWave * 0.7);
+                    b.batRoot.position.z = b.basePos.z + Math.cos(ang) * (b.orbitRadius * 0.85);
+                    b.batRoot.rotation.z = -Math.cos(ang) * 0.38;
+                    b.batRoot.rotation.y = Math.sin(ang) * 0.30;
                 } else {
-                    // Swooping foreground bats: parabolic diving swoops towards viewer through gates
+                    // Swooping foreground bats: diving through gates towards camera!
                     const swoopT = (ang * 0.75) % (Math.PI * 2.0);
                     const swoopZ = Math.sin(swoopT);
-                    b.mesh.position.x = b.basePos.x + Math.cos(swoopT) * b.orbitRadius;
-                    b.mesh.position.y = b.basePos.y + Math.sin(swoopT * 2.0) * 2.2 - (swoopZ > 0 ? 1.5 : 0);
-                    b.mesh.position.z = -10.0 + (swoopZ + 1.0) * 5.5; // Swoops from z = -10 forward to z = 1!
-                    b.mesh.rotation.z = -Math.sin(swoopT) * 0.45;
+                    b.batRoot.position.x = b.basePos.x + Math.cos(swoopT) * b.orbitRadius;
+                    b.batRoot.position.y = b.basePos.y + Math.sin(swoopT * 2.0) * 2.0 - (swoopZ > 0 ? 1.4 : 0);
+                    b.batRoot.position.z = -4.0 + (swoopZ + 1.0) * 3.8;
+                    b.batRoot.rotation.z = -Math.sin(swoopT) * 0.42;
+                    b.batRoot.rotation.y = Math.cos(swoopT) * 0.35;
                 }
 
-                // Realistic wing-flapping animation (sinusoidal vertical compression of wings)
-                const wingFlap = Math.sin(elapsedTime * (b.flapSpeed * batScatterBoost) + b.phase);
-                b.mesh.scale.y = b.baseScale * (0.60 + 0.40 * wingFlap);
-                b.mesh.scale.x = b.baseScale * (wingFlap > 0 ? 1.05 : 0.95);
+                // Realistic articulated wing flapping biomechanics (hinging at shoulders, folding on upstroke)
+                const flapPhase = elapsedTime * (b.flapSpeed * batScatterBoost) + b.phase;
+                const flapSin = Math.sin(flapPhase);
+
+                // Downstroke is broad; upstroke folds backward to reduce air resistance
+                const wingFlapAngle = flapSin * 0.78;
+                const wingFoldBack = Math.max(0, -flapSin) * 0.42;
+                const wingDihedral = Math.sin(flapPhase + 0.3) * 0.22;
+
+                b.leftWingPivot.rotation.z = wingFlapAngle;
+                b.leftWingPivot.rotation.y = wingFoldBack;
+                b.leftWingPivot.rotation.x = wingDihedral;
+
+                b.rightWingPivot.rotation.z = -wingFlapAngle;
+                b.rightWingPivot.rotation.y = -wingFoldBack;
+                b.rightWingPivot.rotation.x = wingDihedral;
+
+                // Body vertical counter-bob and forward flight pitch
+                b.bodyMesh.position.y = -flapSin * 0.05;
+                b.bodyMesh.rotation.x = 0.20 - flapSin * 0.12;
             });
 
-            // 3b. Realistic Wind Blowing Cemetery Wild Grass at the Fence
-            const grassWind = Math.sin(elapsedTime * 2.2) * 0.22 + Math.sin(elapsedTime * 4.4 + 0.6) * 0.12 + Math.sin(elapsedTime * 0.9 + 1.2) * 0.18;
-            const bassGrassRustle = bassPop * 0.16 + bassImpact * 0.22;
+            // 3b. Wind Gust Blowing Cemetery Wild Grass at the Fence
             hauntedGrassTufts.forEach((gt) => {
-                const tuftWind = (grassWind * gt.windFactor) + Math.sin(elapsedTime * gt.speed + gt.phase) * 0.09 + bassGrassRustle;
-                gt.mesh.rotation.z = gt.baseRot + tuftWind;
-                // Organic bending compression and stretching
-                gt.mesh.scale.x = gt.baseScaleX * (1.0 + Math.abs(tuftWind) * 0.20);
-                gt.mesh.scale.y = gt.baseScaleY * (1.0 - Math.abs(tuftWind) * 0.12);
+                const idleSway = Math.sin(elapsedTime * gt.idleSpeed + gt.phase) * 0.04;
+                const gustBend = currentGust * gt.windFactor;
+                const totalBend = gt.baseRot + idleSway + gustBend + (bassImpact * 0.15);
+                gt.mesh.rotation.z = totalBend;
+                gt.mesh.scale.x = gt.baseScaleX * (1.0 + Math.abs(gustBend) * 0.25);
+                gt.mesh.scale.y = gt.baseScaleY * (1.0 - Math.abs(gustBend) * 0.15);
             });
 
             // 4. Edge-to-edge rolling ground fog ocean spreading to the sides of the path across from one side of the screen to the other
@@ -12325,31 +12761,30 @@ export function createVFXScene(container) {
                 if (fp.progress > 1.0) fp.progress -= 1.0;
 
                 const p = fp.progress;
-                // Z position moves continuously forward along the ground from deep terrain (z = -19.0) to foreground (z = +5.5)
-                const pZ = -19.0 + p * 24.5;
+                // Z position moves continuously forward from deep terrain (z = -18.0) through gates (z = +2.5) to foreground (z = +6.0)
+                const pZ = -18.0 + p * 24.0;
 
                 let pX = 0.0;
                 if (fp.isWideBlanket) {
                     // Wide blanket across the sides of the path from one side of the screen to the other (-26.0 to +26.0)
                     pX = fp.xCenter + fp.xSpread + Math.sin(p * 3.5 + fp.phase) * 1.8 + (fp.driftSpeed * elapsedTime * 0.5) % 8.0 + lateralWindDrift;
-                    // Wrap smoothly within full-screen boundary
                     if (pX > 26.0) pX = -26.0 + (pX - 26.0);
                     if (pX < -26.0) pX = 26.0 - (-26.0 - pX);
                 } else {
                     // Path and gate stream: curves from driveway into gate, then fans out across entire screen floor
-                    if (pZ < -1.2) {
-                        const approachT = (pZ - (-19.0)) / ((-1.2) - (-19.0));
+                    if (pZ < 2.5) {
+                        const approachT = (pZ - (-18.0)) / (2.5 - (-18.0));
                         pX = (2.2 * (1.0 - approachT)) + fp.xSpread * 0.6;
-                        if (pZ > -4.5) pX *= 0.55; // Channel through gate opening
+                        if (pZ > 0.0) pX *= 0.55; // Channel through gate opening
                     } else {
-                        // Spilling through gates into foreground: billows and expands wide across the whole bottom of the screen
-                        const spillT = (pZ - (-1.2)) / (5.5 - (-1.2));
+                        // Spilling through gates into immediate foreground: billows wide across bottom of screen
+                        const spillT = (pZ - 2.5) / (6.0 - 2.5);
                         pX = (fp.xSpread * (1.2 + spillT * 3.2)) + Math.sin(p * 4.0 + fp.phase) * (2.2 * spillT) + lateralWindDrift;
                     }
                 }
 
                 // Y position hugs the sloping ground terrain with breathing undulation
-                const pY = -5.85 + p * 0.50 + Math.sin(elapsedTime * 1.4 + fp.phase) * 0.14;
+                const pY = -7.2 + p * 0.55 + Math.sin(elapsedTime * 1.4 + fp.phase) * 0.12;
 
                 fp.mesh.position.set(pX, pY, pZ);
                 fp.mesh.rotation.z += fp.rotSpeed * delta;
