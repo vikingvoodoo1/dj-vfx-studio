@@ -4030,7 +4030,7 @@ function createFloorTileTexture() {
 
 
 
-// FX 21 GLSL Shader: Witch Broomstick Magical Plasma Thrust Flame (Strictly at Back of Broom)
+// FX 21 GLSL Shader: Witch Broomstick Magical Plasma Thrust Flame (Single Unified Shaded Effect)
 const WitchBroomThrustShader = {
     uniforms: {
         uTime: { value: 0.0 },
@@ -4049,35 +4049,39 @@ const WitchBroomThrustShader = {
         varying vec2 vUv;
 
         void main() {
-            // Coordinate: x = 0 at nozzle (right edge of flame quad attached to bristles), x = 1 at flame plume tip (left edge)
+            // Coordinate: x = 0 at broom bristles nozzle, x = 1 at flame plume tip
             float x = clamp(1.0 - vUv.x, 0.0, 1.0);
             float y = (vUv.y - 0.5) * 2.0;
 
-            // Animated plasma exhaust plume
-            float plumeWidth = (1.0 - x * 0.85) * (0.8 + 0.2 * sin(uTime * 32.0 + x * 15.0));
-            float coreDist = abs(y) / max(0.02, plumeWidth);
+            // Sleek aerodynamic teardrop flame width with high-speed exhaust flutter
+            float plumeWidth = (1.0 - x * 0.78) * (0.65 + 0.15 * sin(uTime * 34.0 + x * 14.0));
+            float coreDist = abs(y) / max(0.015, plumeWidth);
 
-            // Multi-frequency flame noise turbulence
-            float turb = sin(uTime * 45.0 - x * 22.0) * 0.15 + cos(uTime * 28.0 + y * 9.0) * 0.10;
+            // Fluid exhaust heat ripples
+            float turb = sin(uTime * 46.0 - x * 24.0) * 0.12 + cos(uTime * 30.0 + y * 12.0) * 0.08;
             coreDist += turb * x;
 
-            float alpha = clamp(1.0 - coreDist, 0.0, 1.0);
-            alpha *= clamp(1.0 - x, 0.0, 1.0);
-            alpha = pow(alpha, 1.4) * uIntensity;
+            // Smooth feathered alpha falloff (eliminates all blocky or hard edges!)
+            float alpha = smoothstep(1.0, 0.08, coreDist);
+            alpha *= smoothstep(1.0, 0.18, x); // Natural tapered plume tip
+            alpha = pow(alpha, 1.5) * uIntensity;
 
-            // Magical flame gradient: incandescent white-hot core -> luminous emerald -> deep purple plasma rim
-            vec3 coreCol = vec3(1.0, 0.98, 0.92);
-            vec3 midCol = vec3(0.12, 0.95, 0.45);  // Magical emerald fire
-            vec3 rimCol = vec3(0.75, 0.12, 0.95);  // Violet plasma halo
+            // Single cohesive magical flame gradient:
+            // Incandescent white-hot core -> luminous golden fire -> deep fiery amber -> ethereal mystic purple halo
+            vec3 coreCol = vec3(1.0, 0.98, 0.92);    // White-hot flame center
+            vec3 fireCol = vec3(1.0, 0.56, 0.08);    // Luminous fiery gold
+            vec3 amberCol = vec3(0.92, 0.18, 0.04);   // Fiery orange-red ember
+            vec3 haloCol = vec3(0.72, 0.14, 0.95);   // Soft ethereal mystic purple aura
 
-            vec3 col = mix(coreCol, midCol, clamp(coreDist * 1.4, 0.0, 1.0));
-            col = mix(col, rimCol, clamp(x * 1.3, 0.0, 1.0));
+            vec3 col = mix(coreCol, fireCol, clamp(coreDist * 1.5, 0.0, 1.0));
+            col = mix(col, amberCol, clamp(x * 1.15, 0.0, 1.0));
+            col = mix(col, haloCol, clamp(coreDist * 1.6 + x * 0.4 - 0.7, 0.0, 1.0));
 
-            // Plasma shock pulses along core
-            float shock = pow(abs(sin(x * 18.0 - uTime * 25.0)), 6.0) * (1.0 - x) * 1.4;
+            // Shock diamond exhaust pulses along core
+            float shock = pow(abs(sin(x * 16.0 - uTime * 28.0)), 7.0) * (1.0 - x) * 1.2;
             col += vec3(shock);
 
-            gl_FragColor = vec4(col * 2.0, alpha);
+            gl_FragColor = vec4(col * 2.2, alpha * 0.96);
         }
     `
 };
@@ -4375,6 +4379,106 @@ function createHauntedSkyCloudsTexture() {
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
+}
+
+// Procedural Brooding Storm Clouds Texture (1024x512) for Dynamic Bad Weather
+function createBroodingStormCloudsTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1024;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 1024, 512);
+
+    // Dark, brooding cumulus & stratocumulus storm billows floating across top of sky
+    const stormClouds = [
+        { x: 140, y: 150, r: 210, col: 'rgba(8, 12, 22, 0.94)', under: 'rgba(3, 5, 10, 0.98)', rim: 'rgba(32, 45, 72, 0.65)' },
+        { x: 320, y: 120, r: 250, col: 'rgba(6, 10, 18, 0.96)', under: 'rgba(2, 4, 8, 0.98)', rim: 'rgba(38, 52, 80, 0.70)' },
+        { x: 520, y: 160, r: 270, col: 'rgba(9, 14, 25, 0.94)', under: 'rgba(4, 6, 12, 0.98)', rim: 'rgba(35, 48, 76, 0.68)' },
+        { x: 740, y: 130, r: 255, col: 'rgba(7, 11, 20, 0.95)', under: 'rgba(3, 5, 9, 0.98)', rim: 'rgba(40, 55, 85, 0.72)' },
+        { x: 920, y: 170, r: 230, col: 'rgba(8, 13, 24, 0.93)', under: 'rgba(3, 5, 10, 0.98)', rim: 'rgba(30, 42, 70, 0.65)' },
+        { x: 240, y: 260, r: 220, col: 'rgba(5, 8, 15, 0.96)', under: 'rgba(2, 3, 7, 0.99)', rim: 'rgba(24, 34, 56, 0.55)' },
+        { x: 440, y: 290, r: 240, col: 'rgba(6, 9, 16, 0.96)', under: 'rgba(2, 4, 8, 0.99)', rim: 'rgba(26, 38, 62, 0.58)' },
+        { x: 660, y: 280, r: 250, col: 'rgba(5, 8, 14, 0.96)', under: 'rgba(2, 3, 7, 0.99)', rim: 'rgba(25, 36, 60, 0.56)' },
+        { x: 860, y: 250, r: 215, col: 'rgba(7, 10, 18, 0.95)', under: 'rgba(3, 5, 9, 0.99)', rim: 'rgba(28, 40, 65, 0.55)' }
+    ];
+
+    stormClouds.forEach(c => {
+        // Volumetric shading: moody bruised purple-slate rim above, dark stormy underbelly below
+        const grad = ctx.createRadialGradient(c.x, c.y - c.r * 0.35, c.r * 0.12, c.x, c.y, c.r);
+        grad.addColorStop(0.0, c.rim);
+        grad.addColorStop(0.40, c.col);
+        grad.addColorStop(0.80, c.under);
+        grad.addColorStop(1.0, 'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.fill();
+    });
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// Procedural Forked Lightning Texture (512x1024)
+function renderProceduralForkedLightning(canvas, startX = 256, endX = 256) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 1024);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'miter';
+
+    function drawBranch(x1, y1, x2, y2, depth, maxDepth) {
+        const segs = 10 + Math.floor(Math.random() * 8);
+        const dx = (x2 - x1) / segs;
+        const dy = (y2 - y1) / segs;
+        const points = [[x1, y1]];
+        let curX = x1;
+        let curY = y1;
+
+        for (let i = 1; i <= segs; i++) {
+            const jitter = (26.0 / (depth + 1.0)) * (1.0 - (i / segs) * 0.35);
+            const nx = (i === segs) ? x2 : (x1 + dx * i + (Math.random() - 0.5) * jitter * 2.4);
+            const ny = (i === segs) ? y2 : (y1 + dy * i + (Math.random() - 0.25) * 6.5);
+            points.push([nx, ny]);
+
+            // Branching acute forks
+            if (depth < maxDepth && Math.random() < (0.36 - depth * 0.09) && i >= 2 && i <= segs - 2) {
+                const angle = (Math.random() > 0.5 ? 1 : -1) * (0.35 + Math.random() * 0.45);
+                const len = (1024 - ny) * (0.30 + Math.random() * 0.40);
+                const bx = nx + Math.sin(angle) * len;
+                const by = ny + Math.cos(angle) * len;
+                drawBranch(nx, ny, bx, by, depth + 1, maxDepth);
+            }
+            curX = nx;
+            curY = ny;
+        }
+
+        const baseW = Math.max(1.2, 5.2 - depth * 1.4);
+
+        // Pass 1: Broad electric cyan/violet plasma atmospheric halo
+        ctx.strokeStyle = 'rgba(110, 190, 255, 0.35)';
+        ctx.lineWidth = baseW * 4.8;
+        ctx.beginPath();
+        points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+        ctx.stroke();
+
+        // Pass 2: Intense cyan ionization sheath
+        ctx.strokeStyle = 'rgba(180, 235, 255, 0.78)';
+        ctx.lineWidth = baseW * 2.2;
+        ctx.beginPath();
+        points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+        ctx.stroke();
+
+        // Pass 3: Blinding white-hot electric core
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = baseW * 0.95;
+        ctx.beginPath();
+        points.forEach((p, idx) => { if (idx === 0) ctx.moveTo(p[0], p[1]); else ctx.lineTo(p[0], p[1]); });
+        ctx.stroke();
+    }
+
+    drawBranch(startX, 10, endX + (Math.random() - 0.5) * 80, 980, 0, 3);
 }
 
 // 3. Victorian Gothic Haunted Mansion Silhouette with Candlelit Windows (1024x1024)
@@ -4878,67 +4982,121 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         ctx.stroke();
     }
 
-    // 1. LEFT UPSTAIRS WINDOWS: BLADE VAMPIRE BLOOD RAVE ROOM WITH SCANNING LASERS & STROBES
+    // 1. LEFT UPSTAIRS WINDOWS: CONCERT RAVE ROOM (REACTS LIKE PUMPKIN DISCO 5 MINI LIGHTS)
     const discoWindows = [
-        { x: 200, y: 510, w: 44, h: 75, zombie: 0 },
-        { x: 260, y: 510, w: 44, h: 75, zombie: 1 },
-        { x: 340, y: 510, w: 44, h: 75, zombie: 2 }
+        { x: 200, y: 510, w: 44, h: 75, zombie: 0, group: 'A' }, // Group A (Outer left)
+        { x: 260, y: 510, w: 44, h: 75, zombie: 1, group: 'B' }, // Group B (Center)
+        { x: 340, y: 510, w: 44, h: 75, zombie: 2, group: 'A' }  // Group A (Outer right)
     ];
 
-    // Blade Rave Atmosphere: Blood-red industrial wash with strobing white Xenon flash on bass kick
-    const strobeAlpha = isKick ? (0.65 + bassImpact * 0.35) : 0.0;
-    const redIntensity = Math.min(255, 110 + Math.floor(bassImpact * 145));
+    // Musical Beat Timing & Pulse Envelopes (Matching Pumpkin Disco 5 Mini Lights Engine)
+    const bpm = (audio && audio.currentBPM) ? audio.currentBPM : 126.0;
+    const beatDur = 60.0 / bpm;
+    const totalBeat = elapsedTime / beatDur;
+    const beatFraction = totalBeat % 1.0;
+    const beatNumber = Math.floor(totalBeat) % 4; // 0, 1, 2, 3
 
-    // Dual Rave Lasers:
-    // 1. Blade Acid Green Laser (Scans and pans dynamically)
-    const greenLaserAngle = Math.sin(elapsedTime * 3.2) * 0.48;
-    const greenLaserY = 545 + Math.sin(elapsedTime * 4.0) * 24;
+    // Group A (Inner/Outer Pair): Crisp ~130ms Xenon Strobe Snap on Even Beats 0 & 2
+    let strobeFactorA = 0.0;
+    if (beatNumber === 0 || beatNumber === 2) {
+        const timeInBeat = beatFraction * beatDur;
+        if (timeInBeat < 0.14) {
+            strobeFactorA = 1.0; // Crisp 100% ON
+        } else if (timeInBeat < 0.18) {
+            strobeFactorA = 1.0 - (timeInBeat - 0.14) / 0.04; // Fast shutter close
+        }
+    }
 
-    // 2. Cross-Cutting Ruby Red Laser (Opposing angle and height)
-    const redLaserAngle = -Math.cos(elapsedTime * 2.8) * 0.42;
-    const redLaserY = 552 + Math.cos(elapsedTime * 3.6) * 20;
+    // Group B (Center Fixture): Wide Atmospheric Color Swell with Long Fade-out on Odd Beats 1 & 3
+    let washFactorB = 0.0;
+    if (beatNumber === 1 || beatNumber === 3) {
+        if (beatFraction < 0.35) {
+            washFactorB = 0.5 - 0.5 * Math.cos((beatFraction / 0.35) * Math.PI); // Smooth swell in
+        } else {
+            washFactorB = 0.5 + 0.5 * Math.cos(((beatFraction - 0.35) / 0.65) * Math.PI); // Long fade tail
+        }
+    }
+
+    // Heavy Bass Kick Thump & Audio Surge (Intensifies on deep drops & onsets)
+    const kickPunch = isKick ? (0.75 + bassImpact * 0.45) : (bassImpact * 0.35);
+    const trebleSparkle = (audio && audio.smoothedTreble) ? audio.smoothedTreble : 0.0;
+
+    // Vibrant Stage Colors Palette (Electric Cyan, Acid Neon Green, Shocking Violet, Blood Ruby, Amber Gold)
+    const raveHues = [
+        { r: 255, g: 0, b: 60, name: 'Ruby Blood' },      // Beat 0
+        { r: 0, g: 240, b: 255, name: 'Electric Cyan' },  // Beat 1
+        { r: 160, g: 0, b: 255, name: 'Witch Violet' },   // Beat 2
+        { r: 0, g: 255, b: 70, name: 'Acid Green' }       // Beat 3
+    ];
+    const currentHue = raveHues[beatNumber];
+    const nextHue = raveHues[(beatNumber + 1) % 4];
+    const blendHue = {
+        r: Math.floor(currentHue.r * (1 - beatFraction) + nextHue.r * beatFraction),
+        g: Math.floor(currentHue.g * (1 - beatFraction) + nextHue.g * beatFraction),
+        b: Math.floor(currentHue.b * (1 - beatFraction) + nextHue.b * beatFraction)
+    };
+
+    // Tempo-Locked Slicing Moving-Head Concert Lasers
+    const laserSpeed = (bpm / 126.0) * 3.4;
+    const greenLaserAngle = Math.sin(elapsedTime * laserSpeed) * 0.52;
+    const greenLaserY = 545 + Math.sin(elapsedTime * laserSpeed * 1.25) * 22;
+
+    const redLaserAngle = -Math.cos(elapsedTime * laserSpeed * 0.9) * 0.46;
+    const redLaserY = 552 + Math.cos(elapsedTime * laserSpeed * 1.15) * 18;
+
+    const cyanLaserAngle = Math.sin(elapsedTime * laserSpeed * 1.4 + 1.2) * 0.40;
+    const cyanLaserY = 540 + Math.cos(elapsedTime * laserSpeed * 0.8) * 16;
 
     discoWindows.forEach((dw, idx) => {
         const cx = dw.x + dw.w / 2;
         const cy = dw.y + dw.h;
 
-        // 1. Blood-Red Industrial Rave Wash Gradient
+        // 1. Dynamic Reactive Room Wash
+        // Group A windows react to Strobe A; Group B reacts to Wash B; both boosted by kickPunch
+        const isGroupA = dw.group === 'A';
+        const activeFactor = isGroupA ? (strobeFactorA * 0.9 + kickPunch * 0.35) : (washFactorB * 0.9 + kickPunch * 0.45);
+        const washOpacity = Math.min(0.98, Math.max(0.40, 0.45 + activeFactor * 0.50));
+
         const roomGrad = ctx.createLinearGradient(dw.x, dw.y, dw.x, dw.y + dw.h);
-        roomGrad.addColorStop(0.0, `rgba(${redIntensity}, 12, 28, 0.95)`);
-        roomGrad.addColorStop(0.5, `rgba(${Math.floor(redIntensity * 0.8)}, 4, 18, 0.90)`);
-        roomGrad.addColorStop(1.0, `rgba(${Math.floor(redIntensity * 0.4)}, 2, 8, 0.85)`);
+        const colR = Math.min(255, Math.floor(blendHue.r * (0.6 + activeFactor * 0.5) + kickPunch * 40));
+        const colG = Math.min(255, Math.floor(blendHue.g * (0.6 + activeFactor * 0.5)));
+        const colB = Math.min(255, Math.floor(blendHue.b * (0.6 + activeFactor * 0.5)));
+
+        roomGrad.addColorStop(0.0, `rgba(${colR}, ${colG}, ${colB}, ${washOpacity})`);
+        roomGrad.addColorStop(0.5, `rgba(${Math.floor(colR * 0.7)}, ${Math.floor(colG * 0.7)}, ${Math.floor(colB * 0.7)}, ${washOpacity * 0.85})`);
+        roomGrad.addColorStop(1.0, `rgba(${Math.floor(colR * 0.3)}, ${Math.floor(colG * 0.3)}, ${Math.floor(colB * 0.3)}, ${washOpacity * 0.75})`);
 
         ctx.fillStyle = roomGrad;
         fillArchedPath(dw.x, dw.y, dw.w, dw.h);
         ctx.fill();
 
-        // 2. Blade Kick Drum Strobe Flash (Blinding white Xenon strobe that flashes in unison across all 3 windows)
-        if (strobeAlpha > 0.05) {
-            ctx.fillStyle = `rgba(255, 255, 255, ${strobeAlpha})`;
+        // 2. High-Contrast Xenon Strobe Flash (Group A triggers crisp white strobe snap; Kick triggers full unison flash)
+        const xenonAlpha = isGroupA ? (strobeFactorA * 0.85 + (isKick ? kickPunch * 0.5 : 0)) : (isKick ? kickPunch * 0.65 : 0);
+        if (xenonAlpha > 0.04) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.95, xenonAlpha)})`;
             fillArchedPath(dw.x, dw.y, dw.w, dw.h);
             ctx.fill();
         }
 
-        // 3. Piercing Blade Acid Green Laser Beam
+        // 3. Piercing Acid Green Concert Laser Beam
         const gLaserY = greenLaserY + (cx - 270) * Math.tan(greenLaserAngle);
         if (gLaserY >= dw.y - 12 && gLaserY <= dw.y + dw.h + 12) {
             ctx.save();
             fillArchedPath(dw.x, dw.y, dw.w, dw.h);
             ctx.clip();
 
-            // Broad emerald laser haze
-            const hazeGrad = ctx.createLinearGradient(dw.x, gLaserY - 20, dw.x, gLaserY + 20);
+            const hazePower = 0.45 + kickPunch * 0.45;
+            const hazeGrad = ctx.createLinearGradient(dw.x, gLaserY - 22, dw.x, gLaserY + 22);
             hazeGrad.addColorStop(0.0, 'rgba(0, 255, 80, 0.0)');
-            hazeGrad.addColorStop(0.5, 'rgba(0, 255, 100, 0.70)');
+            hazeGrad.addColorStop(0.5, `rgba(0, 255, 100, ${hazePower})`);
             hazeGrad.addColorStop(1.0, 'rgba(0, 255, 80, 0.0)');
             ctx.fillStyle = hazeGrad;
-            ctx.fillRect(dw.x - 5, gLaserY - 20, dw.w + 10, 40);
+            ctx.fillRect(dw.x - 5, gLaserY - 22, dw.w + 10, 44);
 
-            // Razor-sharp bright green laser core
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.2;
+            ctx.lineWidth = 2.0 + kickPunch * 1.0;
             ctx.shadowColor = '#00ff66';
-            ctx.shadowBlur = 14;
+            ctx.shadowBlur = 14 + kickPunch * 8;
             ctx.beginPath();
             ctx.moveTo(dw.x, gLaserY - (dw.w / 2) * Math.tan(greenLaserAngle));
             ctx.lineTo(dw.x + dw.w, gLaserY + (dw.w / 2) * Math.tan(greenLaserAngle));
@@ -4947,26 +5105,25 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
             ctx.restore();
         }
 
-        // 4. Cross-Cutting Ruby Red Laser Beam
+        // 4. Cross-Cutting Ruby Red Concert Laser Beam
         const rLaserY = redLaserY + (cx - 270) * Math.tan(redLaserAngle);
         if (rLaserY >= dw.y - 12 && rLaserY <= dw.y + dw.h + 12) {
             ctx.save();
             fillArchedPath(dw.x, dw.y, dw.w, dw.h);
             ctx.clip();
 
-            // Broad ruby haze
-            const rHaze = ctx.createLinearGradient(dw.x, rLaserY - 16, dw.x, rLaserY + 16);
+            const rHazePower = 0.40 + kickPunch * 0.40;
+            const rHaze = ctx.createLinearGradient(dw.x, rLaserY - 18, dw.x, rLaserY + 18);
             rHaze.addColorStop(0.0, 'rgba(255, 0, 50, 0.0)');
-            rHaze.addColorStop(0.5, 'rgba(255, 20, 80, 0.65)');
+            rHaze.addColorStop(0.5, `rgba(255, 20, 80, ${rHazePower})`);
             rHaze.addColorStop(1.0, 'rgba(255, 0, 50, 0.0)');
             ctx.fillStyle = rHaze;
-            ctx.fillRect(dw.x - 5, rLaserY - 16, dw.w + 10, 32);
+            ctx.fillRect(dw.x - 5, rLaserY - 18, dw.w + 10, 36);
 
-            // Razor ruby core
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 1.8;
+            ctx.lineWidth = 1.8 + kickPunch * 0.8;
             ctx.shadowColor = '#ff0033';
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = 12 + kickPunch * 8;
             ctx.beginPath();
             ctx.moveTo(dw.x, rLaserY - (dw.w / 2) * Math.tan(redLaserAngle));
             ctx.lineTo(dw.x + dw.w, rLaserY + (dw.w / 2) * Math.tan(redLaserAngle));
@@ -4975,10 +5132,37 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
             ctx.restore();
         }
 
-        // 5. Music-Animated Dancing Zombie Silhouettes with Hyper-Detailed Claw Hands
+        // 5. High-Energy Cyan Moving-Head Laser Beam
+        const cLaserY = cyanLaserY + (cx - 270) * Math.tan(cyanLaserAngle);
+        if (cLaserY >= dw.y - 12 && cLaserY <= dw.y + dw.h + 12) {
+            ctx.save();
+            fillArchedPath(dw.x, dw.y, dw.w, dw.h);
+            ctx.clip();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.6 + kickPunch * 0.6;
+            ctx.shadowColor = '#00e5ff';
+            ctx.shadowBlur = 10 + kickPunch * 6;
+            ctx.beginPath();
+            ctx.moveTo(dw.x, cLaserY - (dw.w / 2) * Math.tan(cyanLaserAngle));
+            ctx.lineTo(dw.x + dw.w, cLaserY + (dw.w / 2) * Math.tan(cyanLaserAngle));
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // 6. Treble Sparkle Glints (High frequency flashes on glass window panes)
+        if (trebleSparkle > 0.25) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(0.7, trebleSparkle * 0.8)})`;
+            const sparkleX = dw.x + 8 + ((idx * 13 + Math.floor(elapsedTime * 8)) % 28);
+            const sparkleY = dw.y + 12 + ((idx * 19 + Math.floor(elapsedTime * 6)) % 40);
+            ctx.fillRect(sparkleX, sparkleY, 2.5, 2.5);
+        }
+
+        // 7. Music-Animated Dancing Zombie Silhouettes with Hyper-Detailed Claw Hands
         drawDancingZombie(ctx, cx, cy - 2, dw.zombie, raveTime + idx * 1.8, audio);
 
-        // 6. Gothic window mullions in front of dancers
+        // 8. Gothic window mullions in front of dancers
         drawMullions(dw.x, dw.y, dw.w, dw.h);
     });
 
@@ -10414,28 +10598,6 @@ export function createVFXScene(container) {
     hauntedWitchThrustMesh.position.set(-2.08, -0.81, 0.02);
     hauntedWitchGroup.add(hauntedWitchThrustMesh);
 
-    // Trailing Magical Sparkle Particles from broom bristles
-    const hauntedWitchSparkleCount = 36;
-    const hauntedWitchSparkleGeo = new THREE.BufferGeometry();
-    const hauntedWitchSparklePos = new Float32Array(hauntedWitchSparkleCount * 3);
-    const hauntedWitchSparkleLife = new Float32Array(hauntedWitchSparkleCount);
-    for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
-        hauntedWitchSparklePos[sp * 3] = -2.08 + (Math.random() - 0.5) * 0.4;
-        hauntedWitchSparklePos[sp * 3 + 1] = -0.81 + (Math.random() - 0.5) * 0.4;
-        hauntedWitchSparklePos[sp * 3 + 2] = 0;
-        hauntedWitchSparkleLife[sp] = Math.random();
-    }
-    hauntedWitchSparkleGeo.setAttribute('position', new THREE.BufferAttribute(hauntedWitchSparklePos, 3));
-    const hauntedWitchSparkleMat = new THREE.PointsMaterial({
-        color: 0xc084fc, // Luminous violet magic sparks
-        size: 0.75,
-        transparent: true,
-        opacity: 0.85,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    });
-    const hauntedWitchSparkles = new THREE.Points(hauntedWitchSparkleGeo, hauntedWitchSparkleMat);
-    hauntedWitchGroup.add(hauntedWitchSparkles);
     hauntedWitchGroup.visible = false;
     gHauntedManor.add(hauntedWitchGroup);
 
@@ -10481,10 +10643,10 @@ export function createVFXScene(container) {
     hauntedWindowsMesh.position.set(4.2, 3.5, -10.16);
     gHauntedManor.add(hauntedWindowsMesh);
 
-    // Grand Entrance Porch Hanging Carriage Lantern (Swings slowly in the wind like a pendulum with flickering candle)
+    // Grand Entrance Porch Hanging Carriage Lantern (Hangs directly in center of porch from ceiling beam)
     const hauntedPorchLanternTex = createHauntedPorchLanternTexture();
     const hauntedPorchLanternGroup = new THREE.Group();
-    hauntedPorchLanternGroup.position.set(3.95, 1.35, -10.05); // Top anchor point at grand portico pediment
+    hauntedPorchLanternGroup.position.set(1.41, 1.18, -10.05); // Exact center of porch ceiling beam
 
     const hauntedPorchLanternGeo = new THREE.PlaneGeometry(0.75, 1.5);
     hauntedPorchLanternGeo.translate(0, -0.75, 0); // Origin at top of chain so it swings naturally like a pendulum
@@ -10668,6 +10830,70 @@ export function createVFXScene(container) {
     const hauntedBats = [];
     const hauntedBatGroup = new THREE.Group();
 
+    function respawnHauntedBat(bObj, fromScratch = false) {
+        // 3 Screen-Traversing Flight Types (Flying in and out of the scene):
+        // 0: High Sky Crosser (Moon & upper atmosphere, edge to edge)
+        // 1: Spire & Mansion Diver (Diagonal swoop over Victorian towers & weeping willows)
+        // 2: Foreground Gate Swooper (Diving forward past iron gates into camera view)
+        const type = Math.floor(Math.random() * 3);
+        bObj.flightType = type;
+        bObj.phase = Math.random() * Math.PI * 2.0;
+        bObj.flapSpeed = 10.0 + Math.random() * 6.5;
+
+        const fromLeft = Math.random() > 0.5;
+        let startX, startY, startZ;
+        let endX, endY, endZ;
+        let speed;
+
+        if (type === 0) {
+            // High Sky Crosser (Edge-to-Edge across moon and upper sky)
+            startX = fromLeft ? (-36.0 - Math.random() * 8.0) : (36.0 + Math.random() * 8.0);
+            endX = fromLeft ? (38.0 + Math.random() * 8.0) : (-38.0 - Math.random() * 8.0);
+            startY = 5.5 + Math.random() * 6.0;
+            endY = 4.5 + Math.random() * 6.5;
+            startZ = -16.5 + (Math.random() - 0.5) * 2.5;
+            endZ = -16.5 + (Math.random() - 0.5) * 2.5;
+            speed = 10.0 + Math.random() * 6.0;
+            bObj.baseScale = 0.52 + Math.random() * 0.30;
+        } else if (type === 1) {
+            // Mansion Spires Diver
+            startX = fromLeft ? (-34.0 - Math.random() * 6.0) : (34.0 + Math.random() * 6.0);
+            endX = fromLeft ? (36.0 + Math.random() * 6.0) : (-36.0 - Math.random() * 6.0);
+            startY = 2.0 + Math.random() * 7.5;
+            endY = 0.5 + Math.random() * 6.5;
+            startZ = -9.2 + (Math.random() - 0.5) * 3.5;
+            endZ = -9.0 + (Math.random() - 0.5) * 3.5;
+            speed = 12.5 + Math.random() * 6.5;
+            bObj.baseScale = 0.85 + Math.random() * 0.40;
+        } else {
+            // Foreground Gate Swooper (Diving past the stone pillars and wrought iron gates)
+            startX = fromLeft ? (-30.0 - Math.random() * 6.0) : (30.0 + Math.random() * 6.0);
+            endX = fromLeft ? (32.0 + Math.random() * 6.0) : (-32.0 - Math.random() * 6.0);
+            startY = 3.5 + Math.random() * 5.0;
+            endY = -3.2 + Math.random() * 4.0;
+            startZ = -5.5 + Math.random() * 4.0;
+            endZ = 2.5 + Math.random() * 3.5;
+            speed = 14.5 + Math.random() * 7.5;
+            bObj.baseScale = 1.45 + Math.random() * 0.65;
+        }
+
+        if (fromScratch) {
+            const prog = Math.random();
+            bObj.pos.set(
+                startX + (endX - startX) * prog,
+                startY + (endY - startY) * prog,
+                startZ + (endZ - startZ) * prog
+            );
+        } else {
+            bObj.pos.set(startX, startY, startZ);
+        }
+
+        const dir = new THREE.Vector3(endX - startX, endY - startY, endZ - startZ).normalize();
+        bObj.velocity.copy(dir.multiplyScalar(speed));
+        bObj.batRoot.position.copy(bObj.pos);
+        bObj.batRoot.scale.setScalar(bObj.baseScale);
+    }
+
     for (let b = 0; b < hauntedBatCount; b++) {
         const batRoot = new THREE.Group();
 
@@ -10692,57 +10918,22 @@ export function createVFXScene(container) {
         rightWingPivot.add(rightWingMesh);
         batRoot.add(rightWingPivot);
 
-        let flightType = 0; // 0: Moon Swarm, 1: Manor Spires, 2: Swooping Foreground
-        let basePos = new THREE.Vector3();
-        let scale = 1.0;
-        let flapSpeed = 9.0 + Math.random() * 6.0;
-        let orbitRadius = 2.0 + Math.random() * 4.0;
-        let orbitSpeed = 0.55 + Math.random() * 0.75;
-        let phase = Math.random() * Math.PI * 2.0;
-
-        if (b < 12) {
-            // Moon Swarm (Fluttering and circling across the full moon disc at z = -16.5)
-            flightType = 0;
-            basePos.set(-3.2 + (Math.random() - 0.5) * 4.0, 5.5 + (Math.random() - 0.5) * 3.5, -16.0 - Math.random() * 1.5);
-            scale = 0.48 + Math.random() * 0.32;
-            orbitRadius = 1.2 + Math.random() * 3.0;
-            orbitSpeed = 0.75 + Math.random() * 1.0;
-        } else if (b < 22) {
-            // Manor Spires Swarm (Circling the Victorian haunted mansion spires at z = -9.0)
-            flightType = 1;
-            basePos.set(4.2 + (Math.random() - 0.5) * 5.5, 4.5 + (Math.random() - 0.5) * 4.0, -9.2 - Math.random() * 1.5);
-            scale = 0.78 + Math.random() * 0.38;
-            orbitRadius = 2.4 + Math.random() * 3.8;
-            orbitSpeed = 0.65 + Math.random() * 0.75;
-        } else {
-            // Swooping Foreground Bats (Diving dramatically down through the foreground gates!)
-            flightType = 2;
-            basePos.set((Math.random() - 0.5) * 7.5, 1.2 + (Math.random() - 0.5) * 2.8, -1.0);
-            scale = 1.35 + Math.random() * 0.65;
-            orbitRadius = 4.2 + Math.random() * 4.5;
-            orbitSpeed = 0.85 + Math.random() * 0.65;
-        }
-
-        batRoot.scale.set(scale, scale, scale);
-        batRoot.position.copy(basePos);
         hauntedBatGroup.add(batRoot);
 
-        hauntedBats.push({
+        const batItem = {
             batRoot,
             bodyMesh,
             leftWingPivot,
             rightWingPivot,
-            flightType,
-            basePos,
-            baseScale: scale,
-            flapSpeed,
-            orbitRadius,
-            orbitSpeed,
-            phase,
-            angle: phase,
-            altitudeWave: 0.8 + Math.random() * 1.2,
-            zWave: 1.2 + Math.random() * 2.5
-        });
+            pos: new THREE.Vector3(),
+            velocity: new THREE.Vector3(),
+            flightType: 0,
+            baseScale: 1.0,
+            flapSpeed: 10.0,
+            phase: Math.random() * Math.PI * 2.0
+        };
+        respawnHauntedBat(batItem, true);
+        hauntedBats.push(batItem);
     }
     gHauntedManor.add(hauntedBatGroup);
 
@@ -10847,9 +11038,9 @@ export function createVFXScene(container) {
     hauntedCandleLight.position.set(4.2, 3.8, -9.2);
     gHauntedManor.add(hauntedCandleLight);
 
-    // Warm Lantern Light at Grand Entrance Portico & Steps
+    // Warm Lantern Light at Grand Entrance Portico & Steps (Center of porch)
     const hauntedLanternLight = new THREE.PointLight(0xffaa33, 1.8, 16.0, 1.5);
-    hauntedLanternLight.position.set(3.6, 2.3, -9.3);
+    hauntedLanternLight.position.set(1.41, 0.45, -9.95);
     gHauntedManor.add(hauntedLanternLight);
 
     // ⚡ Cinematic Thunderstorm Lightning Directional Light
@@ -10859,6 +11050,84 @@ export function createVFXScene(container) {
 
     let hauntedLightningTimer = 0.0;
     let hauntedLastLightningTime = 0.0;
+
+    // 10. Dynamic Brooding Storm Scene (Clouds Floating at Top, Driving Rain, Procedural Forked Lightning Bolt)
+    // 10a. Dark Brooding Cumulus Storm Clouds Floating Across Upper Sky
+    const hauntedStormCloudsTex = createBroodingStormCloudsTexture();
+    const hauntedStormCloudsGroup = new THREE.Group();
+    const stormCloudGeo = new THREE.PlaneGeometry(36.0, 16.0);
+    const stormCloudMat = new THREE.MeshBasicMaterial({
+        map: hauntedStormCloudsTex,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.NormalBlending
+    });
+    const cloudOffsets = [-26.0, -8.0, 10.0, 28.0];
+    const hauntedStormCloudMeshes = cloudOffsets.map((cx, i) => {
+        const mesh = new THREE.Mesh(stormCloudGeo, stormCloudMat.clone());
+        mesh.position.set(cx, 13.2, -15.8 + i * 0.1);
+        mesh.scale.set(i % 2 === 0 ? 1 : -1, 1, 1);
+        hauntedStormCloudsGroup.add(mesh);
+        return mesh;
+    });
+    gHauntedManor.add(hauntedStormCloudsGroup);
+
+    // 10b. Volumetric Driving Rain System (1400 Atmospheric Rain Streaks Driving With Wind)
+    const hauntedRainCount = 1400;
+    const hauntedRainGeo = new THREE.BufferGeometry();
+    const hauntedRainPos = new Float32Array(hauntedRainCount * 6);
+    const hauntedRainVel = new Float32Array(hauntedRainCount);
+    for (let r = 0; r < hauntedRainCount; r++) {
+        const rx = (Math.random() - 0.5) * 64.0;
+        const ry = -8.0 + Math.random() * 26.0;
+        const rz = -14.0 + Math.random() * 16.0;
+        const len = 0.85 + Math.random() * 0.95;
+        hauntedRainPos[r * 6] = rx;
+        hauntedRainPos[r * 6 + 1] = ry;
+        hauntedRainPos[r * 6 + 2] = rz;
+        hauntedRainPos[r * 6 + 3] = rx - 0.22;
+        hauntedRainPos[r * 6 + 4] = ry - len;
+        hauntedRainPos[r * 6 + 5] = rz;
+        hauntedRainVel[r] = 26.0 + Math.random() * 14.0;
+    }
+    hauntedRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedRainPos, 3));
+    const hauntedRainMat = new THREE.LineBasicMaterial({
+        color: 0xc8e0ff,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending
+    });
+    const hauntedRainLines = new THREE.LineSegments(hauntedRainGeo, hauntedRainMat);
+    gHauntedManor.add(hauntedRainLines);
+
+    // 10c. Accurate Procedural Forked Lightning Bolt (Multi-Branch Electrical Tree Mesh)
+    const hauntedForkedLightningCanvas = document.createElement('canvas');
+    hauntedForkedLightningCanvas.width = 512;
+    hauntedForkedLightningCanvas.height = 1024;
+    const hauntedForkedLightningTex = new THREE.CanvasTexture(hauntedForkedLightningCanvas);
+    const hauntedForkedLightningGeo = new THREE.PlaneGeometry(18.0, 24.0);
+    const hauntedForkedLightningMat = new THREE.MeshBasicMaterial({
+        map: hauntedForkedLightningTex,
+        transparent: true,
+        opacity: 0.0,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide
+    });
+    const hauntedForkedLightningMesh = new THREE.Mesh(hauntedForkedLightningGeo, hauntedForkedLightningMat);
+    hauntedForkedLightningMesh.position.set(2.0, 5.5, -15.4);
+    gHauntedManor.add(hauntedForkedLightningMesh);
+
+    // Dynamic Weather State Machine: 'calm' -> 'gathering' -> 'storm' -> 'clearing'
+    let hauntedWeatherState = 'calm';
+    let hauntedWeatherTimer = 0.0;
+    let hauntedWeatherPhaseDuration = 20.0; // Calm for 20s
+    let hauntedRainAlpha = 0.0;
+    let hauntedCloudsAlpha = 0.0;
+    let hauntedForkedLightningTimer = 0.0;
+    let hauntedNextStormLightningTime = 0.0;
 
     // Wicked Flying Witch State Machine (2 Passes: across moon behind manor, then larger in front of manor)
     let hauntedWitchState = 'idle'; // 'idle', 'pass1_background', 'between_passes', 'pass2_foreground'
@@ -13183,7 +13452,7 @@ export function createVFXScene(container) {
 
             // Organic candle flicker inside the hanging lantern
             const candleFlicker = 1.0 + Math.sin(elapsedTime * 15.0) * 0.18 + Math.cos(elapsedTime * 32.0) * 0.12 + (Math.random() - 0.5) * 0.14;
-            hauntedLanternLight.position.set(3.95 + Math.sin(lanternWindSwing) * 0.45, 0.8, -10.0);
+            hauntedLanternLight.position.set(1.41 + Math.sin(lanternWindSwing) * 0.45, 0.45, -9.95);
             hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4));
 
             // 2b. Wicked Flying Witch Flight Simulation (Pass 1: Left to Right across moon; Pass 2: Right to Left in front of manor, larger)
@@ -13240,65 +13509,29 @@ export function createVFXScene(container) {
                 }
             }
 
-            // Animate trailing magic stardust particles strictly behind broom bristles & thrust flame
-            if (hauntedWitchGroup.visible) {
-                const spAttr = hauntedWitchSparkleGeo.attributes.position;
-                const spArr = spAttr.array;
-                for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
-                    hauntedWitchSparkleLife[sp] += delta * 2.2;
-                    if (hauntedWitchSparkleLife[sp] > 1.0) {
-                        hauntedWitchSparkleLife[sp] = 0.0;
-                        // Spawn strictly at rear plume tail (-3.8 in local space)
-                        spArr[sp * 3] = -3.8 + (Math.random() - 0.5) * 0.4;
-                        spArr[sp * 3 + 1] = -0.81 + (Math.random() - 0.5) * 0.35;
-                        spArr[sp * 3 + 2] = (Math.random() - 0.5) * 0.2;
-                    } else {
-                        // Drift backward in local space
-                        spArr[sp * 3] -= delta * 1.8;
-                        spArr[sp * 3 + 1] += (Math.random() - 0.5) * 0.15 * delta;
-                    }
-                }
-                spAttr.needsUpdate = true;
-            }
 
-            // 3. Flocks of 3D Articulated Flying Vampire Bats (Realistic biological wing flapping & flight trajectories)
-            const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.6 : 1.0;
+
+            // 3. Flocks of 3D Articulated Flying Vampire Bats (Flying in and out of the scene)
+            const batScatterBoost = (audio.isOnset && bassImpact > 0.35) ? 1.5 : 1.0;
             hauntedBats.forEach((b) => {
-                b.angle += (b.orbitSpeed * 0.65 * batScatterBoost) * delta;
-                const ang = b.angle;
+                // Advance position along screen-traversing velocity vector
+                b.pos.x += b.velocity.x * batScatterBoost * delta;
+                b.pos.y += (b.velocity.y + Math.sin(elapsedTime * 4.2 + b.phase) * 1.6) * delta;
+                b.pos.z += b.velocity.z * batScatterBoost * delta;
 
-                if (b.flightType === 0) {
-                    // Moon swarm: circling across full moon disc (z = -16.0 to -17.5)
-                    b.batRoot.position.x = b.basePos.x + Math.sin(ang) * b.orbitRadius;
-                    b.batRoot.position.y = b.basePos.y + Math.cos(ang * 1.3) * (b.orbitRadius * 0.65);
-                    b.batRoot.position.z = b.basePos.z + Math.sin(ang * 0.8) * 1.0;
-                    b.batRoot.rotation.z = -Math.cos(ang) * 0.35;
-                    b.batRoot.rotation.y = Math.sin(ang) * 0.25;
-                } else if (b.flightType === 1) {
-                    // Manor spires: circular flight around gothic roof & spires (z = -9.2)
-                    b.batRoot.position.x = b.basePos.x + Math.sin(ang) * (b.orbitRadius * 1.2);
-                    b.batRoot.position.y = b.basePos.y + Math.sin(ang * 1.8 + b.phase) * (b.altitudeWave * 0.7);
-                    b.batRoot.position.z = b.basePos.z + Math.cos(ang) * (b.orbitRadius * 0.85);
-                    b.batRoot.rotation.z = -Math.cos(ang) * 0.38;
-                    b.batRoot.rotation.y = Math.sin(ang) * 0.30;
-                } else {
-                    // Swooping foreground bats: diving through gates towards camera!
-                    const swoopT = (ang * 0.75) % (Math.PI * 2.0);
-                    const swoopZ = Math.sin(swoopT);
-                    b.batRoot.position.x = b.basePos.x + Math.cos(swoopT) * b.orbitRadius;
-                    b.batRoot.position.y = b.basePos.y + Math.sin(swoopT * 2.0) * 2.0 - (swoopZ > 0 ? 1.4 : 0);
-                    b.batRoot.position.z = -4.0 + (swoopZ + 1.0) * 3.8;
-                    b.batRoot.rotation.z = -Math.sin(swoopT) * 0.42;
-                    b.batRoot.rotation.y = Math.cos(swoopT) * 0.35;
-                }
+                b.batRoot.position.copy(b.pos);
 
-                // Realistic articulated wing flapping biomechanics (hinging at shoulders, folding on upstroke)
+                // Rotate to orient smoothly towards velocity trajectory
+                const headingY = Math.atan2(b.velocity.x, b.velocity.z);
+                b.batRoot.rotation.y = headingY;
+                b.batRoot.rotation.z = -Math.sign(b.velocity.x) * 0.28 + Math.sin(elapsedTime * 4.2 + b.phase) * 0.14;
+                b.batRoot.rotation.x = 0.16 - (b.velocity.y / 15.0) * 0.35;
+
+                // Biological articulated wing flapping biomechanics
                 const flapPhase = elapsedTime * (b.flapSpeed * batScatterBoost) + b.phase;
                 const flapSin = Math.sin(flapPhase);
-
-                // Downstroke is broad; upstroke folds backward to reduce air resistance
-                const wingFlapAngle = flapSin * 0.78;
-                const wingFoldBack = Math.max(0, -flapSin) * 0.42;
+                const wingFlapAngle = flapSin * 0.82;
+                const wingFoldBack = Math.max(0, -flapSin) * 0.44;
                 const wingDihedral = Math.sin(flapPhase + 0.3) * 0.22;
 
                 b.leftWingPivot.rotation.z = wingFlapAngle;
@@ -13309,9 +13542,13 @@ export function createVFXScene(container) {
                 b.rightWingPivot.rotation.y = -wingFoldBack;
                 b.rightWingPivot.rotation.x = wingDihedral;
 
-                // Body vertical counter-bob and forward flight pitch
+                // Body vertical counter-bob
                 b.bodyMesh.position.y = -flapSin * 0.05;
-                b.bodyMesh.rotation.x = 0.20 - flapSin * 0.12;
+
+                // Check screen bounds: when flown out of the scene, respawn on a new incoming flight vector!
+                if (Math.abs(b.pos.x) > 38.0 || b.pos.y < -9.5 || b.pos.y > 18.0 || b.pos.z > 6.0 || b.pos.z < -24.0) {
+                    respawnHauntedBat(b, false);
+                }
             });
 
             // 3b. Wind Gust Blowing Cemetery Wild Grass at the Fence
@@ -13408,38 +13645,160 @@ export function createVFXScene(container) {
             }
             mistPosAttr.needsUpdate = true;
 
-            // 5. ⚡ Dramatic Thunderstorm Lightning Strikes (Audio Triggered on Heavy Beats / Kicks)
-            if (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) {
-                hauntedLightningTimer = 0.38; // 380ms multi-stroke flash!
-                hauntedLastLightningTime = elapsedTime;
-            }
+            // 5. ⛈️ Dynamic Weather & Storm System (Brooding clouds at top, driving rain, procedural forked lightning bolt)
+            hauntedWeatherTimer += delta;
+            if (hauntedWeatherState === 'calm') {
+                // Calm, eerie moonlit night
+                hauntedCloudsAlpha = Math.max(0.0, hauntedCloudsAlpha - delta * 0.35);
+                hauntedRainAlpha = Math.max(0.0, hauntedRainAlpha - delta * 0.6);
 
-            if (hauntedLightningTimer > 0.0) {
-                hauntedLightningTimer -= delta;
-                const lt = Math.max(0.0, hauntedLightningTimer / 0.38);
-                let flashIntensity = 0.0;
+                if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
+                    hauntedWeatherState = 'gathering';
+                    hauntedWeatherTimer = 0.0;
+                    hauntedWeatherPhaseDuration = 9.0; // 9s for dark clouds to gather across top of screen
+                }
+            } else if (hauntedWeatherState === 'gathering') {
+                // Bad weather coming: dark brooding clouds float into upper sky
+                const gatherProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.0, 0.94, gatherProg);
+                hauntedRainAlpha = (gatherProg > 0.55) ? THREE.MathUtils.lerp(0.0, 0.35, (gatherProg - 0.55) / 0.45) : 0.0;
 
-                // Authentic multi-stroke lightning curve
-                if (lt > 0.75) {
-                    // Stroke 1: Initial explosive burst
-                    flashIntensity = 5.2 * ((lt - 0.75) / 0.25);
-                } else if (lt > 0.60) {
-                    // Brief dip between strokes
-                    flashIntensity = 1.2;
-                } else if (lt > 0.25) {
-                    // Stroke 2: Secondary main blinding flash
-                    flashIntensity = 6.4 * ((lt - 0.25) / 0.35);
-                } else {
-                    // Exponential afterglow fade
-                    flashIntensity = 6.4 * (lt / 0.25) * 0.4;
+                if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
+                    hauntedWeatherState = 'storm';
+                    hauntedWeatherTimer = 0.0;
+                    hauntedWeatherPhaseDuration = 20.0 + Math.random() * 8.0; // Storm lasts 20s - 28s
+                    hauntedNextStormLightningTime = 2.2 + Math.random() * 3.0;
+                }
+            } else if (hauntedWeatherState === 'storm') {
+                // Active storm: brooding clouds heavy at top, driving rain sweeping across screen
+                hauntedCloudsAlpha = 0.95;
+                hauntedRainAlpha = Math.min(0.78, hauntedRainAlpha + delta * 0.4);
+
+                // Random forked lightning strikes during the storm
+                if (hauntedWeatherTimer >= hauntedNextStormLightningTime && hauntedForkedLightningTimer <= 0.0) {
+                    // Trigger a dramatic forked lightning bolt!
+                    const forkSeedX = 140 + Math.random() * 230;
+                    const forkEndX = forkSeedX + (Math.random() - 0.5) * 160;
+                    renderProceduralForkedLightning(hauntedForkedLightningCanvas, forkSeedX, forkEndX);
+                    hauntedForkedLightningTex.needsUpdate = true;
+
+                    // Place forked lightning bolt across upper sky
+                    const boltSkyX = -12.0 + Math.random() * 24.0;
+                    hauntedForkedLightningMesh.position.set(boltSkyX, 5.2, -15.4);
+                    hauntedForkedLightningMesh.scale.set(Math.random() > 0.5 ? 1.0 : -1.0, 1.0, 1.0);
+
+                    hauntedForkedLightningTimer = 0.42; // 420ms lightning flash
+                    hauntedNextStormLightningTime = hauntedWeatherTimer + 4.5 + Math.random() * 6.0; // Next bolt
                 }
 
-                hauntedLightningLight.intensity = flashIntensity;
-                hauntedMoonLight.intensity = 1.8 + flashIntensity * 0.6;
-                hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + flashIntensity * 0.35;
+                if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
+                    hauntedWeatherState = 'clearing';
+                    hauntedWeatherTimer = 0.0;
+                    hauntedWeatherPhaseDuration = 8.0; // 8s for storm to clear
+                }
+            } else if (hauntedWeatherState === 'clearing') {
+                // Storm clears: rain stops, clouds roll away, full moon returns
+                const clearProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
+                hauntedRainAlpha = THREE.MathUtils.lerp(0.78, 0.0, clearProg);
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.95, 0.0, clearProg);
+
+                if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
+                    hauntedWeatherState = 'calm';
+                    hauntedWeatherTimer = 0.0;
+                    hauntedWeatherPhaseDuration = 32.0 + Math.random() * 18.0; // Calm for 32s - 50s
+                }
+            }
+
+            // Animate Brooding Storm Clouds (floating across top of sky with slow ominous drift)
+            hauntedStormCloudMeshes.forEach((cm, i) => {
+                cm.material.opacity = hauntedCloudsAlpha;
+                // Brooding downward drift when bad weather gathers
+                const floatY = 12.8 - (hauntedCloudsAlpha * 2.2) + Math.sin(elapsedTime * 0.12 + i) * 0.45;
+                const floatX = cloudOffsets[i] + Math.sin(elapsedTime * 0.06 + i * 0.8) * 1.8 - (hauntedCloudsAlpha * 2.0);
+                cm.position.set(floatX, floatY, -15.8 + i * 0.1);
+            });
+
+            // Animate Volumetric Driving Rain (streaks fall fast, driven diagonally by wind)
+            hauntedRainMat.opacity = hauntedRainAlpha;
+            if (hauntedRainAlpha > 0.01) {
+                const rainPosAttr = hauntedRainGeo.attributes.position;
+                const windShift = -0.35 - (currentGust * 1.2);
+                for (let r = 0; r < hauntedRainCount; r++) {
+                    let topY = rainPosAttr.getY(r * 2);
+                    let topX = rainPosAttr.getX(r * 2);
+                    let topZ = rainPosAttr.getZ(r * 2);
+
+                    const fallSpeed = hauntedRainVel[r];
+                    topY -= fallSpeed * delta;
+                    topX += windShift * fallSpeed * 0.35 * delta;
+
+                    // Wrap around when falling past bottom
+                    if (topY < -8.5) {
+                        topY = 16.0 + Math.random() * 4.0;
+                        topX = (Math.random() - 0.5) * 64.0;
+                    }
+
+                    const dropLen = 0.95;
+                    const botX = topX + windShift * dropLen * 0.45;
+                    const botY = topY - dropLen;
+
+                    rainPosAttr.setXYZ(r * 2, topX, topY, topZ);
+                    rainPosAttr.setXYZ(r * 2 + 1, botX, botY, topZ);
+                }
+                rainPosAttr.needsUpdate = true;
+            }
+
+            // Animate Forked Lightning Bolt Mesh & Atmospheric Scene Illumination
+            let stormFlashPower = 0.0;
+            if (hauntedForkedLightningTimer > 0.0) {
+                hauntedForkedLightningTimer -= delta;
+                const lt = Math.max(0.0, hauntedForkedLightningTimer / 0.42);
+
+                // Multi-stroke electrical ionization profile
+                if (lt > 0.75) {
+                    // Stroke 1: Sharp leader strike
+                    stormFlashPower = 1.0 * ((lt - 0.75) / 0.25);
+                    hauntedForkedLightningMat.opacity = stormFlashPower;
+                } else if (lt > 0.60) {
+                    // Restrike gap
+                    stormFlashPower = 0.3;
+                    hauntedForkedLightningMat.opacity = 0.35;
+                } else if (lt > 0.20) {
+                    // Stroke 2: Blinding main return stroke
+                    stormFlashPower = 1.0 * ((lt - 0.20) / 0.40);
+                    hauntedForkedLightningMat.opacity = stormFlashPower;
+                } else {
+                    // Atmospheric plasma afterglow fade
+                    stormFlashPower = 0.4 * (lt / 0.20);
+                    hauntedForkedLightningMat.opacity = stormFlashPower * 0.6;
+                }
             } else {
-                hauntedLightningLight.intensity = 0.0;
-                hauntedMoonLight.intensity = 1.8;
+                hauntedForkedLightningMat.opacity = 0.0;
+            }
+
+            // Audio-triggered kick lightning or storm forked lightning
+            const audioFlash = (audio.isOnset && (rawBass > 0.38 || bassImpact > 0.40) && (elapsedTime - hauntedLastLightningTime > 1.8)) ? 0.8 : 0.0;
+            if (audioFlash > 0.0) {
+                hauntedLightningTimer = 0.35;
+                hauntedLastLightningTime = elapsedTime;
+            }
+            if (hauntedLightningTimer > 0.0) {
+                hauntedLightningTimer -= delta;
+                const alt = Math.max(0.0, hauntedLightningTimer / 0.35);
+                stormFlashPower = Math.max(stormFlashPower, alt * 0.9);
+            }
+
+            // Accurate Lighting Shading for Weather & Lightning
+            const baseMoonPower = (hauntedWeatherState === 'storm' || hauntedWeatherState === 'gathering') ? 0.75 : 1.8;
+            hauntedMoonLight.intensity = baseMoonPower + stormFlashPower * 5.5;
+            hauntedLightningLight.intensity = stormFlashPower * 7.5;
+            hauntedLanternLight.intensity = Math.max(0.2, (1.8 + candleFlicker * 0.8) * (candleIntensity / 2.4)) + stormFlashPower * 0.5;
+
+            // Fog ocean lights up radiantly under lightning flash
+            if (stormFlashPower > 0.05) {
+                hauntedPathFogPuffs.forEach(fp => {
+                    fp.mesh.material.opacity = Math.min(0.88, fp.mesh.material.opacity * (1.0 + stormFlashPower * 2.2));
+                });
             }
         }
         } catch (err) {
