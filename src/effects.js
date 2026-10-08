@@ -5433,14 +5433,105 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         drawMullions(rw.x, rw.y, rw.w, rw.h);
     });
 
-    // 3. LEFT DOWNSTAIRS WINDOWS & TOWER ATTIC WINDOW
+    // 3. LEFT DOWNSTAIRS WINDOWS, TOWER ATTIC & TOP CENTER WINDOWS WITH WALKING ZOMBIE
     const otherWindows = [
         { x: 200, y: 650, w: 48, h: 85, isGhost: false },
         { x: 260, y: 650, w: 48, h: 85, isGhost: false },
-        { x: 490, y: 390, w: 36, h: 65, isGhost: false },
-        { x: 535, y: 390, w: 36, h: 65, isGhost: false },
-        { x: 510, y: 230, w: 32, h: 55, isGhost: true } // Tower attic
+        { x: 490, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center left window
+        { x: 535, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center right window
+        { x: 510, y: 230, w: 32, h: 55, isGhost: true }  // Tower attic
     ];
+
+    // Zombie Walking Back and Forth with Hands Outstretched in Front (Every now and then)
+    function drawWalkingZombie(ctx, zx, zy, facingRight, legCycle) {
+        ctx.save();
+        ctx.translate(zx, zy);
+        if (!facingRight) {
+            ctx.scale(-1, 1);
+        }
+
+        ctx.fillStyle = '#020306';
+
+        // Shambling Leg Stride
+        const legStride = Math.sin(legCycle) * 6.5;
+        // Back leg
+        ctx.beginPath();
+        ctx.moveTo(-4, -18);
+        ctx.lineTo(-4 - legStride * 0.8, 0);
+        ctx.lineTo(-1 - legStride * 0.8, 0);
+        ctx.lineTo(-1, -18);
+        ctx.closePath();
+        ctx.fill();
+
+        // Front leg
+        ctx.beginPath();
+        ctx.moveTo(3, -18);
+        ctx.lineTo(3 + legStride, 0);
+        ctx.lineTo(6 + legStride, 0);
+        ctx.lineTo(6, -18);
+        ctx.closePath();
+        ctx.fill();
+
+        // Tattered hunched torso & jacket
+        ctx.beginPath();
+        ctx.moveTo(-7, -18);
+        ctx.lineTo(-9, -38);
+        ctx.lineTo(7, -36);
+        ctx.lineTo(5, -18);
+        ctx.closePath();
+        ctx.fill();
+
+        // Drooping head & slack jaw
+        const headBob = Math.sin(legCycle * 2) * 1.5;
+        ctx.beginPath();
+        ctx.ellipse(3, -44 + headBob, 5.5, 7.5, 0.25, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillRect(5, -39 + headBob, 4, 3.5);
+
+        // Arms Outstretched Forward in Front!
+        ctx.lineWidth = 3.2;
+        ctx.strokeStyle = '#020306';
+        ctx.lineCap = 'round';
+
+        // Upper arm 1
+        ctx.beginPath();
+        ctx.moveTo(3, -34);
+        ctx.lineTo(16, -34 + Math.sin(legCycle) * 2);
+        ctx.lineTo(21, -31); // Drooping claw wrist
+        ctx.stroke();
+
+        // Upper arm 2
+        ctx.beginPath();
+        ctx.moveTo(0, -32);
+        ctx.lineTo(14, -31 - Math.sin(legCycle) * 2);
+        ctx.lineTo(19, -28); // Drooping claw wrist
+        ctx.stroke();
+
+        ctx.restore();
+    }
+
+    // Walking zombie cycle: passes left-to-right, pauses, then right-to-left
+    const zombiePeriod = 20.0;
+    const zombieCycleTime = elapsedTime % zombiePeriod;
+    const zombieWalkDuration = 6.8;
+    let zombieActive = false;
+    let zombieX = 0;
+    let zombieFacingRight = true;
+    let zombieLegPhase = elapsedTime * 5.5;
+
+    if (zombieCycleTime < zombieWalkDuration) {
+        // Pass 1: Walking LEFT TO RIGHT across the top floor windows (460 -> 600)
+        zombieActive = true;
+        const prog = zombieCycleTime / zombieWalkDuration;
+        zombieX = 460 + prog * 140;
+        zombieFacingRight = true;
+    } else if (zombieCycleTime >= 10.0 && zombieCycleTime < 10.0 + zombieWalkDuration) {
+        // Pass 2: Walking RIGHT TO LEFT back across the windows (600 -> 460)
+        zombieActive = true;
+        const prog = (zombieCycleTime - 10.0) / zombieWalkDuration;
+        zombieX = 600 - prog * 140;
+        zombieFacingRight = false;
+    }
 
     otherWindows.forEach((ow) => {
         const oGrad = ctx.createRadialGradient(ow.x + ow.w / 2, ow.y + ow.h / 2, 2, ow.x + ow.w / 2, ow.y + ow.h / 2, Math.max(ow.w, ow.h));
@@ -5458,6 +5549,16 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         ctx.fillStyle = oGrad;
         fillArchedPath(ow.x, ow.y, ow.w, ow.h);
         ctx.fill();
+
+        // If this is one of the top center windows and the zombie is active, draw zombie clipped inside
+        if (ow.isCenterTop && zombieActive) {
+            ctx.save();
+            fillArchedPath(ow.x, ow.y, ow.w, ow.h);
+            ctx.clip();
+            drawWalkingZombie(ctx, zombieX, ow.y + ow.h - 2, zombieFacingRight, zombieLegPhase);
+            ctx.restore();
+        }
+
         drawMullions(ow.x, ow.y, ow.w, ow.h);
     });
 }
@@ -6238,78 +6339,190 @@ function createWillOTheWispTexture() {
     return tex;
 }
 
-// 6d. Spectral Wandering Apparition / Phantom Wraith Texture (512x1024)
+// 6d. Spectral Wandering Apparition / Phantom Wraith Texture (1024x1024)
 function createHauntedSpecterTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
+    canvas.width = 1024;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 512, 1024);
-    const cx = 256;
+    ctx.clearRect(0, 0, 1024, 1024);
+    const cx = 512;
 
-    // Ethereal floating spectral aura
-    const auraGrad = ctx.createRadialGradient(cx, 400, 50, cx, 500, 250);
-    auraGrad.addColorStop(0.0, 'rgba(160, 225, 255, 0.45)');
-    auraGrad.addColorStop(0.5, 'rgba(90, 175, 235, 0.20)');
-    auraGrad.addColorStop(1.0, 'rgba(40, 100, 180, 0.0)');
+    // 1. Volumetric Ethereal Halo & Atmospheric Mist (Soft multi-stop radial glow)
+    const auraGrad = ctx.createRadialGradient(cx, 440, 40, cx, 520, 420);
+    auraGrad.addColorStop(0.0, 'rgba(180, 235, 255, 0.45)');
+    auraGrad.addColorStop(0.35, 'rgba(110, 195, 245, 0.22)');
+    auraGrad.addColorStop(0.70, 'rgba(50, 140, 215, 0.08)');
+    auraGrad.addColorStop(1.0, 'rgba(20, 80, 180, 0.0)');
     ctx.fillStyle = auraGrad;
     ctx.beginPath();
-    ctx.arc(cx, 500, 250, 0, Math.PI * 2);
+    ctx.arc(cx, 520, 420, 0, Math.PI * 2);
     ctx.fill();
 
-    // Flowing Diaphanous Burial Shroud
-    ctx.fillStyle = 'rgba(205, 235, 255, 0.55)';
+    // 2. Dissolving Ethereal Tendrils (Curving smoke-like wisps trailing into mist - NO triangle!)
+    // Tendril 1 (Far left curling wisp)
+    ctx.fillStyle = 'rgba(175, 220, 255, 0.35)';
     ctx.beginPath();
-    ctx.moveTo(cx - 30, 200);
-    ctx.bezierCurveTo(cx - 110, 340, cx - 160, 550, cx - 140, 800);
-    ctx.bezierCurveTo(cx - 100, 880, cx - 80, 780, cx - 40, 850);
-    ctx.bezierCurveTo(cx - 10, 920, cx + 20, 790, cx + 50, 870);
-    ctx.bezierCurveTo(cx + 90, 940, cx + 110, 820, cx + 150, 810);
-    ctx.bezierCurveTo(cx + 170, 560, cx + 120, 350, cx + 30, 200);
+    ctx.moveTo(cx - 80, 480);
+    ctx.bezierCurveTo(cx - 180, 620, cx - 220, 780, cx - 170, 960);
+    ctx.bezierCurveTo(cx - 140, 930, cx - 110, 840, cx - 60, 720);
     ctx.closePath();
     ctx.fill();
 
-    // Inner brighter spectral core folds
-    ctx.fillStyle = 'rgba(235, 250, 255, 0.65)';
+    // Tendril 2 (Left main flowing drapery)
+    ctx.fillStyle = 'rgba(195, 235, 255, 0.48)';
     ctx.beginPath();
-    ctx.moveTo(cx - 18, 220);
-    ctx.bezierCurveTo(cx - 60, 360, cx - 80, 540, cx - 45, 750);
-    ctx.bezierCurveTo(cx, 780, cx + 10, 680, cx + 45, 760);
-    ctx.bezierCurveTo(cx + 80, 550, cx + 60, 360, cx + 18, 220);
+    ctx.moveTo(cx - 60, 440);
+    ctx.bezierCurveTo(cx - 140, 580, cx - 160, 750, cx - 90, 990);
+    ctx.bezierCurveTo(cx - 70, 920, cx - 60, 810, cx - 20, 680);
     ctx.closePath();
     ctx.fill();
 
-    // Translucent Reaching Ghostly Arms
-    ctx.strokeStyle = 'rgba(215, 240, 255, 0.45)';
-    ctx.lineWidth = 14;
+    // Tendril 3 (Center serpentine tail curving to the right)
+    ctx.fillStyle = 'rgba(220, 245, 255, 0.60)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 30, 420);
+    ctx.bezierCurveTo(cx - 20, 600, cx + 40, 780, cx + 15, 1010);
+    ctx.bezierCurveTo(cx + 35, 920, cx + 45, 780, cx + 30, 620);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tendril 4 (Right billowing train)
+    ctx.fillStyle = 'rgba(195, 235, 255, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(cx + 40, 440);
+    ctx.bezierCurveTo(cx + 120, 560, cx + 190, 720, cx + 130, 980);
+    ctx.bezierCurveTo(cx + 105, 910, cx + 95, 800, cx + 55, 680);
+    ctx.closePath();
+    ctx.fill();
+
+    // Tendril 5 (Far right trailing wisp)
+    ctx.fillStyle = 'rgba(170, 215, 255, 0.30)';
+    ctx.beginPath();
+    ctx.moveTo(cx + 65, 480);
+    ctx.bezierCurveTo(cx + 160, 600, cx + 230, 750, cx + 210, 930);
+    ctx.bezierCurveTo(cx + 175, 880, cx + 140, 780, cx + 85, 690);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Victorian Corset Bodice & Gossamer Lace Folds (Layered semi-transparent pleats)
+    ctx.fillStyle = 'rgba(230, 248, 255, 0.65)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 38, 310);
+    ctx.bezierCurveTo(cx - 55, 380, cx - 45, 470, cx - 25, 540);
+    ctx.bezierCurveTo(cx, 555, cx + 10, 555, cx + 25, 540);
+    ctx.bezierCurveTo(cx + 45, 470, cx + 55, 380, cx + 38, 310);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner glowing spine of light
+    const spineGrad = ctx.createLinearGradient(cx, 260, cx, 580);
+    spineGrad.addColorStop(0.0, 'rgba(255, 255, 255, 0.85)');
+    spineGrad.addColorStop(0.5, 'rgba(210, 245, 255, 0.70)');
+    spineGrad.addColorStop(1.0, 'rgba(140, 210, 255, 0.0)');
+    ctx.fillStyle = spineGrad;
+    ctx.beginPath();
+    ctx.ellipse(cx, 400, 14, 110, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 4. Slender Reaching Skeletal Phantom Arms & Flowing Bell Sleeves
+    // Left Bell Sleeve
+    ctx.fillStyle = 'rgba(200, 235, 255, 0.45)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 36, 330);
+    ctx.bezierCurveTo(cx - 95, 370, cx - 140, 440, cx - 165, 490);
+    ctx.bezierCurveTo(cx - 135, 480, cx - 105, 430, cx - 55, 385);
+    ctx.closePath();
+    ctx.fill();
+
+    // Left Arm & Delicate Reaching Fingers
+    ctx.strokeStyle = 'rgba(240, 252, 255, 0.75)';
+    ctx.lineWidth = 6;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.moveTo(cx - 35, 290);
-    ctx.quadraticCurveTo(cx - 120, 340, cx - 155, 390);
+    ctx.moveTo(cx - 40, 345);
+    ctx.quadraticCurveTo(cx - 110, 405, cx - 150, 455);
     ctx.stroke();
+    // Reaching skeletal fingers
+    ctx.lineWidth = 2.2;
     ctx.beginPath();
-    ctx.moveTo(cx + 35, 290);
-    ctx.quadraticCurveTo(cx + 120, 340, cx + 155, 390);
+    ctx.moveTo(cx - 150, 455); ctx.lineTo(cx - 175, 470);
+    ctx.moveTo(cx - 150, 455); ctx.lineTo(cx - 180, 460);
+    ctx.moveTo(cx - 150, 455); ctx.lineTo(cx - 175, 450);
     ctx.stroke();
 
-    // Pale Glowing Ghostly Head & Eye Sockets
-    ctx.fillStyle = 'rgba(240, 250, 255, 0.85)';
+    // Right Bell Sleeve
+    ctx.fillStyle = 'rgba(200, 235, 255, 0.45)';
     ctx.beginPath();
-    ctx.ellipse(cx, 160, 36, 48, 0, 0, Math.PI * 2);
+    ctx.moveTo(cx + 36, 330);
+    ctx.bezierCurveTo(cx + 95, 370, cx + 140, 440, cx + 165, 490);
+    ctx.bezierCurveTo(cx + 135, 480, cx + 105, 430, cx + 55, 385);
+    ctx.closePath();
     ctx.fill();
 
-    ctx.fillStyle = '#0a1422';
+    // Right Arm & Reaching Fingers
+    ctx.strokeStyle = 'rgba(240, 252, 255, 0.75)';
+    ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.ellipse(cx - 13, 155, 7, 10, -0.1, 0, Math.PI * 2);
-    ctx.ellipse(cx + 13, 155, 7, 10, 0.1, 0, Math.PI * 2);
+    ctx.moveTo(cx + 40, 345);
+    ctx.quadraticCurveTo(cx + 110, 405, cx + 150, 455);
+    ctx.stroke();
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.moveTo(cx + 150, 455); ctx.lineTo(cx + 175, 470);
+    ctx.moveTo(cx + 150, 455); ctx.lineTo(cx + 180, 460);
+    ctx.moveTo(cx + 150, 455); ctx.lineTo(cx + 175, 450);
+    ctx.stroke();
+
+    // 5. Veiled Ghostly Head & Cascading Silken Shroud
+    // Gossamer Hood & Veil
+    ctx.fillStyle = 'rgba(215, 240, 255, 0.55)';
+    ctx.beginPath();
+    ctx.moveTo(cx, 160);
+    ctx.bezierCurveTo(cx - 55, 175, cx - 75, 230, cx - 65, 310);
+    ctx.bezierCurveTo(cx - 40, 340, cx - 25, 330, cx, 325);
+    ctx.bezierCurveTo(cx + 25, 330, cx + 40, 340, cx + 65, 310);
+    ctx.bezierCurveTo(cx + 75, 230, cx + 55, 175, cx, 160);
+    ctx.closePath();
     ctx.fill();
 
-    // Glowing cyan eye embers
-    ctx.fillStyle = 'rgba(80, 255, 230, 0.95)';
+    // Ghostly Face Silhouette (Delicate jaw, cheekbones)
+    ctx.fillStyle = 'rgba(245, 252, 255, 0.90)';
     ctx.beginPath();
-    ctx.arc(cx - 13, 156, 3, 0, Math.PI * 2);
-    ctx.arc(cx + 13, 156, 3, 0, Math.PI * 2);
+    ctx.ellipse(cx, 245, 24, 34, 0, 0, Math.PI * 2);
     ctx.fill();
+
+    // Hollow, melancholic dark eye sockets
+    ctx.fillStyle = '#08121f';
+    ctx.beginPath();
+    ctx.ellipse(cx - 9, 240, 5, 8, -0.1, 0, Math.PI * 2);
+    ctx.ellipse(cx + 9, 240, 5, 8, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Parted ethereal lips
+    ctx.beginPath();
+    ctx.ellipse(cx, 264, 4, 2.5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Piercing cyan pinpoint eye embers
+    ctx.fillStyle = 'rgba(90, 255, 235, 0.98)';
+    ctx.shadowColor = '#00ffff';
+    ctx.shadowBlur = 8;
+    ctx.beginPath();
+    ctx.arc(cx - 9, 241, 2.2, 0, Math.PI * 2);
+    ctx.arc(cx + 9, 241, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.shadowBlur = 0;
+
+    // Strands of silken ethereal hair drifting in the wind
+    ctx.strokeStyle = 'rgba(225, 245, 255, 0.40)';
+    ctx.lineWidth = 1.8;
+    for (let h = -25; h <= 25; h += 8) {
+        ctx.beginPath();
+        ctx.moveTo(cx + h, 210);
+        ctx.bezierCurveTo(cx + h * 1.5, 280, cx + h * 2.2 + 20, 360, cx + h * 2.5 + 35, 440);
+        ctx.stroke();
+    }
 
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
@@ -6419,43 +6632,86 @@ function createHauntedPumpkinTexture() {
     ctx.clearRect(0, 0, 512, 512);
     const cx = 256, cy = 290;
 
-    // Ground shadow
-    ctx.fillStyle = '#020306';
+    // 1. Cobblestone Contact Shadow & Ambient Occlusion (Dark soft contact shadow)
+    const shadowGrad = ctx.createRadialGradient(cx, cy + 135, 20, cx, cy + 135, 180);
+    shadowGrad.addColorStop(0.0, 'rgba(2, 3, 6, 0.95)');
+    shadowGrad.addColorStop(0.6, 'rgba(4, 6, 12, 0.60)');
+    shadowGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = shadowGrad;
     ctx.beginPath();
-    ctx.ellipse(cx, cy + 130, 175, 32, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx, cy + 135, 180, 36, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Green stem
-    ctx.fillStyle = '#22381e';
+    // 2. Gnarled Twisted Green Pumpkin Stem with Fibrous Ridges
+    ctx.fillStyle = '#1e3318';
     ctx.beginPath();
-    ctx.moveTo(cx - 16, cy - 130);
-    ctx.bezierCurveTo(cx - 30, cy - 190, cx - 10, cy - 230, cx + 25, cy - 240);
-    ctx.bezierCurveTo(cx + 35, cy - 235, cx + 15, cy - 190, cx + 14, cy - 130);
+    ctx.moveTo(cx - 18, cy - 128);
+    ctx.bezierCurveTo(cx - 32, cy - 190, cx - 12, cy - 235, cx + 24, cy - 245);
+    ctx.bezierCurveTo(cx + 36, cy - 240, cx + 18, cy - 190, cx + 16, cy - 128);
     ctx.closePath();
     ctx.fill();
+    // Stem bark highlight
+    ctx.strokeStyle = '#325428';
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(cx - 10, cy - 130);
+    ctx.quadraticCurveTo(cx - 18, cy - 195, cx + 20, cy - 240);
+    ctx.stroke();
 
-    // Ribbed pumpkin lobes
+    // 3. 3D Chiaroscuro Pumpkin Lobes (Deep shadow crevice + rich midtone + moonlit specular rim)
     const lobes = [
-        { x: cx - 110, rx: 72, ry: 130, col: '#bf4b08', shade: '#8a3203' },
-        { x: cx + 110, rx: 72, ry: 130, col: '#bf4b08', shade: '#8a3203' },
-        { x: cx - 60, rx: 82, ry: 140, col: '#d95a0a', shade: '#9e3c04' },
-        { x: cx + 60, rx: 82, ry: 140, col: '#d95a0a', shade: '#9e3c04' },
-        { x: cx, rx: 90, ry: 145, col: '#f26d10', shade: '#b84806' }
+        { x: cx - 115, rx: 70, ry: 130, col: '#bf4505', mid: '#8a2d02', dark: '#3a1000' },
+        { x: cx + 115, rx: 70, ry: 130, col: '#bf4505', mid: '#8a2d02', dark: '#3a1000' },
+        { x: cx - 62, rx: 80, ry: 142, col: '#d95308', mid: '#9e3503', dark: '#441401' },
+        { x: cx + 62, rx: 80, ry: 142, col: '#d95308', mid: '#9e3503', dark: '#441401' },
+        { x: cx, rx: 90, ry: 148, col: '#f76a0d', mid: '#bd4505', dark: '#4d1601' }
     ];
 
     lobes.forEach(l => {
-        const lGrad = ctx.createRadialGradient(l.x - 20, cy - 40, 15, l.x, cy, l.ry);
+        // Deep shading gradient from top-left light to bottom shadow
+        const lGrad = ctx.createRadialGradient(l.x - 25, cy - 45, 12, l.x, cy + 20, l.ry);
         lGrad.addColorStop(0.0, l.col);
-        lGrad.addColorStop(0.85, l.shade);
-        lGrad.addColorStop(1.0, '#591f02');
+        lGrad.addColorStop(0.65, l.mid);
+        lGrad.addColorStop(0.92, l.dark);
+        lGrad.addColorStop(1.0, '#1a0600');
         ctx.fillStyle = lGrad;
         ctx.beginPath();
         ctx.ellipse(l.x, cy, l.rx, l.ry, 0, 0, Math.PI * 2);
         ctx.fill();
+
+        // Moonlit Silver-Slate Rim Highlight along upper curved edge
+        ctx.strokeStyle = 'rgba(170, 205, 235, 0.28)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(l.x, cy - 10, l.rx * 0.92, l.ry * 0.88, 0, Math.PI * 1.15, Math.PI * 1.85);
+        ctx.stroke();
     });
 
-    // Jagged Carved Jack-O'-Lantern Face
-    ctx.fillStyle = '#040201';
+    // 4. Carved Flesh Bevel Edges (Thick yellow-orange pumpkin meat revealed inside the cuts)
+    ctx.fillStyle = '#ffaa30';
+    // Left eye bevel
+    ctx.beginPath();
+    ctx.moveTo(cx - 78, cy - 68); ctx.lineTo(cx - 23, cy - 47); ctx.lineTo(cx - 67, cy - 13); ctx.closePath(); ctx.fill();
+    // Right eye bevel
+    ctx.beginPath();
+    ctx.moveTo(cx + 78, cy - 68); ctx.lineTo(cx + 23, cy - 47); ctx.lineTo(cx + 67, cy - 13); ctx.closePath(); ctx.fill();
+    // Nose bevel
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 27); ctx.lineTo(cx - 20, cy + 6); ctx.lineTo(cx + 20, cy + 6); ctx.closePath(); ctx.fill();
+    // Mouth bevel
+    ctx.beginPath();
+    ctx.moveTo(cx - 108, cy + 23);
+    ctx.lineTo(cx - 72, cy + 63); ctx.lineTo(cx - 50, cy + 38);
+    ctx.lineTo(cx - 20, cy + 71); ctx.lineTo(cx, cy + 40);
+    ctx.lineTo(cx + 20, cy + 71); ctx.lineTo(cx + 50, cy + 38);
+    ctx.lineTo(cx + 72, cy + 63); ctx.lineTo(cx + 108, cy + 23);
+    ctx.lineTo(cx + 82, cy + 88); ctx.lineTo(cx + 45, cy + 63); ctx.lineTo(cx + 25, cy + 91);
+    ctx.lineTo(cx - 25, cy + 91); ctx.lineTo(cx - 45, cy + 63); ctx.lineTo(cx - 82, cy + 88);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Dark Hollow Interior Cavity
+    ctx.fillStyle = '#060200';
     ctx.beginPath();
     ctx.moveTo(cx - 75, cy - 65); ctx.lineTo(cx - 25, cy - 45); ctx.lineTo(cx - 65, cy - 15); ctx.closePath(); ctx.fill();
     ctx.beginPath();
@@ -6473,16 +6729,24 @@ function createHauntedPumpkinTexture() {
     ctx.closePath();
     ctx.fill();
 
-    // Hot Flaming Candle Glow inside Carvings
-    ctx.fillStyle = 'rgba(255, 205, 75, 0.95)';
+    // 6. Blazing Hot Candle / Fire Coals Glow Inside
+    const fireGrad = ctx.createRadialGradient(cx, cy + 55, 6, cx, cy + 55, 75);
+    fireGrad.addColorStop(0.0, 'rgba(255, 255, 220, 1.0)');
+    fireGrad.addColorStop(0.3, 'rgba(255, 205, 60, 0.95)');
+    fireGrad.addColorStop(0.7, 'rgba(255, 95, 10, 0.75)');
+    fireGrad.addColorStop(1.0, 'rgba(180, 20, 0, 0.0)');
+    ctx.fillStyle = fireGrad;
+    // Glow through eye cutouts
     ctx.beginPath();
     ctx.moveTo(cx - 70, cy - 60); ctx.lineTo(cx - 30, cy - 45); ctx.lineTo(cx - 60, cy - 20); ctx.closePath(); ctx.fill();
     ctx.beginPath();
     ctx.moveTo(cx + 70, cy - 60); ctx.lineTo(cx + 30, cy - 45); ctx.lineTo(cx + 60, cy - 20); ctx.closePath(); ctx.fill();
+    // Nose glow
     ctx.beginPath();
     ctx.moveTo(cx, cy - 20); ctx.lineTo(cx - 14, cy + 3); ctx.lineTo(cx + 14, cy + 3); ctx.closePath(); ctx.fill();
+    // Mouth fire
     ctx.beginPath();
-    ctx.arc(cx, cy + 55, 38, 0, Math.PI * 2);
+    ctx.arc(cx, cy + 55, 42, 0, Math.PI * 2);
     ctx.fill();
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -6528,23 +6792,36 @@ function createHauntedGnarledTreeTexture() {
     drawBranch(cx + 40, 530, cx + 150, 460, cx + 230, 340, 26);
     drawBranch(cx + 230, 340, cx + 270, 270, cx + 250, 180, 16);
     drawBranch(cx + 230, 340, cx + 190, 260, cx + 160, 170, 14);
-    drawBranch(cx + 25, 390, cx + 110, 310, cx + 180, 230, 20);
+    drawBranch(cx + 30, 400, cx + 110, 320, cx + 180, 240, 20);
 
-    drawBranch(cx, 220, cx - 70, 140, cx - 110, 60, 18);
+    drawBranch(cx, 280, cx - 60, 180, cx - 80, 80, 20);
     drawBranch(cx, 220, cx + 70, 130, cx + 100, 50, 18);
     drawBranch(cx, 180, cx + 15, 90, cx + 30, 20, 14);
 
-    // Dark Knots & Hollow Eye Cavities
-    ctx.fillStyle = '#020306';
-    ctx.beginPath(); ctx.ellipse(cx - 15, 620, 22, 35, 0.1, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx + 12, 480, 18, 28, -0.15, 0, Math.PI * 2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(cx - 8, 350, 14, 22, 0.05, 0, Math.PI * 2); ctx.fill();
+    // Deep Dark Hollow Knots & Natural Bark Rim Cavities
+    function drawKnot(kx, ky, kw, kh) {
+        // Dark interior void
+        ctx.fillStyle = '#010204';
+        ctx.beginPath();
+        ctx.ellipse(kx, ky, kw, kh, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Gnarled weathered bark ring
+        ctx.strokeStyle = '#0e1520';
+        ctx.lineWidth = 3.2;
+        ctx.beginPath();
+        ctx.ellipse(kx, ky, kw + 2, kh + 3, 0, 0, Math.PI * 2);
+        ctx.stroke();
+    }
+
+    drawKnot(cx - 15, 620, 18, 28); // Lower trunk knot
+    drawKnot(cx + 14, 480, 15, 24); // Mid trunk knot
+    drawKnot(cx - 10, 350, 12, 18); // Upper trunk knot
 
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
 }
 
-// 6h. Predatory Glowing Creature Eyes Sprite Texture (256x128)
+// 6h. Predatory Glowing Creature Eyes Sprite Texture (Subtle & Delicate)
 function createHauntedEyesTexture(isRed = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -6553,38 +6830,49 @@ function createHauntedEyesTexture(isRed = false) {
     ctx.clearRect(0, 0, 256, 128);
 
     function drawEye(cx, cy) {
-        const auraGrad = ctx.createRadialGradient(cx, cy, 4, cx, cy, 38);
+        // Delicate soft aura
+        const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 24);
         if (isRed) {
-            auraGrad.addColorStop(0.0, 'rgba(255, 60, 60, 0.95)');
-            auraGrad.addColorStop(0.5, 'rgba(220, 20, 20, 0.50)');
-            auraGrad.addColorStop(1.0, 'rgba(150, 0, 0, 0.0)');
+            auraGrad.addColorStop(0.0, 'rgba(255, 60, 60, 0.85)');
+            auraGrad.addColorStop(0.4, 'rgba(200, 20, 20, 0.35)');
+            auraGrad.addColorStop(1.0, 'rgba(120, 0, 0, 0.0)');
         } else {
-            auraGrad.addColorStop(0.0, 'rgba(255, 235, 80, 0.95)');
-            auraGrad.addColorStop(0.5, 'rgba(255, 170, 20, 0.50)');
-            auraGrad.addColorStop(1.0, 'rgba(180, 100, 0, 0.0)');
+            auraGrad.addColorStop(0.0, 'rgba(255, 225, 70, 0.85)');
+            auraGrad.addColorStop(0.4, 'rgba(240, 160, 15, 0.35)');
+            auraGrad.addColorStop(1.0, 'rgba(140, 80, 0, 0.0)');
         }
         ctx.fillStyle = auraGrad;
         ctx.beginPath();
-        ctx.arc(cx, cy, 38, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 24, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = isRed ? '#ff2222' : '#ffdd33';
+        // Almond shaped eye contour
+        ctx.fillStyle = isRed ? '#ff3b3b' : '#ffda3b';
         ctx.beginPath();
-        ctx.ellipse(cx, cy, 22, 14, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, 14, 7, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.fillStyle = '#050202';
+        // Dark predatory slit pupil
+        ctx.fillStyle = '#060305';
         ctx.beginPath();
-        ctx.ellipse(cx, cy, 4, 13, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, 2.5, 6.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pinpoint glistening highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx - 3, cy - 2, 1.2, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    drawEye(74, 64);
-    drawEye(182, 64);
+    drawEye(84, 64);
+    drawEye(172, 64);
 
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
 }
+
+
 function createHauntedBatBodyTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 128;
@@ -11579,28 +11867,28 @@ export function createVFXScene(container) {
     hauntedSpecterGroup.add(hauntedSpecterMesh);
     gHauntedManor.add(hauntedSpecterGroup);
 
-    // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking driveway entry)
+    // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking Front of Manor Entrance)
     const hauntedGargoylesGroup = new THREE.Group();
-    const hauntedGargoyleGeo = new THREE.PlaneGeometry(2.8, 2.8);
+    const hauntedGargoyleGeo = new THREE.PlaneGeometry(2.6, 2.6);
     const hauntedGargoyleMat = new THREE.MeshBasicMaterial({
         map: hauntedGargoyleTex,
         transparent: true,
         depthWrite: false
     });
 
-    // Left Gargoyle
+    // Left Gargoyle perched on left staircase pedestal in front of manor
     const hauntedGargoyleLeft = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
-    hauntedGargoyleLeft.position.set(-5.4, -3.4, -3.8);
+    hauntedGargoyleLeft.position.set(-1.2, -3.2, -9.4);
     hauntedGargoylesGroup.add(hauntedGargoyleLeft);
 
-    // Right Gargoyle (Mirrored facing inward toward the driveway)
+    // Right Gargoyle perched on right staircase pedestal in front of manor (Mirrored facing inward)
     const hauntedGargoyleRight = new THREE.Mesh(hauntedGargoyleGeo, hauntedGargoyleMat);
-    hauntedGargoyleRight.position.set(5.6, -3.4, -3.8);
+    hauntedGargoyleRight.position.set(5.3, -3.2, -9.4);
     hauntedGargoyleRight.scale.x = -1.0;
     hauntedGargoylesGroup.add(hauntedGargoyleRight);
 
     // Cursed Glowing Eyes Sprites for Gargoyles
-    const cursedEyeGeo = new THREE.PlaneGeometry(0.7, 0.35);
+    const cursedEyeGeo = new THREE.PlaneGeometry(0.55, 0.28);
     const cursedEyeMat = new THREE.MeshBasicMaterial({
         map: hauntedRedEyesTex,
         transparent: true,
@@ -11609,11 +11897,11 @@ export function createVFXScene(container) {
         opacity: 0.85
     });
     const hauntedGargoyleEyeLeft = new THREE.Mesh(cursedEyeGeo, cursedEyeMat);
-    hauntedGargoyleEyeLeft.position.set(-5.4, -3.15, -3.75);
+    hauntedGargoyleEyeLeft.position.set(-1.2, -2.95, -9.35);
     hauntedGargoylesGroup.add(hauntedGargoyleEyeLeft);
 
     const hauntedGargoyleEyeRight = new THREE.Mesh(cursedEyeGeo, cursedEyeMat.clone());
-    hauntedGargoyleEyeRight.position.set(5.6, -3.15, -3.75);
+    hauntedGargoyleEyeRight.position.set(5.3, -2.95, -9.35);
     hauntedGargoylesGroup.add(hauntedGargoyleEyeRight);
 
     gHauntedManor.add(hauntedGargoylesGroup);
@@ -11628,12 +11916,12 @@ export function createVFXScene(container) {
     });
 
     const pumpkinConfigs = [
-        { x: -2.6, y: -4.85, z: -1.8, scale: 1.25, rotZ: 0.04 },
-        { x: -3.6, y: -4.95, z: -3.6, scale: 1.15, rotZ: -0.06 },
-        { x: -2.8, y: -5.05, z: -5.6, scale: 1.05, rotZ: 0.05 },
-        { x: 2.7, y: -4.85, z: -2.0, scale: 1.20, rotZ: -0.05 },
-        { x: 3.8, y: -4.95, z: -3.8, scale: 1.10, rotZ: 0.06 },
-        { x: 3.1, y: -5.05, z: -5.8, scale: 1.00, rotZ: -0.04 }
+        { x: -3.2, y: -4.60, z: -1.4, scale: 1.25, rotZ: 0.04 }, // Left curb by gates
+        { x: 3.1, y: -4.60, z: -1.6, scale: 1.20, rotZ: -0.05 }, // Right curb by gates
+        { x: -4.0, y: -4.85, z: -3.6, scale: 1.15, rotZ: -0.06 }, // Mid-curve left curb
+        { x: 1.8, y: -4.85, z: -3.8, scale: 1.10, rotZ: 0.06 },  // Mid-curve right curb
+        { x: -1.8, y: -5.00, z: -6.2, scale: 1.05, rotZ: 0.05 }, // Approach left curb
+        { x: 4.5, y: -5.00, z: -6.4, scale: 1.00, rotZ: -0.04 }  // Approach right curb
     ];
 
     const hauntedPumpkinMeshes = pumpkinConfigs.map((cfg) => {
@@ -11647,11 +11935,11 @@ export function createVFXScene(container) {
 
     // Warm pumpkin lantern candlelight casting dynamic reflections onto the wet cobblestones
     const hauntedPumpkinLeftLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
-    hauntedPumpkinLeftLight.position.set(-3.2, -4.5, -3.6);
+    hauntedPumpkinLeftLight.position.set(-3.2, -4.4, -3.0);
     hauntedPumpkinsGroup.add(hauntedPumpkinLeftLight);
 
     const hauntedPumpkinRightLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
-    hauntedPumpkinRightLight.position.set(3.4, -4.5, -3.8);
+    hauntedPumpkinRightLight.position.set(3.0, -4.4, -3.2);
     hauntedPumpkinsGroup.add(hauntedPumpkinRightLight);
 
     gHauntedManor.add(hauntedPumpkinsGroup);
@@ -11676,30 +11964,30 @@ export function createVFXScene(container) {
     hauntedGnarledTreeRight.scale.x = -1.0;
     hauntedGnarledTreesGroup.add(hauntedGnarledTreeRight);
 
-    // Watching Eyes in Tree Hollows (3 pairs on left, 3 pairs on right)
-    const treeEyeGeo = new THREE.PlaneGeometry(0.85, 0.42);
+    // Watching Eyes in Tree Hollows (Aligned accurately inside trunk knot cavities, subtle & small)
+    const treeEyeGeo = new THREE.PlaneGeometry(0.38, 0.18);
     const treeEyeRedMat = new THREE.MeshBasicMaterial({
         map: hauntedRedEyesTex,
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        opacity: 0.90
+        opacity: 0.35
     });
     const treeEyeYellowMat = new THREE.MeshBasicMaterial({
         map: hauntedYellowEyesTex,
         transparent: true,
         blending: THREE.AdditiveBlending,
         depthWrite: false,
-        opacity: 0.90
+        opacity: 0.35
     });
 
     const treeEyePositions = [
-        { x: -14.3, y: -2.8, z: -6.4, isRed: false },
-        { x: -13.9, y: -0.6, z: -6.4, isRed: true },
-        { x: -14.6, y: 1.4, z: -6.4, isRed: false },
-        { x: 14.3, y: -2.8, z: -6.4, isRed: true },
-        { x: 13.9, y: -0.6, z: -6.4, isRed: false },
-        { x: 14.6, y: 1.4, z: -6.4, isRed: true }
+        { x: -14.42, y: -2.78, z: -6.45, isRed: false }, // Left tree lower trunk knot
+        { x: -14.02, y: -0.73, z: -6.45, isRed: true },  // Left tree mid trunk knot
+        { x: -14.35, y: 1.17, z: -6.45, isRed: false },  // Left tree upper trunk crook
+        { x: 14.42, y: -2.78, z: -6.45, isRed: true },   // Right tree lower trunk knot
+        { x: 14.02, y: -0.73, z: -6.45, isRed: false },  // Right tree mid trunk knot
+        { x: 14.35, y: 1.17, z: -6.45, isRed: true }    // Right tree upper trunk crook
     ];
 
     const hauntedTreeEyeMeshes = treeEyePositions.map(pos => {
@@ -12202,12 +12490,12 @@ export function createVFXScene(container) {
     hauntedForkedLightningMesh.position.set(2.0, 6.0, -15.4);
     gHauntedManor.add(hauntedForkedLightningMesh);
 
-    // Dynamic Weather State Machine: 'calm' -> 'gathering' -> 'storm' -> 'clearing'
-    let hauntedWeatherState = 'calm';
+    // Dynamic Weather State Machine: 'rain' -> 'gathering' -> 'storm' -> 'clearing' -> 'rain'
+    let hauntedWeatherState = 'rain';
     let hauntedWeatherTimer = 0.0;
-    let hauntedWeatherPhaseDuration = 20.0; // Calm for 20s
-    let hauntedRainAlpha = 0.0;
-    let hauntedCloudsAlpha = 0.0;
+    let hauntedWeatherPhaseDuration = 18.0; // Steady gothic rain for 18s
+    let hauntedRainAlpha = 0.55; // Always immediately active and visible!
+    let hauntedCloudsAlpha = 0.45; // Brooding storm clouds immediately visible!
     let hauntedForkedLightningTimer = 0.0;
     let hauntedNextStormLightningTime = 0.0;
 
@@ -14729,21 +15017,21 @@ export function createVFXScene(container) {
 
             // 5. ⛈️ Dynamic Weather & Storm System (Brooding clouds at top, driving rain, procedural forked lightning bolt)
             hauntedWeatherTimer += delta;
-            if (hauntedWeatherState === 'calm') {
-                // Calm, eerie moonlit night
-                hauntedCloudsAlpha = Math.max(0.0, hauntedCloudsAlpha - delta * 0.35);
-                hauntedRainAlpha = Math.max(0.0, hauntedRainAlpha - delta * 0.6);
+            if (hauntedWeatherState === 'rain' || hauntedWeatherState === 'calm') {
+                // Steady gothic downpour & atmospheric rain across the estate grounds
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(hauntedCloudsAlpha, 0.45, delta * 0.4);
+                hauntedRainAlpha = THREE.MathUtils.lerp(hauntedRainAlpha, 0.52, delta * 0.4); // Always visible!
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'gathering';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 9.0; // 9s for dark clouds to gather across top of screen
+                    hauntedWeatherPhaseDuration = 9.0;
                 }
             } else if (hauntedWeatherState === 'gathering') {
-                // Bad weather coming: dark brooding clouds float into upper sky
+                // Dark brooding storm clouds gather heavily into upper sky
                 const gatherProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
-                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.0, 0.94, gatherProg);
-                hauntedRainAlpha = (gatherProg > 0.55) ? THREE.MathUtils.lerp(0.0, 0.35, (gatherProg - 0.55) / 0.45) : 0.0;
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.45, 0.95, gatherProg);
+                hauntedRainAlpha = THREE.MathUtils.lerp(0.52, 0.75, gatherProg);
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'storm';
@@ -14752,9 +15040,9 @@ export function createVFXScene(container) {
                     hauntedNextStormLightningTime = 2.2 + Math.random() * 3.0;
                 }
             } else if (hauntedWeatherState === 'storm') {
-                // Active storm: brooding clouds heavy at top, driving rain sweeping across screen
-                hauntedCloudsAlpha = 0.95;
-                hauntedRainAlpha = Math.min(0.78, hauntedRainAlpha + delta * 0.4);
+                // Active violent storm: driving sheets of rain sweeping across screen
+                hauntedCloudsAlpha = 0.98;
+                hauntedRainAlpha = Math.min(0.92, hauntedRainAlpha + delta * 0.4);
 
                 // Random forked lightning strikes during the storm
                 if (hauntedWeatherTimer >= hauntedNextStormLightningTime && hauntedForkedLightningTimer <= 0.0) {
@@ -14769,25 +15057,25 @@ export function createVFXScene(container) {
                     hauntedForkedLightningMesh.position.set(boltSkyX, 5.2, -15.4);
                     hauntedForkedLightningMesh.scale.set(Math.random() > 0.5 ? 1.0 : -1.0, 1.0, 1.0);
 
-                    hauntedForkedLightningTimer = 0.42; // 420ms lightning flash
-                    hauntedNextStormLightningTime = hauntedWeatherTimer + 4.5 + Math.random() * 6.0; // Next bolt
+                    hauntedForkedLightningTimer = 0.42;
+                    hauntedNextStormLightningTime = hauntedWeatherTimer + 4.5 + Math.random() * 6.0;
                 }
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'clearing';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 8.0; // 8s for storm to clear
+                    hauntedWeatherPhaseDuration = 8.0;
                 }
             } else if (hauntedWeatherState === 'clearing') {
-                // Storm clears: rain stops, clouds roll away, full moon returns
+                // Storm eases back into steady moody rain
                 const clearProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
-                hauntedRainAlpha = THREE.MathUtils.lerp(0.78, 0.0, clearProg);
-                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.95, 0.0, clearProg);
+                hauntedRainAlpha = THREE.MathUtils.lerp(0.92, 0.52, clearProg);
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.98, 0.45, clearProg);
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
-                    hauntedWeatherState = 'calm';
+                    hauntedWeatherState = 'rain';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 32.0 + Math.random() * 18.0; // Calm for 32s - 50s
+                    hauntedWeatherPhaseDuration = 24.0 + Math.random() * 12.0;
                 }
             }
 
@@ -14925,19 +15213,28 @@ export function createVFXScene(container) {
             // Dynamic Audio Animation for 5 Middle Ground Elements
             // =========================================================================
 
-            // 1. Haunted Graveyard & Floating Will-o'-the-Wisps (Spirit Orbs)
-            const wispBassFlare = Math.min(2.0, 1.0 + bassPop * 1.6 + bassImpact * 0.8);
+            // 1. Haunted Graveyard & Floating Will-o'-the-Wisps (Spirit Orbs) - Wide 3D Lissajous Orbits
+            const wispBassFlare = Math.min(2.4, 1.0 + bassPop * 1.8 + bassImpact * 1.2);
             hauntedWispMeshes.forEach((wm, i) => {
                 const wd = hauntedWispData[i];
-                const wTime = elapsedTime * wd.speedX + wd.phase;
-                const floatX = wd.bx + Math.sin(wTime) * 0.65;
-                const floatY = wd.by + Math.sin(elapsedTime * wd.speedY + wd.phase) * 0.50 + (bassPop * 0.45);
-                const floatZ = wd.bz + Math.cos(wTime * 0.8) * 0.35;
+                const t = elapsedTime * wd.speedX + wd.phase;
+                // Wide, dynamic 3D Lissajous flight path looping above the graveyard and lawn
+                const floatX = wd.bx + Math.sin(t * 1.4) * 3.6 + Math.cos(t * 0.7) * 1.5;
+                const floatY = wd.by + Math.sin(elapsedTime * wd.speedY + wd.phase) * 1.8 + (bassPop * 0.9);
+                const floatZ = wd.bz + Math.cos(t * 1.1) * 2.2;
                 wm.position.set(floatX, floatY, floatZ);
-                wm.scale.setScalar(wispBassFlare * (0.85 + Math.sin(elapsedTime * 3.5 + i) * 0.15));
-                wm.material.opacity = Math.min(1.0, 0.65 + bassPop * 0.45);
+                wm.scale.setScalar(wispBassFlare * (0.92 + Math.sin(elapsedTime * 5.0 + i * 1.4) * 0.22));
+                wm.material.opacity = Math.min(1.0, 0.65 + bassPop * 0.40);
             });
-            hauntedWispLight.intensity = (1.2 + bassPop * 2.8 + bassImpact * 1.5) * (0.8 + Math.sin(elapsedTime * 4.0) * 0.2);
+            hauntedWispLight.intensity = (1.4 + bassPop * 3.2 + bassImpact * 1.8) * (0.85 + Math.sin(elapsedTime * 4.5) * 0.15);
+            // Move tracking point light with central flying spirit orb
+            if (hauntedWispMeshes[2]) {
+                hauntedWispLight.position.set(
+                    hauntedWispMeshes[2].position.x,
+                    hauntedWispMeshes[2].position.y,
+                    hauntedWispMeshes[2].position.z
+                );
+            }
 
             // 2. Spectral Wandering Apparition / Phantom Wraith
             const specterDriftX = 9.2 + Math.sin(elapsedTime * 0.35) * 2.4;
@@ -14949,33 +15246,38 @@ export function createVFXScene(container) {
             const specterAlpha = Math.min(0.95, 0.28 + (audio.overall || 0) * 0.55 + audioMidSurge * 0.45 + transient * 0.35);
             hauntedSpecterMat.opacity = specterAlpha;
 
-            // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes
+            // 3. Gothic Watcher Gargoyles with Glowing Cursed Eyes (Flanking Front of Manor)
             const gargoyleEyeSurge = Math.min(2.5, 0.65 + bassPop * 1.5 + transient * 1.2);
             hauntedGargoyleEyeLeft.scale.setScalar(gargoyleEyeSurge);
             hauntedGargoyleEyeRight.scale.setScalar(gargoyleEyeSurge);
             cursedEyeMat.opacity = Math.min(1.0, 0.70 + bassPop * 0.35);
 
-            // 4. Jack-O'-Lantern Pathway Guardians
-            const pumpkinFlicker = 1.0 + Math.sin(elapsedTime * 22.0) * 0.22 + Math.cos(elapsedTime * 43.0) * 0.15;
-            const pumpkinBassGlow = Math.min(2.8, pumpkinFlicker + bassPop * 2.2 + bassImpact * 1.2);
-            hauntedPumpkinLeftLight.intensity = 1.2 * pumpkinBassGlow;
-            hauntedPumpkinRightLight.intensity = 1.2 * pumpkinBassGlow;
+            // 4. Jack-O'-Lantern Pathway Guardians (Flickering Candle Flame & Kick Audio Reactive Surge)
+            const pumpkinFlicker = 1.0 + Math.sin(elapsedTime * 24.0) * 0.22 + Math.cos(elapsedTime * 48.0) * 0.16;
+            const pumpkinBassGlow = Math.min(3.4, pumpkinFlicker + bassPop * 2.8 + bassImpact * 1.6);
+            hauntedPumpkinLeftLight.intensity = 1.4 * pumpkinBassGlow;
+            hauntedPumpkinRightLight.intensity = 1.4 * pumpkinBassGlow;
+            const pumpkinJitter = (audio.isOnset && bassImpact > 0.35) ? Math.sin(elapsedTime * 50.0) * 0.03 : 0.0;
             hauntedPumpkinMeshes.forEach((pm, i) => {
-                pm.scale.setScalar(pumpkinConfigs[i].scale * (1.0 + bassPop * 0.12));
+                pm.scale.setScalar(pumpkinConfigs[i].scale * (1.0 + bassPop * 0.14));
+                pm.position.y = pumpkinConfigs[i].y + pumpkinJitter;
             });
 
-            // 5. Possessed Gnarled Trees with Watching Eyes
-            const treeBassSway = Math.sin(elapsedTime * 0.8) * 0.02 + (bassPop * 0.03);
+            // 5. Possessed Gnarled Trees with Watching Eyes (Subtle & Breathing Glow in Knot Hollows)
+            const treeBassSway = Math.sin(elapsedTime * 0.8) * 0.015 + (bassPop * 0.02);
             hauntedGnarledTreeLeft.rotation.z = treeBassSway;
             hauntedGnarledTreeRight.rotation.z = -treeBassSway;
 
             const treblePulse = audio.smoothedTreble || 0;
-            const blinkCycle = Math.sin(elapsedTime * 1.8);
-            const isBlinking = blinkCycle > 0.94;
-            const eyeOpenScale = isBlinking ? 0.05 : Math.min(1.8, 0.85 + treblePulse * 1.4 + transient * 0.6);
-            hauntedTreeEyeMeshes.forEach((tem) => {
+            const blinkCycle = Math.sin(elapsedTime * 1.6);
+            const isBlinking = blinkCycle > 0.95;
+            const eyeOpenScale = isBlinking ? 0.05 : Math.min(1.4, 0.85 + treblePulse * 0.8);
+            // Subtle, breathing organic glow (rests gently, blinks organically)
+            const eyeGlow = 0.26 + Math.sin(elapsedTime * 2.2) * 0.08 + (treblePulse * 0.32) + (transient * 0.18);
+            hauntedTreeEyeMeshes.forEach((tem, idx) => {
                 tem.scale.y = eyeOpenScale;
-                tem.scale.x = isBlinking ? 0.5 : (1.0 + treblePulse * 0.4);
+                tem.scale.x = isBlinking ? 0.5 : 1.0;
+                tem.material.opacity = isBlinking ? 0.0 : Math.min(0.65, eyeGlow + (idx % 2 === 0 ? 0.04 : -0.04));
             });
         }
         } catch (err) {
