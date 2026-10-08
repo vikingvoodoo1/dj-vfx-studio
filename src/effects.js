@@ -4381,42 +4381,131 @@ function createHauntedSkyCloudsTexture() {
     return tex;
 }
 
-// Procedural Brooding Storm Clouds Texture (1024x512) for Dynamic Bad Weather
+// Procedural Brooding Storm Clouds Texture (2048x1024) - Realistic Volumetric Shading & Organic Edges
 function createBroodingStormCloudsTexture() {
     const canvas = document.createElement('canvas');
-    canvas.width = 1024;
-    canvas.height = 512;
+    canvas.width = 2048;
+    canvas.height = 1024;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 1024, 512);
+    ctx.clearRect(0, 0, 2048, 1024);
 
-    // Dark, brooding cumulus & stratocumulus storm billows floating across top of sky
-    const stormClouds = [
-        { x: 140, y: 150, r: 210, col: 'rgba(8, 12, 22, 0.94)', under: 'rgba(3, 5, 10, 0.98)', rim: 'rgba(32, 45, 72, 0.65)' },
-        { x: 320, y: 120, r: 250, col: 'rgba(6, 10, 18, 0.96)', under: 'rgba(2, 4, 8, 0.98)', rim: 'rgba(38, 52, 80, 0.70)' },
-        { x: 520, y: 160, r: 270, col: 'rgba(9, 14, 25, 0.94)', under: 'rgba(4, 6, 12, 0.98)', rim: 'rgba(35, 48, 76, 0.68)' },
-        { x: 740, y: 130, r: 255, col: 'rgba(7, 11, 20, 0.95)', under: 'rgba(3, 5, 9, 0.98)', rim: 'rgba(40, 55, 85, 0.72)' },
-        { x: 920, y: 170, r: 230, col: 'rgba(8, 13, 24, 0.93)', under: 'rgba(3, 5, 10, 0.98)', rim: 'rgba(30, 42, 70, 0.65)' },
-        { x: 240, y: 260, r: 220, col: 'rgba(5, 8, 15, 0.96)', under: 'rgba(2, 3, 7, 0.99)', rim: 'rgba(24, 34, 56, 0.55)' },
-        { x: 440, y: 290, r: 240, col: 'rgba(6, 9, 16, 0.96)', under: 'rgba(2, 4, 8, 0.99)', rim: 'rgba(26, 38, 62, 0.58)' },
-        { x: 660, y: 280, r: 250, col: 'rgba(5, 8, 14, 0.96)', under: 'rgba(2, 3, 7, 0.99)', rim: 'rgba(25, 36, 60, 0.56)' },
-        { x: 860, y: 250, r: 215, col: 'rgba(7, 10, 18, 0.95)', under: 'rgba(3, 5, 9, 0.99)', rim: 'rgba(28, 40, 65, 0.55)' }
+    // 1. Soft Atmospheric Storm Sky Wash (smooth gradient from deep navy thunderhead down to misty haze)
+    const baseGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    baseGrad.addColorStop(0.0, 'rgba(8, 13, 22, 0.96)');
+    baseGrad.addColorStop(0.35, 'rgba(12, 18, 30, 0.88)');
+    baseGrad.addColorStop(0.65, 'rgba(16, 24, 38, 0.55)');
+    baseGrad.addColorStop(0.95, 'rgba(12, 17, 28, 0.0)');
+    ctx.fillStyle = baseGrad;
+    ctx.fillRect(0, 0, 2048, 1024);
+
+    // 2. Stratified Roll Cloud Banks (Dense horizontal masses with dark bruised underbellies)
+    const stormBanks = [
+        { x: 350, y: 180, rx: 550, ry: 210, rot: -0.04 },
+        { x: 950, y: 150, rx: 620, ry: 230, rot: 0.03 },
+        { x: 1650, y: 190, rx: 580, ry: 220, rot: -0.02 },
+        { x: 600, y: 320, rx: 500, ry: 180, rot: 0.05 },
+        { x: 1350, y: 340, rx: 560, ry: 190, rot: -0.03 },
+        { x: 1850, y: 310, rx: 460, ry: 170, rot: 0.02 }
     ];
 
-    stormClouds.forEach(c => {
-        // Volumetric shading: moody bruised purple-slate rim above, dark stormy underbelly below
-        const grad = ctx.createRadialGradient(c.x, c.y - c.r * 0.35, c.r * 0.12, c.x, c.y, c.r);
-        grad.addColorStop(0.0, c.rim);
-        grad.addColorStop(0.40, c.col);
-        grad.addColorStop(0.80, c.under);
-        grad.addColorStop(1.0, 'transparent');
-        ctx.fillStyle = grad;
+    stormBanks.forEach(b => {
+        ctx.save();
+        ctx.translate(b.x, b.y);
+        ctx.rotate(b.rot);
+        const bGrad = ctx.createRadialGradient(0, -b.ry * 0.45, b.rx * 0.15, 0, b.ry * 0.1, b.rx);
+        bGrad.addColorStop(0.0, 'rgba(40, 58, 88, 0.60)'); // Silver-slate lunar scatter
+        bGrad.addColorStop(0.40, 'rgba(14, 21, 35, 0.85)'); // Dense stormy indigo
+        bGrad.addColorStop(0.75, 'rgba(5, 8, 16, 0.95)'); // Bruised underbelly
+        bGrad.addColorStop(1.0, 'rgba(5, 8, 16, 0.0)'); // Feathered boundary
+        ctx.fillStyle = bGrad;
         ctx.beginPath();
-        ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+        ctx.ellipse(0, 0, b.rx, b.ry, 0, 0, Math.PI * 2);
         ctx.fill();
+        ctx.restore();
     });
 
+    // 3. Volumetric Organic Cumulus Puffs (65 layered soft-edged billows avoiding all hard circles)
+    // Deterministic pseudo-random distribution for consistent, organic stormy billow clusters
+    function seededPuff(px, py, pr, pMoonFactor) {
+        const grad = ctx.createRadialGradient(
+            px - pr * 0.25, py - pr * 0.38, pr * 0.08, // Offset towards upper-left moonlight
+            px, py, pr
+        );
+        const rimCol = pMoonFactor > 0.5 ? 'rgba(75, 105, 150, 0.50)' : 'rgba(50, 72, 108, 0.42)';
+        grad.addColorStop(0.0, rimCol); // Upper lunar highlight
+        grad.addColorStop(0.28, 'rgba(18, 27, 44, 0.82)');
+        grad.addColorStop(0.68, 'rgba(8, 12, 22, 0.94)'); // Deep shadow core
+        grad.addColorStop(0.90, 'rgba(4, 7, 14, 0.70)');
+        grad.addColorStop(1.0, 'rgba(4, 7, 14, 0.0)'); // Ultra-soft zero-opacity perimeter
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Cluster 1: Left sky heavy thunderhead
+    const leftCluster = [
+        [180, 160, 220, 0.8], [320, 130, 260, 0.9], [460, 180, 240, 0.7],
+        [120, 280, 190, 0.4], [260, 260, 230, 0.5], [420, 290, 250, 0.6],
+        [200, 390, 170, 0.3], [340, 380, 200, 0.4], [480, 410, 180, 0.3]
+    ];
+    leftCluster.forEach(p => seededPuff(p[0], p[1], p[2], p[3]));
+
+    // Cluster 2: Central sky brooding shelf
+    const centerCluster = [
+        [680, 140, 270, 0.9], [860, 110, 290, 1.0], [1050, 150, 280, 0.8],
+        [640, 260, 240, 0.5], [820, 250, 260, 0.6], [1020, 270, 250, 0.5],
+        [720, 370, 210, 0.3], [910, 380, 220, 0.4], [1100, 390, 200, 0.3]
+    ];
+    centerCluster.forEach(p => seededPuff(p[0], p[1], p[2], p[3]));
+
+    // Cluster 3: Right sky swirling tempest
+    const rightCluster = [
+        [1280, 130, 260, 0.8], [1480, 160, 280, 0.9], [1720, 140, 270, 0.7], [1920, 170, 230, 0.6],
+        [1240, 270, 230, 0.5], [1440, 280, 260, 0.6], [1660, 260, 250, 0.5], [1860, 280, 220, 0.4],
+        [1320, 390, 190, 0.3], [1520, 410, 210, 0.3], [1740, 380, 190, 0.3]
+    ];
+    rightCluster.forEach(p => seededPuff(p[0], p[1], p[2], p[3]));
+
+    // 4. Fine Wispy Fracto-Cumulus Tendrils (80 small feathered organic tufts breaking up all silhouettes)
+    for (let f = 0; f < 85; f++) {
+        const fx = 80 + (f * 23) % 1900 + ((f * 37) % 60);
+        const fy = 200 + ((f * 17) % 360);
+        const fr = 45 + ((f * 13) % 85);
+        const fGrad = ctx.createRadialGradient(fx - fr * 0.2, fy - fr * 0.2, fr * 0.1, fx, fy, fr);
+        fGrad.addColorStop(0.0, 'rgba(35, 52, 80, 0.38)');
+        fGrad.addColorStop(0.5, 'rgba(12, 18, 30, 0.55)');
+        fGrad.addColorStop(1.0, 'rgba(8, 12, 20, 0.0)');
+        ctx.fillStyle = fGrad;
+        ctx.beginPath();
+        ctx.arc(fx, fy, fr, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 5. Feathered Edge Mask (Guarantees zero sharp borders, box lines, or clipping seams)
+    ctx.save();
+    ctx.globalCompositeOperation = 'destination-in';
+    const maskGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    maskGrad.addColorStop(0.0, 'rgba(0, 0, 0, 1.0)');
+    maskGrad.addColorStop(0.55, 'rgba(0, 0, 0, 0.95)');
+    maskGrad.addColorStop(0.80, 'rgba(0, 0, 0, 0.55)');
+    maskGrad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)'); // Bottom fades smoothly to zero
+    ctx.fillStyle = maskGrad;
+    ctx.fillRect(0, 0, 2048, 1024);
+
+    // Left and right edge soft vignetting
+    const horizMask = ctx.createLinearGradient(0, 0, 2048, 0);
+    horizMask.addColorStop(0.0, 'rgba(0, 0, 0, 0.0)');
+    horizMask.addColorStop(0.08, 'rgba(0, 0, 0, 1.0)');
+    horizMask.addColorStop(0.92, 'rgba(0, 0, 0, 1.0)');
+    horizMask.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+    ctx.fillStyle = horizMask;
+    ctx.fillRect(0, 0, 2048, 1024);
+    ctx.restore();
+
     const tex = new THREE.CanvasTexture(canvas);
-    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
 }
@@ -4589,6 +4678,59 @@ function createHauntedManorTexture() {
     drawCellarGrate(730, 890);
     drawCellarGrate(820, 890);
 
+    // =========================================================================
+    // Authentic Victorian Gothic Chimney Stacks (Drawn BEHIND roofs for clean architectural alignment)
+    // =========================================================================
+    function drawGothicChimneyStack(x, topY, bottomY, width, potsCount = 2) {
+        const halfW = width / 2;
+        // Brick stack body: moonlit face on left, shadowed face on right
+        ctx.fillStyle = '#1c283a';
+        ctx.fillRect(x, topY + 18, halfW, bottomY - (topY + 18));
+        ctx.fillStyle = '#0a101a';
+        ctx.fillRect(x + halfW, topY + 18, halfW, bottomY - (topY + 18));
+
+        // Decorative stone string course & corbel band
+        ctx.fillStyle = stoneHighlight;
+        ctx.fillRect(x - 2, topY + 38, width + 4, 4);
+        ctx.fillRect(x - 3, topY + 18, width + 6, 6); // Stone neck moulding
+
+        // Overhanging carved stone cornice cap
+        ctx.fillStyle = stoneHighlight;
+        ctx.fillRect(x - 5, topY + 7, width + 10, 8);
+        ctx.fillStyle = '#223246';
+        ctx.fillRect(x - 3, topY, width + 6, 7);
+
+        // Flared Victorian terracotta chimney pots
+        const potSpacing = width / (potsCount + 1);
+        for (let p = 1; p <= potsCount; p++) {
+            const potX = x + potSpacing * p - 7;
+            const potY = topY - 24;
+            // Pot body with highlight
+            ctx.fillStyle = '#221510';
+            ctx.fillRect(potX, potY + 4, 14, 20);
+            ctx.fillStyle = '#3a241b';
+            ctx.fillRect(potX, potY + 4, 6, 20);
+            // Flared terracotta rim
+            ctx.fillStyle = '#150c08';
+            ctx.fillRect(potX - 2, potY, 18, 5);
+            // Soot cavity
+            ctx.fillStyle = '#020305';
+            ctx.beginPath();
+            ctx.ellipse(potX + 7, potY + 1, 5, 2, 0, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+
+    // 1. Left Wing Primary Chimney Stack (Tall exterior gable stack, x = 175)
+    drawGothicChimneyStack(175, 160, 460, 48, 2);
+
+    // 2. Right Wing Primary Chimney Stack (Symmetrically balanced with left wing, x = 815)
+    drawGothicChimneyStack(815, 160, 460, 48, 2);
+
+    // 3. Central Hall & Tower Flanking Chimney Stacks (Rising gracefully behind main roof ridges)
+    drawGothicChimneyStack(385, 185, 460, 38, 2);
+    drawGothicChimneyStack(655, 185, 460, 38, 2);
+
     // Left Wing: Balanced Victorian Gothic Gable Roof (Sitting squarely atop roofline cornice at y = 460)
     // Left slope (Moonlit faceted slate)
     ctx.fillStyle = '#141f30';
@@ -4736,25 +4878,6 @@ function createHauntedManorTexture() {
     ctx.moveTo(745, 290); ctx.lineTo(745, 262);
     ctx.moveTo(739, 272); ctx.lineTo(751, 272);
     ctx.stroke();
-
-    // Chimney 1 (Tall Left Chimney - Rising cleanly through roof pitch)
-    ctx.fillStyle = manorDark;
-    ctx.fillRect(675, 200, 44, 180);
-    ctx.fillStyle = stoneHighlight;
-    ctx.fillRect(670, 195, 54, 8);
-    // Chimney pots
-    ctx.fillStyle = '#060910';
-    ctx.fillRect(678, 175, 14, 22);
-    ctx.fillRect(696, 175, 14, 22);
-
-    // Chimney 2 (Secondary Right Chimney - Rising near right roof hip)
-    ctx.fillStyle = manorDark;
-    ctx.fillRect(815, 240, 42, 160);
-    ctx.fillStyle = stoneHighlight;
-    ctx.fillRect(810, 235, 52, 8);
-    // Chimney pot
-    ctx.fillStyle = '#060910';
-    ctx.fillRect(828, 218, 15, 20);
 
     // Grand Entrance Portico / Porch with Stone Columns & Carriage Lantern
     ctx.fillStyle = manorDark;
@@ -5733,107 +5856,135 @@ function createHauntedGrassTuftTexture() {
     return tex;
 }
 
-// 6. Curving Gothic Carriage Road from Manor to Gate with Moonlit Reflections (2048x1024)
+// 6. Curving Gothic Carriage Road from Gates to Manor with High Visibility Cobblestones & Moonlit Puddles (2048x1024)
 function createHauntedDirtPathTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 2048;
     canvas.height = 1024;
     const ctx = canvas.getContext('2d');
 
-    // Dark desolate earth background spanning entire grounds
-    ctx.fillStyle = '#04070c';
+    // 1. Desolate overgrown midnight lawn & wild turf
+    ctx.fillStyle = '#050912';
     ctx.fillRect(0, 0, 2048, 1024);
 
-    // Subtle dark soil grain and ground variation
-    for (let g = 0; g < 450; g++) {
+    // Subtle dark soil grain and peat variation
+    for (let g = 0; g < 500; g++) {
         const gx = Math.random() * 2048;
         const gy = Math.random() * 1024;
-        const gr = 2 + Math.random() * 6;
-        ctx.fillStyle = Math.random() > 0.5 ? '#060a12' : '#020408';
+        const gr = 2 + Math.random() * 7;
+        ctx.fillStyle = Math.random() > 0.5 ? '#08111e' : '#03060c';
         ctx.beginPath();
         ctx.arc(gx, gy, gr, 0, Math.PI * 2);
         ctx.fill();
     }
 
-    // Curving Gothic Carriage Road (Graceful S-curve from Manor at top-right to Gates at bottom-center):
-    // Top at Manor steps (y: 0, x: 1320 -> 1520)
-    // Curves out to right (y: 220, x: 1440 -> 1680)
-    // Sweeps inward across center (y: 500, x: 780 -> 1080)
-    // Sweeps through center-left (y: 720, x: 700 -> 1020)
-    // Curves back into center gate opening (y: 1024, x: 800 -> 1248)
+    // 2. Curving Gothic Carriage Road (Graceful S-curve perfectly connecting Gates at y=1024, x=1024 to Manor Steps at y=0, x=1062):
+    // Left boundary of carriage road
     ctx.beginPath();
-    // Left boundary of curving road
-    ctx.moveTo(800, 1024);
-    ctx.bezierCurveTo(720, 850, 680, 680, 780, 500);
-    ctx.bezierCurveTo(860, 350, 1260, 300, 1320, 0);
-    // Across top at manor
-    ctx.lineTo(1540, 0);
-    // Right boundary of curving road
-    ctx.bezierCurveTo(1480, 300, 1140, 350, 1080, 500);
-    ctx.bezierCurveTo(1020, 680, 1160, 850, 1248, 1024);
+    ctx.moveTo(804, 1024); // Left gate opening
+    ctx.bezierCurveTo(680, 840, 640, 680, 760, 490);
+    ctx.bezierCurveTo(840, 320, 920, 160, 942, 0); // Directly to left side of manor staircase
+    // Across top at manor steps
+    ctx.lineTo(1182, 0); // Directly to right side of manor staircase
+    // Right boundary of carriage road
+    ctx.bezierCurveTo(1160, 160, 1080, 320, 1060, 490);
+    ctx.bezierCurveTo(1040, 680, 1160, 840, 1244, 1024); // Right gate opening
     ctx.closePath();
-    ctx.fillStyle = '#080d16';
+
+    // Road Bed Fill: High contrast moonlit slate-blue granite carriageway foundation
+    const roadBedGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    roadBedGrad.addColorStop(0.0, '#1e2d42');
+    roadBedGrad.addColorStop(0.4, '#263852');
+    roadBedGrad.addColorStop(0.8, '#2c405c');
+    roadBedGrad.addColorStop(1.0, '#324766');
+    ctx.fillStyle = roadBedGrad;
     ctx.fill();
 
-    // Dark stone border curbing along both winding edges
-    ctx.lineWidth = 14;
-    ctx.strokeStyle = '#03050a';
+    // 3. Prominent Carved Granite Curbstones (Heavy stone borders delineating both edges of the road)
+    // Outer shadow line for depth
+    ctx.lineWidth = 18;
+    ctx.strokeStyle = '#03060a';
     ctx.stroke();
 
-    // Weathered Dark Cobblestones and Flagstone Pattern along the road
-    for (let c = 0; c < 350; c++) {
-        const t = Math.random();
-        // Path centerline interpolation along S-curve
-        const py = t * 1024;
-        let px;
-        if (t < 0.45) {
-            // Lower half (gates to center curve)
-            const lt = t / 0.45;
-            px = 1024 + (1.0 - lt) * 0 + Math.sin(lt * Math.PI) * -240;
-        } else {
-            // Upper half (center curve to manor)
-            const ut = (t - 0.45) / 0.55;
-            px = 780 + ut * 650 + Math.sin(ut * Math.PI) * 160;
-        }
-        const offset = (Math.random() - 0.5) * (140 + t * 60);
-        const stoneX = px + offset;
-        const stoneY = py;
-        const stoneR = 4 + Math.random() * 9;
+    // Main carved stone kerb body
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = '#3a506e';
+    ctx.stroke();
 
-        ctx.fillStyle = Math.random() > 0.4 ? '#0c1320' : '#060a12';
+    // Inner moonlit silver-blue highlight line along the curb tops
+    ctx.lineWidth = 3.5;
+    ctx.strokeStyle = '#6e92be';
+    ctx.stroke();
+
+    // 4. Textured Cobblestones and Flagstone Paving (650+ individual stones following the winding curves)
+    for (let c = 0; c < 650; c++) {
+        const t = Math.random();
+        const py = t * 1024;
+
+        // Calculate road centerline along the cubic Bezier curves
+        let centerX, halfWidth;
+        if (t < 0.52) {
+            // Lower half (gates up to center curve)
+            const lt = t / 0.52;
+            centerX = 1024 - Math.sin(lt * Math.PI) * 165;
+            halfWidth = 220 - lt * 35;
+        } else {
+            // Upper half (center curve to manor staircase)
+            const ut = (t - 0.52) / 0.48;
+            centerX = 910 + ut * 152 + Math.sin(ut * Math.PI) * 45;
+            halfWidth = 185 - ut * 65;
+        }
+
+        const offset = (Math.random() - 0.5) * (halfWidth * 1.6);
+        const stoneX = centerX + offset;
+        const stoneY = py;
+        const stoneR = 3.5 + Math.random() * 8.5;
+
+        // Variety of weathered granite slate tones with specular moon highlights
+        const stonePalette = ['#2e425e', '#23344b', '#395172', '#456186', '#1c293c'];
+        ctx.fillStyle = stonePalette[Math.floor(Math.random() * stonePalette.length)];
         ctx.beginPath();
-        ctx.ellipse(stoneX, stoneY, stoneR * 1.4, stoneR, Math.random() * 0.4, 0, Math.PI * 2);
+        ctx.ellipse(stoneX, stoneY, stoneR * 1.4, stoneR, Math.random() * 0.5 - 0.25, 0, Math.PI * 2);
         ctx.fill();
+
+        // Moonlit stone top highlight
+        if (Math.random() > 0.45) {
+            ctx.fillStyle = 'rgba(145, 185, 230, 0.35)';
+            ctx.beginPath();
+            ctx.arc(stoneX - 1, stoneY - 1, stoneR * 0.45, 0, Math.PI * 2);
+            ctx.fill();
+        }
     }
 
-    // Deep Dark Curving Wheel Rut 1 (Left Track)
+    // 5. Weathered Carriage Wheel Ruts (Depressed iron wheel grooves compacted by heavy carriages)
+    // Left Wheel Rut
     ctx.beginPath();
-    ctx.moveTo(900, 1024);
-    ctx.bezierCurveTo(800, 850, 760, 680, 860, 500);
-    ctx.bezierCurveTo(940, 350, 1340, 300, 1380, 0);
-    ctx.lineWidth = 36;
-    ctx.strokeStyle = '#05080e';
+    ctx.moveTo(910, 1024);
+    ctx.bezierCurveTo(790, 840, 750, 680, 860, 490);
+    ctx.bezierCurveTo(930, 320, 990, 160, 1000, 0);
+    ctx.lineWidth = 26;
+    ctx.strokeStyle = '#121c29';
     ctx.stroke();
 
-    // Deep Dark Curving Wheel Rut 2 (Right Track)
+    // Right Wheel Rut
     ctx.beginPath();
-    ctx.moveTo(1150, 1024);
-    ctx.bezierCurveTo(1060, 850, 980, 680, 1000, 500);
-    ctx.bezierCurveTo(1060, 350, 1420, 300, 1480, 0);
-    ctx.lineWidth = 36;
-    ctx.strokeStyle = '#05080e';
+    ctx.moveTo(1140, 1024);
+    ctx.bezierCurveTo(1030, 840, 950, 680, 980, 490);
+    ctx.bezierCurveTo(1010, 320, 1080, 160, 1120, 0);
+    ctx.lineWidth = 26;
+    ctx.strokeStyle = '#121c29';
     ctx.stroke();
 
-    // Cold Silver Moonlit Puddle Reflections along the curving wheel ruts
+    // 6. Brilliant Moonlit Rainwater Puddles (Gleaming pools reflecting the full moon and porch lantern)
     const curvingPuddles = [
-        { x: 1024, y: 960, rx: 65, ry: 24, rot: 0.05 },
-        { x: 920, y: 880, rx: 55, ry: 20, rot: -0.15 },
-        { x: 800, y: 720, rx: 50, ry: 18, rot: 0.22 },
-        { x: 840, y: 560, rx: 46, ry: 17, rot: -0.18 },
-        { x: 960, y: 440, rx: 40, ry: 15, rot: 0.12 },
-        { x: 1140, y: 320, rx: 36, ry: 14, rot: 0.25 },
-        { x: 1360, y: 210, rx: 32, ry: 12, rot: -0.1 },
-        { x: 1420, y: 90, rx: 28, ry: 10, rot: 0.08 }
+        { x: 1024, y: 970, rx: 75, ry: 26, rot: 0.02, lantern: false },
+        { x: 910, y: 880, rx: 65, ry: 22, rot: -0.15, lantern: false },
+        { x: 800, y: 730, rx: 58, ry: 20, rot: 0.20, lantern: false },
+        { x: 850, y: 560, rx: 52, ry: 18, rot: -0.16, lantern: false },
+        { x: 940, y: 440, rx: 46, ry: 16, rot: 0.12, lantern: false },
+        { x: 1020, y: 320, rx: 42, ry: 15, rot: 0.22, lantern: false },
+        { x: 1050, y: 190, rx: 38, ry: 14, rot: -0.08, lantern: true }, // Near porch, catches warm candlelight!
+        { x: 1062, y: 75, rx: 34, ry: 12, rot: 0.05, lantern: true }
     ];
 
     curvingPuddles.forEach(p => {
@@ -5841,14 +5992,54 @@ function createHauntedDirtPathTexture() {
         ctx.translate(p.x, p.y);
         ctx.rotate(p.rot);
         const pGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, p.rx);
-        pGrad.addColorStop(0.0, 'rgba(215, 235, 255, 0.45)');
-        pGrad.addColorStop(0.5, 'rgba(140, 180, 235, 0.20)');
-        pGrad.addColorStop(1.0, 'transparent');
+        if (p.lantern) {
+            // Warm amber carriage lantern reflection near manor steps
+            pGrad.addColorStop(0.0, 'rgba(255, 215, 140, 0.70)');
+            pGrad.addColorStop(0.45, 'rgba(220, 160, 80, 0.35)');
+            pGrad.addColorStop(0.80, 'rgba(100, 140, 190, 0.20)');
+            pGrad.addColorStop(1.0, 'transparent');
+        } else {
+            // Cold silver-cyan full moon reflection
+            pGrad.addColorStop(0.0, 'rgba(210, 235, 255, 0.65)');
+            pGrad.addColorStop(0.40, 'rgba(135, 185, 240, 0.35)');
+            pGrad.addColorStop(0.80, 'rgba(70, 110, 165, 0.18)');
+            pGrad.addColorStop(1.0, 'transparent');
+        }
         ctx.fillStyle = pGrad;
         ctx.beginPath();
         ctx.ellipse(0, 0, p.rx, p.ry, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
+    });
+
+    // 7. Carved Gothic Roadside Stone Bollards along the driveway bends
+    const roadsideBollards = [
+        { x: 740, y: 820 }, { x: 1190, y: 820 },
+        { x: 670, y: 640 }, { x: 1110, y: 640 },
+        { x: 770, y: 440 }, { x: 1160, y: 440 },
+        { x: 880, y: 260 }, { x: 1180, y: 260 },
+        { x: 920, y: 90 }, { x: 1200, y: 90 }
+    ];
+    roadsideBollards.forEach(b => {
+        // Bollard shadow
+        ctx.fillStyle = '#020408';
+        ctx.beginPath();
+        ctx.ellipse(b.x, b.y + 6, 12, 5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        // Stone pier body
+        ctx.fillStyle = '#28384e';
+        ctx.fillRect(b.x - 7, b.y - 18, 14, 22);
+        // Moonlit face
+        ctx.fillStyle = '#486284';
+        ctx.fillRect(b.x - 7, b.y - 18, 6, 22);
+        // Stone pyramid finial cap
+        ctx.fillStyle = '#6585ad';
+        ctx.beginPath();
+        ctx.moveTo(b.x, b.y - 26);
+        ctx.lineTo(b.x - 8, b.y - 18);
+        ctx.lineTo(b.x + 8, b.y - 18);
+        ctx.closePath();
+        ctx.fill();
     });
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -10770,8 +10961,9 @@ export function createVFXScene(container) {
     const hauntedPathGeo = new THREE.PlaneGeometry(110.0, 75.0);
     const hauntedPathMat = new THREE.MeshStandardMaterial({
         map: hauntedPathTex,
-        roughness: 0.35,
-        metalness: 0.25,
+        roughness: 0.38,
+        metalness: 0.18,
+        color: 0xccddee,
         transparent: true,
         depthWrite: false
     });
@@ -11050,7 +11242,7 @@ export function createVFXScene(container) {
     const hauntedPathFogMat = new THREE.MeshBasicMaterial({
         map: hauntedMistTex,
         transparent: true,
-        opacity: 0.35,
+        opacity: 0.22,
         depthWrite: false,
         blending: THREE.NormalBlending,
         color: 0x9ec7f5
@@ -11161,7 +11353,7 @@ export function createVFXScene(container) {
     // 10a. Dark Brooding Cumulus Storm Clouds Floating Across Upper Sky
     const hauntedStormCloudsTex = createBroodingStormCloudsTexture();
     const hauntedStormCloudsGroup = new THREE.Group();
-    const stormCloudGeo = new THREE.PlaneGeometry(36.0, 16.0);
+    const stormCloudGeo = new THREE.PlaneGeometry(44.0, 18.0);
     const stormCloudMat = new THREE.MeshBasicMaterial({
         map: hauntedStormCloudsTex,
         transparent: true,
