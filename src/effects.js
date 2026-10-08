@@ -4028,87 +4028,13 @@ function createFloorTileTexture() {
 // EERIE HALLOWEEN HAUNTED MANOR PROCEDURAL TEXTURE & SHADER GENERATORS (FX 21)
 // =========================================================================
 
-// FX 21 GLSL Shader: Synchronized Rave Room Lighting & Piercing Green Laser
-const RaveLaserRoomShader = {
-    uniforms: {
-        uTime: { value: 0.0 },
-        uBass: { value: 0.0 },
-        uRaveColor: { value: new THREE.Color('#9900ff') },
-        uLaserAngle: { value: 0.0 },
-        uLaserPos: { value: new THREE.Vector2(0.5, 0.5) },
-        uLaserIntensity: { value: 1.0 }
-    },
-    vertexShader: `
-        varying vec2 vUv;
-        void main() {
-            vUv = uv;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-        }
-    `,
-    fragmentShader: `
-        uniform float uTime;
-        uniform float uBass;
-        uniform vec3 uRaveColor;
-        uniform float uLaserAngle;
-        uniform vec2 uLaserPos;
-        uniform float uLaserIntensity;
-        varying vec2 vUv;
 
-        void main() {
-            // Mask for the 3 Arched Windows across the quad
-            float inWin = 0.0;
-            vec2 localUv = vec2(0.0);
-            
-            float w1 = smoothstep(0.06, 0.08, vUv.x) * (1.0 - smoothstep(0.28, 0.30, vUv.x));
-            float w2 = smoothstep(0.38, 0.40, vUv.x) * (1.0 - smoothstep(0.60, 0.62, vUv.x));
-            float w3 = smoothstep(0.70, 0.72, vUv.x) * (1.0 - smoothstep(0.92, 0.94, vUv.x));
-            
-            if (w1 > 0.0) { localUv = vec2((vUv.x - 0.08) / 0.20, vUv.y); inWin = w1; }
-            else if (w2 > 0.0) { localUv = vec2((vUv.x - 0.40) / 0.20, vUv.y); inWin = w2; }
-            else if (w3 > 0.0) { localUv = vec2((vUv.x - 0.72) / 0.20, vUv.y); inWin = w3; }
 
-            if (inWin <= 0.0 || localUv.y < 0.05) {
-                discard;
-            }
-
-            // Arch top mask
-            if (localUv.y > 0.62) {
-                float dx = (localUv.x - 0.5) * 2.0;
-                float dy = (localUv.y - 0.62) / 0.38;
-                if (dx * dx + dy * dy > 1.0) discard;
-            }
-
-            // 1. Synchronized Rave Ambient Wash (all 3 windows identical color in rave room!)
-            float hazeGrad = 0.70 + 0.30 * sin(vUv.y * 3.14159);
-            float pulse = 1.0 + uBass * 0.40;
-            vec3 raveWash = uRaveColor * hazeGrad * pulse;
-
-            // 2. Piercing Scanning Neon Green Laser Beam cutting through the hazy room
-            float laserDist = abs((vUv.x - uLaserPos.x) * sin(uLaserAngle) - (vUv.y - uLaserPos.y) * cos(uLaserAngle));
-            float laserCore = exp(-laserDist * 85.0) * 3.2;
-            float laserAura = exp(-laserDist * 16.0) * 1.1;
-            
-            // Secondary bouncing laser reflections in the room haze
-            float bounceDist = abs((vUv.x - uLaserPos.x) * sin(-uLaserAngle * 0.7) - (vUv.y - (1.0 - uLaserPos.y)) * cos(-uLaserAngle * 0.7));
-            float bounceLaser = exp(-bounceDist * 70.0) * 1.4;
-
-            vec3 greenLaser = vec3(0.08, 1.0, 0.24) * (laserCore + laserAura + bounceLaser) * uLaserIntensity;
-
-            // Subtle fast rave strobe flash on audio kicks
-            float strobe = pow(sin(uTime * 42.0), 12.0) * uBass * 0.7;
-            vec3 finalColor = raveWash + greenLaser + vec3(strobe);
-
-            gl_FragColor = vec4(finalColor, 0.95);
-        }
-    `
-};
-
-// FX 21 GLSL Shader: Witch Broomstick Magical Plasma Thrust Flame
+// FX 21 GLSL Shader: Witch Broomstick Magical Plasma Thrust Flame (Strictly at Back of Broom)
 const WitchBroomThrustShader = {
     uniforms: {
         uTime: { value: 0.0 },
-        uIntensity: { value: 1.0 },
-        uDirection: { value: 1.0 } // 1.0 = trailing right, -1.0 = trailing left
+        uIntensity: { value: 1.0 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -4120,16 +4046,15 @@ const WitchBroomThrustShader = {
     fragmentShader: `
         uniform float uTime;
         uniform float uIntensity;
-        uniform float uDirection;
         varying vec2 vUv;
 
         void main() {
-            // Coordinate: x = 0 at nozzle (broom bristles), x = 1 at flame plume tip
-            float x = (uDirection > 0.0) ? vUv.x : (1.0 - vUv.x);
+            // Coordinate: x = 0 at nozzle (right edge of flame quad attached to bristles), x = 1 at flame plume tip (left edge)
+            float x = clamp(1.0 - vUv.x, 0.0, 1.0);
             float y = (vUv.y - 0.5) * 2.0;
 
             // Animated plasma exhaust plume
-            float plumeWidth = (1.0 - x * 0.82) * (0.8 + 0.2 * sin(uTime * 32.0 + x * 15.0));
+            float plumeWidth = (1.0 - x * 0.85) * (0.8 + 0.2 * sin(uTime * 32.0 + x * 15.0));
             float coreDist = abs(y) / max(0.02, plumeWidth);
 
             // Multi-frequency flame noise turbulence
@@ -4157,59 +4082,98 @@ const WitchBroomThrustShader = {
     `
 };
 
-// Procedural Dark Autumn Dead Leaves Texture (512x512)
-function createHauntedLeafTexture() {
+// Procedural Single Realistic Dead Autumn Leaf Texture (256x256 - One Single Leaf Per Mesh)
+function createSingleHauntedLeafTexture(type) {
     const canvas = document.createElement('canvas');
-    canvas.width = 512;
-    canvas.height = 512;
+    canvas.width = 256;
+    canvas.height = 256;
     const ctx = canvas.getContext('2d');
-    ctx.clearRect(0, 0, 512, 512);
+    ctx.clearRect(0, 0, 256, 256);
 
-    function drawLeaf(cx, cy, type) {
-        ctx.save();
-        ctx.translate(cx, cy);
-        ctx.fillStyle = type === 0 ? '#180a06' : (type === 1 ? '#120804' : '#0c0c0a');
+    ctx.save();
+    ctx.translate(128, 128);
+
+    if (type === 0) {
+        // Detailed Withered Oak Leaf (Rounded lobes, sinuses, petiole stem & lateral veins)
+        ctx.fillStyle = '#1c0f0a';
         ctx.beginPath();
-        if (type === 0) {
-            // Withered Oak Leaf with rounded lobes
-            ctx.moveTo(0, -90);
-            ctx.bezierCurveTo(45, -70, 55, -40, 25, -25);
-            ctx.bezierCurveTo(60, -10, 65, 25, 30, 45);
-            ctx.bezierCurveTo(45, 65, 30, 85, 0, 95);
-            ctx.bezierCurveTo(-30, 85, -45, 65, -30, 45);
-            ctx.bezierCurveTo(-65, 25, -60, -10, -25, -25);
-            ctx.bezierCurveTo(-55, -40, -45, -70, 0, -90);
-        } else if (type === 1) {
-            // Curled Maple Leaf with pointed tips
-            ctx.moveTo(0, -85);
-            ctx.lineTo(25, -50); ctx.lineTo(65, -60); ctx.lineTo(40, -15);
-            ctx.lineTo(75, 10); ctx.lineTo(35, 30); ctx.lineTo(45, 75);
-            ctx.lineTo(0, 50);
-            ctx.lineTo(-45, 75); ctx.lineTo(-35, 30); ctx.lineTo(-75, 10);
-            ctx.lineTo(-40, -15); ctx.lineTo(-65, -60); ctx.lineTo(-25, -50);
-        } else {
-            // Curled Withered Elm/Willow Leaf
-            ctx.moveTo(0, -95);
-            ctx.bezierCurveTo(45, -45, 40, 45, 0, 95);
-            ctx.bezierCurveTo(-40, 45, -45, -45, 0, -95);
-        }
+        ctx.moveTo(0, -95);
+        ctx.bezierCurveTo(40, -80, 52, -50, 26, -30);
+        ctx.bezierCurveTo(58, -12, 62, 22, 28, 42);
+        ctx.bezierCurveTo(46, 62, 32, 85, 0, 95);
+        ctx.bezierCurveTo(-32, 85, -46, 62, -28, 42);
+        ctx.bezierCurveTo(-62, 22, -58, -12, -26, -30);
+        ctx.bezierCurveTo(-52, -50, -40, -80, 0, -95);
         ctx.closePath();
         ctx.fill();
 
-        ctx.strokeStyle = '#080503';
-        ctx.lineWidth = 2.5;
+        // Veins
+        ctx.strokeStyle = '#090503';
+        ctx.lineWidth = 2.2;
         ctx.beginPath();
-        ctx.moveTo(0, -85); ctx.lineTo(0, 95);
+        ctx.moveTo(0, -90); ctx.lineTo(0, 105);
         ctx.stroke();
-        ctx.restore();
+
+        ctx.lineWidth = 1.2;
+        for (let v = -60; v <= 60; v += 30) {
+            ctx.beginPath();
+            ctx.moveTo(0, v); ctx.lineTo(32, v - 15);
+            ctx.moveTo(0, v); ctx.lineTo(-32, v - 15);
+            ctx.stroke();
+        }
+    } else if (type === 1) {
+        // Detailed Curled Maple Leaf (5 pointed serrated lobes, radial palmate veins, petiole)
+        ctx.fillStyle = '#220b08';
+        ctx.beginPath();
+        ctx.moveTo(0, -96);
+        ctx.lineTo(22, -55); ctx.lineTo(68, -65); ctx.lineTo(38, -16);
+        ctx.lineTo(75, 12); ctx.lineTo(36, 32); ctx.lineTo(44, 76);
+        ctx.lineTo(0, 52);
+        ctx.lineTo(-44, 76); ctx.lineTo(-36, 32); ctx.lineTo(-75, 12);
+        ctx.lineTo(-38, -16); ctx.lineTo(-68, -65); ctx.lineTo(-22, -55);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#0a0302';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(0, 102); ctx.lineTo(0, -90);
+        ctx.moveTo(0, 30); ctx.lineTo(60, -60);
+        ctx.moveTo(0, 30); ctx.lineTo(-60, -60);
+        ctx.moveTo(0, 30); ctx.lineTo(65, 12);
+        ctx.moveTo(0, 30); ctx.lineTo(-65, 12);
+        ctx.stroke();
+    } else {
+        // Detailed Curled Dry Dead Elm Leaf (Slender curved blade, arched midrib, dried curl)
+        ctx.fillStyle = '#140c06';
+        ctx.beginPath();
+        ctx.moveTo(0, -100);
+        ctx.bezierCurveTo(46, -50, 42, 42, 0, 96);
+        ctx.bezierCurveTo(-38, 45, -42, -45, 0, -100);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = '#080502';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.moveTo(0, -95);
+        ctx.quadraticCurveTo(8, 0, 0, 106);
+        ctx.stroke();
+
+        ctx.lineWidth = 1.0;
+        for (let v = -70; v <= 60; v += 22) {
+            ctx.beginPath();
+            ctx.moveTo(0, v); ctx.lineTo(24, v - 12);
+            ctx.moveTo(0, v); ctx.lineTo(-24, v - 12);
+            ctx.stroke();
+        }
     }
 
-    drawLeaf(128, 128, 0);
-    drawLeaf(384, 128, 1);
-    drawLeaf(128, 384, 2);
-    drawLeaf(384, 384, 0);
+    ctx.restore();
 
     const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.ClampToEdgeWrapping;
+    tex.wrapT = THREE.ClampToEdgeWrapping;
     return tex;
 }
 
@@ -4690,149 +4654,208 @@ function createHauntedManorTexture() {
 }
 
 
-// Helper: Draw Animated Dancing Zombie Silhouette inside Window (Slow, Creepy, Decomposing Undead Groove)
-function drawDancingZombie(ctx, cx, cy, type, danceTime, audioBeat) {
+// Helper: Draw Hyper-Detailed Zombie Claw Hand (Twisted Wrists, Prominent Knuckles & Long Grasping Talons)
+function drawZombieHand(ctx, wristX, wristY, armAngle, beatImpulse) {
     ctx.save();
-    ctx.fillStyle = '#010204'; // Pitch black zombie silhouette
+    ctx.translate(wristX, wristY);
+    ctx.rotate(armAngle);
+
+    ctx.fillStyle = '#010204';
     ctx.strokeStyle = '#010204';
 
-    if (type === 0) {
-        // Zombie 1: The Dragging Shambler (Slow, heavy limp, lolling head, twisted reaching claws)
-        const limpCycle = Math.sin(danceTime * 1.5);
-        const torsoX = cx + limpCycle * 3.2;
-        const torsoY = cy - 20 + Math.abs(Math.sin(danceTime * 3.0)) * 1.8;
+    // Protruding knobby carpal / wrist bone
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 2.8, 2.2, 0, 0, Math.PI * 2);
+    ctx.fill();
 
-        // Uneven legs: one stiff dragged leg, one bent dragging knee
+    // Palm / metacarpal base
+    ctx.beginPath();
+    ctx.moveTo(-2.2, 0);
+    ctx.lineTo(2.2, 0);
+    ctx.lineTo(2.8, 4.0);
+    ctx.lineTo(-2.8, 4.0);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4 Crooked, Skeletal Fingers with Articulated Knuckles & Sharp Claw Talons
+    ctx.lineWidth = 1.6;
+    const twitch = Math.sin(beatImpulse * 7.0) * 0.35;
+
+    // Finger 1 (Thumb / Spur claw)
+    ctx.beginPath();
+    ctx.moveTo(-2.2, 2.0);
+    ctx.lineTo(-5.2, 4.0 + twitch);
+    ctx.lineTo(-7.2, 2.5 + twitch * 1.5);
+    ctx.stroke();
+
+    // Finger 2 (Index Long Claw)
+    ctx.beginPath();
+    ctx.moveTo(-1.2, 4.0);
+    ctx.lineTo(-2.2, 8.5 + twitch);
+    ctx.lineTo(-1.2, 13.0 + twitch * 2.0);
+    ctx.stroke();
+
+    // Finger 3 (Middle Long Talon)
+    ctx.beginPath();
+    ctx.moveTo(0.8, 4.0);
+    ctx.lineTo(1.8, 9.5 - twitch);
+    ctx.lineTo(3.4, 14.5 - twitch * 2.0);
+    ctx.stroke();
+
+    // Finger 4 (Pinky Crooked Claw)
+    ctx.beginPath();
+    ctx.moveTo(2.6, 3.5);
+    ctx.lineTo(5.2, 7.5 + twitch);
+    ctx.lineTo(7.2, 11.0 + twitch * 1.5);
+    ctx.stroke();
+
+    ctx.restore();
+}
+
+// Helper: Draw Animated Dancing Zombie Silhouette inside Window (Animated to Music & Beat)
+function drawDancingZombie(ctx, cx, cy, type, danceTime, audio) {
+    ctx.save();
+    ctx.fillStyle = '#010204';
+    ctx.strokeStyle = '#010204';
+
+    const bassImpact = (audio && audio.bassImpact) ? audio.bassImpact : 0;
+    const smoothedBass = (audio && audio.smoothedBass) ? audio.smoothedBass : 0;
+    const beatImpulse = bassImpact * 1.6 + smoothedBass * 0.9;
+    const isKick = (audio && (audio.isOnset || bassImpact > 0.3));
+
+    // Dynamic music tempo bounce: sharp 4/4 rave bounce on each kick!
+    const bounce = Math.abs(Math.sin(danceTime * 3.5)) * 3.2 + (beatImpulse * 4.0);
+    const torsoY = cy - 20 + bounce * 0.6;
+
+    if (type === 0) {
+        // Zombie 1: The Blade Blood Rave Shambler (Aggressive rave bounce, pumping claw hands, neck snap)
+        const sway = Math.sin(danceTime * 3.5) * 4.5;
+        const torsoX = cx + sway * 0.6;
+
+        // Uneven decaying legs stepping hard to the rave beat
         ctx.lineWidth = 3.2;
         ctx.beginPath();
         ctx.moveTo(cx - 7, cy); ctx.lineTo(torsoX - 5, torsoY + 12);
-        // Dragging broken leg trailing behind
-        ctx.moveTo(cx + 6 + limpCycle * 2.0, cy); ctx.lineTo(torsoX + 4, torsoY + 12);
+        ctx.moveTo(cx + 6 + (isKick ? 2.5 : 0), cy); ctx.lineTo(torsoX + 4, torsoY + 12);
         ctx.stroke();
 
-        // Hunched decaying torso (curved spine)
+        // Hunched decaying torso (curved spine pulsating with the kick)
         ctx.beginPath();
-        ctx.ellipse(torsoX, torsoY, 7.5, 12, 0.18 + limpCycle * 0.08, 0, Math.PI * 2);
+        ctx.ellipse(torsoX, torsoY, 7.5, 12, 0.15 + sway * 0.05, 0, Math.PI * 2);
         ctx.fill();
 
-        // Head lolling sideways at an unnatural angle
-        const headRoll = Math.sin(danceTime * 1.5) * 0.35 + 0.25;
+        // Decayed head snapping with the music kick
+        const headBob = Math.sin(danceTime * 3.5) * 0.35 + (isKick ? 0.45 : 0);
         ctx.save();
         ctx.translate(torsoX - 2, torsoY - 17);
-        ctx.rotate(headRoll);
+        ctx.rotate(headBob);
         ctx.beginPath();
         ctx.ellipse(0, 0, 5.8, 6.5, 0, 0, Math.PI * 2);
         ctx.fill();
-        // Dropped jaw silhouette
         ctx.fillRect(-2, 4, 4, 3);
         ctx.restore();
 
-        // Rotting arms extended forward with twisted broken wrists & claw fingers that twitch slowly
+        // Pumping skeletal arms with detailed zombie claw hands
         ctx.lineWidth = 2.4;
-        const twitch = Math.sin(danceTime * 5.0) * 1.2;
-        // Left arm reaching
+        const armPump = Math.sin(danceTime * 3.5) * 7.0 + (beatImpulse * 5.0);
+
+        // Left arm pumping
         ctx.beginPath();
         ctx.moveTo(torsoX - 5, torsoY - 6);
-        ctx.lineTo(torsoX - 16, torsoY - 2 + twitch);
-        ctx.lineTo(torsoX - 19, torsoY + 4 + twitch);
+        ctx.lineTo(torsoX - 16, torsoY - 2 - armPump * 0.5);
         ctx.stroke();
-        // Right arm reaching forward
+        drawZombieHand(ctx, torsoX - 16, torsoY - 2 - armPump * 0.5, -0.4 - armPump * 0.06, beatImpulse);
+
+        // Right arm pumping forward
         ctx.beginPath();
         ctx.moveTo(torsoX + 4, torsoY - 6);
-        ctx.lineTo(torsoX + 15, torsoY - 4 - twitch);
-        ctx.lineTo(torsoX + 17, torsoY + 3 - twitch);
+        ctx.lineTo(torsoX + 15, torsoY - 4 + armPump * 0.5);
         ctx.stroke();
+        drawZombieHand(ctx, torsoX + 15, torsoY - 4 + armPump * 0.5, 0.4 + armPump * 0.06, beatImpulse);
     } else if (type === 1) {
-        // Zombie 2: The Eerie Reacher (Hypnotic slow undead groove, one arm raised high grasping, head drooping)
-        const slowSway = Math.sin(danceTime * 1.3) * 4.0;
-        const torsoX = cx + slowSway * 0.5;
-        const torsoY = cy - 21 + Math.sin(danceTime * 2.6) * 1.2;
+        // Zombie 2: The Blood Bath Rave Worshiper (Both arms raised high towards ceiling, pulsing with rave strobes)
+        const sway = Math.sin(danceTime * 2.8) * 5.0;
+        const torsoX = cx + sway * 0.5;
 
-        // Decaying legs shuffling slowly in place
         ctx.lineWidth = 3.2;
         ctx.beginPath();
-        ctx.moveTo(cx - 5 + slowSway * 0.3, cy); ctx.lineTo(torsoX - 4, torsoY + 12);
-        ctx.moveTo(cx + 6 - slowSway * 0.3, cy); ctx.lineTo(torsoX + 4, torsoY + 12);
+        ctx.moveTo(cx - 5 + sway * 0.3, cy); ctx.lineTo(torsoX - 4, torsoY + 12);
+        ctx.moveTo(cx + 6 - sway * 0.3, cy); ctx.lineTo(torsoX + 4, torsoY + 12);
         ctx.stroke();
 
-        // Shambling torso
         ctx.beginPath();
-        ctx.ellipse(torsoX, torsoY, 7.8, 12.5, -slowSway * 0.05, 0, Math.PI * 2);
+        ctx.ellipse(torsoX, torsoY, 7.8, 12.5, -sway * 0.04, 0, Math.PI * 2);
         ctx.fill();
 
-        // Drooping head tilted to the right
         ctx.save();
         ctx.translate(torsoX + 1, torsoY - 17);
-        ctx.rotate(-0.25 + Math.sin(danceTime * 1.3) * 0.2);
+        ctx.rotate(-0.20 + Math.sin(danceTime * 2.8) * 0.2);
         ctx.beginPath();
         ctx.arc(0, 0, 6.0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
 
-        // One arm raised high reaching/grasping, the other dangling limp like a broken rope
+        const waveL = Math.sin(danceTime * 3.5) * 6.0 + (beatImpulse * 4.0);
+        const waveR = Math.cos(danceTime * 3.5) * 6.0 + (beatImpulse * 4.0);
+
         ctx.lineWidth = 2.4;
-        const graspWave = Math.sin(danceTime * 2.0) * 2.5;
-        // Left arm raised high reaching
         ctx.beginPath();
         ctx.moveTo(torsoX - 5, torsoY - 6);
-        ctx.lineTo(torsoX - 14, torsoY - 18 + graspWave);
-        ctx.lineTo(torsoX - 17, torsoY - 24 + graspWave);
+        ctx.lineTo(torsoX - 14, torsoY - 18 + waveL * 0.3);
         ctx.stroke();
-        // Right arm dangling dead and limp
+        drawZombieHand(ctx, torsoX - 14, torsoY - 18 + waveL * 0.3, -2.4 + waveL * 0.08, beatImpulse);
+
         ctx.beginPath();
         ctx.moveTo(torsoX + 5, torsoY - 6);
-        ctx.lineTo(torsoX + 11, torsoY + 4);
-        ctx.lineTo(torsoX + 13, torsoY + 12);
+        ctx.lineTo(torsoX + 14, torsoY - 18 + waveR * 0.3);
         ctx.stroke();
+        drawZombieHand(ctx, torsoX + 14, torsoY - 18 + waveR * 0.3, 2.4 - waveR * 0.08, beatImpulse);
     } else {
-        // Zombie 3: The Decomposing Twitcher (Slow mechanical forward bow, swaying dangling arms, head roll)
-        const bow = Math.sin(danceTime * 1.4);
-        const torsoX = cx + Math.cos(danceTime * 1.4) * 2.5;
-        const torsoY = cy - 20 + (bow > 0 ? bow * 2.2 : 0);
+        // Zombie 3: The Hardcore Headbanger (Torso snapping forward, violent headbang to 4/4 kick drum)
+        const bang = Math.sin(danceTime * 4.2) * 1.5 + (isKick ? 1.8 : 0);
+        const torsoX = cx + Math.cos(danceTime * 2.0) * 2.0;
 
-        // Legs
         ctx.lineWidth = 3.2;
         ctx.beginPath();
         ctx.moveTo(cx - 6, cy); ctx.lineTo(torsoX - 3, torsoY + 12);
         ctx.moveTo(cx + 6, cy); ctx.lineTo(torsoX + 3, torsoY + 12);
         ctx.stroke();
 
-        // Torso slowly rocking forward and back
         ctx.beginPath();
-        ctx.ellipse(torsoX, torsoY, 7.2, 12, bow * 0.18, 0, Math.PI * 2);
+        ctx.ellipse(torsoX, torsoY, 7.2, 12, bang * 0.22, 0, Math.PI * 2);
         ctx.fill();
 
-        // Rolling decayed skull
-        const skullY = torsoY - 16 + bow * 3.5;
+        const skullY = torsoY - 16 + bang * 4.5;
         ctx.beginPath();
-        ctx.arc(torsoX + bow * 1.5, skullY, 6.0, 0, Math.PI * 2);
+        ctx.arc(torsoX + bang * 2.2, skullY, 6.0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Dangling rope-like undead arms swinging slowly with twitching clawed fingers
         ctx.lineWidth = 2.4;
-        const armSway = Math.sin(danceTime * 1.4) * 5.0;
+        const armSwing = Math.sin(danceTime * 4.2) * 8.0 + (beatImpulse * 5.0);
+
         ctx.beginPath();
         ctx.moveTo(torsoX - 5, torsoY - 6);
-        ctx.lineTo(torsoX - 10 - armSway, torsoY + 6);
-        ctx.lineTo(torsoX - 12 - armSway, torsoY + 14);
+        ctx.lineTo(torsoX - 12 - armSwing * 0.5, torsoY + 8 + bang * 3.0);
         ctx.stroke();
+        drawZombieHand(ctx, torsoX - 12 - armSwing * 0.5, torsoY + 8 + bang * 3.0, 1.2 + bang * 0.2, beatImpulse);
+
         ctx.beginPath();
         ctx.moveTo(torsoX + 5, torsoY - 6);
-        ctx.lineTo(torsoX + 10 + armSway, torsoY + 6);
-        ctx.lineTo(torsoX + 12 + armSway, torsoY + 14);
+        ctx.lineTo(torsoX + 12 + armSwing * 0.5, torsoY + 8 + bang * 3.0);
         ctx.stroke();
+        drawZombieHand(ctx, torsoX + 12 + armSwing * 0.5, torsoY + 8 + bang * 3.0, -1.2 - bang * 0.2, beatImpulse);
     }
 
     ctx.restore();
 }
 
-// Render Dynamic Haunted Manor Windows (Synchronized Rave Colors, Green Laser, Slow Dancing Zombies, Faulty Electricity, Candlelight)
+// Render Dynamic Haunted Manor Windows (Blade Blood Rave, Scanning Lasers, Music-Animated Zombies, Independent Floor Flickers)
 function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
     ctx.clearRect(0, 0, 1024, 1024);
 
-    // Very slow zombie dance pace ("the zombies somehow make the more zombie like and dance very slow")
-    const slowDanceTime = elapsedTime * 0.72;
-    const bassImpact = audio.bassImpact || 0;
+    const bassImpact = (audio && audio.bassImpact) ? audio.bassImpact : 0;
+    const isKick = (audio && (audio.isOnset || bassImpact > 0.35));
+    const raveTime = elapsedTime * 2.2;
 
     // Helper: Draw Arched Window Aperture
     function fillArchedPath(x, y, w, h) {
@@ -4855,110 +4878,135 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         ctx.stroke();
     }
 
-    // 1. LEFT UPSTAIRS WINDOWS: SYNCHRONIZED RAVE ROOM WITH GREEN LASER & SLOW DANCING ZOMBIES
-    // ("all windows need to be the same colour - use shaders and make it look liek there is a green lazer in the room")
+    // 1. LEFT UPSTAIRS WINDOWS: BLADE VAMPIRE BLOOD RAVE ROOM WITH SCANNING LASERS & STROBES
     const discoWindows = [
         { x: 200, y: 510, w: 44, h: 75, zombie: 0 },
         { x: 260, y: 510, w: 44, h: 75, zombie: 1 },
         { x: 340, y: 510, w: 44, h: 75, zombie: 2 }
     ];
 
-    // Single Synchronized Rave Color Wash across ALL 3 windows!
-    const raveTime = elapsedTime * 0.85;
-    const raveColors = [
-        { r: 255, g: 0, b: 180 },   // Neon Magenta
-        { r: 150, g: 0, b: 255 },   // Electric Violet
-        { r: 0, g: 240, b: 255 },   // Cyber Cyan
-        { r: 255, g: 220, b: 0 },   // Rave Acid Gold
-        { r: 255, g: 40, b: 60 }    // Strobe Crimson
-    ];
-    const cIdx1 = Math.floor(raveTime) % raveColors.length;
-    const cIdx2 = (cIdx1 + 1) % raveColors.length;
-    const cFrac = raveTime % 1.0;
-    const curR = Math.round(raveColors[cIdx1].r + (raveColors[cIdx2].r - raveColors[cIdx1].r) * cFrac);
-    const curG = Math.round(raveColors[cIdx1].g + (raveColors[cIdx2].g - raveColors[cIdx1].g) * cFrac);
-    const curB = Math.round(raveColors[cIdx1].b + (raveColors[cIdx2].b - raveColors[cIdx1].b) * cFrac);
+    // Blade Rave Atmosphere: Blood-red industrial wash with strobing white Xenon flash on bass kick
+    const strobeAlpha = isKick ? (0.65 + bassImpact * 0.35) : 0.0;
+    const redIntensity = Math.min(255, 110 + Math.floor(bassImpact * 145));
 
-    // Green Laser Scanner State (Slicing through the rave room across all windows)
-    const laserAngle = Math.sin(elapsedTime * 2.8) * 0.42;
-    const laserBeamY = 547 + Math.sin(elapsedTime * 3.5) * 22; // Laser scans vertically & angles horizontally
+    // Dual Rave Lasers:
+    // 1. Blade Acid Green Laser (Scans and pans dynamically)
+    const greenLaserAngle = Math.sin(elapsedTime * 3.2) * 0.48;
+    const greenLaserY = 545 + Math.sin(elapsedTime * 4.0) * 24;
+
+    // 2. Cross-Cutting Ruby Red Laser (Opposing angle and height)
+    const redLaserAngle = -Math.cos(elapsedTime * 2.8) * 0.42;
+    const redLaserY = 552 + Math.cos(elapsedTime * 3.6) * 20;
 
     discoWindows.forEach((dw, idx) => {
         const cx = dw.x + dw.w / 2;
         const cy = dw.y + dw.h;
 
-        // 1. Synchronized Rave Wash Gradient (IDENTICAL color for all windows!)
+        // 1. Blood-Red Industrial Rave Wash Gradient
         const roomGrad = ctx.createLinearGradient(dw.x, dw.y, dw.x, dw.y + dw.h);
-        roomGrad.addColorStop(0.0, `rgba(${Math.min(255, curR + 60)}, ${Math.min(255, curG + 60)}, ${Math.min(255, curB + 60)}, 0.95)`);
-        roomGrad.addColorStop(0.5, `rgba(${curR}, ${curG}, ${curB}, 0.88)`);
-        roomGrad.addColorStop(1.0, `rgba(${Math.floor(curR * 0.4)}, ${Math.floor(curG * 0.4)}, ${Math.floor(curB * 0.4)}, 0.75)`);
+        roomGrad.addColorStop(0.0, `rgba(${redIntensity}, 12, 28, 0.95)`);
+        roomGrad.addColorStop(0.5, `rgba(${Math.floor(redIntensity * 0.8)}, 4, 18, 0.90)`);
+        roomGrad.addColorStop(1.0, `rgba(${Math.floor(redIntensity * 0.4)}, 2, 8, 0.85)`);
 
         ctx.fillStyle = roomGrad;
         fillArchedPath(dw.x, dw.y, dw.w, dw.h);
         ctx.fill();
 
-        // 2. Piercing Green Laser Beam slicing through the room haze
-        // Calculate laser line intersection through this window
-        const windowLaserY = laserBeamY + (cx - 270) * Math.tan(laserAngle);
-        if (windowLaserY >= dw.y - 10 && windowLaserY <= dw.y + dw.h + 10) {
+        // 2. Blade Kick Drum Strobe Flash (Blinding white Xenon strobe that flashes in unison across all 3 windows)
+        if (strobeAlpha > 0.05) {
+            ctx.fillStyle = `rgba(255, 255, 255, ${strobeAlpha})`;
+            fillArchedPath(dw.x, dw.y, dw.w, dw.h);
+            ctx.fill();
+        }
+
+        // 3. Piercing Blade Acid Green Laser Beam
+        const gLaserY = greenLaserY + (cx - 270) * Math.tan(greenLaserAngle);
+        if (gLaserY >= dw.y - 12 && gLaserY <= dw.y + dw.h + 12) {
             ctx.save();
             fillArchedPath(dw.x, dw.y, dw.w, dw.h);
             ctx.clip();
 
             // Broad emerald laser haze
-            const hazeGrad = ctx.createLinearGradient(dw.x, windowLaserY - 18, dw.x, windowLaserY + 18);
+            const hazeGrad = ctx.createLinearGradient(dw.x, gLaserY - 20, dw.x, gLaserY + 20);
             hazeGrad.addColorStop(0.0, 'rgba(0, 255, 80, 0.0)');
-            hazeGrad.addColorStop(0.5, 'rgba(0, 255, 100, 0.65)');
+            hazeGrad.addColorStop(0.5, 'rgba(0, 255, 100, 0.70)');
             hazeGrad.addColorStop(1.0, 'rgba(0, 255, 80, 0.0)');
             ctx.fillStyle = hazeGrad;
-            ctx.fillRect(dw.x - 5, windowLaserY - 18, dw.w + 10, 36);
+            ctx.fillRect(dw.x - 5, gLaserY - 20, dw.w + 10, 40);
 
-            // Razor-sharp bright green laser beam core
+            // Razor-sharp bright green laser core
             ctx.strokeStyle = '#ffffff';
-            ctx.lineWidth = 2.0;
+            ctx.lineWidth = 2.2;
             ctx.shadowColor = '#00ff66';
-            ctx.shadowBlur = 12;
+            ctx.shadowBlur = 14;
             ctx.beginPath();
-            ctx.moveTo(dw.x, windowLaserY - (dw.w / 2) * Math.tan(laserAngle));
-            ctx.lineTo(dw.x + dw.w, windowLaserY + (dw.w / 2) * Math.tan(laserAngle));
+            ctx.moveTo(dw.x, gLaserY - (dw.w / 2) * Math.tan(greenLaserAngle));
+            ctx.lineTo(dw.x + dw.w, gLaserY + (dw.w / 2) * Math.tan(greenLaserAngle));
             ctx.stroke();
 
             ctx.restore();
         }
 
-        // 3. Slow Dancing Zombie Silhouette inside the glowing rave room
-        drawDancingZombie(ctx, cx, cy - 2, dw.zombie, slowDanceTime + idx * 2.5, bassImpact);
+        // 4. Cross-Cutting Ruby Red Laser Beam
+        const rLaserY = redLaserY + (cx - 270) * Math.tan(redLaserAngle);
+        if (rLaserY >= dw.y - 12 && rLaserY <= dw.y + dw.h + 12) {
+            ctx.save();
+            fillArchedPath(dw.x, dw.y, dw.w, dw.h);
+            ctx.clip();
 
-        // 4. Gothic window mullions in front of zombie
+            // Broad ruby haze
+            const rHaze = ctx.createLinearGradient(dw.x, rLaserY - 16, dw.x, rLaserY + 16);
+            rHaze.addColorStop(0.0, 'rgba(255, 0, 50, 0.0)');
+            rHaze.addColorStop(0.5, 'rgba(255, 20, 80, 0.65)');
+            rHaze.addColorStop(1.0, 'rgba(255, 0, 50, 0.0)');
+            ctx.fillStyle = rHaze;
+            ctx.fillRect(dw.x - 5, rLaserY - 16, dw.w + 10, 32);
+
+            // Razor ruby core
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.8;
+            ctx.shadowColor = '#ff0033';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.moveTo(dw.x, rLaserY - (dw.w / 2) * Math.tan(redLaserAngle));
+            ctx.lineTo(dw.x + dw.w, rLaserY + (dw.w / 2) * Math.tan(redLaserAngle));
+            ctx.stroke();
+
+            ctx.restore();
+        }
+
+        // 5. Music-Animated Dancing Zombie Silhouettes with Hyper-Detailed Claw Hands
+        drawDancingZombie(ctx, cx, cy - 2, dw.zombie, raveTime + idx * 1.8, audio);
+
+        // 6. Gothic window mullions in front of dancers
         drawMullions(dw.x, dw.y, dw.w, dw.h);
     });
 
-    // 2. RIGHT WINDOWS: FAULTY ELECTRICITY & BLACKOUTS (Random spooky flickering to pitch black)
+    // 2. RIGHT WINDOWS: INDEPENDENT TOP FLOOR VS BOTTOM FLOOR ELECTRICAL FLICKER & BLACKOUTS
     const rightWindows = [
-        { x: 630, y: 510, w: 44, h: 75, id: 0 },
-        { x: 710, y: 510, w: 44, h: 75, id: 1 },
-        { x: 790, y: 510, w: 44, h: 75, id: 2 },
-        { x: 620, y: 650, w: 48, h: 85, id: 3 },
-        { x: 700, y: 650, w: 48, h: 85, id: 4 },
-        { x: 780, y: 650, w: 48, h: 85, id: 5 },
-        { x: 530, y: 650, w: 48, h: 85, id: 6 }
+        { x: 630, y: 510, w: 44, h: 75, id: 0 }, // Top floor (Upstairs)
+        { x: 710, y: 510, w: 44, h: 75, id: 1 }, // Top floor
+        { x: 790, y: 510, w: 44, h: 75, id: 2 }, // Top floor
+        { x: 620, y: 650, w: 48, h: 85, id: 3 }, // Bottom floor (Downstairs)
+        { x: 700, y: 650, w: 48, h: 85, id: 4 }, // Bottom floor
+        { x: 780, y: 650, w: 48, h: 85, id: 5 }, // Bottom floor
+        { x: 530, y: 650, w: 48, h: 85, id: 6 }  // Bottom floor
     ];
 
     rightWindows.forEach((rw) => {
-        const isFaultyWindow = (faultyState.active && (faultyState.target === 2 || (rw.id % 2 === faultyState.target)));
-        let candleFactor = 1.0;
-
-        if (isFaultyWindow) {
-            candleFactor = faultyState.factor; // Drops to 0.0 (PITCH BLACK!)
-        }
+        // Top floor vs Bottom floor flicker independently!
+        const isTopFloor = (rw.id < 3);
+        let candleFactor = isTopFloor 
+            ? ((faultyState && faultyState.topFactor !== undefined) ? faultyState.topFactor : 1.0)
+            : ((faultyState && faultyState.bottomFactor !== undefined) ? faultyState.bottomFactor : 1.0);
 
         if (candleFactor <= 0.05) {
-            // PITCH BLACK (Power Cut / Faulty Electrical Blackout!)
+            // PITCH BLACK (Independent Power Cut / Electrical Blackout on this floor!)
             ctx.fillStyle = '#020306';
             fillArchedPath(rw.x, rw.y, rw.w, rw.h);
             ctx.fill();
         } else {
-            // Warm Candlelight Glow (Modulated by electrical factor)
+            // Warm Candlelight Glow (Modulated by floor's independent electrical factor)
             const cGrad = ctx.createRadialGradient(rw.x + rw.w / 2, rw.y + rw.h / 2, 2, rw.x + rw.w / 2, rw.y + rw.h / 2, Math.max(rw.w, rw.h));
             cGrad.addColorStop(0.0, `rgba(255, 255, 255, ${candleFactor})`);
             cGrad.addColorStop(0.25, `rgba(255, 220, 100, ${candleFactor})`);
@@ -4972,7 +5020,7 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         drawMullions(rw.x, rw.y, rw.w, rw.h);
     });
 
-    // 3. LEFT DOWNSTAIRS WINDOWS & TOWER WINDOWS
+    // 3. LEFT DOWNSTAIRS WINDOWS & TOWER ATTIC WINDOW
     const otherWindows = [
         { x: 200, y: 650, w: 48, h: 85, isGhost: false },
         { x: 260, y: 650, w: 48, h: 85, isGhost: false },
@@ -5633,201 +5681,23 @@ function createHauntedBatWingTexture() {
     return tex;
 }
 
-// 7c. Wicked Flying Witch on Broomstick Silhouette with Black Cat & Trailing Cape (512x512)
+// 7c. Wicked Flying Witch on Broomstick Silhouette (Clean Vector Template from User with Hat on Head)
 function createHauntedWitchTexture() {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
-    canvas.height = 512;
+    canvas.height = 404;
     const ctx = canvas.getContext('2d');
-
-    ctx.clearRect(0, 0, 512, 512);
-
-    ctx.save();
-    // Rotate canvas slightly (-7 deg) so flight vector leans naturally forward
-    ctx.translate(256, 256);
-    ctx.rotate(-0.12);
-    ctx.translate(-256, -256);
-
-    const silhouetteCol = '#020306';
-    ctx.fillStyle = silhouetteCol;
-    ctx.strokeStyle = silhouetteCol;
-
-    // 1. Long Gnarled Wooden Broomstick Handle
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(80, 310);
-    ctx.lineTo(440, 195);
-    ctx.stroke();
-
-    // Curved front tip of broom handle
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.moveTo(440, 195);
-    ctx.quadraticCurveTo(465, 185, 475, 165);
-    ctx.stroke();
-
-    // 2. Thick Frayed Twig Bristles / Broomtail at Rear
-    ctx.beginPath();
-    ctx.moveTo(140, 290);
-    ctx.quadraticCurveTo(80, 295, 30, 260); // top flared twigs
-    ctx.lineTo(20, 280);
-    ctx.quadraticCurveTo(60, 315, 25, 335); // center frayed twigs
-    ctx.lineTo(35, 350);
-    ctx.quadraticCurveTo(90, 340, 135, 315); // bottom twigs
-    ctx.closePath();
-    ctx.fill();
-
-    // Extra wild bristled twig wisps shooting back
-    ctx.lineWidth = 2.5;
-    for (let tw = 0; tw < 9; tw++) {
-        ctx.beginPath();
-        ctx.moveTo(130, 295 + tw * 2.5);
-        ctx.quadraticCurveTo(70, 305 + (tw - 4) * 12, 15 + (tw % 3) * 8, 260 + tw * 11);
-        ctx.stroke();
-    }
-
-    // Twig binding ropes
-    ctx.lineWidth = 6;
-    ctx.strokeStyle = '#121926';
-    ctx.beginPath(); ctx.moveTo(130, 288); ctx.lineTo(135, 315); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(142, 285); ctx.lineTo(147, 312); ctx.stroke();
-    ctx.strokeStyle = silhouetteCol;
-
-    // 3. Black Cat Perched on Rear of Broomstick
-    ctx.beginPath();
-    // Cat body
-    ctx.ellipse(175, 275, 14, 18, 0.4, 0, Math.PI * 2);
-    ctx.fill();
-    // Cat head
-    ctx.beginPath();
-    ctx.arc(188, 258, 9, 0, Math.PI * 2);
-    ctx.fill();
-    // Pointed cat ears
-    ctx.beginPath();
-    ctx.moveTo(182, 254); ctx.lineTo(184, 242); ctx.lineTo(188, 251); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(189, 251); ctx.lineTo(194, 243); ctx.lineTo(196, 255); ctx.fill();
-    // Long curling cat tail whipping back
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(164, 282);
-    ctx.quadraticCurveTo(145, 275, 140, 250);
-    ctx.quadraticCurveTo(138, 235, 150, 230);
-    ctx.stroke();
-
-    // 4. Slender Witch Silhouette
-    // Legs & Pointed Witch Boots tucked beneath broom
-    ctx.beginPath();
-    ctx.moveTo(235, 285);
-    ctx.lineTo(255, 335); // knee
-    ctx.lineTo(285, 360); // ankle
-    ctx.lineTo(315, 365); // pointed curved toe
-    ctx.quadraticCurveTo(325, 355, 305, 350);
-    ctx.lineTo(270, 325);
-    ctx.lineTo(255, 280);
-    ctx.closePath();
-    ctx.fill();
-
-    // Billowing ragged tattered dress skirt & cape billowing backwards
-    ctx.beginPath();
-    ctx.moveTo(250, 250); // waist
-    ctx.quadraticCurveTo(180, 260, 110, 290); // billowing cape top edge
-    ctx.lineTo(85, 310); // torn cape tail
-    ctx.quadraticCurveTo(130, 335, 120, 360); // ragged hem spike 1
-    ctx.lineTo(145, 345);
-    ctx.quadraticCurveTo(180, 370, 170, 395); // ragged hem spike 2
-    ctx.lineTo(200, 360);
-    ctx.quadraticCurveTo(230, 380, 225, 355);
-    ctx.lineTo(260, 320); // hip
-    ctx.closePath();
-    ctx.fill();
-
-    // Torso & Arching Back leaning eagerly forward
-    ctx.beginPath();
-    ctx.moveTo(235, 255);
-    ctx.quadraticCurveTo(240, 205, 280, 185); // curved spine / back
-    ctx.lineTo(315, 205); // chest
-    ctx.lineTo(265, 270);
-    ctx.closePath();
-    ctx.fill();
-
-    // Arms stretching forward gripping the broomstick
-    ctx.lineWidth = 9;
-    ctx.beginPath();
-    ctx.moveTo(290, 195); // shoulder
-    ctx.lineTo(335, 225); // elbow
-    ctx.lineTo(365, 218); // hands on broom
-    ctx.stroke();
-
-    // Witch Head & Profile with Hooked Nose and Pointed Chin
-    ctx.beginPath();
-    ctx.moveTo(295, 180); // neck
-    ctx.lineTo(325, 175); // chin
-    ctx.lineTo(345, 170); // long hooked nose
-    ctx.lineTo(325, 155); // forehead
-    ctx.lineTo(290, 160); // back of skull
-    ctx.closePath();
-    ctx.fill();
-
-    // Long Straggly Hair streaming backward in the slipstream
-    ctx.beginPath();
-    ctx.moveTo(300, 165);
-    ctx.quadraticCurveTo(250, 170, 190, 195);
-    ctx.lineTo(180, 205);
-    ctx.quadraticCurveTo(240, 190, 295, 180);
-    ctx.closePath();
-    ctx.fill();
-
-    // 5. Iconic Tall Conical Witch Hat with Crooked Tip
-    // Wide curved hat brim
-    ctx.beginPath();
-    ctx.ellipse(315, 160, 52, 13, -0.22, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Tall pointed hat cone with bent crooked tip pointing backwards
-    ctx.beginPath();
-    ctx.moveTo(280, 155);
-    ctx.quadraticCurveTo(265, 110, 220, 85); // curved back of cone
-    ctx.lineTo(205, 80); // sharp tip
-    ctx.quadraticCurveTo(235, 95, 270, 125);
-    ctx.lineTo(335, 148); // front base
-    ctx.closePath();
-    ctx.fill();
-
-    // Hat band ribbon fluttering behind
-    ctx.lineWidth = 4;
-    ctx.strokeStyle = '#2d1b4e'; // dark purple ribbon
-    ctx.beginPath();
-    ctx.moveTo(282, 155);
-    ctx.quadraticCurveTo(250, 160, 210, 175);
-    ctx.stroke();
-
-    // Glowing Witch Eye & Cat Eye (faint eerie magical amber/violet glint)
-    ctx.fillStyle = '#ffaa00';
-    ctx.beginPath(); ctx.arc(325, 165, 2.5, 0, Math.PI * 2); ctx.fill(); // Witch eye
-    ctx.fillStyle = '#77ff33';
-    ctx.beginPath(); ctx.arc(190, 256, 1.8, 0, Math.PI * 2); ctx.fill(); // Cat eye
-
-    // Subtle moonlit rim light on top edges
-    ctx.strokeStyle = 'rgba(210, 235, 255, 0.45)';
-    ctx.lineWidth = 2.0;
-    // Hat rim highlight
-    ctx.beginPath();
-    ctx.moveTo(205, 80);
-    ctx.quadraticCurveTo(235, 95, 270, 125);
-    ctx.lineTo(335, 148);
-    ctx.stroke();
-    // Spine highlight
-    ctx.beginPath();
-    ctx.moveTo(280, 185);
-    ctx.quadraticCurveTo(240, 205, 235, 255);
-    ctx.stroke();
-
-    ctx.restore();
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
+
+    const img = new Image();
+    img.onload = () => {
+        ctx.clearRect(0, 0, 512, 404);
+        ctx.drawImage(img, 0, 0, 512, 404);
+        tex.needsUpdate = true;
+    };
+    img.src = '/images/witch_silhouette_tight.png';
     return tex;
 }
 
@@ -10514,7 +10384,7 @@ export function createVFXScene(container) {
 
     // 2b. Wicked Flying Witch on Broomstick with Trailing Cape, Black Cat & Magic Sparkles
     const hauntedWitchGroup = new THREE.Group();
-    const hauntedWitchGeo = new THREE.PlaneGeometry(4.2, 3.2);
+    const hauntedWitchGeo = new THREE.PlaneGeometry(4.2, 3.314);
     const hauntedWitchMat = new THREE.MeshBasicMaterial({
         map: hauntedWitchTex,
         transparent: true,
@@ -10524,14 +10394,13 @@ export function createVFXScene(container) {
     const hauntedWitchMesh = new THREE.Mesh(hauntedWitchGeo, hauntedWitchMat);
     hauntedWitchGroup.add(hauntedWitchMesh);
 
-    // Witch Broomstick Magical Plasma Thrust Exhaust (Custom GLSL Shader)
+    // Witch Broomstick Magical Plasma Thrust Exhaust (Custom GLSL Shader - Attached Strictly to Broom Bristles at Rear)
     const hauntedWitchThrustGeo = new THREE.PlaneGeometry(2.4, 0.95);
     hauntedWitchThrustGeo.translate(-1.2, 0, 0); // Origin at broom bristles nozzle
     const hauntedWitchThrustMat = new THREE.ShaderMaterial({
         uniforms: {
             uTime: { value: 0.0 },
-            uIntensity: { value: 1.0 },
-            uDirection: { value: 1.0 }
+            uIntensity: { value: 1.0 }
         },
         vertexShader: WitchBroomThrustShader.vertexShader,
         fragmentShader: WitchBroomThrustShader.fragmentShader,
@@ -10541,7 +10410,8 @@ export function createVFXScene(container) {
         side: THREE.DoubleSide
     });
     const hauntedWitchThrustMesh = new THREE.Mesh(hauntedWitchThrustGeo, hauntedWitchThrustMat);
-    hauntedWitchThrustMesh.position.set(-1.25, -0.38, 0.02);
+    // Connect strictly to the rear broom bristles (-2.08, -0.81) extending backward (-X)
+    hauntedWitchThrustMesh.position.set(-2.08, -0.81, 0.02);
     hauntedWitchGroup.add(hauntedWitchThrustMesh);
 
     // Trailing Magical Sparkle Particles from broom bristles
@@ -10550,8 +10420,8 @@ export function createVFXScene(container) {
     const hauntedWitchSparklePos = new Float32Array(hauntedWitchSparkleCount * 3);
     const hauntedWitchSparkleLife = new Float32Array(hauntedWitchSparkleCount);
     for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
-        hauntedWitchSparklePos[sp * 3] = -1.2 + (Math.random() - 0.5) * 0.4;
-        hauntedWitchSparklePos[sp * 3 + 1] = -0.4 + (Math.random() - 0.5) * 0.4;
+        hauntedWitchSparklePos[sp * 3] = -2.08 + (Math.random() - 0.5) * 0.4;
+        hauntedWitchSparklePos[sp * 3 + 1] = -0.81 + (Math.random() - 0.5) * 0.4;
         hauntedWitchSparklePos[sp * 3 + 2] = 0;
         hauntedWitchSparkleLife[sp] = Math.random();
     }
@@ -10591,27 +10461,6 @@ export function createVFXScene(container) {
     const hauntedManorMesh = new THREE.Mesh(hauntedManorGeo, hauntedManorMat);
     hauntedManorMesh.position.set(4.2, 3.5, -10.2);
     gHauntedManor.add(hauntedManorMesh);
-
-    // Dedicated GLSL Rave Room Mesh: Piercing Green Laser & Synchronized Rave Ambient Wash
-    const hauntedRaveRoomGeo = new THREE.PlaneGeometry(5.2, 2.2);
-    const hauntedRaveRoomMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 },
-            uRaveColor: { value: new THREE.Color('#ff00aa') },
-            uLaserAngle: { value: 0.0 },
-            uLaserPos: { value: new THREE.Vector2(0.5, 0.5) },
-            uLaserIntensity: { value: 1.0 }
-        },
-        vertexShader: RaveLaserRoomShader.vertexShader,
-        fragmentShader: RaveLaserRoomShader.fragmentShader,
-        transparent: true,
-        blending: THREE.AdditiveBlending,
-        depthWrite: false
-    });
-    const hauntedRaveRoomMesh = new THREE.Mesh(hauntedRaveRoomGeo, hauntedRaveRoomMat);
-    hauntedRaveRoomMesh.position.set(1.9, 3.65, -10.18);
-    gHauntedManor.add(hauntedRaveRoomMesh);
 
     // Dynamic Illuminated Windows Overlay (Synchronized Rave Colors, Green Laser, Slow Dancing Zombies, Faulty Electricity, Candlelight)
     const hauntedWindowsCanvas = document.createElement('canvas');
@@ -10755,21 +10604,26 @@ export function createVFXScene(container) {
     }
     gHauntedManor.add(hauntedGrassGroup);
 
-    // 6c. Dark Autumn Dead Leaves Swirling Across the Screen in the Wind Gusts (85 tumbling dead leaves)
-    const hauntedLeafTex = createHauntedLeafTexture();
-    const hauntedLeavesGroup = new THREE.Group();
-    const hauntedLeafGeo = new THREE.PlaneGeometry(0.38, 0.38);
-    const hauntedLeafMat = new THREE.MeshBasicMaterial({
-        map: hauntedLeafTex,
+    // 6c. Dark Autumn Dead Leaves Swirling Across the Screen in the Wind Gusts (85 individual separate dead leaves)
+    const hauntedLeafTextures = [
+        createSingleHauntedLeafTexture(0),
+        createSingleHauntedLeafTexture(1),
+        createSingleHauntedLeafTexture(2)
+    ];
+    const hauntedLeafMaterials = hauntedLeafTextures.map(tex => new THREE.MeshBasicMaterial({
+        map: tex,
         transparent: true,
         depthWrite: false,
         side: THREE.DoubleSide
-    });
+    }));
+    const hauntedLeavesGroup = new THREE.Group();
+    const hauntedLeafGeo = new THREE.PlaneGeometry(0.36, 0.36);
 
     const hauntedLeaves = [];
     const numHauntedLeaves = 85;
     for (let l = 0; l < numHauntedLeaves; l++) {
-        const leafMesh = new THREE.Mesh(hauntedLeafGeo, hauntedLeafMat);
+        // Each mesh is ONE single separate leaf with its own individual texture
+        const leafMesh = new THREE.Mesh(hauntedLeafGeo, hauntedLeafMaterials[l % 3]);
         const lx = (Math.random() - 0.5) * 56.0;
         const ly = -6.8 + Math.random() * 6.5;
         const lz = -1.5 + Math.random() * 4.2;
@@ -11026,12 +10880,16 @@ export function createVFXScene(container) {
     let hauntedNextFlickerTime = 3.5;
     let hauntedFlickerType = 0;
 
-    // Dedicated Faulty Electricity Wiring State for Right Wing Windows ("flicker black and back to how they are")
-    let hauntedFaultyActive = false;
-    let hauntedFaultyStartTime = 0.0;
-    let hauntedFaultyDuration = 0.8;
-    let hauntedFaultyTarget = 0; // 0: downstairs right, 1: upstairs right, 2: all right windows
-    let hauntedNextFaultyTime = 2.5;
+    // Independent Faulty Electricity Wiring State for Right Wing Windows (Top and Bottom Floors Flicker Independently)
+    let hauntedFaultyTopActive = false;
+    let hauntedFaultyTopStartTime = 0.0;
+    let hauntedFaultyTopDuration = 0.8;
+    let hauntedFaultyTopNextTime = 2.5;
+
+    let hauntedFaultyBottomActive = false;
+    let hauntedFaultyBottomStartTime = 0.0;
+    let hauntedFaultyBottomDuration = 0.8;
+    let hauntedFaultyBottomNextTime = 4.2;
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -13263,63 +13121,60 @@ export function createVFXScene(container) {
                 hauntedNextFaultyTime = elapsedTime + 3.0 + Math.random() * 5.5; // Next faulty event in 3 to 8.5s
             }
 
-            let rightFaultyFactor = 1.0;
-            if (hauntedFaultyActive) {
-                const fProgress = (elapsedTime - hauntedFaultyStartTime) / hauntedFaultyDuration;
+            // 2. Independent Faulty Electricity Wiring for Right Wing Windows (Top and Bottom Floors Flicker Independently)
+            if (!hauntedFaultyTopActive && elapsedTime > hauntedFaultyTopNextTime) {
+                hauntedFaultyTopActive = true;
+                hauntedFaultyTopStartTime = elapsedTime;
+                hauntedFaultyTopDuration = 0.35 + Math.random() * 0.90; // 0.35s to 1.25s blackout/stutter
+                hauntedFaultyTopNextTime = elapsedTime + 3.0 + Math.random() * 6.0;
+            }
+            let topFaultyFactor = 1.0;
+            if (hauntedFaultyTopActive) {
+                const fProgress = (elapsedTime - hauntedFaultyTopStartTime) / hauntedFaultyTopDuration;
                 if (fProgress >= 1.0) {
-                    hauntedFaultyActive = false;
-                    rightFaultyFactor = 1.0;
+                    hauntedFaultyTopActive = false;
+                    topFaultyFactor = 1.0;
                 } else {
-                    // Erratic rapid electrical blackout stutter (pitch black with brief electrical arc sparks)
-                    const arcNoise = Math.sin(elapsedTime * 65.0) * Math.cos(elapsedTime * 45.0);
-                    if (arcNoise > 0.45) {
-                        rightFaultyFactor = 0.3; // brief weak electrical buzz spark
-                    } else if (arcNoise > 0.3) {
-                        rightFaultyFactor = 0.85; // brief pop
-                    } else {
-                        rightFaultyFactor = 0.0; // PITCH BLACK! Completely unlit window!
-                    }
+                    const arcNoise = Math.sin(elapsedTime * 68.0) * Math.cos(elapsedTime * 47.0);
+                    if (arcNoise > 0.45) topFaultyFactor = 0.35;
+                    else if (arcNoise > 0.30) topFaultyFactor = 0.85;
+                    else topFaultyFactor = 0.0; // PITCH BLACK!
+                }
+            }
+
+            if (!hauntedFaultyBottomActive && elapsedTime > hauntedFaultyBottomNextTime) {
+                hauntedFaultyBottomActive = true;
+                hauntedFaultyBottomStartTime = elapsedTime;
+                hauntedFaultyBottomDuration = 0.40 + Math.random() * 0.95; // 0.40s to 1.35s blackout/stutter
+                hauntedFaultyBottomNextTime = elapsedTime + 4.0 + Math.random() * 7.0;
+            }
+            let bottomFaultyFactor = 1.0;
+            if (hauntedFaultyBottomActive) {
+                const fProgress = (elapsedTime - hauntedFaultyBottomStartTime) / hauntedFaultyBottomDuration;
+                if (fProgress >= 1.0) {
+                    hauntedFaultyBottomActive = false;
+                    bottomFaultyFactor = 1.0;
+                } else {
+                    const arcNoise = Math.sin(elapsedTime * 60.0) * Math.cos(elapsedTime * 52.0);
+                    if (arcNoise > 0.45) bottomFaultyFactor = 0.35;
+                    else if (arcNoise > 0.30) bottomFaultyFactor = 0.85;
+                    else bottomFaultyFactor = 0.0; // PITCH BLACK!
                 }
             }
 
             const faultyState = {
-                active: hauntedFaultyActive,
-                factor: rightFaultyFactor,
-                target: hauntedFaultyTarget
+                topFactor: topFaultyFactor,
+                bottomFactor: bottomFaultyFactor
             };
 
-            // 2. Synchronized Rave Room GLSL Shader Update (Same rave color for all 3 windows, green laser scanner)
-            const ravePalette = [
-                new THREE.Color('#ff00aa'), // Neon Magenta
-                new THREE.Color('#9900ff'), // Electric Violet
-                new THREE.Color('#00f0ff'), // Cyber Cyan
-                new THREE.Color('#ffee00'), // Rave Acid Gold
-                new THREE.Color('#ff2244')  // Strobe Crimson
-            ];
-            const rCycle = (elapsedTime * 0.85) % ravePalette.length;
-            const rIdxA = Math.floor(rCycle);
-            const rIdxB = (rIdxA + 1) % ravePalette.length;
-            const rLerp = rCycle - rIdxA;
-            const curRaveColor = ravePalette[rIdxA].clone().lerp(ravePalette[rIdxB], rLerp);
-
-            hauntedRaveRoomMat.uniforms.uTime.value = elapsedTime;
-            hauntedRaveRoomMat.uniforms.uBass.value = bassImpact;
-            hauntedRaveRoomMat.uniforms.uRaveColor.value.copy(curRaveColor);
-            hauntedRaveRoomMat.uniforms.uLaserAngle.value = Math.sin(elapsedTime * 2.8) * 0.42;
-            hauntedRaveRoomMat.uniforms.uLaserPos.value.set(
-                0.5 + Math.sin(elapsedTime * 1.5) * 0.15,
-                0.5 + Math.sin(elapsedTime * 3.5) * 0.25
-            );
-            hauntedRaveRoomMat.uniforms.uLaserIntensity.value = 1.0 + (audio.smoothedTreble || 0) * 0.45;
-
-            // Render Dynamic Windows Canvas: Synchronized Rave Lights, Green Laser, Slow Dancing Zombies, Faulty Electricity, Candlelight
+            // Render Dynamic Windows Canvas: Blade Blood Rave, Scanning Lasers, Music-Animated Zombies, Independent Floor Flickers
             renderHauntedManorWindows(hauntedWindowsCtx, elapsedTime, audio, faultyState);
             hauntedWindowsTex.needsUpdate = true;
 
             // Atmospheric Candle & Interior Lights
             const gentleSway = Math.sin(elapsedTime * 3.2) * 0.07 + Math.cos(elapsedTime * 4.8) * 0.04;
             const candleIntensity = 2.4 * (1.0 + gentleSway) + (audio.smoothedTreble || 0) * 0.35;
-            hauntedCandleLight.intensity = Math.max(0.08, candleIntensity * rightFaultyFactor);
+            hauntedCandleLight.intensity = Math.max(0.08, candleIntensity * Math.min(topFaultyFactor, bottomFaultyFactor));
 
             // Grand Entrance Porch Hanging Carriage Lantern: Pendulum Swing in Wind & Flickering Candle
             const lanternWindSwing = Math.sin(elapsedTime * 1.8) * 0.12 + (currentGust * 0.28);
@@ -13345,12 +13200,10 @@ export function createVFXScene(container) {
                     // Pass 1: In front of moon (z = -17.5) and BEHIND manor (z = -10.2)
                     hauntedWitchGroup.position.z = -15.5;
                     hauntedWitchGroup.scale.set(1.1, 1.1, 1.1); // Facing right (+X)
-                    hauntedWitchThrustMat.uniforms.uDirection.value = -1.0; // Plume trails backward (-X)
                 }
             } else if (hauntedWitchState === 'pass1_background') {
                 hauntedWitchGroup.visible = true;
                 hauntedWitchX += 11.5 * delta; // Flies LEFT TO RIGHT
-                hauntedWitchThrustMat.uniforms.uDirection.value = -1.0;
                 // High soaring flight across sky, silhouettes cleanly across full moon!
                 const witchY = 5.6 + Math.sin(hauntedWitchX * 0.18) * 0.45;
                 hauntedWitchGroup.position.set(hauntedWitchX, witchY, -15.5);
@@ -13371,12 +13224,10 @@ export function createVFXScene(container) {
                     // Pass 2: In FRONT of manor (z = -10.2) at z = -5.5, scaled LARGER (2.4x scale)
                     hauntedWitchGroup.position.z = -5.5;
                     hauntedWitchGroup.scale.set(-2.4, 2.4, 2.4); // Flips X so she faces LEFT in flight direction!
-                    hauntedWitchThrustMat.uniforms.uDirection.value = 1.0; // Plume trails backward (+X in world space)
                 }
             } else if (hauntedWitchState === 'pass2_foreground') {
                 hauntedWitchGroup.visible = true;
                 hauntedWitchX -= 12.5 * delta; // Flies RIGHT TO LEFT!
-                hauntedWitchThrustMat.uniforms.uDirection.value = 1.0;
                 // Dynamic swooping trajectory in front of the illuminated manor windows and entrance portico
                 const witchY = 2.4 + Math.sin(hauntedWitchX * 0.22) * 0.85;
                 hauntedWitchGroup.position.set(hauntedWitchX, witchY, -5.5);
@@ -13390,23 +13241,21 @@ export function createVFXScene(container) {
                 }
             }
 
-            // Animate trailing magic stardust particles behind broomstick & thrust flame
+            // Animate trailing magic stardust particles strictly behind broom bristles & thrust flame
             if (hauntedWitchGroup.visible) {
                 const spAttr = hauntedWitchSparkleGeo.attributes.position;
                 const spArr = spAttr.array;
-                const isFlyingLeft = (hauntedWitchState === 'pass2_foreground');
                 for (let sp = 0; sp < hauntedWitchSparkleCount; sp++) {
                     hauntedWitchSparkleLife[sp] += delta * 2.2;
                     if (hauntedWitchSparkleLife[sp] > 1.0) {
                         hauntedWitchSparkleLife[sp] = 0.0;
-                        // Spawn at flame plume tip
-                        const tailX = isFlyingLeft ? 2.2 : -2.2;
-                        spArr[sp * 3] = tailX + (Math.random() - 0.5) * 0.35;
-                        spArr[sp * 3 + 1] = -0.38 + (Math.random() - 0.5) * 0.35;
+                        // Spawn strictly at rear plume tail (-3.8 in local space)
+                        spArr[sp * 3] = -3.8 + (Math.random() - 0.5) * 0.4;
+                        spArr[sp * 3 + 1] = -0.81 + (Math.random() - 0.5) * 0.35;
                         spArr[sp * 3 + 2] = (Math.random() - 0.5) * 0.2;
                     } else {
-                        // Drift backward relative to flight direction
-                        spArr[sp * 3] += (isFlyingLeft ? delta * 1.8 : -delta * 1.8);
+                        // Drift backward in local space
+                        spArr[sp * 3] -= delta * 1.8;
                         spArr[sp * 3 + 1] += (Math.random() - 0.5) * 0.15 * delta;
                     }
                 }
