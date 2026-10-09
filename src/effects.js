@@ -12401,27 +12401,44 @@ export function createVFXScene(container) {
 
     // 10b. Realistic Multi-Layered Driving Rain System
     // Layer 1: Foreground Heavy Driving Downpour (1,600 Streaks Falling In Front Of and Past Railings, z = -1.5 to +4.0)
-    const hauntedForeRainCount = 1600;
+    // Per-drop white gradient streak colours: tail vertex = transparent black, head vertex = white * brightness
+    function buildRainStreakColors(count, minBright, maxBright) {
+        const cols = new Float32Array(count * 6);
+        for (let r = 0; r < count; r++) {
+            const b = minBright + Math.random() * (maxBright - minBright);
+            // Tail (top) fades out completely under additive blending
+            cols[r * 6] = 0.0; cols[r * 6 + 1] = 0.0; cols[r * 6 + 2] = 0.0;
+            // Head (bottom) crisp white
+            cols[r * 6 + 3] = b; cols[r * 6 + 4] = b; cols[r * 6 + 5] = b;
+        }
+        return cols;
+    }
+
+    const hauntedForeRainCount = 1400;
     const hauntedForeRainGeo = new THREE.BufferGeometry();
     const hauntedForeRainPos = new Float32Array(hauntedForeRainCount * 6);
     const hauntedForeRainVel = new Float32Array(hauntedForeRainCount);
+    const hauntedForeRainLen = new Float32Array(hauntedForeRainCount);
     for (let r = 0; r < hauntedForeRainCount; r++) {
         const rx = (Math.random() - 0.5) * 60.0;
         const ry = -8.5 + Math.random() * 26.0;
         // Spans right across foreground past railings (z = 0.0) up to +4.0!
         const rz = -1.5 + Math.random() * 5.5;
-        const len = 1.6 + Math.random() * 1.6; // Longer foreground motion-blurred streaks
+        const len = 1.1 + Math.random() * 1.3; // Varied motion-blurred streak lengths
+        hauntedForeRainLen[r] = len;
         hauntedForeRainPos[r * 6] = rx;
         hauntedForeRainPos[r * 6 + 1] = ry;
         hauntedForeRainPos[r * 6 + 2] = rz;
-        hauntedForeRainPos[r * 6 + 3] = rx - 0.45;
+        hauntedForeRainPos[r * 6 + 3] = rx - 0.3;
         hauntedForeRainPos[r * 6 + 4] = ry - len;
         hauntedForeRainPos[r * 6 + 5] = rz;
-        hauntedForeRainVel[r] = 32.0 + Math.random() * 16.0;
+        hauntedForeRainVel[r] = 30.0 + Math.random() * 18.0;
     }
     hauntedForeRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedForeRainPos, 3));
+    hauntedForeRainGeo.setAttribute('color', new THREE.BufferAttribute(buildRainStreakColors(hauntedForeRainCount, 0.45, 1.0), 3));
     const hauntedForeRainMat = new THREE.LineBasicMaterial({
-        color: 0xd8eeff,
+        color: 0xffffff,
+        vertexColors: true,
         transparent: true,
         opacity: 0.0,
         depthWrite: false,
@@ -12435,22 +12452,26 @@ export function createVFXScene(container) {
     const hauntedMidRainGeo = new THREE.BufferGeometry();
     const hauntedMidRainPos = new Float32Array(hauntedMidRainCount * 6);
     const hauntedMidRainVel = new Float32Array(hauntedMidRainCount);
+    const hauntedMidRainLen = new Float32Array(hauntedMidRainCount);
     for (let r = 0; r < hauntedMidRainCount; r++) {
         const rx = (Math.random() - 0.5) * 64.0;
         const ry = -8.5 + Math.random() * 28.0;
         const rz = -15.5 + Math.random() * 14.0;
-        const len = 0.95 + Math.random() * 0.95;
+        const len = 0.6 + Math.random() * 0.8;
+        hauntedMidRainLen[r] = len;
         hauntedMidRainPos[r * 6] = rx;
         hauntedMidRainPos[r * 6 + 1] = ry;
         hauntedMidRainPos[r * 6 + 2] = rz;
-        hauntedMidRainPos[r * 6 + 3] = rx - 0.32;
+        hauntedMidRainPos[r * 6 + 3] = rx - 0.2;
         hauntedMidRainPos[r * 6 + 4] = ry - len;
         hauntedMidRainPos[r * 6 + 5] = rz;
-        hauntedMidRainVel[r] = 24.0 + Math.random() * 14.0;
+        hauntedMidRainVel[r] = 22.0 + Math.random() * 14.0;
     }
     hauntedMidRainGeo.setAttribute('position', new THREE.BufferAttribute(hauntedMidRainPos, 3));
+    hauntedMidRainGeo.setAttribute('color', new THREE.BufferAttribute(buildRainStreakColors(hauntedMidRainCount, 0.25, 0.7), 3));
     const hauntedMidRainMat = new THREE.LineBasicMaterial({
-        color: 0x98bcd8,
+        color: 0xffffff,
+        vertexColors: true,
         transparent: true,
         opacity: 0.0,
         depthWrite: false,
@@ -12490,12 +12511,12 @@ export function createVFXScene(container) {
     hauntedForkedLightningMesh.position.set(2.0, 6.0, -15.4);
     gHauntedManor.add(hauntedForkedLightningMesh);
 
-    // Dynamic Weather State Machine: 'rain' -> 'gathering' -> 'storm' -> 'clearing' -> 'rain'
-    let hauntedWeatherState = 'rain';
+    // Dynamic Weather State Machine (Intermittent): 'clear' -> 'gathering' -> 'storm' -> 'clearing' -> 'clear'
+    let hauntedWeatherState = 'clear';
     let hauntedWeatherTimer = 0.0;
-    let hauntedWeatherPhaseDuration = 18.0; // Steady gothic rain for 18s
-    let hauntedRainAlpha = 0.55; // Always immediately active and visible!
-    let hauntedCloudsAlpha = 0.45; // Brooding storm clouds immediately visible!
+    let hauntedWeatherPhaseDuration = 8.0; // Short dry moonlit spell before the first storm rolls in
+    let hauntedRainAlpha = 0.0; // Dry clear night to start
+    let hauntedCloudsAlpha = 0.0; // Clear moonlit sky to start
     let hauntedForkedLightningTimer = 0.0;
     let hauntedNextStormLightningTime = 0.0;
 
@@ -12597,6 +12618,11 @@ export function createVFXScene(container) {
             }
             if (index === 21) {
                 const now = clock.getElapsedTime();
+                hauntedWeatherState = 'clear';
+                hauntedWeatherTimer = 0.0;
+                hauntedWeatherPhaseDuration = 14.0; // Initial dry moonlit spell (14s) before storm clouds gather
+                hauntedRainAlpha = 0.0;
+                hauntedCloudsAlpha = 0.0;
                 hauntedWitchNextTime = now + 1.8; // Witch flies across moon within 1.8s!
                 hauntedNextGustTime = now + 1.2; // Sudden rushing wind gust within 1.2s!
                 hauntedFaultyTopNextTime = now + 1.0; // Top floor electrical blackout within 1.0s!
@@ -15015,34 +15041,34 @@ export function createVFXScene(container) {
             }
             mistPosAttr.needsUpdate = true;
 
-            // 5. ⛈️ Dynamic Weather & Storm System (Brooding clouds at top, driving rain, procedural forked lightning bolt)
+            // 5. ⛈️ Intermittent Dynamic Weather System ('clear' -> 'gathering' -> 'storm' -> 'clearing' -> 'clear')
             hauntedWeatherTimer += delta;
-            if (hauntedWeatherState === 'rain' || hauntedWeatherState === 'calm') {
-                // Steady gothic downpour & atmospheric rain across the estate grounds
-                hauntedCloudsAlpha = THREE.MathUtils.lerp(hauntedCloudsAlpha, 0.45, delta * 0.4);
-                hauntedRainAlpha = THREE.MathUtils.lerp(hauntedRainAlpha, 0.52, delta * 0.4); // Always visible!
+            if (hauntedWeatherState === 'clear') {
+                // Clear, dry moonlit night: rain and clouds completely disappear
+                hauntedCloudsAlpha = Math.max(0.0, THREE.MathUtils.lerp(hauntedCloudsAlpha, 0.0, delta * 0.45));
+                hauntedRainAlpha = Math.max(0.0, THREE.MathUtils.lerp(hauntedRainAlpha, 0.0, delta * 0.55));
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'gathering';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 9.0;
+                    hauntedWeatherPhaseDuration = 10.0 + Math.random() * 4.0; // 10s - 14s gathering clouds
                 }
             } else if (hauntedWeatherState === 'gathering') {
-                // Dark brooding storm clouds gather heavily into upper sky
+                // Dark brooding storm clouds roll heavily across upper sky, sprinkles begin in latter half
                 const gatherProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
-                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.45, 0.95, gatherProg);
-                hauntedRainAlpha = THREE.MathUtils.lerp(0.52, 0.75, gatherProg);
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.0, 0.90, gatherProg);
+                hauntedRainAlpha = gatherProg > 0.5 ? THREE.MathUtils.lerp(0.0, 0.35, (gatherProg - 0.5) * 2.0) : 0.0;
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'storm';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 20.0 + Math.random() * 8.0; // Storm lasts 20s - 28s
-                    hauntedNextStormLightningTime = 2.2 + Math.random() * 3.0;
+                    hauntedWeatherPhaseDuration = 18.0 + Math.random() * 8.0; // 18s - 26s storm
+                    hauntedNextStormLightningTime = 2.0 + Math.random() * 3.0;
                 }
             } else if (hauntedWeatherState === 'storm') {
-                // Active violent storm: driving sheets of rain sweeping across screen
-                hauntedCloudsAlpha = 0.98;
-                hauntedRainAlpha = Math.min(0.92, hauntedRainAlpha + delta * 0.4);
+                // Violent thunderstorm: dark clouds, driving white sheets of rain, forked lightning bolts
+                hauntedCloudsAlpha = 0.96;
+                hauntedRainAlpha = Math.min(0.95, 0.65 + (hauntedWeatherTimer / hauntedWeatherPhaseDuration) * 0.30);
 
                 // Random forked lightning strikes during the storm
                 if (hauntedWeatherTimer >= hauntedNextStormLightningTime && hauntedForkedLightningTimer <= 0.0) {
@@ -15058,24 +15084,24 @@ export function createVFXScene(container) {
                     hauntedForkedLightningMesh.scale.set(Math.random() > 0.5 ? 1.0 : -1.0, 1.0, 1.0);
 
                     hauntedForkedLightningTimer = 0.42;
-                    hauntedNextStormLightningTime = hauntedWeatherTimer + 4.5 + Math.random() * 6.0;
+                    hauntedNextStormLightningTime = hauntedWeatherTimer + 4.0 + Math.random() * 5.0;
                 }
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
                     hauntedWeatherState = 'clearing';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 8.0;
+                    hauntedWeatherPhaseDuration = 9.0 + Math.random() * 3.0; // 9s - 12s clearing
                 }
             } else if (hauntedWeatherState === 'clearing') {
-                // Storm eases back into steady moody rain
+                // Storm passes: driving rain tapers off to zero, clouds disperse back to clear sky
                 const clearProg = Math.min(1.0, hauntedWeatherTimer / hauntedWeatherPhaseDuration);
-                hauntedRainAlpha = THREE.MathUtils.lerp(0.92, 0.52, clearProg);
-                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.98, 0.45, clearProg);
+                hauntedRainAlpha = THREE.MathUtils.lerp(0.60, 0.0, clearProg);
+                hauntedCloudsAlpha = THREE.MathUtils.lerp(0.85, 0.0, clearProg);
 
                 if (hauntedWeatherTimer >= hauntedWeatherPhaseDuration) {
-                    hauntedWeatherState = 'rain';
+                    hauntedWeatherState = 'clear';
                     hauntedWeatherTimer = 0.0;
-                    hauntedWeatherPhaseDuration = 24.0 + Math.random() * 12.0;
+                    hauntedWeatherPhaseDuration = 22.0 + Math.random() * 12.0; // 22s - 34s dry, moonlit night!
                 }
             }
 
@@ -15144,13 +15170,13 @@ export function createVFXScene(container) {
                 });
             }
 
-            // Animate Realistic Multi-Layered Driving Rain (Foreground up past railings + Deep Atmospheric sheets)
+            // Animate Realistic Multi-Layered Driving Rain (Crisp Pure White Streaks with Directional Motion Blur)
             const windShift = -0.42 - (currentGust * 1.5);
 
-            // Layer 1: Foreground Driving Downpour (Cutting right past railings, gate pillars, and camera)
-            if (hauntedRainAlpha > 0.01) {
-                hauntedForeRainMat.opacity = Math.min(0.95, hauntedRainAlpha * (0.95 + stormFlashPower * 0.75));
-                hauntedForeRainMat.color.setHex(stormFlashPower > 0.08 ? 0xffffff : 0xd8eeff);
+            if (hauntedRainAlpha > 0.008) {
+                // Pure white streaks at all times (never blue/cyan sticks)
+                hauntedForeRainMat.color.setHex(0xffffff);
+                hauntedForeRainMat.opacity = Math.min(1.0, hauntedRainAlpha * (0.85 + stormFlashPower * 0.70));
 
                 const forePosAttr = hauntedForeRainGeo.attributes.position;
                 for (let r = 0; r < hauntedForeRainCount; r++) {
@@ -15168,8 +15194,9 @@ export function createVFXScene(container) {
                         topX = (Math.random() - 0.5) * 60.0;
                     }
 
-                    const dropLen = 1.85 + (fallSpeed / 48.0) * 0.8;
-                    const botX = topX + windShift * dropLen * 0.48;
+                    // Directionally aligned white line streak matching velocity vector
+                    const dropLen = hauntedForeRainLen[r] || 1.3;
+                    const botX = topX + windShift * 0.32 * dropLen;
                     const botY = topY - dropLen;
 
                     forePosAttr.setXYZ(r * 2, topX, topY, topZ);
@@ -15177,9 +15204,9 @@ export function createVFXScene(container) {
                 }
                 forePosAttr.needsUpdate = true;
 
-                // Layer 2: Deep Atmospheric Driving Rain (Over estate, trees, and Victorian manor)
-                hauntedMidRainMat.opacity = Math.min(0.85, hauntedRainAlpha * (0.80 + stormFlashPower * 0.55));
-                hauntedMidRainMat.color.setHex(stormFlashPower > 0.08 ? 0xd0f0ff : 0x98bcd8);
+                // Layer 2: Deep Atmospheric Driving Rain (Finer, softer pure white streaks over estate & manor)
+                hauntedMidRainMat.color.setHex(0xffffff);
+                hauntedMidRainMat.opacity = Math.min(0.90, hauntedRainAlpha * (0.75 + stormFlashPower * 0.55));
 
                 const midPosAttr = hauntedMidRainGeo.attributes.position;
                 for (let r = 0; r < hauntedMidRainCount; r++) {
@@ -15196,8 +15223,8 @@ export function createVFXScene(container) {
                         topX = (Math.random() - 0.5) * 64.0;
                     }
 
-                    const dropLen = 1.15;
-                    const botX = topX + windShift * dropLen * 0.44;
+                    const dropLen = hauntedMidRainLen[r] || 0.7;
+                    const botX = topX + windShift * 0.30 * dropLen;
                     const botY = topY - dropLen;
 
                     midPosAttr.setXYZ(r * 2, topX, topY, topZ);
@@ -15205,6 +15232,7 @@ export function createVFXScene(container) {
                 }
                 midPosAttr.needsUpdate = true;
             } else {
+                // Completely invisible during dry, clear spells
                 hauntedForeRainMat.opacity = 0.0;
                 hauntedMidRainMat.opacity = 0.0;
             }
