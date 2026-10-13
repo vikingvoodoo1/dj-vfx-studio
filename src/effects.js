@@ -4883,15 +4883,14 @@ function createHauntedManorTexture() {
     ctx.fillStyle = manorDark;
     ctx.fillRect(310, 600, 200, 200);
 
-    // Carved Double Wooden Doors (Centered at x = 410)
-    ctx.fillStyle = '#080503';
-    ctx.fillRect(360, 650, 100, 150);
-    ctx.strokeStyle = '#1b120c';
-    ctx.lineWidth = 3;
-    ctx.strokeRect(365, 655, 42, 65);
-    ctx.strokeRect(365, 725, 42, 70);
-    ctx.strokeRect(413, 655, 42, 65);
-    ctx.strokeRect(413, 725, 42, 70);
+    // Grand Entrance Portal Recess (Cut out so 3D opening doors & green staircase hallway are visible)
+    ctx.clearRect(360, 650, 100, 150);
+    ctx.strokeStyle = '#020306';
+    ctx.lineWidth = 5;
+    ctx.strokeRect(358, 648, 104, 154);
+    ctx.strokeStyle = stoneHighlight;
+    ctx.lineWidth = 2.5;
+    ctx.strokeRect(356, 646, 108, 156);
 
     // Iron Portico Lantern Hanging Bracket Hook (Dead center at x = 410)
     ctx.strokeStyle = '#05070a';
@@ -4983,6 +4982,394 @@ function createHauntedManorTexture() {
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = THREE.ClampToEdgeWrapping;
     tex.wrapT = THREE.ClampToEdgeWrapping;
+    return tex;
+}
+
+// 3b. Victorian Gothic Carved Wooden Door Wing Texture (256x512)
+function createHauntedFrontDoorTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 256;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Weathered black oak wood planks
+    ctx.fillStyle = '#0c0806';
+    ctx.fillRect(0, 0, 256, 512);
+
+    // Vertical plank grooves
+    const plankW = 256 / 4;
+    for (let p = 0; p < 4; p++) {
+        const px = p * plankW;
+        const plankGrad = ctx.createLinearGradient(px, 0, px + plankW, 0);
+        plankGrad.addColorStop(0.0, '#1a110a');
+        plankGrad.addColorStop(0.3, '#26180e');
+        plankGrad.addColorStop(0.8, '#1e130c');
+        plankGrad.addColorStop(1.0, '#0a0604');
+        ctx.fillStyle = plankGrad;
+        ctx.fillRect(px + 1, 0, plankW - 2, 512);
+
+        // Wood grain streaks
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.45)';
+        ctx.lineWidth = 1.5;
+        for (let g = 0; g < 14; g++) {
+            const gx = px + 4 + Math.random() * (plankW - 8);
+            ctx.beginPath();
+            ctx.moveTo(gx, 0);
+            ctx.lineTo(gx + (Math.random() - 0.5) * 4, 512);
+            ctx.stroke();
+        }
+    }
+
+    // Heavy carved gothic panels
+    ctx.fillStyle = '#080503';
+    ctx.strokeStyle = '#322014';
+    ctx.lineWidth = 5;
+    // Top panel
+    ctx.fillRect(16, 24, 224, 210);
+    ctx.strokeRect(16, 24, 224, 210);
+    // Bottom panel
+    ctx.fillRect(16, 260, 224, 228);
+    ctx.strokeRect(16, 260, 224, 228);
+
+    // Inner relief mouldings
+    ctx.strokeStyle = '#120a06';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(26, 34, 204, 190);
+    ctx.strokeRect(26, 270, 204, 208);
+
+    // Wrought-iron strap hinges
+    ctx.fillStyle = '#0a0d14';
+    ctx.strokeStyle = '#1e2638';
+    ctx.lineWidth = 2;
+    [60, 240, 440].forEach(hy => {
+        ctx.fillRect(0, hy, 180, 20);
+        ctx.strokeRect(0, hy, 180, 20);
+        // Spearhead finial
+        ctx.beginPath();
+        ctx.moveTo(180, hy - 4);
+        ctx.lineTo(210, hy + 10);
+        ctx.lineTo(180, hy + 24);
+        ctx.closePath();
+        ctx.fill(); ctx.stroke();
+        // Heavy iron rivets
+        [30, 80, 130, 175].forEach(rx => {
+            ctx.fillStyle = '#2a354a';
+            ctx.beginPath();
+            ctx.arc(rx, hy + 10, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
+    });
+
+    // Wrought-iron ring door knocker (on top panel)
+    ctx.strokeStyle = '#3a4b66';
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.arc(128, 140, 32, 0, Math.PI * 2);
+    ctx.stroke();
+    // Knocker boss
+    ctx.fillStyle = '#1c2432';
+    ctx.beginPath();
+    ctx.arc(128, 108, 14, 0, Math.PI * 2);
+    ctx.fill();
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 3c. Grand Victorian Gothic Staircase Hallway with Spooky Green Lighting (512x512)
+function createHauntedStaircaseTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+
+    // Deep shadowy hallway recess
+    ctx.fillStyle = '#020603';
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Spooky emerald / toxic green ambient glow pouring from upstairs
+    const greenGlow = ctx.createRadialGradient(256, 180, 20, 256, 256, 320);
+    greenGlow.addColorStop(0.0, 'rgba(57, 255, 20, 0.95)');
+    greenGlow.addColorStop(0.25, 'rgba(0, 230, 100, 0.70)');
+    greenGlow.addColorStop(0.60, 'rgba(0, 120, 50, 0.35)');
+    greenGlow.addColorStop(1.0, 'rgba(2, 20, 8, 0.0)');
+    ctx.fillStyle = greenGlow;
+    ctx.fillRect(0, 0, 512, 512);
+
+    // Vaulted gothic arched hallway ceiling beams in perspective
+    ctx.strokeStyle = '#051108';
+    ctx.lineWidth = 8;
+    ctx.beginPath();
+    ctx.moveTo(0, 0); ctx.lineTo(160, 120);
+    ctx.moveTo(512, 0); ctx.lineTo(352, 120);
+    ctx.moveTo(160, 120); ctx.lineTo(352, 120);
+    ctx.stroke();
+
+    // Dark wood paneling with antique sinister portraits on side walls
+    ctx.fillStyle = '#08140a';
+    ctx.fillRect(0, 80, 120, 360);
+    ctx.fillRect(392, 80, 120, 360);
+    // Portrait frame on left
+    ctx.strokeStyle = '#1e3816';
+    ctx.lineWidth = 4;
+    ctx.strokeRect(20, 140, 70, 110);
+    ctx.fillStyle = '#020603';
+    ctx.fillRect(22, 142, 66, 106);
+    // Eerie glowing eyes in portrait
+    ctx.fillStyle = '#39ff14';
+    ctx.fillRect(48, 175, 4, 3);
+    ctx.fillRect(60, 175, 4, 3);
+
+    // Portrait frame on right
+    ctx.strokeRect(422, 140, 70, 110);
+    ctx.fillStyle = '#020603';
+    ctx.fillRect(424, 142, 66, 106);
+    ctx.fillStyle = '#39ff14';
+    ctx.fillRect(450, 175, 4, 3);
+    ctx.fillRect(462, 175, 4, 3);
+
+    // Grand sweeping gothic staircase (Rising up from center foreground into green upper landing)
+    const numSteps = 16;
+    for (let s = numSteps; s >= 0; s--) {
+        const prog = s / numSteps;
+        const stepY = 220 + prog * 260; // 220 at top landing, 480 at bottom
+        const stepW = 120 + (1.0 - prog) * 220; // 120 wide at top, 340 wide at bottom
+        const stepX = 256 - stepW / 2;
+        const stepH = 16 + (1.0 - prog) * 8;
+
+        // Dark carved oak / stone tread
+        ctx.fillStyle = s % 2 === 0 ? '#0a1a0e' : '#0e2414';
+        ctx.fillRect(stepX, stepY, stepW, stepH);
+
+        // Toxic green moonlight edge highlight on each tread nose
+        ctx.strokeStyle = 'rgba(57, 255, 20, 0.75)';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(stepX, stepY); ctx.lineTo(stepX + stepW, stepY);
+        ctx.stroke();
+
+        // Blood-red / velvet runner carpet cascading down the center
+        const carpetW = stepW * 0.44;
+        const carpetX = 256 - carpetW / 2;
+        ctx.fillStyle = '#2a0408';
+        ctx.fillRect(carpetX, stepY, carpetW, stepH);
+        // Gold / green embroidered edge trim on carpet
+        ctx.strokeStyle = 'rgba(57, 255, 80, 0.55)';
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        ctx.moveTo(carpetX, stepY); ctx.lineTo(carpetX, stepY + stepH);
+        ctx.moveTo(carpetX + carpetW, stepY); ctx.lineTo(carpetX + carpetW, stepY + stepH);
+        ctx.stroke();
+    }
+
+    // Carved gothic staircase balustrades & ornate banister posts
+    ctx.strokeStyle = '#051208';
+    ctx.lineWidth = 6;
+    // Left banister rail
+    ctx.beginPath();
+    ctx.moveTo(256 - 60, 200); ctx.lineTo(256 - 175, 470);
+    ctx.stroke();
+    // Right banister rail
+    ctx.beginPath();
+    ctx.moveTo(256 + 60, 200); ctx.lineTo(256 + 175, 470);
+    ctx.stroke();
+
+    // Heavy carved newel posts at bottom of staircase
+    ctx.fillStyle = '#061609';
+    ctx.fillRect(256 - 188, 440, 22, 65);
+    ctx.fillRect(256 + 166, 440, 22, 65);
+    // Green glowing finial orbs atop newel posts
+    const orbGrad = ctx.createRadialGradient(256 - 177, 435, 2, 256 - 177, 435, 14);
+    orbGrad.addColorStop(0.0, '#ffffff');
+    orbGrad.addColorStop(0.4, '#39ff14');
+    orbGrad.addColorStop(1.0, 'transparent');
+    ctx.fillStyle = orbGrad;
+    ctx.beginPath(); ctx.arc(256 - 177, 435, 14, 0, Math.PI * 2); ctx.fill();
+    const orbGradR = ctx.createRadialGradient(256 + 177, 435, 2, 256 + 177, 435, 14);
+    orbGradR.addColorStop(0.0, '#ffffff');
+    orbGradR.addColorStop(0.4, '#39ff14');
+    orbGradR.addColorStop(1.0, 'transparent');
+    ctx.fillStyle = orbGradR;
+    ctx.beginPath(); ctx.arc(256 + 177, 435, 14, 0, Math.PI * 2); ctx.fill();
+
+    // Swirling ground green mist at base of staircase
+    const mistGrad = ctx.createLinearGradient(0, 420, 0, 512);
+    mistGrad.addColorStop(0.0, 'rgba(57, 255, 20, 0.0)');
+    mistGrad.addColorStop(0.5, 'rgba(57, 255, 20, 0.35)');
+    mistGrad.addColorStop(1.0, 'rgba(20, 180, 50, 0.65)');
+    ctx.fillStyle = mistGrad;
+    ctx.fillRect(0, 420, 512, 92);
+
+    const tex = new THREE.CanvasTexture(canvas);
+    return tex;
+}
+
+// 3d. Terrifying Jump Spook Phantom Apparition (512x512)
+function createHauntedJumpSpookTexture() {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, 512, 512);
+
+    const cx = 256, cy = 230;
+
+    // 1. Radiant Ghostly Ectoplasm Aura (Bright Cyan & Toxic Green spirit glow)
+    const auraGrad = ctx.createRadialGradient(cx, cy, 20, cx, cy, 240);
+    auraGrad.addColorStop(0.0, 'rgba(210, 255, 240, 0.95)');
+    auraGrad.addColorStop(0.25, 'rgba(0, 255, 200, 0.75)');
+    auraGrad.addColorStop(0.55, 'rgba(57, 255, 20, 0.45)');
+    auraGrad.addColorStop(0.85, 'rgba(0, 120, 80, 0.15)');
+    auraGrad.addColorStop(1.0, 'transparent');
+    ctx.fillStyle = auraGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 240, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Swirling Shredded Ectoplasmic Shroud / Tendrils
+    ctx.fillStyle = 'rgba(180, 245, 230, 0.85)';
+    ctx.beginPath();
+    ctx.moveTo(cx - 140, cy + 60);
+    ctx.bezierCurveTo(cx - 180, cy + 180, cx - 120, cy + 270, cx - 80, cy + 280);
+    ctx.bezierCurveTo(cx - 40, cy + 220, cx - 20, cy + 270, cx, cy + 280);
+    ctx.bezierCurveTo(cx + 20, cy + 260, cx + 50, cy + 280, cx + 90, cy + 260);
+    ctx.bezierCurveTo(cx + 140, cy + 220, cx + 180, cy + 160, cx + 140, cy + 60);
+    ctx.closePath();
+    ctx.fill();
+
+    // 3. Shrieking Demonic Phantom Skull & Head
+    ctx.fillStyle = '#060a0f';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, 105, 125, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Decayed bone contours
+    ctx.strokeStyle = 'rgba(180, 245, 230, 0.85)';
+    ctx.lineWidth = 4;
+    ctx.stroke();
+
+    // Hollow sunken eye sockets
+    ctx.fillStyle = '#010204';
+    ctx.beginPath();
+    ctx.ellipse(cx - 46, cy - 25, 32, 42, -0.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(cx + 46, cy - 25, 32, 42, 0.15, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Blazing Unholy Fiery Eyes (Blinding white core with neon electric green/cyan fire)
+    function drawBlazingEye(ex, ey) {
+        const eyeFire = ctx.createRadialGradient(ex, ey, 2, ex, ey, 28);
+        eyeFire.addColorStop(0.0, '#ffffff');
+        eyeFire.addColorStop(0.35, '#00ffff');
+        eyeFire.addColorStop(0.70, '#39ff14');
+        eyeFire.addColorStop(1.0, 'transparent');
+        ctx.fillStyle = eyeFire;
+        ctx.beginPath();
+        ctx.arc(ex, ey, 28, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Slit demonic pupil
+        ctx.fillStyle = '#000000';
+        ctx.beginPath();
+        ctx.ellipse(ex, ey, 3.5, 16, 0, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    drawBlazingEye(cx - 46, cy - 25);
+    drawBlazingEye(cx + 46, cy - 25);
+
+    // Sunken nasal cavity
+    ctx.fillStyle = '#010204';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 12);
+    ctx.lineTo(cx - 14, cy + 38);
+    ctx.lineTo(cx + 14, cy + 38);
+    ctx.closePath();
+    ctx.fill();
+
+    // 4. Massive Gaping Screaming Void Mouth
+    ctx.fillStyle = '#000000';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 85, 52, 75, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Green/cyan phantom fire pouring out of the screaming mouth
+    const mouthFire = ctx.createRadialGradient(cx, cy + 85, 4, cx, cy + 85, 55);
+    mouthFire.addColorStop(0.0, 'rgba(57, 255, 20, 0.95)');
+    mouthFire.addColorStop(0.5, 'rgba(0, 240, 200, 0.65)');
+    mouthFire.addColorStop(1.0, 'transparent');
+    ctx.fillStyle = mouthFire;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 85, 46, 68, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Jagged Needle Fangs (Top & Bottom)
+    ctx.fillStyle = '#e8fffa';
+    // Top fangs
+    for (let f = -40; f <= 40; f += 14) {
+        ctx.beginPath();
+        ctx.moveTo(cx + f - 5, cy + 35);
+        ctx.lineTo(cx + f + 5, cy + 35);
+        ctx.lineTo(cx + f, cy + 58 + Math.abs(f) * 0.2);
+        ctx.closePath();
+        ctx.fill();
+    }
+    // Bottom fangs
+    for (let f = -35; f <= 35; f += 14) {
+        ctx.beginPath();
+        ctx.moveTo(cx + f - 5, cy + 135);
+        ctx.lineTo(cx + f + 5, cy + 135);
+        ctx.lineTo(cx + f, cy + 112 - Math.abs(f) * 0.2);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // 5. Ragged Skeletal Claw Hands Lunging Out Towards Camera!
+    function drawLungingClaw(kx, ky, isLeft) {
+        ctx.save();
+        ctx.translate(kx, ky);
+        if (!isLeft) ctx.scale(-1, 1);
+
+        ctx.strokeStyle = '#e0fff8';
+        ctx.fillStyle = '#102025';
+        ctx.lineWidth = 6;
+        ctx.lineCap = 'round';
+
+        // Palm / wrist
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 24, 20, 0, 0, Math.PI * 2);
+        ctx.fill(); ctx.stroke();
+
+        // 4 Long articulated talons reaching straight forward
+        const talonAngles = [-0.6, -0.2, 0.2, 0.6];
+        talonAngles.forEach((ang, idx) => {
+            const tLen = 65 + (idx === 1 || idx === 2 ? 15 : 0);
+            const midX = Math.cos(ang - 0.4) * (tLen * 0.5);
+            const midY = Math.sin(ang - 0.4) * (tLen * 0.5);
+            const endX = Math.cos(ang) * tLen;
+            const endY = Math.sin(ang) * tLen;
+
+            ctx.lineWidth = 7;
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(midX, midY);
+            ctx.lineTo(endX, endY);
+            ctx.stroke();
+
+            // Sharp needle tip
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(endX, endY, 4, 0, Math.PI * 2);
+            ctx.fill();
+        });
+
+        ctx.restore();
+    }
+
+    drawLungingClaw(cx - 155, cy + 140, true);
+    drawLungingClaw(cx + 155, cy + 140, false);
+
+    const tex = new THREE.CanvasTexture(canvas);
     return tex;
 }
 
@@ -5395,55 +5782,8 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         drawMullions(dw.x, dw.y, dw.w, dw.h);
     });
 
-    // 2. RIGHT WINDOWS: INDEPENDENT TOP FLOOR VS BOTTOM FLOOR ELECTRICAL FLICKER & BLACKOUTS
-    const rightWindows = [
-        { x: 630, y: 510, w: 44, h: 75, id: 0 }, // Top floor (Upstairs)
-        { x: 710, y: 510, w: 44, h: 75, id: 1 }, // Top floor
-        { x: 790, y: 510, w: 44, h: 75, id: 2 }, // Top floor
-        { x: 620, y: 650, w: 48, h: 85, id: 3 }, // Bottom floor (Downstairs)
-        { x: 700, y: 650, w: 48, h: 85, id: 4 }, // Bottom floor
-        { x: 780, y: 650, w: 48, h: 85, id: 5 }, // Bottom floor
-        { x: 530, y: 650, w: 48, h: 85, id: 6 }  // Bottom floor
-    ];
-
-    rightWindows.forEach((rw) => {
-        // Top floor vs Bottom floor flicker independently!
-        const isTopFloor = (rw.id < 3);
-        let candleFactor = isTopFloor 
-            ? ((faultyState && faultyState.topFactor !== undefined) ? faultyState.topFactor : 1.0)
-            : ((faultyState && faultyState.bottomFactor !== undefined) ? faultyState.bottomFactor : 1.0);
-
-        if (candleFactor <= 0.05) {
-            // PITCH BLACK (Independent Power Cut / Electrical Blackout on this floor!)
-            ctx.fillStyle = '#020306';
-            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
-            ctx.fill();
-        } else {
-            // Warm Candlelight Glow (Modulated by floor's independent electrical factor)
-            const cGrad = ctx.createRadialGradient(rw.x + rw.w / 2, rw.y + rw.h / 2, 2, rw.x + rw.w / 2, rw.y + rw.h / 2, Math.max(rw.w, rw.h));
-            cGrad.addColorStop(0.0, `rgba(255, 255, 255, ${candleFactor})`);
-            cGrad.addColorStop(0.25, `rgba(255, 220, 100, ${candleFactor})`);
-            cGrad.addColorStop(0.65, `rgba(255, 136, 0, ${candleFactor * 0.85})`);
-            cGrad.addColorStop(1.0, `rgba(120, 40, 0, ${candleFactor * 0.6})`);
-            ctx.fillStyle = cGrad;
-            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
-            ctx.fill();
-        }
-
-        drawMullions(rw.x, rw.y, rw.w, rw.h);
-    });
-
-    // 3. LEFT DOWNSTAIRS WINDOWS, TOWER ATTIC & TOP CENTER WINDOWS WITH WALKING ZOMBIE
-    const otherWindows = [
-        { x: 200, y: 650, w: 48, h: 85, isGhost: false },
-        { x: 260, y: 650, w: 48, h: 85, isGhost: false },
-        { x: 490, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center left window
-        { x: 535, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center right window
-        { x: 510, y: 230, w: 32, h: 55, isGhost: true }  // Tower attic
-    ];
-
-    // Zombie Walking Back and Forth with Hands Outstretched in Front (Every now and then)
-    function drawWalkingZombie(ctx, zx, zy, facingRight, legCycle) {
+    // Helper: Draw Walking & Waving Zombie Silhouette with Outstretched Hands & Articulated Claw
+    function drawWalkingZombie(ctx, zx, zy, facingRight, legCycle, isWaving = false, waveTime = 0) {
         ctx.save();
         ctx.translate(zx, zy);
         if (!facingRight) {
@@ -5452,8 +5792,8 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
 
         ctx.fillStyle = '#020306';
 
-        // Shambling Leg Stride
-        const legStride = Math.sin(legCycle) * 6.5;
+        // Shambling Leg Stride (stationary if stopping to wave)
+        const legStride = isWaving ? 0 : Math.sin(legCycle) * 6.5;
         // Back leg
         ctx.beginPath();
         ctx.moveTo(-4, -18);
@@ -5482,35 +5822,176 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
         ctx.fill();
 
         // Drooping head & slack jaw
-        const headBob = Math.sin(legCycle * 2) * 1.5;
+        const headBob = isWaving ? Math.sin(waveTime * 3) * 0.8 : Math.sin(legCycle * 2) * 1.5;
         ctx.beginPath();
         ctx.ellipse(3, -44 + headBob, 5.5, 7.5, 0.25, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillRect(5, -39 + headBob, 4, 3.5);
 
-        // Arms Outstretched Forward in Front!
         ctx.lineWidth = 3.2;
         ctx.strokeStyle = '#020306';
         ctx.lineCap = 'round';
 
-        // Upper arm 1
-        ctx.beginPath();
-        ctx.moveTo(3, -34);
-        ctx.lineTo(16, -34 + Math.sin(legCycle) * 2);
-        ctx.lineTo(21, -31); // Drooping claw wrist
-        ctx.stroke();
+        if (isWaving) {
+            // Lower arm (slack forward)
+            ctx.beginPath();
+            ctx.moveTo(3, -34);
+            ctx.lineTo(12, -26);
+            ctx.lineTo(16, -22);
+            ctx.stroke();
 
-        // Upper arm 2
-        ctx.beginPath();
-        ctx.moveTo(0, -32);
-        ctx.lineTo(14, -31 - Math.sin(legCycle) * 2);
-        ctx.lineTo(19, -28); // Drooping claw wrist
-        ctx.stroke();
+            // Raised Waving Arm (Elbow bent up high, hand waving back & forth!)
+            const waveAngle = Math.sin(waveTime * 7.5) * 0.52;
+            const elbowX = 6;
+            const elbowY = -50;
+            ctx.beginPath();
+            ctx.moveTo(0, -32);
+            ctx.lineTo(elbowX, elbowY);
+            const handX = elbowX + Math.sin(waveAngle) * 16;
+            const handY = elbowY - Math.cos(waveAngle) * 16;
+            ctx.lineTo(handX, handY);
+            ctx.stroke();
+
+            // Hand / claw waving on the end
+            drawZombieHand(ctx, handX, handY, waveAngle, 0.5);
+        } else {
+            // Arms Outstretched Forward in Front!
+            // Upper arm 1
+            ctx.beginPath();
+            ctx.moveTo(3, -34);
+            ctx.lineTo(16, -34 + Math.sin(legCycle) * 2);
+            ctx.lineTo(21, -31); // Drooping claw wrist
+            ctx.stroke();
+
+            // Upper arm 2
+            ctx.beginPath();
+            ctx.moveTo(0, -32);
+            ctx.lineTo(14, -31 - Math.sin(legCycle) * 2);
+            ctx.lineTo(19, -28); // Drooping claw wrist
+            ctx.stroke();
+        }
 
         ctx.restore();
     }
 
-    // Walking zombie cycle: passes left-to-right, pauses, then right-to-left
+    // 2. RIGHT WINDOWS: INDEPENDENT TOP FLOOR VS BOTTOM FLOOR ELECTRICAL FLICKER & BLACKOUTS
+    const rightWindows = [
+        { x: 630, y: 510, w: 44, h: 75, id: 0 }, // Top floor (Upstairs / Middle-Right)
+        { x: 710, y: 510, w: 44, h: 75, id: 1 }, // Top floor
+        { x: 790, y: 510, w: 44, h: 75, id: 2 }, // Top floor
+        { x: 620, y: 650, w: 48, h: 85, id: 3 }, // Bottom floor (Downstairs)
+        { x: 700, y: 650, w: 48, h: 85, id: 4 }, // Bottom floor
+        { x: 780, y: 650, w: 48, h: 85, id: 5 }, // Bottom floor
+        { x: 530, y: 650, w: 48, h: 85, id: 6 }  // Bottom floor
+    ];
+
+    // Right Wing Zombie State Machine: Alternates Upstairs (middle-right) windows vs Downstairs windows
+    const rightZombieCyclePeriod = 44.0;
+    const rCycleTime = elapsedTime % rightZombieCyclePeriod;
+    let rightZombieFloor = null; // 'upstairs' or 'downstairs'
+    let rightZombieActive = false;
+    let rightZombieX = 0;
+    let rightZombieWaving = false;
+    let rightZombieFacingRight = true;
+    let rightZombieLegPhase = elapsedTime * 5.0;
+
+    if (rCycleTime < 13.5) {
+        // Segment A: Upstairs / Middle-Right floor windows (y = 510, x spans 600 -> 840)
+        rightZombieFloor = 'upstairs';
+        rightZombieActive = true;
+        if (rCycleTime < 4.8) {
+            // Walking left to right towards center window
+            const p = rCycleTime / 4.8;
+            rightZombieX = 600 + p * 125; // 600 -> 725
+            rightZombieWaving = false;
+            rightZombieFacingRight = true;
+        } else if (rCycleTime < 8.2) {
+            // Stops in center window (x = 725), turns, and waves!
+            rightZombieX = 725;
+            rightZombieWaving = true;
+            rightZombieFacingRight = true;
+        } else {
+            // Resumes walking rightwards and walks off
+            const p = (rCycleTime - 8.2) / 5.3;
+            rightZombieX = 725 + p * 135; // 725 -> 860
+            rightZombieWaving = false;
+            rightZombieFacingRight = true;
+        }
+    } else if (rCycleTime >= 22.0 && rCycleTime < 36.5) {
+        // Segment B: Downstairs / Bottom level floor windows (y = 650, x spans 500 -> 840)
+        const dTime = rCycleTime - 22.0;
+        rightZombieFloor = 'downstairs';
+        rightZombieActive = true;
+        if (dTime < 5.2) {
+            // Walking left to right across downstairs windows
+            const p = dTime / 5.2;
+            rightZombieX = 510 + p * 190; // 510 -> 700
+            rightZombieWaving = false;
+            rightZombieFacingRight = true;
+        } else if (dTime < 8.8) {
+            // Stops in downstairs window (x = 700), stops, and waves!
+            rightZombieX = 700;
+            rightZombieWaving = true;
+            rightZombieFacingRight = true;
+        } else {
+            // Resumes walking rightwards and walks off
+            const p = (dTime - 8.8) / 5.7;
+            rightZombieX = 700 + p * 150; // 700 -> 850
+            rightZombieWaving = false;
+            rightZombieFacingRight = true;
+        }
+    }
+
+    rightWindows.forEach((rw) => {
+        // Top floor vs Bottom floor flicker independently!
+        const isTopFloor = (rw.id < 3);
+        let candleFactor = isTopFloor 
+            ? ((faultyState && faultyState.topFactor !== undefined) ? faultyState.topFactor : 1.0)
+            : ((faultyState && faultyState.bottomFactor !== undefined) ? faultyState.bottomFactor : 1.0);
+
+        if (candleFactor <= 0.05) {
+            // PITCH BLACK (Independent Power Cut / Electrical Blackout on this floor!)
+            ctx.fillStyle = '#020306';
+            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
+            ctx.fill();
+        } else {
+            // Warm Candlelight Glow (Modulated by floor's independent electrical factor)
+            const cGrad = ctx.createRadialGradient(rw.x + rw.w / 2, rw.y + rw.h / 2, 2, rw.x + rw.w / 2, rw.y + rw.h / 2, Math.max(rw.w, rw.h));
+            cGrad.addColorStop(0.0, `rgba(255, 255, 255, ${candleFactor})`);
+            cGrad.addColorStop(0.25, `rgba(255, 220, 100, ${candleFactor})`);
+            cGrad.addColorStop(0.65, `rgba(255, 136, 0, ${candleFactor * 0.85})`);
+            cGrad.addColorStop(1.0, `rgba(120, 40, 0, ${candleFactor * 0.6})`);
+            ctx.fillStyle = cGrad;
+            fillArchedPath(rw.x, rw.y, rw.w, rw.h);
+            ctx.fill();
+        }
+
+        // Draw Walking & Waving Zombie in Right Wing Windows
+        if (rightZombieActive) {
+            const isTargetWindow = (rightZombieFloor === 'upstairs' && rw.id < 3) ||
+                                  (rightZombieFloor === 'downstairs' && rw.id >= 3);
+            if (isTargetWindow && rightZombieX >= rw.x - 18 && rightZombieX <= rw.x + rw.w + 18) {
+                ctx.save();
+                fillArchedPath(rw.x, rw.y, rw.w, rw.h);
+                ctx.clip();
+                drawWalkingZombie(ctx, rightZombieX, rw.y + rw.h - 2, rightZombieFacingRight, rightZombieLegPhase, rightZombieWaving, elapsedTime);
+                ctx.restore();
+            }
+        }
+
+        drawMullions(rw.x, rw.y, rw.w, rw.h);
+    });
+
+    // 3. LEFT DOWNSTAIRS WINDOWS, TOWER ATTIC & TOP CENTER WINDOWS WITH WALKING ZOMBIE
+    const otherWindows = [
+        { x: 200, y: 650, w: 48, h: 85, isGhost: false },
+        { x: 260, y: 650, w: 48, h: 85, isGhost: false },
+        { x: 490, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center left window
+        { x: 535, y: 390, w: 36, h: 65, isGhost: false, isCenterTop: true }, // Top center right window
+        { x: 510, y: 230, w: 32, h: 55, isGhost: true }  // Tower attic
+    ];
+
+    // Top floor walking zombie cycle: passes left-to-right, pauses, then right-to-left
     const zombiePeriod = 20.0;
     const zombieCycleTime = elapsedTime % zombiePeriod;
     const zombieWalkDuration = 6.8;
@@ -5555,7 +6036,7 @@ function renderHauntedManorWindows(ctx, elapsedTime, audio, faultyState) {
             ctx.save();
             fillArchedPath(ow.x, ow.y, ow.w, ow.h);
             ctx.clip();
-            drawWalkingZombie(ctx, zombieX, ow.y + ow.h - 2, zombieFacingRight, zombieLegPhase);
+            drawWalkingZombie(ctx, zombieX, ow.y + ow.h - 2, zombieFacingRight, zombieLegPhase, false, 0);
             ctx.restore();
         }
 
@@ -5979,76 +6460,90 @@ function createHauntedDirtPathTexture() {
         ctx.fill();
     }
 
-    // 2. Curving Gothic Carriage Road (Graceful S-curve perfectly connecting Gates at y=1024, x=1024 to Manor Steps at y=0, x=1062):
-    // Left boundary of carriage road
+    // Mathematical Driveway Curve: Perfectly connects Gates (Z=0, py=580, X=0, px=1024) to Manor Steps (Z=-10.2, py=441, X=+2.06, px=1062)
+    function getDrivewayPathCenter(py) {
+        if (py >= 580) {
+            // Forward from gates through foreground: centered at x = 0 (px = 1024)
+            return 1024;
+        } else if (py <= 441) {
+            // Courtyard apron / turnaround at manor porch steps: centered at X = +2.06 (px = 1062)
+            return 1062;
+        } else {
+            // Driveway S-bend connecting gates to manor steps
+            const s = (580 - py) / (580 - 441); // 0 at gate (py=580), 1 at manor steps (py=441)
+            const bendX = 2.06 * (s * s) + Math.sin(s * Math.PI) * (-1.2);
+            return 1024 + bendX * 18.618;
+        }
+    }
+
+    function getDrivewayHalfWidth(py) {
+        if (py >= 580) {
+            return 52 + (py - 580) * 0.04;
+        } else if (py <= 441) {
+            return 64 + (441 - py) * 0.15;
+        } else {
+            const s = (580 - py) / (580 - 441);
+            return 52 + s * 12;
+        }
+    }
+
+    // 2. Curving Gothic Carriage Road Bed
     ctx.beginPath();
-    ctx.moveTo(804, 1024); // Left gate opening
-    ctx.bezierCurveTo(680, 840, 640, 680, 760, 490);
-    ctx.bezierCurveTo(840, 320, 920, 160, 942, 0); // Directly to left side of manor staircase
-    // Across top at manor steps
-    ctx.lineTo(1182, 0); // Directly to right side of manor staircase
-    // Right boundary of carriage road
-    ctx.bezierCurveTo(1160, 160, 1080, 320, 1060, 490);
-    ctx.bezierCurveTo(1040, 680, 1160, 840, 1244, 1024); // Right gate opening
+    // Trace left curb boundary from foreground (py = 1024) up to manor courtyard (py = 360)
+    for (let py = 1024; py >= 360; py -= 4) {
+        const cx = getDrivewayPathCenter(py);
+        const hw = getDrivewayHalfWidth(py);
+        if (py === 1024) ctx.moveTo(cx - hw, py);
+        else ctx.lineTo(cx - hw, py);
+    }
+    // Across top at manor courtyard
+    ctx.lineTo(getDrivewayPathCenter(360) + getDrivewayHalfWidth(360), 360);
+    // Trace right curb boundary from top back down to foreground
+    for (let py = 360; py <= 1024; py += 4) {
+        const cx = getDrivewayPathCenter(py);
+        const hw = getDrivewayHalfWidth(py);
+        ctx.lineTo(cx + hw, py);
+    }
     ctx.closePath();
 
     // Road Bed Fill: High contrast moonlit slate-blue granite carriageway foundation
-    const roadBedGrad = ctx.createLinearGradient(0, 0, 0, 1024);
+    const roadBedGrad = ctx.createLinearGradient(0, 360, 0, 1024);
     roadBedGrad.addColorStop(0.0, '#1e2d42');
-    roadBedGrad.addColorStop(0.4, '#263852');
-    roadBedGrad.addColorStop(0.8, '#2c405c');
+    roadBedGrad.addColorStop(0.3, '#24354d');
+    roadBedGrad.addColorStop(0.7, '#2a3d58');
     roadBedGrad.addColorStop(1.0, '#324766');
     ctx.fillStyle = roadBedGrad;
     ctx.fill();
 
     // 3. Prominent Carved Granite Curbstones (Heavy stone borders delineating both edges of the road)
-    // Outer shadow line for depth
-    ctx.lineWidth = 18;
+    ctx.lineWidth = 16;
     ctx.strokeStyle = '#03060a';
     ctx.stroke();
 
-    // Main carved stone kerb body
-    ctx.lineWidth = 12;
+    ctx.lineWidth = 10;
     ctx.strokeStyle = '#3a506e';
     ctx.stroke();
 
-    // Inner moonlit silver-blue highlight line along the curb tops
-    ctx.lineWidth = 3.5;
+    ctx.lineWidth = 3.0;
     ctx.strokeStyle = '#6e92be';
     ctx.stroke();
 
-    // 4. Textured Cobblestones and Flagstone Paving (650+ individual stones following the winding curves)
-    for (let c = 0; c < 650; c++) {
-        const t = Math.random();
-        const py = t * 1024;
-
-        // Calculate road centerline along the cubic Bezier curves
-        let centerX, halfWidth;
-        if (t < 0.52) {
-            // Lower half (gates up to center curve)
-            const lt = t / 0.52;
-            centerX = 1024 - Math.sin(lt * Math.PI) * 165;
-            halfWidth = 220 - lt * 35;
-        } else {
-            // Upper half (center curve to manor staircase)
-            const ut = (t - 0.52) / 0.48;
-            centerX = 910 + ut * 152 + Math.sin(ut * Math.PI) * 45;
-            halfWidth = 185 - ut * 65;
-        }
-
-        const offset = (Math.random() - 0.5) * (halfWidth * 1.6);
-        const stoneX = centerX + offset;
+    // 4. Textured Cobblestones and Flagstone Paving (700+ individual stones following the winding curves)
+    for (let c = 0; c < 720; c++) {
+        const py = 360 + Math.random() * (1024 - 360);
+        const cx = getDrivewayPathCenter(py);
+        const hw = getDrivewayHalfWidth(py);
+        const offset = (Math.random() - 0.5) * (hw * 1.7);
+        const stoneX = cx + offset;
         const stoneY = py;
-        const stoneR = 3.5 + Math.random() * 8.5;
+        const stoneR = 3.0 + Math.random() * 7.5;
 
-        // Variety of weathered granite slate tones with specular moon highlights
         const stonePalette = ['#2e425e', '#23344b', '#395172', '#456186', '#1c293c'];
         ctx.fillStyle = stonePalette[Math.floor(Math.random() * stonePalette.length)];
         ctx.beginPath();
-        ctx.ellipse(stoneX, stoneY, stoneR * 1.4, stoneR, Math.random() * 0.5 - 0.25, 0, Math.PI * 2);
+        ctx.ellipse(stoneX, stoneY, stoneR * 1.3, stoneR, Math.random() * 0.4 - 0.2, 0, Math.PI * 2);
         ctx.fill();
 
-        // Moonlit stone top highlight
         if (Math.random() > 0.45) {
             ctx.fillStyle = 'rgba(145, 185, 230, 0.35)';
             ctx.beginPath();
@@ -6060,47 +6555,49 @@ function createHauntedDirtPathTexture() {
     // 5. Weathered Carriage Wheel Ruts (Depressed iron wheel grooves compacted by heavy carriages)
     // Left Wheel Rut
     ctx.beginPath();
-    ctx.moveTo(910, 1024);
-    ctx.bezierCurveTo(790, 840, 750, 680, 860, 490);
-    ctx.bezierCurveTo(930, 320, 990, 160, 1000, 0);
-    ctx.lineWidth = 26;
+    for (let py = 1024; py >= 380; py -= 6) {
+        const rx = getDrivewayPathCenter(py) - 22;
+        if (py === 1024) ctx.moveTo(rx, py);
+        else ctx.lineTo(rx, py);
+    }
+    ctx.lineWidth = 18;
     ctx.strokeStyle = '#121c29';
     ctx.stroke();
 
     // Right Wheel Rut
     ctx.beginPath();
-    ctx.moveTo(1140, 1024);
-    ctx.bezierCurveTo(1030, 840, 950, 680, 980, 490);
-    ctx.bezierCurveTo(1010, 320, 1080, 160, 1120, 0);
-    ctx.lineWidth = 26;
+    for (let py = 1024; py >= 380; py -= 6) {
+        const rx = getDrivewayPathCenter(py) + 22;
+        if (py === 1024) ctx.moveTo(rx, py);
+        else ctx.lineTo(rx, py);
+    }
+    ctx.lineWidth = 18;
     ctx.strokeStyle = '#121c29';
     ctx.stroke();
 
     // 6. Brilliant Moonlit Rainwater Puddles (Gleaming pools reflecting the full moon and porch lantern)
     const curvingPuddles = [
-        { x: 1024, y: 970, rx: 75, ry: 26, rot: 0.02, lantern: false },
-        { x: 910, y: 880, rx: 65, ry: 22, rot: -0.15, lantern: false },
-        { x: 800, y: 730, rx: 58, ry: 20, rot: 0.20, lantern: false },
-        { x: 850, y: 560, rx: 52, ry: 18, rot: -0.16, lantern: false },
-        { x: 940, y: 440, rx: 46, ry: 16, rot: 0.12, lantern: false },
-        { x: 1020, y: 320, rx: 42, ry: 15, rot: 0.22, lantern: false },
-        { x: 1050, y: 190, rx: 38, ry: 14, rot: -0.08, lantern: true }, // Near porch, catches warm candlelight!
-        { x: 1062, y: 75, rx: 34, ry: 12, rot: 0.05, lantern: true }
+        { py: 960, rx: 65, ry: 22, rot: 0.02, lantern: false },
+        { py: 820, rx: 55, ry: 19, rot: -0.05, lantern: false },
+        { py: 680, rx: 50, ry: 17, rot: 0.04, lantern: false },
+        { py: 560, rx: 46, ry: 16, rot: -0.08, lantern: false },
+        { py: 490, rx: 42, ry: 15, rot: 0.12, lantern: false },
+        { py: 440, rx: 40, ry: 14, rot: 0.05, lantern: true }, // Near porch steps
+        { py: 390, rx: 36, ry: 13, rot: -0.04, lantern: true }
     ];
 
     curvingPuddles.forEach(p => {
+        const px = getDrivewayPathCenter(p.py) + (Math.sin(p.py * 0.05) * 12);
         ctx.save();
-        ctx.translate(p.x, p.y);
+        ctx.translate(px, p.py);
         ctx.rotate(p.rot);
         const pGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, p.rx);
         if (p.lantern) {
-            // Warm amber carriage lantern reflection near manor steps
             pGrad.addColorStop(0.0, 'rgba(255, 215, 140, 0.70)');
             pGrad.addColorStop(0.45, 'rgba(220, 160, 80, 0.35)');
             pGrad.addColorStop(0.80, 'rgba(100, 140, 190, 0.20)');
             pGrad.addColorStop(1.0, 'transparent');
         } else {
-            // Cold silver-cyan full moon reflection
             pGrad.addColorStop(0.0, 'rgba(210, 235, 255, 0.65)');
             pGrad.addColorStop(0.40, 'rgba(135, 185, 240, 0.35)');
             pGrad.addColorStop(0.80, 'rgba(70, 110, 165, 0.18)');
@@ -6111,36 +6608,6 @@ function createHauntedDirtPathTexture() {
         ctx.ellipse(0, 0, p.rx, p.ry, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.restore();
-    });
-
-    // 7. Carved Gothic Roadside Stone Bollards along the driveway bends
-    const roadsideBollards = [
-        { x: 740, y: 820 }, { x: 1190, y: 820 },
-        { x: 670, y: 640 }, { x: 1110, y: 640 },
-        { x: 770, y: 440 }, { x: 1160, y: 440 },
-        { x: 880, y: 260 }, { x: 1180, y: 260 },
-        { x: 920, y: 90 }, { x: 1200, y: 90 }
-    ];
-    roadsideBollards.forEach(b => {
-        // Bollard shadow
-        ctx.fillStyle = '#020408';
-        ctx.beginPath();
-        ctx.ellipse(b.x, b.y + 6, 12, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        // Stone pier body
-        ctx.fillStyle = '#28384e';
-        ctx.fillRect(b.x - 7, b.y - 18, 14, 22);
-        // Moonlit face
-        ctx.fillStyle = '#486284';
-        ctx.fillRect(b.x - 7, b.y - 18, 6, 22);
-        // Stone pyramid finial cap
-        ctx.fillStyle = '#6585ad';
-        ctx.beginPath();
-        ctx.moveTo(b.x, b.y - 26);
-        ctx.lineTo(b.x - 8, b.y - 18);
-        ctx.lineTo(b.x + 8, b.y - 18);
-        ctx.closePath();
-        ctx.fill();
     });
 
     const tex = new THREE.CanvasTexture(canvas);
@@ -6623,8 +7090,8 @@ function createHauntedGargoyleTexture() {
     return tex;
 }
 
-// 6f. Jack-O'-Lantern Pathway Guardian Texture (512x512)
-function createHauntedPumpkinTexture() {
+// 6f. Jack-O'-Lantern Pathway Guardian Texture with Coloured Lights in Cut-out Mouths (512x512)
+function createHauntedPumpkinTexture(mouthColorHex = '#39ff14') {
     const canvas = document.createElement('canvas');
     canvas.width = 512;
     canvas.height = 512;
@@ -6668,7 +7135,6 @@ function createHauntedPumpkinTexture() {
     ];
 
     lobes.forEach(l => {
-        // Deep shading gradient from top-left light to bottom shadow
         const lGrad = ctx.createRadialGradient(l.x - 25, cy - 45, 12, l.x, cy + 20, l.ry);
         lGrad.addColorStop(0.0, l.col);
         lGrad.addColorStop(0.65, l.mid);
@@ -6679,7 +7145,6 @@ function createHauntedPumpkinTexture() {
         ctx.ellipse(l.x, cy, l.rx, l.ry, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Moonlit Silver-Slate Rim Highlight along upper curved edge
         ctx.strokeStyle = 'rgba(170, 205, 235, 0.28)';
         ctx.lineWidth = 2.5;
         ctx.beginPath();
@@ -6729,13 +7194,14 @@ function createHauntedPumpkinTexture() {
     ctx.closePath();
     ctx.fill();
 
-    // 6. Blazing Hot Candle / Fire Coals Glow Inside
-    const fireGrad = ctx.createRadialGradient(cx, cy + 55, 6, cx, cy + 55, 75);
-    fireGrad.addColorStop(0.0, 'rgba(255, 255, 220, 1.0)');
-    fireGrad.addColorStop(0.3, 'rgba(255, 205, 60, 0.95)');
-    fireGrad.addColorStop(0.7, 'rgba(255, 95, 10, 0.75)');
-    fireGrad.addColorStop(1.0, 'rgba(180, 20, 0, 0.0)');
-    ctx.fillStyle = fireGrad;
+    // 6. Blazing Coloured Supernatural Light Inside Cut-out Mouth & Eyes
+    const mouthGlow = ctx.createRadialGradient(cx, cy + 55, 4, cx, cy + 55, 82);
+    mouthGlow.addColorStop(0.0, '#ffffff'); // Blinding hot core
+    mouthGlow.addColorStop(0.28, mouthColorHex); // Vivid neon colored light!
+    mouthGlow.addColorStop(0.72, mouthColorHex);
+    mouthGlow.addColorStop(1.0, 'transparent');
+    ctx.fillStyle = mouthGlow;
+
     // Glow through eye cutouts
     ctx.beginPath();
     ctx.moveTo(cx - 70, cy - 60); ctx.lineTo(cx - 30, cy - 45); ctx.lineTo(cx - 60, cy - 20); ctx.closePath(); ctx.fill();
@@ -6744,10 +7210,15 @@ function createHauntedPumpkinTexture() {
     // Nose glow
     ctx.beginPath();
     ctx.moveTo(cx, cy - 20); ctx.lineTo(cx - 14, cy + 3); ctx.lineTo(cx + 14, cy + 3); ctx.closePath(); ctx.fill();
-    // Mouth fire
+    // Mouth colored light
     ctx.beginPath();
-    ctx.arc(cx, cy + 55, 42, 0, Math.PI * 2);
+    ctx.arc(cx, cy + 55, 46, 0, Math.PI * 2);
     ctx.fill();
+
+    // Saturated neon colored highlights along the carved teeth edges
+    ctx.strokeStyle = mouthColorHex;
+    ctx.lineWidth = 3.0;
+    ctx.stroke();
 
     const tex = new THREE.CanvasTexture(canvas);
     return tex;
@@ -6821,7 +7292,7 @@ function createHauntedGnarledTreeTexture() {
     return tex;
 }
 
-// 6h. Predatory Glowing Creature Eyes Sprite Texture (Subtle & Delicate)
+// 6h. Predatory Glowing Creature Eyes Sprite Texture (Vivid Piercing Nightclub Glare)
 function createHauntedEyesTexture(isRed = false) {
     const canvas = document.createElement('canvas');
     canvas.width = 256;
@@ -6830,38 +7301,46 @@ function createHauntedEyesTexture(isRed = false) {
     ctx.clearRect(0, 0, 256, 128);
 
     function drawEye(cx, cy) {
-        // Delicate soft aura
-        const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 24);
+        // High-intensity radiant supernatural aura
+        const auraGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, 32);
         if (isRed) {
-            auraGrad.addColorStop(0.0, 'rgba(255, 60, 60, 0.85)');
-            auraGrad.addColorStop(0.4, 'rgba(200, 20, 20, 0.35)');
-            auraGrad.addColorStop(1.0, 'rgba(120, 0, 0, 0.0)');
+            auraGrad.addColorStop(0.0, 'rgba(255, 40, 40, 1.0)');
+            auraGrad.addColorStop(0.35, 'rgba(255, 10, 30, 0.75)');
+            auraGrad.addColorStop(0.70, 'rgba(180, 0, 20, 0.35)');
+            auraGrad.addColorStop(1.0, 'transparent');
         } else {
-            auraGrad.addColorStop(0.0, 'rgba(255, 225, 70, 0.85)');
-            auraGrad.addColorStop(0.4, 'rgba(240, 160, 15, 0.35)');
-            auraGrad.addColorStop(1.0, 'rgba(140, 80, 0, 0.0)');
+            auraGrad.addColorStop(0.0, 'rgba(255, 245, 80, 1.0)');
+            auraGrad.addColorStop(0.35, 'rgba(255, 180, 10, 0.75)');
+            auraGrad.addColorStop(0.70, 'rgba(200, 100, 0, 0.35)');
+            auraGrad.addColorStop(1.0, 'transparent');
         }
         ctx.fillStyle = auraGrad;
         ctx.beginPath();
-        ctx.arc(cx, cy, 24, 0, Math.PI * 2);
+        ctx.arc(cx, cy, 32, 0, Math.PI * 2);
         ctx.fill();
 
-        // Almond shaped eye contour
-        ctx.fillStyle = isRed ? '#ff3b3b' : '#ffda3b';
+        // Almond shaped piercing eye contour
+        ctx.fillStyle = isRed ? '#ff1e1e' : '#ffee1e';
         ctx.beginPath();
-        ctx.ellipse(cx, cy, 14, 7, 0, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, 16, 8.5, 0, 0, Math.PI * 2);
         ctx.fill();
 
-        // Dark predatory slit pupil
-        ctx.fillStyle = '#060305';
-        ctx.beginPath();
-        ctx.ellipse(cx, cy, 2.5, 6.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Pinpoint glistening highlight
+        // Inner searing white hotspot
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
-        ctx.arc(cx - 3, cy - 2, 1.2, 0, Math.PI * 2);
+        ctx.ellipse(cx, cy, 7, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Dark razor predatory slit pupil
+        ctx.fillStyle = '#020103';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy, 2.4, 7.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Pinpoint glistening reflection highlight
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(cx - 3.5, cy - 2.5, 1.8, 0, Math.PI * 2);
         ctx.fill();
     }
 
@@ -11789,6 +12268,66 @@ export function createVFXScene(container) {
     hauntedPorchLanternGroup.add(hauntedPorchLanternMesh);
     gHauntedManor.add(hauntedPorchLanternGroup);
 
+    // Grand Entrance Staircase Hallway with Spooky Green Lighting (Visible inside open front doorway)
+    const hauntedStaircaseTex = createHauntedStaircaseTexture();
+    const hauntedStaircaseGeo = new THREE.PlaneGeometry(3.4, 3.2);
+    const hauntedStaircaseMat = new THREE.MeshBasicMaterial({
+        map: hauntedStaircaseTex,
+        transparent: true,
+        depthWrite: false
+    });
+    const hauntedStaircaseMesh = new THREE.Mesh(hauntedStaircaseGeo, hauntedStaircaseMat);
+    hauntedStaircaseMesh.position.set(2.06, -0.55, -10.38);
+    gHauntedManor.add(hauntedStaircaseMesh);
+
+    // Eerie Spooky Green Volumetric Hallway Light (Streams out of doorway when doors open!)
+    const hauntedHallwayLight = new THREE.PointLight(0x00ff66, 0.0, 8.5);
+    hauntedHallwayLight.position.set(2.06, -0.4, -10.28);
+    gHauntedManor.add(hauntedHallwayLight);
+
+    // 3D Carved Gothic Double Front Doors (Pivoting inward on hinges into the green-lit hallway)
+    const hauntedFrontDoorTex = createHauntedFrontDoorTexture();
+    const hauntedDoorWingGeo = new THREE.PlaneGeometry(1.05, 2.85);
+    const hauntedDoorWingMat = new THREE.MeshBasicMaterial({
+        map: hauntedFrontDoorTex,
+        transparent: true,
+        depthWrite: false,
+        side: THREE.DoubleSide
+    });
+
+    // Left Door Pivot (Hinge at outer left frame)
+    const hauntedLeftDoorPivot = new THREE.Group();
+    hauntedLeftDoorPivot.position.set(1.01, -0.55, -10.18);
+    const hauntedLeftDoorMesh = new THREE.Mesh(hauntedDoorWingGeo, hauntedDoorWingMat);
+    hauntedLeftDoorMesh.position.set(0.525, 0, 0);
+    hauntedLeftDoorPivot.add(hauntedLeftDoorMesh);
+    gHauntedManor.add(hauntedLeftDoorPivot);
+
+    // Right Door Pivot (Hinge at outer right frame)
+    const hauntedRightDoorPivot = new THREE.Group();
+    hauntedRightDoorPivot.position.set(3.11, -0.55, -10.18);
+    const hauntedRightDoorMesh = new THREE.Mesh(hauntedDoorWingGeo, hauntedDoorWingMat);
+    hauntedRightDoorMesh.position.set(-0.525, 0, 0);
+    hauntedRightDoorMesh.scale.set(-1.0, 1.0, 1.0);
+    hauntedRightDoorPivot.add(hauntedRightDoorMesh);
+    gHauntedManor.add(hauntedRightDoorPivot);
+
+    // Terrifying Jump Spook Phantom Apparition (Leaps out from doorway when camera zooms in!)
+    const hauntedJumpSpookTex = createHauntedJumpSpookTexture();
+    const hauntedJumpSpookGeo = new THREE.PlaneGeometry(3.6, 3.6);
+    const hauntedJumpSpookMat = new THREE.MeshBasicMaterial({
+        map: hauntedJumpSpookTex,
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        opacity: 0.0,
+        side: THREE.DoubleSide
+    });
+    const hauntedJumpSpookMesh = new THREE.Mesh(hauntedJumpSpookGeo, hauntedJumpSpookMat);
+    hauntedJumpSpookMesh.position.set(2.06, -0.55, -10.3);
+    hauntedJumpSpookMesh.scale.set(0.1, 0.1, 0.1);
+    gHauntedManor.add(hauntedJumpSpookMesh);
+
     // 5. Layer 5: Winding Curving Estate Road / Driveway (Ground Plane: 110x75 full terrain span)
     const hauntedPathGeo = new THREE.PlaneGeometry(110.0, 75.0);
     const hauntedPathMat = new THREE.MeshStandardMaterial({
@@ -11906,26 +12445,27 @@ export function createVFXScene(container) {
 
     gHauntedManor.add(hauntedGargoylesGroup);
 
-    // 4. Jack-O'-Lantern Pathway Guardians (Lining the carriage road curbstones)
+    // 4. Jack-O'-Lantern Pathway Guardians with Coloured Lights in Cut-out Mouths
     const hauntedPumpkinsGroup = new THREE.Group();
     const pumpkinGeo = new THREE.PlaneGeometry(1.4, 1.4);
-    const pumpkinMat = new THREE.MeshBasicMaterial({
-        map: hauntedPumpkinTex,
-        transparent: true,
-        depthWrite: false
-    });
 
     const pumpkinConfigs = [
-        { x: -3.2, y: -4.60, z: -1.4, scale: 1.25, rotZ: 0.04 }, // Left curb by gates
-        { x: 3.1, y: -4.60, z: -1.6, scale: 1.20, rotZ: -0.05 }, // Right curb by gates
-        { x: -4.0, y: -4.85, z: -3.6, scale: 1.15, rotZ: -0.06 }, // Mid-curve left curb
-        { x: 1.8, y: -4.85, z: -3.8, scale: 1.10, rotZ: 0.06 },  // Mid-curve right curb
-        { x: -1.8, y: -5.00, z: -6.2, scale: 1.05, rotZ: 0.05 }, // Approach left curb
-        { x: 4.5, y: -5.00, z: -6.4, scale: 1.00, rotZ: -0.04 }  // Approach right curb
+        { x: -3.2, y: -4.60, z: -1.4, scale: 1.25, rotZ: 0.04, mouthColor: '#39ff14', lightHex: 0x39ff14 }, // Left curb by gates: Toxic Slime Green
+        { x: 3.1, y: -4.60, z: -1.6, scale: 1.20, rotZ: -0.05, mouthColor: '#bf00ff', lightHex: 0xbf00ff }, // Right curb by gates: Witch Violet
+        { x: -4.0, y: -4.85, z: -3.6, scale: 1.15, rotZ: -0.06, mouthColor: '#00f0ff', lightHex: 0x00f0ff }, // Mid-curve left: Electric Cyan
+        { x: 1.8, y: -4.85, z: -3.8, scale: 1.10, rotZ: 0.06, mouthColor: '#ff007f', lightHex: 0xff007f },  // Mid-curve right: Hot Magenta
+        { x: -1.8, y: -5.00, z: -6.2, scale: 1.05, rotZ: 0.05, mouthColor: '#ffaa00', lightHex: 0xffaa00 }, // Approach left: Molten Gold
+        { x: 4.5, y: -5.00, z: -6.4, scale: 1.00, rotZ: -0.04, mouthColor: '#00ff88', lightHex: 0x00ff88 }  // Approach right: Toxic Emerald
     ];
 
     const hauntedPumpkinMeshes = pumpkinConfigs.map((cfg) => {
-        const mesh = new THREE.Mesh(pumpkinGeo, pumpkinMat.clone());
+        const customPumpkinTex = createHauntedPumpkinTexture(cfg.mouthColor);
+        const mat = new THREE.MeshBasicMaterial({
+            map: customPumpkinTex,
+            transparent: true,
+            depthWrite: false
+        });
+        const mesh = new THREE.Mesh(pumpkinGeo, mat);
         mesh.position.set(cfg.x, cfg.y, cfg.z);
         mesh.scale.setScalar(cfg.scale);
         mesh.rotation.z = cfg.rotZ;
@@ -11933,14 +12473,13 @@ export function createVFXScene(container) {
         return mesh;
     });
 
-    // Warm pumpkin lantern candlelight casting dynamic reflections onto the wet cobblestones
-    const hauntedPumpkinLeftLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
-    hauntedPumpkinLeftLight.position.set(-3.2, -4.4, -3.0);
-    hauntedPumpkinsGroup.add(hauntedPumpkinLeftLight);
-
-    const hauntedPumpkinRightLight = new THREE.PointLight(0xff9922, 1.4, 6.0);
-    hauntedPumpkinRightLight.position.set(3.0, -4.4, -3.2);
-    hauntedPumpkinsGroup.add(hauntedPumpkinRightLight);
+    // Coloured lights casting dynamic supernatural reflections onto the wet cobblestones
+    const hauntedPumpkinLights = pumpkinConfigs.map((cfg) => {
+        const pLight = new THREE.PointLight(cfg.lightHex, 1.4, 5.5);
+        pLight.position.set(cfg.x, cfg.y + 0.2, cfg.z + 0.3);
+        hauntedPumpkinsGroup.add(pLight);
+        return pLight;
+    });
 
     gHauntedManor.add(hauntedPumpkinsGroup);
 
@@ -12733,6 +13272,10 @@ export function createVFXScene(container) {
         logoEdgeMargin = Math.max(0.0, Math.min(0.4, Number(val) || 0.04));
         applyLogoPlacement();
     }
+
+    // Haunted Manor Cinematic Camera State
+    let hauntedCamX = 0, hauntedCamY = 0, hauntedCamZ = 16.0;
+    let hauntedLookAtX = 0, hauntedLookAtY = 0, hauntedLookAtZ = -10.0;
 
     // =========================================================================
     // MAIN RENDER LOOP (18 SCENES)
@@ -15280,18 +15823,19 @@ export function createVFXScene(container) {
             hauntedGargoyleEyeRight.scale.setScalar(gargoyleEyeSurge);
             cursedEyeMat.opacity = Math.min(1.0, 0.70 + bassPop * 0.35);
 
-            // 4. Jack-O'-Lantern Pathway Guardians (Flickering Candle Flame & Kick Audio Reactive Surge)
+            // 4. Jack-O'-Lantern Pathway Guardians with Coloured Cut-out Mouths & Point Lights
             const pumpkinFlicker = 1.0 + Math.sin(elapsedTime * 24.0) * 0.22 + Math.cos(elapsedTime * 48.0) * 0.16;
             const pumpkinBassGlow = Math.min(3.4, pumpkinFlicker + bassPop * 2.8 + bassImpact * 1.6);
-            hauntedPumpkinLeftLight.intensity = 1.4 * pumpkinBassGlow;
-            hauntedPumpkinRightLight.intensity = 1.4 * pumpkinBassGlow;
+            hauntedPumpkinLights.forEach((pLight, idx) => {
+                pLight.intensity = 1.4 * pumpkinBassGlow * (0.85 + Math.sin(elapsedTime * 18.0 + idx * 1.5) * 0.15);
+            });
             const pumpkinJitter = (audio.isOnset && bassImpact > 0.35) ? Math.sin(elapsedTime * 50.0) * 0.03 : 0.0;
             hauntedPumpkinMeshes.forEach((pm, i) => {
                 pm.scale.setScalar(pumpkinConfigs[i].scale * (1.0 + bassPop * 0.14));
                 pm.position.y = pumpkinConfigs[i].y + pumpkinJitter;
             });
 
-            // 5. Possessed Gnarled Trees with Watching Eyes (Subtle & Breathing Glow in Knot Hollows)
+            // 5. Possessed Gnarled Trees with Watching Eyes (Subtle Glow + Periodic Prominent Stare)
             const treeBassSway = Math.sin(elapsedTime * 0.8) * 0.015 + (bassPop * 0.02);
             hauntedGnarledTreeLeft.rotation.z = treeBassSway;
             hauntedGnarledTreeRight.rotation.z = -treeBassSway;
@@ -15299,14 +15843,177 @@ export function createVFXScene(container) {
             const treblePulse = audio.smoothedTreble || 0;
             const blinkCycle = Math.sin(elapsedTime * 1.6);
             const isBlinking = blinkCycle > 0.95;
-            const eyeOpenScale = isBlinking ? 0.05 : Math.min(1.4, 0.85 + treblePulse * 0.8);
-            // Subtle, breathing organic glow (rests gently, blinks organically)
-            const eyeGlow = 0.26 + Math.sin(elapsedTime * 2.2) * 0.08 + (treblePulse * 0.32) + (transient * 0.18);
+
+            // Periodic Prominent Eye Stare: Every 14 seconds, hollow tree eyes dilate and flare aggressively
+            const stareCycle = (elapsedTime % 14.0);
+            const isStareProminent = stareCycle < 4.2;
+            const stareFactor = isStareProminent ? Math.sin((stareCycle / 4.2) * Math.PI) : 0.0;
+            const eyeScaleMultiplier = 1.0 + stareFactor * 1.65;
+            const eyeOpacityBoost = stareFactor * 0.65;
+
+            const eyeOpenScale = isBlinking ? 0.05 : Math.min(2.5, (0.85 + treblePulse * 0.8) * eyeScaleMultiplier);
+            const eyeGlow = 0.28 + Math.sin(elapsedTime * 2.2) * 0.08 + (treblePulse * 0.32) + (transient * 0.18) + eyeOpacityBoost;
             hauntedTreeEyeMeshes.forEach((tem, idx) => {
                 tem.scale.y = eyeOpenScale;
-                tem.scale.x = isBlinking ? 0.5 : 1.0;
-                tem.material.opacity = isBlinking ? 0.0 : Math.min(0.65, eyeGlow + (idx % 2 === 0 ? 0.04 : -0.04));
+                tem.scale.x = (isBlinking ? 0.5 : 1.0) * eyeScaleMultiplier;
+                tem.material.opacity = isBlinking ? 0.0 : Math.min(1.0, eyeGlow + (idx % 2 === 0 ? 0.05 : -0.05));
             });
+
+            // =========================================================================
+            // 6. Manor Front Door Open, Pathway Zoom, Jump Spook & Reset Sequence
+            // =========================================================================
+            // Cycle repeats every 48s, first starting at t = 10s (elapsedTime + 8.0)
+            const seqTime = (elapsedTime + 8.0) % 48.0;
+
+            if (seqTime < 18.0) {
+                // Phase 0: Normal Resting at Front Gates (Doors closed, light off, spook hidden)
+                hauntedLeftDoorPivot.rotation.y = 0.0;
+                hauntedRightDoorPivot.rotation.y = 0.0;
+                hauntedHallwayLight.intensity = 0.0;
+                hauntedJumpSpookMat.opacity = 0.0;
+                hauntedJumpSpookMesh.position.set(2.06, -0.55, -10.3);
+                hauntedJumpSpookMesh.scale.set(0.1, 0.1, 0.1);
+
+                hauntedCamX = 0.0;
+                hauntedCamY = 0.0;
+                hauntedCamZ = 16.0;
+                hauntedLookAtX = 0.0;
+                hauntedLookAtY = 0.0;
+                hauntedLookAtZ = -10.0;
+            } else if (seqTime >= 18.0 && seqTime < 21.0) {
+                // Phase 1: Manor Front Doors Creak Open & Green Spooky Hallway Lighting Streams Out
+                const p = (seqTime - 18.0) / 3.0;
+                const pSmooth = p * p * (3.0 - 2.0 * p);
+
+                // Doors swing inward into the manor
+                hauntedLeftDoorPivot.rotation.y = 1.65 * pSmooth;
+                hauntedRightDoorPivot.rotation.y = -1.65 * pSmooth;
+
+                // Spooky green hallway lighting surges and flickers
+                hauntedHallwayLight.intensity = pSmooth * 5.2 * (0.85 + Math.sin(elapsedTime * 8.0) * 0.15 + bassPop * 0.8);
+                hauntedJumpSpookMat.opacity = 0.0;
+                hauntedJumpSpookMesh.position.set(2.06, -0.55, -10.3);
+
+                // Camera begins subtle forward drift toward gate
+                hauntedCamZ = 16.0 - 2.0 * pSmooth;
+                hauntedCamX = 0.0;
+                hauntedCamY = 0.0;
+                hauntedLookAtX = THREE.MathUtils.lerp(0.0, 2.06, pSmooth * 0.35);
+                hauntedLookAtY = THREE.MathUtils.lerp(0.0, -0.55, pSmooth * 0.35);
+                hauntedLookAtZ = -10.2;
+            } else if (seqTime >= 21.0 && seqTime < 31.0) {
+                // Phase 2: Slow Cinematic Camera Zoom Forward Following Curving Carriage Pathway
+                const u = (seqTime - 21.0) / 10.0;
+                const uSmooth = u * u * (3.0 - 2.0 * u);
+
+                hauntedLeftDoorPivot.rotation.y = 1.65;
+                hauntedRightDoorPivot.rotation.y = -1.65;
+                hauntedHallwayLight.intensity = (5.2 + 3.5 * uSmooth + bassPop * 2.2) * (0.88 + Math.sin(elapsedTime * 12.0) * 0.12);
+                hauntedJumpSpookMat.opacity = 0.0;
+
+                // Travel from Z = 14.0 down to Z = -8.6 (right in front of the open door at Z = -10.2)
+                const currentZ = THREE.MathUtils.lerp(14.0, -8.6, uSmooth);
+                hauntedCamZ = currentZ;
+
+                if (currentZ > 0.0) {
+                    // In front of gate
+                    const gateApproach = (14.0 - currentZ) / 14.0;
+                    hauntedCamX = 0.0;
+                    hauntedCamY = THREE.MathUtils.lerp(0.0, -0.2, gateApproach);
+                } else {
+                    // Traversing through the gate and following the carriage road S-curve
+                    const s = Math.min(1.0, Math.max(0.0, -currentZ / 10.2));
+                    // Mathematical pathway alignment curve matching dirt path texture
+                    const pathCurveX = 2.06 * (s * s) + Math.sin(s * Math.PI) * (-1.2);
+                    hauntedCamX = pathCurveX;
+                    hauntedCamY = -0.2 - 0.25 * s;
+                }
+
+                // Camera seamlessly tracks the glowing open manor doorway
+                hauntedLookAtX = 2.06;
+                hauntedLookAtY = -0.55;
+                hauntedLookAtZ = -10.2;
+            } else if (seqTime >= 31.0 && seqTime < 35.5) {
+                // Phase 3: Arrived Right Up to Open Doorway - Terrifying Spook Leaps Out!
+                hauntedLeftDoorPivot.rotation.y = 1.65;
+                hauntedRightDoorPivot.rotation.y = -1.65;
+
+                const spookT = seqTime - 31.0;
+                const horrorShakeDecay = Math.max(0.0, 1.0 - spookT / 3.5);
+                const horrorShakeX = Math.sin(elapsedTime * 65.0) * 0.07 * horrorShakeDecay;
+                const horrorShakeY = Math.cos(elapsedTime * 52.0) * 0.07 * horrorShakeDecay;
+
+                hauntedCamX = 2.06 + horrorShakeX;
+                hauntedCamY = -0.45 + horrorShakeY;
+                hauntedCamZ = -8.6;
+                hauntedLookAtX = 2.06;
+                hauntedLookAtY = -0.55;
+                hauntedLookAtZ = -10.2;
+
+                if (spookT < 1.3) {
+                    // Explosive forward jump lunge right into camera lens
+                    const lungeP = spookT / 1.3;
+                    const lungeSmooth = Math.sin(lungeP * Math.PI * 0.5);
+                    hauntedJumpSpookMesh.position.z = THREE.MathUtils.lerp(-10.3, -7.95, lungeSmooth);
+                    hauntedJumpSpookMesh.scale.setScalar(THREE.MathUtils.lerp(0.2, 2.5, lungeSmooth));
+                    hauntedJumpSpookMat.opacity = Math.min(1.0, lungeP * 3.5);
+                    hauntedHallwayLight.intensity = 14.0 * (0.8 + Math.sin(elapsedTime * 45.0) * 0.2);
+                    if (spookT < 0.18) manualFlash = Math.max(manualFlash, 0.85);
+                } else {
+                    // Hovering shrieking phantom writhing and dissipating into spectral mist
+                    const fadeP = (spookT - 1.3) / 3.2;
+                    hauntedJumpSpookMesh.position.z = -7.95 + Math.sin(elapsedTime * 16.0) * 0.08;
+                    hauntedJumpSpookMesh.scale.setScalar(2.5 + Math.sin(elapsedTime * 14.0) * 0.12);
+                    hauntedJumpSpookMat.opacity = Math.max(0.0, (1.0 - fadeP) * 1.0);
+                    hauntedHallwayLight.intensity = Math.max(0.0, 8.5 * (1.0 - fadeP));
+                }
+
+                hauntedJumpSpookMesh.position.x = 2.06 + Math.sin(elapsedTime * 48.0) * 0.08;
+                hauntedJumpSpookMesh.position.y = -0.55 + Math.cos(elapsedTime * 38.0) * 0.08;
+                hauntedJumpSpookMesh.rotation.z = Math.sin(elapsedTime * 28.0) * 0.15;
+            } else if (seqTime >= 35.5 && seqTime < 42.5) {
+                // Phase 4: Smoothly Zoom Back Out Along the Pathway to the Front of the Gate to Reset
+                const v = (seqTime - 35.5) / 7.0;
+                const vSmooth = v * v * (3.0 - 2.0 * v);
+
+                hauntedJumpSpookMat.opacity = 0.0;
+
+                // Doors creak closed as camera retreats
+                hauntedLeftDoorPivot.rotation.y = 1.65 * (1.0 - vSmooth);
+                hauntedRightDoorPivot.rotation.y = -1.65 * (1.0 - vSmooth);
+                hauntedHallwayLight.intensity = Math.max(0.0, 3.0 * (1.0 - vSmooth));
+
+                const returnZ = THREE.MathUtils.lerp(-8.6, 16.0, vSmooth);
+                hauntedCamZ = returnZ;
+
+                if (returnZ <= 0.0) {
+                    const s = Math.min(1.0, Math.max(0.0, -returnZ / 10.2));
+                    const pathCurveX = 2.06 * (s * s) + Math.sin(s * Math.PI) * (-1.2);
+                    hauntedCamX = pathCurveX;
+                    hauntedCamY = -0.2 - 0.25 * s;
+                } else {
+                    const gateFactor = Math.min(1.0, returnZ / 16.0);
+                    hauntedCamX = 0.0;
+                    hauntedCamY = THREE.MathUtils.lerp(-0.2, 0.0, gateFactor);
+                }
+
+                hauntedLookAtX = THREE.MathUtils.lerp(2.06, 0.0, vSmooth);
+                hauntedLookAtY = THREE.MathUtils.lerp(-0.55, 0.0, vSmooth);
+                hauntedLookAtZ = THREE.MathUtils.lerp(-10.2, -10.0, vSmooth);
+            } else {
+                // Phase 5: Reset & Resting Tranquilly at Front Gate
+                hauntedLeftDoorPivot.rotation.y = 0.0;
+                hauntedRightDoorPivot.rotation.y = 0.0;
+                hauntedHallwayLight.intensity = 0.0;
+                hauntedJumpSpookMat.opacity = 0.0;
+
+                hauntedCamX = 0.0;
+                hauntedCamY = 0.0;
+                hauntedCamZ = 16.0;
+                hauntedLookAtX = 0.0;
+                hauntedLookAtY = 0.0;
+                hauntedLookAtZ = -10.0;
+            }
         }
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
@@ -15325,9 +16032,16 @@ export function createVFXScene(container) {
         camRecoilY *= 0.88;
         camRecoilZ *= 0.88;
 
-        camera.position.x = THREE.MathUtils.lerp(camera.position.x, camRecoilX, 0.25);
-        camera.position.y = THREE.MathUtils.lerp(camera.position.y, camRecoilY, 0.25);
-        camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
+        if (currentFXIndex === 21) {
+            // Haunted Manor cinematic camera position & orientation
+            camera.position.set(hauntedCamX, hauntedCamY, hauntedCamZ);
+            camera.lookAt(hauntedLookAtX, hauntedLookAtY, hauntedLookAtZ);
+        } else {
+            camera.rotation.set(0, 0, 0);
+            camera.position.x = THREE.MathUtils.lerp(camera.position.x, camRecoilX, 0.25);
+            camera.position.y = THREE.MathUtils.lerp(camera.position.y, camRecoilY, 0.25);
+            camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
+        }
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
         // Strictly disable audio bloom boost, glitch and aberration for FX 4 & FX 21
