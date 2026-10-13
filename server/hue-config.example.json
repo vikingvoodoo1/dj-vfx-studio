@@ -1,0 +1,12 @@
+{
+  "bridgeIp": "",
+  "username": "",
+  "clientkey": "",
+  "enabled": false,
+  "targetGroup": "",
+  "mode": "scene_sync",
+  "intensity": 1,
+  "minBrightness": 0.05,
+  "sceneColor": "#00ffff",
+  "kickStrobeEnabled": false
+}

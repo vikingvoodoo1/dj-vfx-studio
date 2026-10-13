@@ -34,3 +34,6 @@ ehthumbs.db
 
 # Scratch & temporary testing files
 scratch/
+
+# Local hardware state & configuration
+server/hue-config.json
