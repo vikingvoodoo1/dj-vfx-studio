@@ -4643,6 +4643,19 @@ async function init() {
                 selectFX(nextFX);
             }
         },
+        onDeckWaveform: (waveformPacket) => {
+            if (!waveformPacket) return;
+            console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);
+            if (vfx.setDeckWaveform) {
+                vfx.setDeckWaveform(waveformPacket);
+            }
+        },
+        onDeckTelemetry: (telemetry) => {
+            if (!telemetry) return;
+            if (vfx.setDeckData) {
+                vfx.setDeckData(telemetry);
+            }
+        },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
                 const hasActivePlaying = decks.some(d => d.play && d.isHardware && (d.title || d.artist));

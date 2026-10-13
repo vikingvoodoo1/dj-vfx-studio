@@ -13,6 +13,8 @@ export function setupStageLinqClient({
     onHuePairingStatus, 
     onDecksSnapshot,
     onEcosystemChange,
+    onDeckWaveform,
+    onDeckTelemetry,
     onSync 
 }) {
     const WS_URL = 'ws://localhost:8080';
@@ -55,6 +57,12 @@ export function setupStageLinqClient({
                             break;
                         case 'deck_loaded':
                             if (onDeckLoaded) onDeckLoaded(data);
+                            break;
+                        case 'deck_waveform':
+                            if (onDeckWaveform) onDeckWaveform(data);
+                            break;
+                        case 'deck_telemetry':
+                            if (onDeckTelemetry) onDeckTelemetry(data);
                             break;
                         case 'decks_snapshot':
                             if (onDecksSnapshot) onDecksSnapshot(data.decks);

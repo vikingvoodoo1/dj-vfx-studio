@@ -9387,8 +9387,58 @@ export function createVFXScene(container) {
     let djHudFrameCount = 0;
     let deck1Progress = 0.38;
     let deck2Progress = 0.16;
+    let deck1HasHardwareWaveform = false;
+    let deck2HasHardwareWaveform = false;
     let deck1Data = { artist: 'ERIC PRYDZ', title: 'OPUS (LIVE MIX)', bpm: 126.0, key: '8A' };
     let deck2Data = { artist: 'BICEP', title: 'GLUE (CLUB EDIT)', bpm: 126.0, key: '8A' };
+
+    function setDeckWaveform(packet) {
+        if (!packet || !packet.samples || packet.samples.length < 3) return;
+        const targetDeck = (packet.deck === 2) ? 2 : 1;
+        const totalTriplets = Math.floor(packet.samples.length / 3);
+
+        if (targetDeck === 1) {
+            deck1HasHardwareWaveform = true;
+            if (packet.title) deck1Data.title = packet.title;
+            if (packet.artist) deck1Data.artist = packet.artist;
+            if (packet.bpm) deck1Data.bpm = packet.bpm;
+
+            for (let i = 0; i < 512; i++) {
+                const sIdx = Math.floor((i / 512) * totalTriplets) * 3;
+                const r = packet.samples[sIdx] || 0;
+                const g = packet.samples[sIdx + 1] || 0;
+                const b = packet.samples[sIdx + 2] || 0;
+                const hit = (r > 180 || (r + g) > 280) ? 220 : 0;
+
+                const destIdx = i * 4;
+                djAudioHistoryData[destIdx]     = r;
+                djAudioHistoryData[destIdx + 1] = g;
+                djAudioHistoryData[destIdx + 2] = b;
+                djAudioHistoryData[destIdx + 3] = hit;
+            }
+            djAudioHistoryTex.needsUpdate = true;
+        } else {
+            deck2HasHardwareWaveform = true;
+            if (packet.title) deck2Data.title = packet.title;
+            if (packet.artist) deck2Data.artist = packet.artist;
+            if (packet.bpm) deck2Data.bpm = packet.bpm;
+
+            for (let i = 0; i < 512; i++) {
+                const sIdx = Math.floor((i / 512) * totalTriplets) * 3;
+                const r = packet.samples[sIdx] || 0;
+                const g = packet.samples[sIdx + 1] || 0;
+                const b = packet.samples[sIdx + 2] || 0;
+                const hit = (r > 180 || (r + g) > 280) ? 220 : 0;
+
+                const destIdx = (512 + i) * 4;
+                djAudioHistoryData[destIdx]     = r;
+                djAudioHistoryData[destIdx + 1] = g;
+                djAudioHistoryData[destIdx + 2] = b;
+                djAudioHistoryData[destIdx + 3] = hit;
+            }
+            djAudioHistoryTex.needsUpdate = true;
+        }
+    }
 
     // 4. 3D Full-Spectrum Particle Equalizer Across All Frequency Bands (64 Bins x 28 Particles = 1,792 Particles)
     const specBands = 64;
@@ -14152,28 +14202,34 @@ export function createVFXScene(container) {
             const rawTreble = Math.min(1.0, (audio.treble || 0) * 1.25);
             const rawHit = Math.min(1.0, (audio.transientImpulse || 0) * 1.1);
 
-            // 2. Write Deck 1 (Row 0) live spectral history slice
-            const d1Offset = djHistoryHead * 4;
-            djAudioHistoryData[d1Offset]     = Math.min(255, Math.floor(rawBass * 255));
-            djAudioHistoryData[d1Offset + 1] = Math.min(255, Math.floor(rawMid * 255));
-            djAudioHistoryData[d1Offset + 2] = Math.min(255, Math.floor(rawTreble * 255));
-            djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
+            // 2. Write Deck 1 (Row 0) live spectral history slice if no hardware waveform loaded
+            if (!deck1HasHardwareWaveform) {
+                const d1Offset = djHistoryHead * 4;
+                djAudioHistoryData[d1Offset]     = Math.min(255, Math.floor(rawBass * 255));
+                djAudioHistoryData[d1Offset + 1] = Math.min(255, Math.floor(rawMid * 255));
+                djAudioHistoryData[d1Offset + 2] = Math.min(255, Math.floor(rawTreble * 255));
+                djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
+            }
 
-            // 3. Write Deck 2 (Row 1) spectral slice (with complementary groove / incoming track simulation)
-            const d2Offset = (512 + djHistoryHead) * 4;
-            const d2Groove = (Math.sin(elapsedTime * (deck2Data.bpm || currentBPM) / 60.0 * Math.PI) * 0.5 + 0.5);
-            const d2Bass = Math.min(1.0, rawBass * 0.85 + d2Groove * 0.15);
-            const d2Mid = Math.min(1.0, rawMid * 0.80 + (1.0 - d2Groove) * 0.20);
-            const d2Treble = Math.min(1.0, rawTreble * 0.90 + d2Groove * 0.10);
-            const d2Hit = (d2Groove > 0.88) ? 0.9 : (rawHit * 0.6);
+            // 3. Write Deck 2 (Row 1) spectral slice if no hardware waveform loaded
+            if (!deck2HasHardwareWaveform) {
+                const d2Offset = (512 + djHistoryHead) * 4;
+                const d2Groove = (Math.sin(elapsedTime * (deck2Data.bpm || currentBPM) / 60.0 * Math.PI) * 0.5 + 0.5);
+                const d2Bass = Math.min(1.0, rawBass * 0.85 + d2Groove * 0.15);
+                const d2Mid = Math.min(1.0, rawMid * 0.80 + (1.0 - d2Groove) * 0.20);
+                const d2Treble = Math.min(1.0, rawTreble * 0.90 + d2Groove * 0.10);
+                const d2Hit = (d2Groove > 0.88) ? 0.9 : (rawHit * 0.6);
 
-            djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(d2Bass * 255));
-            djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(d2Mid * 255));
-            djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(d2Treble * 255));
-            djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(d2Hit * 255));
+                djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(d2Bass * 255));
+                djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(d2Mid * 255));
+                djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(d2Treble * 255));
+                djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(d2Hit * 255));
+            }
 
-            djAudioHistoryTex.needsUpdate = true;
-            djHistoryHead = (djHistoryHead + 1) % 512;
+            if (!deck1HasHardwareWaveform || !deck2HasHardwareWaveform) {
+                djAudioHistoryTex.needsUpdate = true;
+                djHistoryHead = (djHistoryHead + 1) % 512;
+            }
 
             // Update 3D Particle Spectrum Field Across All 64 Frequency Bands
             const posArr = specParticleGeo.attributes.position.array;
@@ -14212,7 +14268,7 @@ export function createVFXScene(container) {
 
             // Update Shader Uniforms
             djWaveMat.uniforms.uTime.value = elapsedTime;
-            djWaveMat.uniforms.uHeadPos.value = djHistoryHead / 512.0;
+            djWaveMat.uniforms.uHeadPos.value = deck1HasHardwareWaveform ? deck1Progress : (djHistoryHead / 512.0);
             djWaveMat.uniforms.uBass.value = bassPop;
             djWaveMat.uniforms.uMid.value = audio.smoothedMid || 0;
             djWaveMat.uniforms.uTreble.value = audio.smoothedTreble || 0;
@@ -16599,6 +16655,9 @@ export function createVFXScene(container) {
                 if (data.key) deck2Data.key = data.key;
                 if (data.progress !== undefined) deck2Progress = data.progress;
             }
+        },
+        setDeckWaveform: (waveformPacket) => {
+            setDeckWaveform(waveformPacket);
         },
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length,

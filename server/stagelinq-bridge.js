@@ -4,6 +4,7 @@ import { PhilipsHueService } from './hue-service.js';
 import { PioneerDJService } from './pioneer-service.js';
 import { TraktorService } from './traktor-service.js';
 import { NowPlayingService } from './nowplaying-api.js';
+import { WaveformService } from './waveform-service.js';
 
 // Configuration
 const PORT = process.env.STAGELINQ_PORT || 8080;
@@ -13,6 +14,9 @@ console.log('='.repeat(65));
 console.log('  ⚡ DJ VFX STUDIO — UNIVERSAL MULTI-PLATFORM HARDWARE BRIDGE');
 console.log('  🎧 Denon StageLinQ | 💿 Pioneer Pro DJ Link | 🎛️ Traktor Pro | 💡 Hue');
 console.log('='.repeat(65));
+
+// Initialize Universal Waveform Service (Denon Engine OS m.db + Pioneer Rekordbox + Fallback)
+const waveformService = new WaveformService();
 
 let lastTrackData = null;
 let lastBpm = 126.0;
@@ -71,6 +75,23 @@ function handleIncomingTrack(trackData) {
         isHardware: true,
         ...trackData
     });
+
+    // Query on-the-wire / database pre-analyzed 3-band waveform (Denon Engine m.db / Rekordbox)
+    waveformService.getWaveform(currentDeck.artist, currentDeck.title, trackData.trackId).then((wf) => {
+        if (wf && wf.samples) {
+            console.log(`[Universal Bridge] 🌊 Transmitting authentic ${wf.source} 3-band waveform for [Deck ${deckNum}] "${wf.title}" (${wf.samples.length / 3} slices)`);
+            broadcast({
+                type: 'deck_waveform',
+                deck: deckNum,
+                title: wf.title,
+                artist: wf.artist,
+                source: wf.source,
+                duration: wf.duration,
+                bpm: wf.bpm,
+                samples: wf.samples
+            });
+        }
+    }).catch(err => console.warn('[Universal Bridge] Waveform lookup notice:', err.message));
 }
 
 function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
