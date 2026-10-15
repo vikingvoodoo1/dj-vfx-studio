@@ -4581,13 +4581,30 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
-            if (data && data.isHardware) {
-                notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'PRO DJ LINK');
+            if (!data) return;
+            if (data.isHardware) {
+                notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'DENON STAGELINQ');
             }
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
                 if (deckCards[dIdx].bpm && data.bpm) deckCards[dIdx].bpm.textContent = Number(data.bpm).toFixed(1);
                 if (deckCards[dIdx].state) deckCards[dIdx].state.textContent = data.artist ? data.artist.slice(0, 8) : 'LOADED';
+            }
+
+            // Immediately pipe loaded deck metadata to 3D visualizer and DJ Deck Waveforms scene (FX 3)
+            if (vfx.setDeckData) vfx.setDeckData(data);
+
+            if (data.bpm && data.bpm > 40 && data.bpm < 300) {
+                bpmVal.textContent = Number(data.bpm).toFixed(1);
+                vfx.setBPM(data.bpm);
+            }
+            if (data.title) {
+                trackTitle.textContent = data.title;
+                if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = data.title;
+            }
+            if (data.artist) {
+                trackArtist.textContent = `${data.artist} • Deck ${data.deck || 1}`;
+                if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = data.artist;
             }
         },
         onTrack: (trackData) => {

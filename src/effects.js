@@ -2506,7 +2506,8 @@ const DJDeckWaveformShader = {
                 float bpmVal = isDeck1 ? uBPM : uDeck2BPM;
                 float zoomFactor = uZoom;
 
-                float texU = fract(uHeadPos + (uv.x - 0.5) * zoomFactor);
+                float headPos = isDeck1 ? uHeadPos : uDeck2Progress;
+                float texU = fract(headPos + (uv.x - 0.5) * zoomFactor);
                 float texV = isDeck1 ? 0.25 : 0.75;
 
                 vec4 audioSlice = texture2D(uAudioHistory, vec2(texU, texV));
@@ -7788,11 +7789,11 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     ctx.textAlign = 'left';
     ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(d1Title.slice(0, 26), padX + 170, 62);
+    ctx.fillText(d1Title.slice(0, 38), padX + 170, 62);
 
     ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#77eeff';
-    ctx.fillText(d1Artist.slice(0, 28), padX + 170, 84);
+    ctx.fillText(d1Artist.slice(0, 36), padX + 170, 84);
 
     // Badges line
     ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -7916,11 +7917,11 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     ctx.textAlign = 'left';
     ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(d2Title.slice(0, 26), padX + 170, 568);
+    ctx.fillText(d2Title.slice(0, 38), padX + 170, 568);
 
     ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#ffcc77';
-    ctx.fillText(d2Artist.slice(0, 28), padX + 170, 590);
+    ctx.fillText(d2Artist.slice(0, 36), padX + 170, 590);
 
     // Badges line
     ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
@@ -9394,7 +9395,7 @@ export function createVFXScene(container) {
 
     function setDeckWaveform(packet) {
         if (!packet || !packet.samples || packet.samples.length < 3) return;
-        const targetDeck = (packet.deck === 2) ? 2 : 1;
+        const targetDeck = (packet.deck === 2 || packet.deck === 4 || packet.deck === '2' || packet.deck === '4' || packet.deck === 'B' || packet.deck === 'D') ? 2 : 1;
         const totalTriplets = Math.floor(packet.samples.length / 3);
 
         if (targetDeck === 1) {
@@ -16641,7 +16642,7 @@ export function createVFXScene(container) {
         setFlyerSpinSpeed,
         setDeckData: (data) => {
             if (!data) return;
-            const targetDeck = (data.deck === 2) ? 2 : 1;
+            const targetDeck = (data.deck === 2 || data.deck === 4 || data.deck === '2' || data.deck === '4' || data.deck === 'B' || data.deck === 'D') ? 2 : 1;
             if (targetDeck === 1) {
                 if (data.artist) deck1Data.artist = data.artist;
                 if (data.title) deck1Data.title = data.title;

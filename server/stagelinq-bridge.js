@@ -523,11 +523,26 @@ async function startStageLinq() {
             });
         });
 
+        function parseDeckNumber(status) {
+            if (!status) return 1;
+            if (status.layer === 'A') return 1;
+            if (status.layer === 'B') return 2;
+            if (status.layer === 'C') return 3;
+            if (status.layer === 'D') return 4;
+            if (typeof status.deck === 'number') return status.deck;
+            if (typeof status.deck === 'string') {
+                const m = status.deck.match(/\d+/);
+                if (m) return parseInt(m[0], 10);
+            }
+            return 1;
+        }
+
         const lastDeckLoadedTracks = new Map();
 
         stagelinqInstance.on('trackLoaded', (status) => {
-            if (!status || !status.title) return;
-            const deckKey = String(status.deck || 1);
+            if (!status) return;
+            const deckNum = parseDeckNumber(status);
+            const deckKey = String(deckNum);
             const artist = status.artist || '';
             const title = status.title || '';
             const trackSignature = `${artist} - ${title}`;
@@ -536,38 +551,82 @@ async function startStageLinq() {
             if (prevSignature === trackSignature) return;
             lastDeckLoadedTracks.set(deckKey, trackSignature);
 
-            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${status.deck || 1}]: ${artist} - ${title} (${status.currentBpm || status.masterTempo || '---'} BPM)`);
+            const effectiveBpm = status.currentBpm || status.masterTempo || lastBpm || 126.0;
+            console.log(`[StageLinq] 🎵 Track Loaded [Deck ${deckNum}]: ${artist} - ${title} (${effectiveBpm} BPM)`);
             
             broadcast({
                 type: 'deck_loaded',
-                deck: status.deck || 1,
+                deck: deckNum,
                 artist,
                 title,
-                bpm: status.currentBpm || status.masterTempo || lastBpm,
+                bpm: effectiveBpm,
                 key: status.key || '',
                 genre: status.genre || '',
+                isHardware: true,
                 ecosystem: 'stagelinq'
+            });
+
+            // Immediately process track metadata and query pre-analyzed waveform across Engine OS m.db
+            handleIncomingTrack({
+                deck: deckNum,
+                artist,
+                title,
+                bpm: effectiveBpm,
+                key: status.key || '',
+                genre: status.genre || '',
+                play: true,
+                ecosystem: 'stagelinq',
+                device: 'Denon Prime',
+                isHardware: true
             });
         });
 
         stagelinqInstance.on('nowPlaying', (status) => {
-            if (!status || !status.title) return;
+            if (!status) return;
+            const deckNum = parseDeckNumber(status);
+            const effectiveBpm = status.currentBpm || status.masterTempo || lastBpm || 126.0;
             handleIncomingTrack({
-                deck: status.deck || 1,
+                deck: deckNum,
                 artist: status.artist || '',
                 title: status.title || '',
-                bpm: status.currentBpm || status.masterTempo || lastBpm,
+                bpm: effectiveBpm,
                 key: status.key || '',
                 play: true,
                 master: !!status.masterStatus,
                 ecosystem: 'stagelinq',
-                device: 'Denon Prime'
+                device: 'Denon Prime',
+                isHardware: true
             });
         });
 
         stagelinqInstance.on('stateChanged', (status) => {
-            if (status && status.currentBpm) {
-                handleIncomingBPM(status.currentBpm, status.deck || 1);
+            if (!status) return;
+            const deckNum = parseDeckNumber(status);
+            if (status.currentBpm) {
+                handleIncomingBPM(status.currentBpm, deckNum, 'stagelinq');
+            }
+
+            // In StageLinQ, SongName and ArtistName often stream as individual state changes after songLoaded
+            if (status.title || status.artist) {
+                const deckKey = String(deckNum);
+                const trackSignature = `${status.artist || ''} - ${status.title || ''}`;
+                if (trackSignature !== ' - ' && trackSignature !== lastDeckLoadedTracks.get(deckKey)) {
+                    lastDeckLoadedTracks.set(deckKey, trackSignature);
+                    const effectiveBpm = status.currentBpm || status.masterTempo || lastBpm || 126.0;
+                    console.log(`[StageLinq] 🔄 Deck ${deckNum} Track Metadata Streamed: ${trackSignature} (${effectiveBpm} BPM)`);
+                    handleIncomingTrack({
+                        deck: deckNum,
+                        artist: status.artist || '',
+                        title: status.title || '',
+                        bpm: effectiveBpm,
+                        key: status.key || '',
+                        play: status.playState ?? true,
+                        master: !!status.masterStatus,
+                        ecosystem: 'stagelinq',
+                        device: 'Denon Prime',
+                        isHardware: true
+                    });
+                }
             }
         });
 
@@ -575,9 +634,22 @@ async function startStageLinq() {
             if (!beatData || !beatData.decks) return;
             beatData.decks.forEach((deckData, idx) => {
                 const deckNum = idx + 1;
-                if (deckData.bpm) handleIncomingBPM(deckData.bpm, deckNum);
+                if (deckData.bpm) handleIncomingBPM(deckData.bpm, deckNum, 'stagelinq');
                 if (deckData.beat !== undefined) {
-                    handleIncomingBeat(deckNum, Math.floor(deckData.beat % 4) + 1);
+                    handleIncomingBeat(deckNum, Math.floor(deckData.beat % 4) + 1, 'stagelinq');
+                }
+                if (deckData.totalBeats && deckData.totalBeats > 0 && deckData.beat !== undefined) {
+                    const progress = Math.max(0, Math.min(1.0, deckData.beat / deckData.totalBeats));
+                    broadcast({
+                        type: 'deck_telemetry',
+                        deck: deckNum,
+                        progress,
+                        beat: deckData.beat,
+                        totalBeats: deckData.totalBeats,
+                        bpm: deckData.bpm || lastBpm,
+                        isHardware: true,
+                        ecosystem: 'stagelinq'
+                    });
                 }
             });
         });
