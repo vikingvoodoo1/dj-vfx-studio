@@ -194,6 +194,8 @@ async function init() {
     const vuValLufs = document.getElementById('vu-val-lufs');
     const vuValHeadroom = document.getElementById('vu-val-headroom');
     const vuClipBadge = document.getElementById('vu-clip-badge');
+    const vuMonitorSourceBadge = document.getElementById('vu-monitor-source-badge');
+    const eqMonitorSourceBadge = document.getElementById('eq-monitor-source-badge');
 
     if (vuClipBadge) {
         vuClipBadge.addEventListener('click', () => {
@@ -2307,8 +2309,11 @@ async function init() {
                 updateDeviceDropdown(devs, currentSelectedDeviceId || activeId);
             });
 
-            if (currentSelectedDeviceId && currentSelectedDeviceId !== 'default' && currentSelectedDeviceId !== 'system-tab-audio') {
+            if (currentSelectedDeviceId && currentSelectedDeviceId !== 'default' && currentSelectedDeviceId !== 'system-tab-audio' && currentSelectedDeviceId !== 'deck-live') {
                 await audioProcessor.switchDevice(currentSelectedDeviceId);
+            } else if (currentSelectedDeviceId === 'deck-live') {
+                // Keep audioProcessor connected to default physical audio input so live audio is captured if an interface is plugged in!
+                await audioProcessor.switchDevice('default');
             }
 
             const devs = await audioProcessor.getDevices();
@@ -2317,7 +2322,8 @@ async function init() {
             if (sliderGain) audioProcessor.setGain(sliderGain.value);
             if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
         } else if (targetDeviceId !== null && targetDeviceId !== 'system-tab-audio') {
-            await audioProcessor.switchDevice(deviceToUse);
+            const devToConnect = (targetDeviceId === 'deck-live') ? 'default' : deviceToUse;
+            await audioProcessor.switchDevice(devToConnect);
         }
 
         await audioProcessor.resume();
@@ -5257,22 +5263,38 @@ async function init() {
         const now = performance.now();
         let data = null;
 
-        // 1. Use Deck Wire Live Audio if deck-live is selected
-        if (currentSelectedDeviceId === 'deck-live' && vfx.getLiveDeckAudioData) {
-            data = vfx.getLiveDeckAudioData();
+        // Check real physical audio input status (Audio Interface, Line-In, Mic, USB Mixer)
+        let isRealAudioActive = false;
+        let realAudio = null;
+        let audioDevInfo = null;
+
+        if (audioProcessor && audioProcessor.isConnected()) {
+            audioDevInfo = audioProcessor.getCurrentDevice();
+            realAudio = audioProcessor.getAudioData();
+            if (realAudio && (realAudio.overall > 0.005 || realAudio.bass > 0.005 || (realAudio.peakDb !== undefined && realAudio.peakDb > -58.0))) {
+                isRealAudioActive = true;
+            }
         }
 
-        // 2. Prioritize real physical audio input (Line-In, Mic, USB Mixer) if connected
-        if (audioProcessor && audioProcessor.isConnected()) {
-            const realAudio = audioProcessor.getAudioData();
-            if (currentSelectedDeviceId !== 'deck-live' || !data) {
-                data = realAudio;
-            } else if (data && realAudio && (realAudio.overall > 0.015 || realAudio.bass > 0.015)) {
-                // If on DECK LIVE but audio is active, blend the real acoustic FFT spectrum into wire audio!
-                data.dataArray = realAudio.dataArray;
-                data.peakDb = realAudio.peakDb;
-                data.lufs = realAudio.lufs;
+        // 1. If physical audio input is active, prioritize REAL AUDIO for acoustic reactivity
+        if (isRealAudioActive && realAudio) {
+            data = realAudio;
+            data.sourceType = 'audio_interface';
+            data.sourceLabel = (audioDevInfo && audioDevInfo.label) ? audioDevInfo.label : 'Audio Interface';
+        }
+        // 2. Fall back to Deck Wire Live Audio if deck-live is selected (or hardware is streaming)
+        else if ((currentSelectedDeviceId === 'deck-live' || isHardwareDeckStreaming) && vfx.getLiveDeckAudioData) {
+            data = vfx.getLiveDeckAudioData();
+            if (data) {
+                data.sourceType = 'deck_metrics';
+                data.sourceLabel = 'StageLinQ Telemetry';
             }
+        }
+        // 3. Or use connected physical audio even if currently silent/quiet
+        else if (realAudio) {
+            data = realAudio;
+            data.sourceType = 'audio_interface';
+            data.sourceLabel = (audioDevInfo && audioDevInfo.label) ? audioDevInfo.label : 'Audio Interface';
         }
 
         if (!data) {
@@ -5419,6 +5441,39 @@ async function init() {
         // Clip Alert Warning Indicator
         if (data.isClipping && vuClipBadge) {
             vuClipBadge.style.display = 'inline-block';
+        }
+
+        // Update Explicit Monitor Source Badges across console UI
+        if (vuMonitorSourceBadge && data) {
+            if (data.sourceType === 'audio_interface') {
+                const label = data.sourceLabel || 'AUDIO INTERFACE';
+                const cleanName = label.length > 22 ? label.slice(0, 20) + '...' : label;
+                vuMonitorSourceBadge.textContent = `● SOURCE: ${cleanName.toUpperCase()} (LIVE PCM)`;
+                vuMonitorSourceBadge.style.color = '#00ffcc';
+                vuMonitorSourceBadge.style.borderColor = 'rgba(0,255,204,0.45)';
+                vuMonitorSourceBadge.style.background = 'rgba(0,255,204,0.12)';
+                vuMonitorSourceBadge.title = `Monitoring live acoustic audio from ${label}`;
+            } else {
+                vuMonitorSourceBadge.textContent = '● SOURCE: DECK METRICS (SYNTH - NO AUDIO IN)';
+                vuMonitorSourceBadge.style.color = '#ffaa00';
+                vuMonitorSourceBadge.style.borderColor = 'rgba(255,170,0,0.45)';
+                vuMonitorSourceBadge.style.background = 'rgba(255,170,0,0.12)';
+                vuMonitorSourceBadge.title = 'No live audio input signal detected. Operating from StageLinQ deck telemetry.';
+            }
+        }
+
+        if (eqMonitorSourceBadge && data) {
+            if (data.sourceType === 'audio_interface') {
+                eqMonitorSourceBadge.textContent = 'LIVE AUDIO FFT';
+                eqMonitorSourceBadge.style.color = '#00ffcc';
+                eqMonitorSourceBadge.style.borderColor = 'rgba(0,255,204,0.45)';
+                eqMonitorSourceBadge.style.background = 'rgba(0,255,204,0.12)';
+            } else {
+                eqMonitorSourceBadge.textContent = 'DECK METRICS';
+                eqMonitorSourceBadge.style.color = '#ffaa00';
+                eqMonitorSourceBadge.style.borderColor = 'rgba(255,170,0,0.45)';
+                eqMonitorSourceBadge.style.background = 'rgba(255,170,0,0.12)';
+            }
         }
 
         // Stream live beat telemetry to Philips Hue Bridge (Adaptive Onsets & High Dynamic Range)

@@ -7800,7 +7800,7 @@ function formatDeckTime(totalSeconds) {
 }
 
 // 2D High-Resolution DJ Deck HUD Overlay Renderer (Deck 1 / Master, Deck 2 / Sync & Center Phase Meter)
-function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2, d2Active = false) {
+function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2, d2Active = false, audio = null) {
     ctx.clearRect(0, 0, width, height);
 
     const padX = 70;
@@ -7897,6 +7897,26 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     ctx.fillText('SYNC LOCK', padX + 342, 106);
     ctx.fillStyle = '#8899aa';
     ctx.fillText('±8  0.00%', padX + 435, 106);
+
+    // Monitor Source Indicator on Deck HUD (Audio In vs Deck Metrics)
+    const monIsAudio = (audio && audio.sourceType === 'audio_interface');
+    const monText = monIsAudio ? '● MON: AUDIO IN' : '● MON: DECK METRICS';
+    const monColor = monIsAudio ? '#00ffcc' : '#ffaa00';
+    const monBg = monIsAudio ? 'rgba(0, 255, 204, 0.16)' : 'rgba(255, 170, 0, 0.16)';
+    const monBorder = monIsAudio ? 'rgba(0, 255, 204, 0.45)' : 'rgba(255, 170, 0, 0.45)';
+
+    ctx.beginPath();
+    ctx.roundRect(padX + 530, 94, 155, 20, 4);
+    ctx.fillStyle = monBg;
+    ctx.fill();
+    ctx.strokeStyle = monBorder;
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    ctx.fillStyle = monColor;
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(monText, padX + 607, 105);
 
     // Integrated Time Readouts (Merged cleanly into right side of Left Card)
     const timeX = padX + leftCardW - 24;
@@ -14517,7 +14537,13 @@ export function createVFXScene(container) {
                 const spd = specParticleSpeed[i];
                 
                 let rawAmp = 0.0;
-                if (deck1HasHardwareWaveform || wireAmpBands) {
+                // If real live audio FFT is available (from audio interface / line-in), USE REAL AUDIO!
+                // This gives real dynamic audio reactions instead of repeating static loops
+                const hasRealAudio = audio && audio.sourceType === 'audio_interface' && (audio.overall > 0.005 || audio.bass > 0.005 || (audio.peakDb && audio.peakDb > -58));
+                if (hasRealAudio && dataArr && dataArr.length > 0) {
+                    const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
+                    rawAmp = (dataArr[binIdx] / 255.0);
+                } else if (deck1HasHardwareWaveform || wireAmpBands) {
                     const specIdx = Math.min(127, Math.floor((b / specBands) * 115));
                     const kickBoost = (b < 18) ? (beatTriggerPulse * 0.40) : 0.0;
                     rawAmp = Math.min(1.0, (wireSmoothBins[specIdx] / 255.0) * 1.15 + kickBoost);
@@ -14611,7 +14637,7 @@ export function createVFXScene(container) {
             // Update HUD Canvas texture every ~4 frames for smooth time elapsed/remaining readouts
             djHudFrameCount++;
             if (djHudFrameCount % 4 === 0) {
-                renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress, deck2Active);
+                renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress, deck2Active, audio);
                 djHudTex.needsUpdate = true;
             }
         }
