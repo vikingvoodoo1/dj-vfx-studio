@@ -9977,6 +9977,101 @@ export function createVFXScene(container) {
     djWaveMesh.position.set(0, 0, -2.0);
     gDJWaveforms.add(djWaveMesh);
 
+    // 2b. Wave Smoke Shader (Subtle atmospheric vapor rising procedurally off the moving waveform lobes)
+    const WaveSmokeShader = {
+        uniforms: {
+            uAudioHistory: { value: djAudioHistoryTex },
+            uTrackProgress: { value: 0.35 },
+            uZoom: { value: 0.08 },
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uTransient: { value: 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            void main() {
+                vUv = uv;
+                vec4 worldPos = modelMatrix * vec4(position, 1.0);
+                vWorldPos = worldPos.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+        `,
+        fragmentShader: `
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            uniform sampler2D uAudioHistory;
+            uniform float uTrackProgress;
+            uniform float uZoom;
+            uniform float uTime;
+            uniform float uBass;
+            uniform float uTransient;
+
+            // Ultra-fast silky procedural smoke turbulence matching atmospheric fog
+            float waveSmokeTurbulence(vec3 p) {
+                float w1 = sin(p.x * 1.35 + p.y * 0.95 + sin(p.z * 1.15 + p.x * 0.65)) * 0.5 + 0.5;
+                float w2 = sin(p.y * 2.10 - p.z * 1.65 + sin(p.x * 1.85 + p.y * 0.45)) * 0.5 + 0.5;
+                float w3 = cos(p.z * 3.10 + p.x * 2.45 - p.y * 1.40) * 0.5 + 0.5;
+                return w1 * 0.55 + w2 * 0.32 + w3 * 0.18;
+            }
+
+            void main() {
+                // 1. Audio wave lobe sampling at this X coordinate
+                float headPos = uTrackProgress;
+                float texU = fract(headPos + (vUv.x - 0.5) * uZoom);
+                vec4 audioSlice = texture2D(uAudioHistory, vec2(texU, 0.25));
+                float waveAmp = (audioSlice.r * 0.55 + audioSlice.g * 0.30 + audioSlice.b * 0.15);
+
+                // 2. Procedural convective curling turbulence rising vertically
+                vec3 p1 = vec3(vWorldPos.x * 0.14, vWorldPos.y * 0.18 - uTime * 0.11, uTime * 0.04);
+                p1.x += sin(uTime * 0.08 + vWorldPos.y * 0.25) * 0.35;
+                float n1 = waveSmokeTurbulence(p1);
+
+                vec3 p2 = vec3(vWorldPos.x * 0.28 + 2.3, vWorldPos.y * 0.32 - uTime * 0.17, uTime * 0.07 + 1.8);
+                float n2 = waveSmokeTurbulence(p2);
+
+                float curl = n1 * 0.65 + n2 * 0.35;
+
+                // 3. Smoke emission envelope (rising off the wave lobes into the air)
+                // In world space, wave center is around Y = 0.0, wave lobes are Y in [-3.5, +3.5]
+                // Plane is centered at Y = 0.5, height 14.0, so vUv.y ranges from Y = -6.5 to +7.5
+                float waveLobeY = 0.46 + waveAmp * 0.24;
+                float bottomOrigin = smoothstep(0.18, 0.38, vUv.y);
+                float upwardFade = 1.0 - smoothstep(0.60, 0.95, vUv.y);
+                float waveEmanation = smoothstep(0.20, waveLobeY, vUv.y) * upwardFade * bottomOrigin;
+
+                // Soft horizontal boundary edge falloff
+                float horizontalFade = smoothstep(0.02, 0.15, vUv.x) * smoothstep(0.98, 0.85, vUv.x);
+
+                // 4. Density calculation
+                float rawDensity = smoothstep(0.20, 0.75, curl);
+                float audioReact = 0.65 + uBass * 0.40 + waveAmp * 0.45 + uTransient * 0.30;
+                float smokeDensity = rawDensity * waveEmanation * horizontalFade * audioReact;
+
+                // 5. Delicate warm amber/charcoal atmospheric smoke
+                vec3 smokeCol = mix(vec3(0.96, 0.72, 0.42), vec3(0.48, 0.36, 0.25), curl * 0.45);
+                
+                // Very subtle opacity for ethereal low-light presence
+                float alpha = smokeDensity * 0.18;
+
+                gl_FragColor = vec4(smokeCol, alpha);
+            }
+        `
+    };
+
+    const waveSmokeMat = new THREE.ShaderMaterial({
+        uniforms: WaveSmokeShader.uniforms,
+        vertexShader: WaveSmokeShader.vertexShader,
+        fragmentShader: WaveSmokeShader.fragmentShader,
+        transparent: true,
+        blending: THREE.NormalBlending,
+        depthWrite: false
+    });
+    const waveSmokeMesh = new THREE.Mesh(new THREE.PlaneGeometry(36.5, 14.0), waveSmokeMat);
+    waveSmokeMesh.position.set(0, 0.5, -1.95);
+    waveSmokeMesh.renderOrder = 15;
+    gDJWaveforms.add(waveSmokeMesh);
+
     // 3. 2D High-Resolution Deck HUD Canvas Overlay (2048x1024)
     const djHudCanvas = document.createElement('canvas');
     djHudCanvas.width = 2048;
@@ -10150,96 +10245,112 @@ export function createVFXScene(container) {
         }
     }
 
-    // 4. 3D Full-Spectrum Particle Equalizer Across All Frequency Bands (64 Bins x 128 Micro-Particles = 8,192 Particles)
-    // Finely textured like glittering colored micro-sand across the bottom of the stage
+    // -------------------------------------------------------------------------
+    // 4. 🎛️ VINTAGE STUDIO LED LADDER SPECTRUM EQUALIZER (Subtle Glow LED Style)
+    // -------------------------------------------------------------------------
+    // Clean, diffused, warm golden-amber glowing LED segments arranged in 64 precision
+    // vertical hardware ladders across the stage floor. Zero glitter, zero random jitter;
+    // pristine studio hardware metering with soothing resting glow and peak-hold indicators.
+    function createLedGlowTexture() {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const ctx = c.getContext('2d');
+        const cx = 64, cy = 64;
+
+        // Diffused Gaussian glow falloff: bright diode lens core + warm soothing radiant aura
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 64);
+        grad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)'); // Diode emitter center
+        grad.addColorStop(0.18, 'rgba(255, 240, 200, 0.92)'); // Diffused glass lens
+        grad.addColorStop(0.42, 'rgba(255, 185, 80, 0.48)');  // Warm golden halo
+        grad.addColorStop(0.72, 'rgba(255, 140, 30, 0.12)');  // Soft dissipation aura
+        grad.addColorStop(1.00, 'rgba(0, 0, 0, 0.0)');
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+
+        const tex = new THREE.CanvasTexture(c);
+        tex.generateMipmaps = true;
+        return tex;
+    }
+
+    const ledGlowTex = createLedGlowTexture();
     const specBands = 64;
-    const specParticlesPerBand = 128;
-    const totalSpecParticles = specBands * specParticlesPerBand;
+    const specSegmentsPerBand = 20; // 20 discrete hardware LED segments per ladder
+    const totalSpecParticles = specBands * specSegmentsPerBand; // 1,280 structured LED segments
+
     const specParticleGeo = new THREE.BufferGeometry();
     const specParticlePos = new Float32Array(totalSpecParticles * 3);
     const specParticleCol = new Float32Array(totalSpecParticles * 3);
-    const specParticleBaseX = new Float32Array(totalSpecParticles);
+    const specParticleBaseCol = new Float32Array(totalSpecParticles * 3);
     const specParticleBandIdx = new Float32Array(totalSpecParticles);
-    const specParticleLayer = new Float32Array(totalSpecParticles);
-    const specParticleSpeed = new Float32Array(totalSpecParticles);
+    const specParticleSegIdx = new Float32Array(totalSpecParticles);
+
+    // Audio-reactive tracking states per band
+    const specSmoothBands = new Float32Array(specBands);
+    const specPeakBands = new Float32Array(specBands);
+    const specPeakHoldTimer = new Float32Array(specBands);
 
     for (let b = 0; b < specBands; b++) {
         const normBand = b / (specBands - 1);
-        const xPos = (normBand - 0.5) * 34.0; // Spans full wide stage width [-17, +17]
+        const xPos = (normBand - 0.5) * 34.0; // Spans full wide stage [-17.0, +17.0]
 
-        // ⚡ Vintage Electricity & Nixie Tube Neon-Amber Spectral Gradient:
-        // Sub-bass (cathode red-orange) -> Mids (warm golden neon gas) -> Highs (voltage filament gold)
-        let bandR, bandG, bandB;
-        if (normBand < 0.25) {
-            // Sub-bass: Deep cathode neon red-orange (#e64000 to #ff6a00)
-            const u = normBand / 0.25;
-            bandR = 1.0;
-            bandG = 0.25 + u * 0.18;
-            bandB = 0.0;
-        } else if (normBand < 0.70) {
-            // Mids: Rich radiant warm amber neon discharge (#ff6a00 to #ffa81a)
-            const u = (normBand - 0.25) / 0.45;
-            bandR = 1.0;
-            bandG = 0.43 + u * 0.25;
-            bandB = 0.02 + u * 0.08;
-        } else {
-            // Highs: Vintage voltage filament threads & electric sparks (#ffa81a to #ffdc55)
-            const u = (normBand - 0.70) / 0.30;
-            bandR = 1.0;
-            bandG = 0.68 + u * 0.20;
-            bandB = 0.10 + u * 0.28;
-        }
+        // Spectral color progression:
+        // Sub-bass/Bass (warm deep amber) -> Mids (honey gold) -> Highs (crisp champagne gold)
+        let bandBaseR = 1.0;
+        let bandBaseG = 0.55 + normBand * 0.22;
+        let bandBaseB = 0.06 + normBand * 0.18;
 
-        for (let p = 0; p < specParticlesPerBand; p++) {
-            const idx = b * specParticlesPerBand + p;
-            const layerNorm = p / (specParticlesPerBand - 1);
+        for (let s = 0; s < specSegmentsPerBand; s++) {
+            const idx = b * specSegmentsPerBand + s;
 
             specParticleBandIdx[idx] = b;
-            specParticleLayer[idx] = layerNorm;
-            // Slender column width for crisp vertical cathode wire appearance
-            specParticleBaseX[idx] = xPos + (Math.random() - 0.5) * 0.32;
-            specParticleSpeed[idx] = 0.85 + Math.random() * 1.3;
+            specParticleSegIdx[idx] = s;
 
-            // X = column across stage; Y = vertical height; Z = flat vertical plane (around -2.2)
-            specParticlePos[idx * 3]     = specParticleBaseX[idx];
-            specParticlePos[idx * 3 + 1] = -7.8 + layerNorm * 0.3; // Rests on floor horizon initially
-            specParticlePos[idx * 3 + 2] = -2.2 + (Math.random() - 0.5) * 0.35; // True vertical plane!
+            // Stable, fixed physical grid coordinates (zero random jitter)
+            specParticlePos[idx * 3]     = xPos;
+            specParticlePos[idx * 3 + 1] = -8.80 + s * 0.155; // -8.80 (floor) to -5.855 (cleanly below moving waveform & beat ruler)
+            specParticlePos[idx * 3 + 2] = -2.15; // Vertical plane aligned with waveforms
 
-            // Vertical gradient: Deep glowing cathode at floor -> warm radiant amber body -> incandescent electric white at tops
-            let r = bandR;
-            let g = bandG;
-            let bl = bandB;
-
-            if (layerNorm < 0.30) {
-                // Lower cathode glow (slightly deeper red-orange)
-                const u = layerNorm / 0.30;
-                r = Math.min(1.0, bandR * (0.85 + u * 0.15));
-                g = bandG * (0.75 + u * 0.25);
-                bl = bandB * 0.6;
-            } else if (layerNorm > 0.82) {
-                // Top electric discharge sparks (bright incandescent electric white-hot)
-                const u = (layerNorm - 0.82) / 0.18;
+            // Classic Studio LED Meter Ladder Color Thresholds:
+            let r, g, bl;
+            if (s < 14) {
+                // Levels 1-14: Warm Honey Golden Amber
+                r = bandBaseR;
+                g = bandBaseG;
+                bl = bandBaseB;
+            } else if (s < 17) {
+                // Levels 15-17 (0dB to +3dB transition): Radiant Amber-Orange
                 r = 1.0;
-                g = Math.min(1.0, bandG + u * (1.0 - bandG) * 0.85);
-                bl = Math.min(1.0, bandB + u * 0.85);
+                g = 0.40;
+                bl = 0.02;
+            } else {
+                // Levels 18-20 (+3dB to +6dB peak overload): Vintage Incandescent Warm Ruby Red
+                r = 1.0;
+                g = 0.14;
+                bl = 0.04;
             }
 
-            specParticleCol[idx * 3]     = r;
-            specParticleCol[idx * 3 + 1] = g;
-            specParticleCol[idx * 3 + 2] = bl;
+            specParticleBaseCol[idx * 3]     = r;
+            specParticleBaseCol[idx * 3 + 1] = g;
+            specParticleBaseCol[idx * 3 + 2] = bl;
+
+            // Initialize with subtle dim resting glow (hardware unlit silhouette)
+            specParticleCol[idx * 3]     = r * 0.045;
+            specParticleCol[idx * 3 + 1] = g * 0.045;
+            specParticleCol[idx * 3 + 2] = bl * 0.045;
         }
     }
-
-    const specParticleBaseCol = new Float32Array(specParticleCol);
 
     specParticleGeo.setAttribute("position", new THREE.BufferAttribute(specParticlePos, 3));
     specParticleGeo.setAttribute("color", new THREE.BufferAttribute(specParticleCol, 3));
 
     const specParticleMat = new THREE.PointsMaterial({
-        size: 0.055, // Granular micro-particle scale
+        size: 0.22, // Crisp, perfectly proportioned diffused glowing LED diode
+        map: ledGlowTex,
         vertexColors: true,
         transparent: true,
-        opacity: 0.92,
+        opacity: 0.95,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     });
@@ -10444,23 +10555,14 @@ export function createVFXScene(container) {
     gDJWaveforms.add(gEdisonBulbRig);
 
     const edisonBulbConfigs = [
-        // Flanking Left (staggered depths & heights)
-        { x: -14.2, z: -4.5, cordLen: 6.8, type: 'bell',  seed: 0.15 },
-        { x: -11.4, z: -3.6, cordLen: 5.4, type: 'globe', seed: 1.45 },
-        { x: -16.5, z: -5.4, cordLen: 8.2, type: 'bell',  seed: 2.78 },
-
-        // Flanking Right (staggered depths & heights)
-        { x: 14.2,  z: -4.5, cordLen: 6.8, type: 'bell',  seed: 3.91 },
-        { x: 11.4,  z: -3.6, cordLen: 5.4, type: 'globe', seed: 4.62 },
-        { x: 16.5,  z: -5.4, cordLen: 8.2, type: 'bell',  seed: 5.83 },
-
-        // Overhead Framing
-        { x: -5.8,  z: -4.2, cordLen: 3.8, type: 'bell',  seed: 6.24 },
-        { x: 5.8,   z: -4.2, cordLen: 3.8, type: 'bell',  seed: 7.39 },
-        { x: 0.0,   z: -5.8, cordLen: 3.4, type: 'globe', seed: 8.51 }
+        // Top Ceiling Framing (positioned high above waveforms, framing UI badges cleanly)
+        { x: -12.8, z: -4.0, cordLen: 0.85, type: 'bell',  seed: 0.25 },
+        { x: -4.6,  z: -4.5, cordLen: 0.65, type: 'globe', seed: 1.65 },
+        { x: 4.6,   z: -4.5, cordLen: 0.65, type: 'globe', seed: 2.85 },
+        { x: 12.8,  z: -4.0, cordLen: 0.85, type: 'bell',  seed: 4.10 }
     ];
 
-    const ceilingY = 12.0;
+    const ceilingY = 12.5;
 
     for (let i = 0; i < edisonBulbConfigs.length; i++) {
         const cfg = edisonBulbConfigs[i];
@@ -10480,9 +10582,10 @@ export function createVFXScene(container) {
         cordMesh.position.y = -cfg.cordLen / 2;
         pivot.add(cordMesh);
 
-        // Lantern Assembly (at bottom of cord)
+        // Lantern Assembly (at bottom of cord, elegantly proportioned)
         const lanternAssembly = new THREE.Group();
         lanternAssembly.position.y = -cfg.cordLen;
+        lanternAssembly.scale.set(0.72, 0.72, 0.72);
         pivot.add(lanternAssembly);
 
         // 1. Woven Wicker Basket Shade matching user photo
@@ -10515,12 +10618,12 @@ export function createVFXScene(container) {
         lanternAssembly.add(glowSprite);
 
         // 5. Low-Light Soothing Point Light (Warm 2200K Candlelight)
-        const pLight = new THREE.PointLight(0xff8c1a, 0.65, 13.0, 1.8);
+        const pLight = new THREE.PointLight(0xff8c1a, 0.55, 11.0, 1.8);
         pLight.position.set(0, spriteY, 0);
         lanternAssembly.add(pLight);
 
-        // Natural Pendulum Frequency
-        const omega = Math.sqrt(9.81 / cfg.cordLen) * 0.58;
+        // Natural Pendulum Frequency (clamped minimum length for soothing sway)
+        const omega = Math.sqrt(9.81 / Math.max(2.4, cfg.cordLen)) * 0.58;
 
         edisonBulbs.push({
             pivot,
@@ -15340,14 +15443,19 @@ export function createVFXScene(container) {
 
             updateSynthesizedDeckSpectrum();
 
-            for (let i = 0; i < totalSpecParticles; i++) {
-                const b = specParticleBandIdx[i];
-                const layer = specParticleLayer[i];
-                const spd = specParticleSpeed[i];
-                
+            // 2. Animate Wave Smoke Shader (Subtle atmospheric vapor rising procedurally off waveform lobes)
+            if (waveSmokeMat) {
+                waveSmokeMat.uniforms.uTime.value = elapsedTime;
+                waveSmokeMat.uniforms.uTrackProgress.value = deck1Progress;
+                waveSmokeMat.uniforms.uZoom.value = 0.08;
+                waveSmokeMat.uniforms.uBass.value = audio.bass || 0;
+                waveSmokeMat.uniforms.uTransient.value = audio.transient || 0;
+            }
+
+            // 3. 🎛️ Animate Subtle Glow Studio LED Ladder Spectrum
+            for (let b = 0; b < specBands; b++) {
                 let rawAmp = 0.0;
                 // If real live audio FFT is available (from audio interface / line-in), USE REAL AUDIO!
-                // This gives real dynamic audio reactions instead of repeating static loops
                 const hasRealAudio = audio && audio.sourceType === 'audio_interface' && (audio.overall > 0.005 || audio.bass > 0.005 || (audio.peakDb && audio.peakDb > -58));
                 if (hasRealAudio && dataArr && dataArr.length > 0) {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
@@ -15360,57 +15468,52 @@ export function createVFXScene(container) {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
                     rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
                 }
-                
-                // 3D Vintage Electricity Particle Spectrum Equalizer:
-                // 64 vertical cathode frequency columns rising from dancefloor (-7.8) with electric spark discharge
-                const maxBarH = 6.8;
-                const targetPeakY = -7.8 + Math.max(0.18, rawAmp * maxBarH);
-                let targetY = -7.8 + layer * (targetPeakY - (-7.8));
 
-                // Electrical voltage micro-spark leaps & high-frequency arc jitter at column tops
-                if (layer > 0.82) {
-                    // Vintage 50Hz/60Hz AC arc crackle + audio-reactive voltage spark jumps
-                    const arcNoise = Math.sin(elapsedTime * 52.0 + b * 3.7 + i * 2.1);
-                    const sparkJump = Math.max(0.0, rawAmp - 0.28) * (0.52 * layer);
-                    targetY += arcNoise * (0.09 * rawAmp) + sparkJump;
-
-                    // Dynamic incandescent spark color surge: flash to electric white-hot on transients!
-                    const sparkEnergy = Math.max(0.0, Math.min(1.0, (rawAmp - 0.32) * 1.8));
-                    const baseR = specParticleBaseCol[i * 3];
-                    const baseG = specParticleBaseCol[i * 3 + 1];
-                    const baseB = specParticleBaseCol[i * 3 + 2];
-                    if (sparkEnergy > 0.02) {
-                        colArr[i * 3]     = 1.0;
-                        colArr[i * 3 + 1] = Math.min(1.0, baseG + sparkEnergy * 0.30);
-                        colArr[i * 3 + 2] = Math.min(1.0, baseB + sparkEnergy * 0.75);
-                        specColorsNeedUpdate = true;
-                    } else if (colArr[i * 3 + 2] !== baseB) {
-                        colArr[i * 3]     = baseR;
-                        colArr[i * 3 + 1] = baseG;
-                        colArr[i * 3 + 2] = baseB;
-                        specColorsNeedUpdate = true;
-                    }
-                }
-
-                const currentY = posArr[i * 3 + 1];
-                if (targetY > currentY) {
-                    // Fast responsive electrical attack leaping upward with the music
-                    posArr[i * 3 + 1] = THREE.MathUtils.lerp(currentY, targetY, 0.55);
+                // Smooth attack and natural exponential studio decay
+                if (rawAmp > specSmoothBands[b]) {
+                    specSmoothBands[b] = THREE.MathUtils.lerp(specSmoothBands[b], rawAmp, 0.48);
                 } else {
-                    // Smooth natural electric discharge decay
-                    posArr[i * 3 + 1] = Math.max(-7.8, currentY - delta * (7.0 + (1.0 - layer) * 4.5));
+                    specSmoothBands[b] = Math.max(0.0, specSmoothBands[b] - delta * 2.2);
                 }
 
-                // High-speed AC mains cathode wire micro-hum (subtle electrical shimmer strictly in column)
-                const acHum = Math.sin(elapsedTime * 62.8 + layer * 24.0) * 0.016;
-                posArr[i * 3] = specParticleBaseX[i] + acHum;
-                // Keep Z on the flat vertical plane with subtle electric depth
-                posArr[i * 3 + 2] = -2.2 + Math.cos(elapsedTime * 31.4 + b) * 0.04;
+                // Studio Peak-Hold Indicator: stays suspended at peak for 0.45s, then gently decays
+                if (specSmoothBands[b] >= specPeakBands[b]) {
+                    specPeakBands[b] = specSmoothBands[b];
+                    specPeakHoldTimer[b] = 0.45;
+                } else if (specPeakHoldTimer[b] > 0.0) {
+                    specPeakHoldTimer[b] -= delta;
+                } else {
+                    specPeakBands[b] = Math.max(0.0, specPeakBands[b] - delta * 1.2);
+                }
+                const peakSlot = Math.min(specSegmentsPerBand - 1, Math.floor(specPeakBands[b] * specSegmentsPerBand));
+
+                // Update the 20 discrete LED segments in this band column
+                for (let s = 0; s < specSegmentsPerBand; s++) {
+                    const idx = b * specSegmentsPerBand + s;
+                    const segThreshold = (s + 1) / specSegmentsPerBand;
+                    const prevThreshold = s / specSegmentsPerBand;
+
+                    let brightness = 0.045; // Subtle dim resting glow (unlit hardware state)
+
+                    if (specSmoothBands[b] >= segThreshold) {
+                        brightness = 0.88; // Fully lit glowing LED
+                    } else if (specSmoothBands[b] > prevThreshold) {
+                        // Top active segment smoothly illuminates with proportional intensity
+                        const frac = (specSmoothBands[b] - prevThreshold) * specSegmentsPerBand;
+                        brightness = 0.045 + frac * 0.835;
+                    }
+
+                    // Peak-hold indicator LED (subtle high-water mark)
+                    if (s === peakSlot && specPeakBands[b] > 0.05) {
+                        brightness = Math.max(brightness, 0.95);
+                    }
+
+                    colArr[idx * 3]     = specParticleBaseCol[idx * 3]     * brightness;
+                    colArr[idx * 3 + 1] = specParticleBaseCol[idx * 3 + 1] * brightness;
+                    colArr[idx * 3 + 2] = specParticleBaseCol[idx * 3 + 2] * brightness;
+                }
             }
-            specParticleGeo.attributes.position.needsUpdate = true;
-            if (specColorsNeedUpdate) {
-                specParticleGeo.attributes.color.needsUpdate = true;
-            }
+            specParticleGeo.attributes.color.needsUpdate = true;
 
             // Advance track progress: directly locked to hardware deck wire telemetry
             const trackSec = deck1Data.duration || 364;
