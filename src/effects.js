@@ -10167,10 +10167,28 @@ export function createVFXScene(container) {
         const normBand = b / (specBands - 1);
         const xPos = (normBand - 0.5) * 34.0; // Spans full wide stage width [-17, +17]
 
-        // 🌈 Full-Spectrum Saturated Neon Rainbow Spectral Gradient across all 64 frequency bands:
-        // Crimson Red (Sub-Bass) -> Neon Orange -> Golden Yellow -> Emerald Green -> Cyan -> Royal Blue -> Hot Magenta
-        const hue = (normBand * 0.88 + 0.98) % 1.0;
-        const baseCol = new THREE.Color().setHSL(hue, 1.0, 0.56);
+        // ⚡ Vintage Electricity & Nixie Tube Neon-Amber Spectral Gradient:
+        // Sub-bass (cathode red-orange) -> Mids (warm golden neon gas) -> Highs (voltage filament gold)
+        let bandR, bandG, bandB;
+        if (normBand < 0.25) {
+            // Sub-bass: Deep cathode neon red-orange (#e64000 to #ff6a00)
+            const u = normBand / 0.25;
+            bandR = 1.0;
+            bandG = 0.25 + u * 0.18;
+            bandB = 0.0;
+        } else if (normBand < 0.70) {
+            // Mids: Rich radiant warm amber neon discharge (#ff6a00 to #ffa81a)
+            const u = (normBand - 0.25) / 0.45;
+            bandR = 1.0;
+            bandG = 0.43 + u * 0.25;
+            bandB = 0.02 + u * 0.08;
+        } else {
+            // Highs: Vintage voltage filament threads & electric sparks (#ffa81a to #ffdc55)
+            const u = (normBand - 0.70) / 0.30;
+            bandR = 1.0;
+            bandG = 0.68 + u * 0.20;
+            bandB = 0.10 + u * 0.28;
+        }
 
         for (let p = 0; p < specParticlesPerBand; p++) {
             const idx = b * specParticlesPerBand + p;
@@ -10178,8 +10196,8 @@ export function createVFXScene(container) {
 
             specParticleBandIdx[idx] = b;
             specParticleLayer[idx] = layerNorm;
-            // Slender column width for crisp vertical bars
-            specParticleBaseX[idx] = xPos + (Math.random() - 0.5) * 0.36;
+            // Slender column width for crisp vertical cathode wire appearance
+            specParticleBaseX[idx] = xPos + (Math.random() - 0.5) * 0.32;
             specParticleSpeed[idx] = 0.85 + Math.random() * 1.3;
 
             // X = column across stage; Y = vertical height; Z = flat vertical plane (around -2.2)
@@ -10187,15 +10205,32 @@ export function createVFXScene(container) {
             specParticlePos[idx * 3 + 1] = -7.8 + layerNorm * 0.3; // Rests on floor horizon initially
             specParticlePos[idx * 3 + 2] = -2.2 + (Math.random() - 0.5) * 0.35; // True vertical plane!
 
-            // Full-spectrum vibrant color: deep saturation at baseline, glowing diamond-bright at peaks
-            const pCol = baseCol.clone();
-            const lightnessBoost = layerNorm * 0.28 + (Math.random() - 0.5) * 0.10;
-            pCol.offsetHSL(0.0, 0.0, lightnessBoost);
-            specParticleCol[idx * 3]     = pCol.r;
-            specParticleCol[idx * 3 + 1] = pCol.g;
-            specParticleCol[idx * 3 + 2] = pCol.b;
+            // Vertical gradient: Deep glowing cathode at floor -> warm radiant amber body -> incandescent electric white at tops
+            let r = bandR;
+            let g = bandG;
+            let bl = bandB;
+
+            if (layerNorm < 0.30) {
+                // Lower cathode glow (slightly deeper red-orange)
+                const u = layerNorm / 0.30;
+                r = Math.min(1.0, bandR * (0.85 + u * 0.15));
+                g = bandG * (0.75 + u * 0.25);
+                bl = bandB * 0.6;
+            } else if (layerNorm > 0.82) {
+                // Top electric discharge sparks (bright incandescent electric white-hot)
+                const u = (layerNorm - 0.82) / 0.18;
+                r = 1.0;
+                g = Math.min(1.0, bandG + u * (1.0 - bandG) * 0.85);
+                bl = Math.min(1.0, bandB + u * 0.85);
+            }
+
+            specParticleCol[idx * 3]     = r;
+            specParticleCol[idx * 3 + 1] = g;
+            specParticleCol[idx * 3 + 2] = bl;
         }
     }
+
+    const specParticleBaseCol = new Float32Array(specParticleCol);
 
     specParticleGeo.setAttribute("position", new THREE.BufferAttribute(specParticlePos, 3));
     specParticleGeo.setAttribute("color", new THREE.BufferAttribute(specParticleCol, 3));
@@ -15264,6 +15299,8 @@ export function createVFXScene(container) {
 
             // Update 3D Particle Spectrum Field Across All 64 Frequency Bands
             const posArr = specParticleGeo.attributes.position.array;
+            const colArr = specParticleGeo.attributes.color.array;
+            let specColorsNeedUpdate = false;
             const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
 
             // Sample live wire audio slice from deck waveform with fractional bilinear interpolation & temporal smoothing
@@ -15324,32 +15361,56 @@ export function createVFXScene(container) {
                     rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
                 }
                 
-                // 3D Full-Colour Vertical Particle Spectrum Equalizer:
-                // 64 vertical frequency columns rising straight up from dancefloor (-7.8) with peak bounce
+                // 3D Vintage Electricity Particle Spectrum Equalizer:
+                // 64 vertical cathode frequency columns rising from dancefloor (-7.8) with electric spark discharge
                 const maxBarH = 6.8;
                 const targetPeakY = -7.8 + Math.max(0.18, rawAmp * maxBarH);
                 let targetY = -7.8 + layer * (targetPeakY - (-7.8));
 
-                // Musical transient flutter & micro-particle peak floating at column tops
-                if (layer > 0.85) {
-                    targetY += Math.sin(elapsedTime * 11.0 + b * 0.4) * (0.22 * rawAmp) * layer;
+                // Electrical voltage micro-spark leaps & high-frequency arc jitter at column tops
+                if (layer > 0.82) {
+                    // Vintage 50Hz/60Hz AC arc crackle + audio-reactive voltage spark jumps
+                    const arcNoise = Math.sin(elapsedTime * 52.0 + b * 3.7 + i * 2.1);
+                    const sparkJump = Math.max(0.0, rawAmp - 0.28) * (0.52 * layer);
+                    targetY += arcNoise * (0.09 * rawAmp) + sparkJump;
+
+                    // Dynamic incandescent spark color surge: flash to electric white-hot on transients!
+                    const sparkEnergy = Math.max(0.0, Math.min(1.0, (rawAmp - 0.32) * 1.8));
+                    const baseR = specParticleBaseCol[i * 3];
+                    const baseG = specParticleBaseCol[i * 3 + 1];
+                    const baseB = specParticleBaseCol[i * 3 + 2];
+                    if (sparkEnergy > 0.02) {
+                        colArr[i * 3]     = 1.0;
+                        colArr[i * 3 + 1] = Math.min(1.0, baseG + sparkEnergy * 0.30);
+                        colArr[i * 3 + 2] = Math.min(1.0, baseB + sparkEnergy * 0.75);
+                        specColorsNeedUpdate = true;
+                    } else if (colArr[i * 3 + 2] !== baseB) {
+                        colArr[i * 3]     = baseR;
+                        colArr[i * 3 + 1] = baseG;
+                        colArr[i * 3 + 2] = baseB;
+                        specColorsNeedUpdate = true;
+                    }
                 }
 
                 const currentY = posArr[i * 3 + 1];
                 if (targetY > currentY) {
-                    // Fast responsive vertical attack leaping upward with the music
-                    posArr[i * 3 + 1] = THREE.MathUtils.lerp(currentY, targetY, 0.50);
+                    // Fast responsive electrical attack leaping upward with the music
+                    posArr[i * 3 + 1] = THREE.MathUtils.lerp(currentY, targetY, 0.55);
                 } else {
-                    // Smooth natural gravity decay falling down to floor
-                    posArr[i * 3 + 1] = Math.max(-7.8, currentY - delta * (6.5 + (1.0 - layer) * 4.5));
+                    // Smooth natural electric discharge decay
+                    posArr[i * 3 + 1] = Math.max(-7.8, currentY - delta * (7.0 + (1.0 - layer) * 4.5));
                 }
 
-                // Delicate organic shimmer while keeping particles strictly in their vertical column
-                posArr[i * 3] = specParticleBaseX[i] + Math.sin(elapsedTime * 3.5 + layer * 6.28) * 0.025;
-                // Keep Z on the flat vertical plane!
-                posArr[i * 3 + 2] = -2.2 + Math.cos(elapsedTime * 2.5 + b) * 0.05;
+                // High-speed AC mains cathode wire micro-hum (subtle electrical shimmer strictly in column)
+                const acHum = Math.sin(elapsedTime * 62.8 + layer * 24.0) * 0.016;
+                posArr[i * 3] = specParticleBaseX[i] + acHum;
+                // Keep Z on the flat vertical plane with subtle electric depth
+                posArr[i * 3 + 2] = -2.2 + Math.cos(elapsedTime * 31.4 + b) * 0.04;
             }
             specParticleGeo.attributes.position.needsUpdate = true;
+            if (specColorsNeedUpdate) {
+                specParticleGeo.attributes.color.needsUpdate = true;
+            }
 
             // Advance track progress: directly locked to hardware deck wire telemetry
             const trackSec = deck1Data.duration || 364;
