@@ -10241,6 +10241,331 @@ export function createVFXScene(container) {
     specParticleField.frustumCulled = false;
     gDJWaveforms.add(specParticleField);
 
+    // -------------------------------------------------------------------------
+    // 💡 3D VINTAGE EDISON BULB RIG (Atmospheric Flanking & Overhead Pendants)
+    // -------------------------------------------------------------------------
+    function createEdisonGlowTexture() {
+        const c = document.createElement('canvas');
+        c.width = 128;
+        c.height = 128;
+        const ctx = c.getContext('2d');
+        const cx = 64, cy = 64;
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 64);
+        grad.addColorStop(0.0, 'rgba(255, 250, 220, 1.0)');
+        grad.addColorStop(0.15, 'rgba(255, 195, 75, 0.92)');
+        grad.addColorStop(0.38, 'rgba(255, 125, 20, 0.52)');
+        grad.addColorStop(0.68, 'rgba(215, 60, 8, 0.16)');
+        grad.addColorStop(1.0, 'rgba(0, 0, 0, 0.0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, 128, 128);
+        const tex = new THREE.CanvasTexture(c);
+        tex.generateMipmaps = false;
+        tex.minFilter = THREE.LinearFilter;
+        return tex;
+    }
+
+    const edisonGlowTex = createEdisonGlowTexture();
+
+    // Reusable Materials
+    const edisonGlassMat = new THREE.MeshPhysicalMaterial({
+        color: 0xffdf9f, // warm vintage amber glass
+        transparent: true,
+        opacity: 0.34,
+        roughness: 0.06,
+        metalness: 0.04,
+        transmission: 0.76,
+        ior: 1.52,
+        reflectivity: 0.88,
+        clearcoat: 1.0,
+        clearcoatRoughness: 0.03,
+        side: THREE.DoubleSide,
+        depthWrite: false
+    });
+
+    const edisonBrassMat = new THREE.MeshStandardMaterial({
+        color: 0xd4af37, // turned antique brass / bronze
+        roughness: 0.28,
+        metalness: 0.86
+    });
+
+    const edisonCordMat = new THREE.MeshStandardMaterial({
+        color: 0x181614, // twisted black braided cloth cord
+        roughness: 0.95,
+        metalness: 0.05
+    });
+
+    const edisonSupportMat = new THREE.MeshStandardMaterial({
+        color: 0xb87333, // antique copper support rods
+        roughness: 0.42,
+        metalness: 0.82
+    });
+
+    // Reusable Bulb Envelope Geometries
+    // 1. Classic ST64 Teardrop Edison
+    const ptsST64 = [
+        new THREE.Vector2(0.24, 0.0),
+        new THREE.Vector2(0.28, -0.18),
+        new THREE.Vector2(0.42, -0.45),
+        new THREE.Vector2(0.76, -0.95),
+        new THREE.Vector2(0.92, -1.50),
+        new THREE.Vector2(0.82, -2.05),
+        new THREE.Vector2(0.52, -2.52),
+        new THREE.Vector2(0.18, -2.82),
+        new THREE.Vector2(0.0, -2.88)
+    ];
+    const geoST64 = new THREE.LatheGeometry(ptsST64, 28);
+
+    // 2. G95 Vintage Globe Edison
+    const ptsG95 = [
+        new THREE.Vector2(0.24, 0.0),
+        new THREE.Vector2(0.28, -0.20),
+        new THREE.Vector2(0.58, -0.55),
+        new THREE.Vector2(0.98, -1.05),
+        new THREE.Vector2(1.12, -1.60),
+        new THREE.Vector2(0.98, -2.15),
+        new THREE.Vector2(0.58, -2.58),
+        new THREE.Vector2(0.16, -2.82),
+        new THREE.Vector2(0.0, -2.86)
+    ];
+    const geoG95 = new THREE.LatheGeometry(ptsG95, 28);
+
+    // 3. T45 Vintage Tubular Edison
+    const ptsT45 = [
+        new THREE.Vector2(0.24, 0.0),
+        new THREE.Vector2(0.28, -0.16),
+        new THREE.Vector2(0.46, -0.38),
+        new THREE.Vector2(0.50, -0.85),
+        new THREE.Vector2(0.50, -1.75),
+        new THREE.Vector2(0.50, -2.35),
+        new THREE.Vector2(0.42, -2.70),
+        new THREE.Vector2(0.18, -2.92),
+        new THREE.Vector2(0.0, -2.96)
+    ];
+    const geoT45 = new THREE.LatheGeometry(ptsT45, 28);
+
+    // 3D Wound Tungsten Filaments
+    function createSquirrelCageFilament() {
+        const pts = [];
+        const runs = 8;
+        const r = 0.28;
+        const topY = -0.65;
+        const botY = -1.85;
+        for (let i = 0; i <= runs; i++) {
+            const theta = (i / runs) * Math.PI * 1.88 - Math.PI * 0.94;
+            const isTop = (i % 2 === 0);
+            pts.push(new THREE.Vector3(
+                Math.sin(theta) * r,
+                isTop ? topY : botY,
+                Math.cos(theta) * r
+            ));
+        }
+        const curve = new THREE.CatmullRomCurve3(pts);
+        return new THREE.TubeGeometry(curve, 56, 0.018, 6, false);
+    }
+    const geoSquirrelFilament = createSquirrelCageFilament();
+
+    function createSpiralFilament() {
+        const pts = [];
+        const turns = 6;
+        const totalPts = 48;
+        const r = 0.16;
+        const topY = -0.65;
+        const botY = -2.25;
+        for (let i = 0; i <= totalPts; i++) {
+            const u = i / totalPts;
+            const theta = u * Math.PI * 2 * turns;
+            pts.push(new THREE.Vector3(
+                Math.sin(theta) * r,
+                topY + u * (botY - topY),
+                Math.cos(theta) * r
+            ));
+        }
+        const curve = new THREE.CatmullRomCurve3(pts);
+        return new THREE.TubeGeometry(curve, 48, 0.016, 6, false);
+    }
+    const geoSpiralFilament = createSpiralFilament();
+
+    function createEdisonSocketGroup() {
+        const socketGroup = new THREE.Group();
+
+        // 1. Top Cord Strain Relief
+        const neckMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.09, 0.26, 16), edisonBrassMat);
+        neckMesh.position.y = 0.45;
+        socketGroup.add(neckMesh);
+
+        // 2. Socket Top Dome Cap
+        const capMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.28, 0.18, 20), edisonBrassMat);
+        capMesh.position.y = 0.27;
+        socketGroup.add(capMesh);
+
+        // 3. Socket Cylindrical Body
+        const bodyMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.28, 0.46, 20), edisonBrassMat);
+        bodyMesh.position.y = 0.0;
+        socketGroup.add(bodyMesh);
+
+        // 4. Knurled Accent Ring
+        const knurlMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.32, 0.12, 20), edisonBrassMat);
+        knurlMesh.position.y = -0.14;
+        socketGroup.add(knurlMesh);
+
+        // 5. Lower Skirt Junction
+        const skirtMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.25, 0.16, 20), edisonBrassMat);
+        skirtMesh.position.y = -0.26;
+        socketGroup.add(skirtMesh);
+
+        // 6. Side Rotary Turn Paddle Key
+        const keyStem = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.22, 8), edisonBrassMat);
+        keyStem.rotation.z = Math.PI / 2;
+        keyStem.position.set(0.36, 0.05, 0);
+        socketGroup.add(keyStem);
+
+        const keyPaddle = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.20, 0.035), edisonBrassMat);
+        keyPaddle.position.set(0.48, 0.05, 0);
+        socketGroup.add(keyPaddle);
+
+        return socketGroup;
+    }
+
+    const edisonBulbs = [];
+    const gEdisonBulbRig = new THREE.Group();
+    gDJWaveforms.add(gEdisonBulbRig);
+
+    const edisonBulbConfigs = [
+        // Flanking Left (staggered depths & heights)
+        { x: -14.2, z: -4.5, cordLen: 7.2, type: 'st64', seed: 0.15 },
+        { x: -11.6, z: -3.6, cordLen: 5.6, type: 'g95',  seed: 1.45 },
+        { x: -16.4, z: -5.4, cordLen: 8.6, type: 't45',  seed: 2.78 },
+
+        // Flanking Right (staggered depths & heights)
+        { x: 14.2,  z: -4.5, cordLen: 7.2, type: 'st64', seed: 3.91 },
+        { x: 11.6,  z: -3.6, cordLen: 5.6, type: 'g95',  seed: 4.62 },
+        { x: 16.4,  z: -5.4, cordLen: 8.6, type: 't45',  seed: 5.83 },
+
+        // Overhead Framing
+        { x: -5.8,  z: -4.2, cordLen: 4.2, type: 'st64', seed: 6.24 },
+        { x: 5.8,   z: -4.2, cordLen: 4.2, type: 'st64', seed: 7.39 },
+        { x: 0.0,   z: -5.8, cordLen: 3.6, type: 'g95',  seed: 8.51 }
+    ];
+
+    const ceilingY = 12.0;
+
+    for (let i = 0; i < edisonBulbConfigs.length; i++) {
+        const cfg = edisonBulbConfigs[i];
+
+        // Pendulum Pivot Group (anchored at ceiling)
+        const pivot = new THREE.Group();
+        pivot.position.set(cfg.x, ceilingY, cfg.z);
+        gEdisonBulbRig.add(pivot);
+
+        // Ceiling Canopy Rosette
+        const canopy = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.44, 0.08, 16), edisonBrassMat);
+        pivot.add(canopy);
+
+        // Braided Pendant Drop Cord
+        const cordGeo = new THREE.CylinderGeometry(0.032, 0.032, cfg.cordLen, 8);
+        const cordMesh = new THREE.Mesh(cordGeo, edisonCordMat);
+        cordMesh.position.y = -cfg.cordLen / 2;
+        pivot.add(cordMesh);
+
+        // Bulb Assembly (at bottom of cord)
+        const bulbAssembly = new THREE.Group();
+        bulbAssembly.position.y = -cfg.cordLen;
+        pivot.add(bulbAssembly);
+
+        // Turned Brass Socket
+        const socket = createEdisonSocketGroup();
+        bulbAssembly.add(socket);
+
+        // Glass Envelope
+        let bulbGeo = geoST64;
+        let isTubular = false;
+        if (cfg.type === 'g95') {
+            bulbGeo = geoG95;
+        } else if (cfg.type === 't45') {
+            bulbGeo = geoT45;
+            isTubular = true;
+        }
+        const bulbGlass = new THREE.Mesh(bulbGeo, edisonGlassMat);
+        bulbAssembly.add(bulbGlass);
+
+        // Internal Glass Stem & Supports
+        const stemMesh = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.08, 0.52, 10), edisonGlassMat);
+        stemMesh.position.y = -0.58;
+        bulbAssembly.add(stemMesh);
+
+        const leadL = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.72, 6), edisonSupportMat);
+        leadL.position.set(-0.09, -0.92, 0);
+        bulbAssembly.add(leadL);
+
+        const leadR = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.72, 6), edisonSupportMat);
+        leadR.position.set(0.09, -0.92, 0);
+        bulbAssembly.add(leadR);
+
+        const centerRod = new THREE.Mesh(new THREE.CylinderGeometry(0.009, 0.009, 1.15, 6), edisonSupportMat);
+        centerRod.position.y = -1.15;
+        bulbAssembly.add(centerRod);
+
+        // 3D Wound Tungsten Filament
+        const filamentMat = new THREE.MeshBasicMaterial({ color: 0xffaa33 });
+        const filamentMesh = new THREE.Mesh(isTubular ? geoSpiralFilament : geoSquirrelFilament, filamentMat);
+        bulbAssembly.add(filamentMesh);
+
+        // Soft Radial Bloom Sprite
+        const glowSprite = new THREE.Sprite(new THREE.SpriteMaterial({
+            map: edisonGlowTex,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false,
+            opacity: 0.65
+        }));
+        const spriteY = isTubular ? -1.45 : -1.25;
+        glowSprite.position.set(0, spriteY, 0);
+        glowSprite.scale.set(3.2, 3.2, 1.0);
+        bulbAssembly.add(glowSprite);
+
+        // Point Light
+        const pLight = new THREE.PointLight(0xff9425, 1.4, 15.0, 1.5);
+        pLight.position.set(0, spriteY, 0);
+        bulbAssembly.add(pLight);
+
+        // Natural Pendulum Frequency: omega = sqrt(g / L) * scale
+        const omega = Math.sqrt(9.81 / cfg.cordLen) * 0.62;
+
+        edisonBulbs.push({
+            pivot,
+            cordLen: cfg.cordLen,
+            omega,
+            seed: cfg.seed,
+            filamentMat,
+            glowSprite,
+            light: pLight,
+            isTubular
+        });
+    }
+
+    // Warm Vintage Loft Ambient Dust Motes
+    const edisonDustCount = 160;
+    const edisonDustGeo = new THREE.BufferGeometry();
+    const edisonDustPos = new Float32Array(edisonDustCount * 3);
+    const edisonDustSpeeds = new Float32Array(edisonDustCount);
+    for (let i = 0; i < edisonDustCount; i++) {
+        edisonDustPos[i * 3]     = (Math.random() - 0.5) * 36.0;
+        edisonDustPos[i * 3 + 1] = -7.5 + Math.random() * 18.0;
+        edisonDustPos[i * 3 + 2] = -5.8 + Math.random() * 3.5;
+        edisonDustSpeeds[i]      = 0.15 + Math.random() * 0.25;
+    }
+    edisonDustGeo.setAttribute('position', new THREE.BufferAttribute(edisonDustPos, 3));
+    const edisonDustMat = new THREE.PointsMaterial({
+        color: 0xffb755,
+        size: 0.065,
+        transparent: true,
+        opacity: 0.38,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    const edisonDustField = new THREE.Points(edisonDustGeo, edisonDustMat);
+    edisonDustField.frustumCulled = false;
+    gDJWaveforms.add(edisonDustField);
+
 
 
     // =========================================================================
@@ -14365,6 +14690,11 @@ export function createVFXScene(container) {
                 logoGroup.visible = logoVisible && logoTransition.state !== 'hidden';
                 stationLogoGroup.visible = stationLogoVisible && stationLogoTransition.state !== 'hidden';
                 flyerGroup.visible = flyerVisible && flyerTransition.state !== 'hidden';
+                if (edisonBulbs && edisonBulbs.length > 0) {
+                    for (let b = 0; b < edisonBulbs.length; b++) {
+                        edisonBulbs[b].light.intensity = 0.0;
+                    }
+                }
             }
             nightclubPass.uniforms.uAberration.value = 0.3;
             manualFlash = 0.3;
@@ -15118,6 +15448,76 @@ export function createVFXScene(container) {
             // Update HUD Canvas texture every frame for ultra-smooth beat grid, needle & time readouts
             renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress, deck2Active, audio);
             djHudTex.needsUpdate = true;
+
+            // 💡 3D Vintage Edison Bulbs & Loft Ambient Animation
+            if (edisonBulbs && edisonBulbs.length > 0) {
+                const edisonKickImpulse = (audio.transientImpulse || 0) * 0.016;
+                const audioSurge = (rawBass * 0.58 + rawHit * 0.48);
+
+                for (let b = 0; b < edisonBulbs.length; b++) {
+                    const bulb = edisonBulbs[b];
+
+                    // 1. Natural Pendulum Harmonic Sway (multi-harmonic async swing)
+                    const omega = bulb.omega;
+                    const swayZ = Math.sin(elapsedTime * omega + bulb.seed * 3.1) * (0.024 + edisonKickImpulse);
+                    const swayX = Math.cos(elapsedTime * (omega * 0.88) + bulb.seed * 1.8) * (0.018 + edisonKickImpulse * 0.7);
+                    bulb.pivot.rotation.z = swayZ;
+                    bulb.pivot.rotation.x = swayX;
+
+                    // 2. Thermal Blackbody & Audio Reactive Incandescent Surge
+                    const bulbFlicker = getVintageBulbFlicker(elapsedTime, bulb.seed);
+                    const heat = Math.max(0.1, Math.min(1.4, bulbFlicker * 0.82 + audioSurge * 0.52));
+
+                    // Dynamic color shift matching stock footage
+                    let r, g, bl;
+                    if (heat < 0.45) {
+                        // Cool ember red / deep orange
+                        const u = heat / 0.45;
+                        r = Math.round(220 + u * 35);
+                        g = Math.round(45 + u * 110);
+                        bl = Math.round(5 + u * 20);
+                    } else if (heat < 0.90) {
+                        // Warm incandescent golden amber
+                        const u = (heat - 0.45) / 0.45;
+                        r = 255;
+                        g = Math.round(155 + u * 65);
+                        bl = Math.round(25 + u * 75);
+                    } else {
+                        // High surge: bright white-hot flare
+                        const u = Math.min(1.0, (heat - 0.90) / 0.50);
+                        r = 255;
+                        g = Math.round(220 + u * 35);
+                        bl = Math.round(100 + u * 155);
+                    }
+
+                    bulb.filamentMat.color.setRGB(r / 255, g / 255, bl / 255);
+
+                    // Scale bloom sprite
+                    const targetGlowOpacity = 0.22 + Math.min(0.78, heat * 0.65);
+                    bulb.glowSprite.material.opacity = targetGlowOpacity;
+                    const spriteScale = 2.8 + heat * 1.3;
+                    bulb.glowSprite.scale.set(spriteScale, spriteScale, 1.0);
+
+                    // Point Light intensity and color
+                    const lightInt = (0.5 + heat * 1.5) * 1.2;
+                    bulb.light.intensity = lightInt;
+                    bulb.light.color.setRGB(r / 255, Math.min(1.0, g / 230), Math.max(0.05, bl / 300));
+                }
+            }
+
+            // Animate Ambient Dust Motes gently drifting through the light
+            if (edisonDustGeo) {
+                const dPos = edisonDustGeo.attributes.position.array;
+                for (let i = 0; i < edisonDustCount; i++) {
+                    dPos[i * 3 + 1] += delta * edisonDustSpeeds[i];
+                    dPos[i * 3] += Math.sin(elapsedTime * 0.8 + i) * (delta * 0.12);
+                    if (dPos[i * 3 + 1] > 10.5) {
+                        dPos[i * 3 + 1] = -7.5;
+                        dPos[i * 3] = (Math.random() - 0.5) * 36.0;
+                    }
+                }
+                edisonDustGeo.attributes.position.needsUpdate = true;
+            }
         }
         // ---------------------------------------------------------------------
         // FX 4: 🪩 Authentic Nightclub Mirror Ball Rig [Top Pinspots & Floor Reflections]
