@@ -2479,115 +2479,46 @@
                     <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
                 </div>
 
-                <!-- Live Tempo & Pioneer CDJ-3000 / CDJ-2000 Phrase & Phase Visualizer -->
+                <!-- Live Tempo & StageLinQ Deck Telemetry Visualizer -->
                 <div class="hud-section" style="padding: 8px 10px; background: #0c0d12; border: 1px solid #232530; border-radius: 6px; margin-bottom: 8px;">
-                    <!-- Top Header Row: Label, Telemetry Sync Badge, & Mode Selector (3000 | 2000 | DUAL) -->
+                    <!-- Top Header Row: Label, Telemetry Sync Badge -->
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <div style="display:flex; align-items:center; gap:5px;">
+                        <div style="display:flex; align-items:center; gap:6px;">
                             <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
-                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 4px; border-color:rgba(0,255,204,0.35); color:#00ffcc; display:none;" title="Live sync source: Pioneer Pro DJ Link / Rekordbox / StageLinq">PRO DJ LINK</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(0,255,204,0.35); color:#00ffcc; display:inline-block;" title="Telemetry source">SOURCE: STAGELINQ DECK 1</span>
                         </div>
-                        <!-- Mode Selector Chips (CDJ-3000, CDJ-2000, DUAL) - Only shown when connected straight to live hardware decks -->
-                        <div class="phrase-mode-bar" id="phrase-mode-selector" style="display:none;">
-                            <button class="phrase-mode-btn active" data-phrasemode="3000" title="Pioneer CDJ-3000 Phrase Waveform & Structural Bars">3000</button>
-                            <button class="phrase-mode-btn" data-phrasemode="2000" title="Pioneer CDJ-2000NXS2 Phase Meter & Beat Countdown">2000</button>
-                            <button class="phrase-mode-btn" data-phrasemode="dual" title="Combined Dual Mode: CDJ-3000 Phrase + CDJ-2000 Phase Meter">DUAL</button>
-                        </div>
+                        <div style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace;">DECK 1 METRICS</div>
                     </div>
 
-                    <!-- Main Metric Container: Left = BPM Display; Right = Dynamic CDJ Visualizer Meter -->
+                    <!-- Main Metric Container: Left = BPM Display; Right = Accurate Hardware Telemetry Meter -->
                     <div style="display:flex; align-items:center; gap:10px;">
-                        <!-- BPM Digital Readout Box -->
-                        <div style="flex-shrink:0; background: #13151c; border: 1px solid #282c3c; border-radius: 5px; padding: 4px 8px; text-align:center; min-width:82px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);">
+                        <!-- BPM Digital Readout Box (Clean BPM only, no duplicate dots) -->
+                        <div style="flex-shrink:0; background: #13151c; border: 1px solid #282c3c; border-radius: 5px; padding: 6px 10px; text-align:center; min-width:86px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);">
                             <div style="font-size: 7px; color: #8c909e; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 1px;">TEMPO</div>
                             <div style="display:flex; align-items:baseline; justify-content:center; gap:2px;">
-                                <span class="bpm-display" id="bpm-val" style="font-size: 20px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
-                                <span class="bpm-unit" style="font-size: 8px; color: #00ffcc; font-weight: 800;">BPM</span>
-                            </div>
-                            <!-- Downbeat Flash Dot (Beat 1-4) - Hidden by default unless reading straight off live decks -->
-                            <div style="display:none; justify-content:center; gap:3px; margin-top:2px;" id="bpm-subbeat-dots">
-                                <span class="beat-pip active" id="beat-pip-1">1</span>
-                                <span class="beat-pip" id="beat-pip-2">2</span>
-                                <span class="beat-pip" id="beat-pip-3">3</span>
-                                <span class="beat-pip" id="beat-pip-4">4</span>
+                                <span class="bpm-display" id="bpm-val" style="font-size: 21px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
+                                <span class="bpm-unit" style="font-size: 8.5px; color: #00ffcc; font-weight: 800;">BPM</span>
                             </div>
                         </div>
 
-                        <!-- Right: Pioneer CDJ-3000 & CDJ-2000 Visualizer Container (Hidden by default unless reading straight off live decks) -->
-                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 8px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); cursor:pointer; display:none;" id="cdj-meter-container" title="Pioneer Pro DJ Link / Hardware Phase Meter">
-                            
-                            <!-- VIEW 1: PIONEER CDJ-3000 PHRASE METER (Intro / Up / Chorus / Drop / Down / Outro) -->
-                            <div id="cdj3000-view" class="cdj-meter-view">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                                    <!-- Current Phrase Tag -->
-                                    <div style="display:flex; align-items:center; gap:5px;">
-                                        <span class="phrase-tag phrase-chorus" id="cdj3000-phrase-tag">CHORUS 1</span>
-                                        <span style="font-size:8px; color:#8c909e; font-family:'JetBrains Mono',monospace;" id="cdj3000-bar-text">BAR 03 / 08</span>
-                                    </div>
-                                    <!-- Countdown to next transition / Drop -->
-                                    <div style="font-size:8px; font-family:'JetBrains Mono',monospace; color:#ffaa00; font-weight:800;" id="cdj3000-countdown-text">
-                                        -5 BARS TO DROP
-                                    </div>
-                                </div>
-                                <!-- Segmented Phrase Progress Bar (8 or 16 bar segments) -->
-                                <div class="phrase-bar-track" id="cdj3000-bar-track">
-                                    <div class="phrase-segment filled" data-bar="1"></div>
-                                    <div class="phrase-segment filled" data-bar="2"></div>
-                                    <div class="phrase-segment current" data-bar="3"></div>
-                                    <div class="phrase-segment" data-bar="4"></div>
-                                    <div class="phrase-segment" data-bar="5"></div>
-                                    <div class="phrase-segment" data-bar="6"></div>
-                                    <div class="phrase-segment" data-bar="7"></div>
-                                    <div class="phrase-segment" data-bar="8"></div>
-                                </div>
-                                <!-- Micro Phrase Structure Mini-Map (Intro -> Up -> Chorus -> Down -> Outro) -->
-                                <div class="phrase-minimap" id="cdj3000-minimap" style="margin-top:4px;">
-                                    <div class="minimap-block block-intro" style="flex:2;" title="Intro (16 Bars)">INTRO</div>
-                                    <div class="minimap-block block-up" style="flex:1;" title="Up / Build (8 Bars)">UP</div>
-                                    <div class="minimap-block block-chorus current-block" style="flex:4;" title="Chorus / Drop (32 Bars)">CHORUS</div>
-                                    <div class="minimap-block block-down" style="flex:2;" title="Breakdown (16 Bars)">BREAK</div>
-                                    <div class="minimap-block block-outro" style="flex:2;" title="Outro (16 Bars)">OUTRO</div>
-                                </div>
-                            </div>
-
-                            <!-- VIEW 2: PIONEER CDJ-2000NXS2 PHASE METER (4-Beat Block Grid & Phase Needle) -->
-                            <div id="cdj2000-view" class="cdj-meter-view" style="display:none;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                                    <div style="font-size:8px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace;">
-                                        PHASE METER <span style="font-size:7px; color:#8c909e;">(GRID 4/4)</span>
-                                    </div>
-                                    <div style="font-size:8.5px; font-weight:800; color:#ffaa00; font-family:'JetBrains Mono',monospace;" id="cdj2000-countdown-display">
-                                        BAR <span id="cdj2000-bar-num">04</span>.<span id="cdj2000-beat-num">2</span>
-                                    </div>
-                                </div>
-                                <!-- 4-Beat LED Phase Grid with Phase Bar Needle -->
-                                <div class="phase-grid-container">
-                                    <div class="phase-block" id="phase-block-1"><span class="phase-led"></span><span>BEAT 1</span></div>
-                                    <div class="phase-block" id="phase-block-2"><span class="phase-led"></span><span>BEAT 2</span></div>
-                                    <div class="phase-block" id="phase-block-3"><span class="phase-led"></span><span>BEAT 3</span></div>
-                                    <div class="phase-block" id="phase-block-4"><span class="phase-led"></span><span>BEAT 4</span></div>
-                                </div>
-                                <!-- Sub-Beat Continuous Phase Sweep Needle -->
-                                <div class="phase-sweep-track" style="margin-top:4px;">
-                                    <div class="phase-sweep-marker" id="phase-sweep-needle"></div>
-                                </div>
-                            </div>
-
-                            <!-- VIEW 3: DUAL MODE (CDJ-3000 Phrase + CDJ-2000 Phase Meter combined) -->
-                            <div id="cdjdual-view" class="cdj-meter-view" style="display:none;">
-                                <!-- Top row: Phrase tag, Bar number, and 4-Beat Phase blocks -->
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:3px;">
-                                    <span class="phrase-tag phrase-chorus" id="cdjdual-phrase-tag" style="font-size:7.5px; padding:1px 5px;">CHORUS 1</span>
-                                    <div style="display:flex; gap:3px;" id="cdjdual-phase-pips">
+                        <!-- Right: Hardware Deck Beat, Loop, and Bar Telemetry Container -->
+                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 9px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);" id="cdj-meter-container" title="StageLinQ Live Deck Telemetry">
+                            <div id="cdj3000-view" class="cdj-meter-view" style="display:block;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <!-- 4-Beat Phase Pips [1] [2] [3] [4] -->
+                                    <div style="display:flex; align-items:center; gap:3px;" id="cdjdual-phase-pips">
                                         <div class="dual-phase-box active" id="dual-pip-1">1</div>
                                         <div class="dual-phase-box" id="dual-pip-2">2</div>
                                         <div class="dual-phase-box" id="dual-pip-3">3</div>
                                         <div class="dual-phase-box" id="dual-pip-4">4</div>
                                     </div>
-                                    <span style="font-size:7.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;" id="cdjdual-bar-count">BAR 03 / 08</span>
+                                    <!-- Current Bar Readout -->
+                                    <span style="font-size:8.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;" id="cdj3000-bar-text">BAR 07</span>
+                                    <!-- Loop Badge -->
+                                    <span class="phrase-tag" id="cdj3000-phrase-tag" style="background:rgba(255,119,0,0.22); border-color:#ff7700; color:#ff9933; font-size:7.5px; padding:1px 5px;">↶ LOOP 2 (8 BEATS)</span>
                                 </div>
-                                <!-- Segmented Phrase bar track -->
-                                <div class="phrase-bar-track" id="cdjdual-bar-track" style="height:6px; margin-bottom:3px;">
+                                <!-- Segmented Beat Track (8 beats) -->
+                                <div class="phrase-bar-track" id="cdj3000-bar-track" style="height:6px; margin-bottom:4px;">
                                     <div class="phrase-segment filled" data-bar="1"></div>
                                     <div class="phrase-segment filled" data-bar="2"></div>
                                     <div class="phrase-segment current" data-bar="3"></div>
@@ -2597,13 +2528,14 @@
                                     <div class="phrase-segment" data-bar="7"></div>
                                     <div class="phrase-segment" data-bar="8"></div>
                                 </div>
-                                <!-- Minimap -->
-                                <div class="phrase-minimap" id="cdjdual-minimap" style="height:6px;">
-                                    <div class="minimap-block block-intro" style="flex:2;">IN</div>
-                                    <div class="minimap-block block-up" style="flex:1;">UP</div>
-                                    <div class="minimap-block block-chorus current-block" style="flex:4;">DROP</div>
-                                    <div class="minimap-block block-down" style="flex:2;">BRK</div>
-                                    <div class="minimap-block block-outro" style="flex:2;">OUT</div>
+                                <!-- Bottom Telemetry Status Line (Pitch, Sync, Active state) -->
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="font-size:7.5px; font-family:'JetBrains Mono',monospace; color:#8c909e;" id="cdj3000-countdown-text">
+                                        PITCH ±8  0.00%  •  SYNC LEAD
+                                    </div>
+                                    <div style="font-size:7.5px; font-weight:800; color:#00ffcc;" id="cdjdual-bar-count">
+                                        STAGE-LINQ LIVE
+                                    </div>
                                 </div>
                             </div>
                         </div>

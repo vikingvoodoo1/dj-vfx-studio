@@ -181,9 +181,18 @@ export class WaveformService {
 
                 if (trackRow && trackRow.id) {
                     // 1. Try PerformanceData table in m.db
+                    let cues = [];
+                    let loops = [];
                     const perfRow = db.prepare(
-                        'SELECT overviewWaveFormData FROM PerformanceData WHERE CAST(trackId AS TEXT) = ? AND overviewWaveFormData IS NOT NULL'
+                        'SELECT overviewWaveFormData, quickCues, loops FROM PerformanceData WHERE CAST(trackId AS TEXT) = ?'
                     ).get(String(trackRow.id));
+
+                    if (perfRow) {
+                        const durationSec = Number(trackRow.length) || 364;
+                        const trackBpm = Number(trackRow.bpm) || 128.0;
+                        if (perfRow.loops) loops = this.parseEngineLoops(perfRow.loops, durationSec, trackBpm);
+                        if (perfRow.quickCues) cues = this.parseEngineCues(perfRow.quickCues, durationSec);
+                    }
 
                     if (perfRow && perfRow.overviewWaveFormData) {
                         const rawBuf = Buffer.from(perfRow.overviewWaveFormData);
@@ -197,7 +206,9 @@ export class WaveformService {
                                 artist: trackRow.artist,
                                 duration: trackRow.length || 0,
                                 bpm: trackRow.bpm || 0,
-                                samples
+                                samples,
+                                cues,
+                                loops
                             };
                         }
                     }
@@ -286,6 +297,84 @@ export class WaveformService {
         } catch (err) {
             console.warn('[Waveform Service] Zlib inflate notice:', err.message);
             return null;
+        }
+    }
+
+    /**
+     * Parse binary loops structure from Engine OS PerformanceData
+     */
+    parseEngineLoops(raw, durationSec = 364, bpm = 128.0) {
+        if (!raw || raw.length < 24) return [];
+        try {
+            const buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+            const totalSamples = Math.max(1, durationSec * 44100);
+            const secondsPerBeat = 60.0 / Math.max(40.0, bpm);
+            const loops = [];
+            for (let i = 0; i < buf.length - 24; i++) {
+                if (buf.subarray(i, i + 5).toString('ascii') === 'Loop ') {
+                    const name = buf.subarray(i, i + 6).toString('ascii').trim();
+                    const num = parseInt(name.split(' ')[1], 10) || 0;
+                    const sampleStart = buf.readDoubleLE(i + 6);
+                    const sampleEnd = buf.readDoubleLE(i + 14);
+                    const colorBytes = buf.subarray(i + 24, i + 28);
+                    const hexColor = (colorBytes && colorBytes.length >= 4)
+                        ? ('#' + colorBytes.subarray(1, 4).toString('hex'))
+                        : '#ff7700';
+                    const lengthSeconds = (sampleEnd - sampleStart) / 44100.0;
+                    const beats = Math.max(1, Math.round(lengthSeconds / secondsPerBeat));
+                    loops.push({
+                        name,
+                        num,
+                        startProgress: Math.max(0, Math.min(1.0, sampleStart / totalSamples)),
+                        endProgress: Math.max(0, Math.min(1.0, sampleEnd / totalSamples)),
+                        beats,
+                        color: hexColor
+                    });
+                }
+            }
+            return loops;
+        } catch (err) {
+            console.warn('[Waveform Service] Loop parsing notice:', err.message);
+            return [];
+        }
+    }
+
+    /**
+     * Parse binary quickCues structure from Engine OS PerformanceData
+     */
+    parseEngineCues(raw, durationSec = 364) {
+        if (!raw || raw.length < 8) return [];
+        try {
+            let buf = Buffer.isBuffer(raw) ? raw : Buffer.from(raw);
+            const zlibIdx = buf.indexOf(Buffer.from([0x78, 0x9c]));
+            if (zlibIdx !== -1) {
+                try {
+                    buf = zlib.inflateSync(buf.subarray(zlibIdx));
+                } catch (e) { }
+            }
+            const totalSamples = Math.max(1, durationSec * 44100);
+            const cues = [];
+            for (let i = 0; i < buf.length - 18; i++) {
+                if (buf.subarray(i, i + 4).toString('ascii') === 'Cue ') {
+                    const name = buf.subarray(i, i + 5).toString('ascii').trim();
+                    const num = parseInt(name.split(' ')[1], 10) || 0;
+                    const samplePos = buf.readDoubleBE(i + 5);
+                    const colorBytes = buf.subarray(i + 13, i + 17);
+                    const hexColor = (colorBytes && colorBytes.length >= 4)
+                        ? ('#' + colorBytes.subarray(1, 4).toString('hex'))
+                        : '#02ea42';
+                    cues.push({
+                        name,
+                        num,
+                        progress: Math.max(0, Math.min(1.0, samplePos / totalSamples)),
+                        color: hexColor
+                    });
+                }
+            }
+            return cues;
+        } catch (err) {
+            console.warn('[Waveform Service] Cue parsing notice:', err.message);
+            return [];
         }
     }
 

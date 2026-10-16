@@ -943,6 +943,9 @@ async function init() {
 
     function setTrackBannerArtwork(coverUrl) {
         lastDisplayedCoverArt = coverUrl || '';
+        if (vfx && vfx.setDeckData) {
+            vfx.setDeckData({ deck: 1, artworkUrl: coverUrl || '' });
+        }
         if (coverUrl) {
             if (trackBannerArt) {
                 trackBannerArt.src = coverUrl;
@@ -999,17 +1002,21 @@ async function init() {
             return artworkClientCache.get(cacheKey);
         }
 
+        let coverArt = null;
+
+        // 1. Try local backend route /api/artwork (Engine DB & cache)
         try {
             const res = await fetch(`/api/artwork?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(cleanArtist)}`);
             if (res.ok) {
                 const data = await res.json();
                 if (data && data.success && data.coverart) {
-                    artworkClientCache.set(cacheKey, data.coverart);
-                    return data.coverart;
+                    coverArt = data.coverart;
                 }
             }
-        } catch (e) {
-            // Direct client fallback to iTunes if local API route unreachable
+        } catch (e) {}
+
+        // 2. Direct client fallback to iTunes if not found or server offline
+        if (!coverArt) {
             try {
                 const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
                 const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
@@ -1017,13 +1024,20 @@ async function init() {
                 if (res2.ok) {
                     const d2 = await res2.json();
                     if (d2.results && d2.results[0] && d2.results[0].artworkUrl100) {
-                        const art = d2.results[0].artworkUrl100.replace(/\/\d+x\d+bb\.jpg/i, '/600x600bb.jpg');
-                        artworkClientCache.set(cacheKey, art);
-                        return art;
+                        coverArt = d2.results[0].artworkUrl100.replace(/\/\d+x\d+bb\.jpg/i, '/600x600bb.jpg');
                     }
                 }
             } catch (err2) {}
         }
+
+        if (coverArt) {
+            artworkClientCache.set(cacheKey, coverArt);
+            if (vfx && vfx.setDeckData) {
+                vfx.setDeckData({ deck: 1, artworkUrl: coverArt });
+            }
+            return coverArt;
+        }
+
         return null;
     }
 
@@ -4368,11 +4382,11 @@ async function init() {
         document.getElementById('beat-pip-4')
     ];
 
-    // Ensure phase meters and beat counters start hidden by default unless reading straight off live decks
+    // Ensure phase meters and beat counters start visible in live console
     if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
-    if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
+    if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
     if (phraseModeSelector) phraseModeSelector.style.display = 'none';
-    if (phraseSyncSource) phraseSyncSource.style.display = 'none';
+    if (phraseSyncSource) phraseSyncSource.style.display = 'inline-block';
 
     // Standard Electronic / Club Song Structure Model (Rekordbox / CDJ-3000 Phrase Matrix)
     const CDJ_PHRASE_STRUCT = [
@@ -4400,36 +4414,33 @@ async function init() {
         isHardwareDeckStreaming = true;
         lastHardwarePacketTimestamp = performance.now();
         if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
-        if (phraseModeSelector) phraseModeSelector.style.display = 'flex';
-        if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'flex';
+        if (cdj3000View) cdj3000View.style.display = 'block';
         if (phraseSyncSource) {
             phraseSyncSource.style.display = 'inline-block';
-            phraseSyncSource.textContent = source;
-            phraseSyncSource.style.color = '#00ff88';
-            phraseSyncSource.style.borderColor = '#00ff88';
+            phraseSyncSource.textContent = `SOURCE: ${source}`;
+            phraseSyncSource.style.color = '#00ffcc';
+            phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
         }
-        if (audioDeviceBadge) {
-            audioDeviceBadge.textContent = 'DECK LIVE';
-            audioDeviceBadge.style.color = '#00ff88';
-            audioDeviceBadge.style.borderColor = '#00ff88';
-        }
-        if (audioStatus && !audioStatus.dataset.screenLink) {
-            audioStatus.innerHTML = `<span style="color:#00ff88">● DECK LIVE (${source})</span>`;
-        }
-        // Only set default to deck-live once if user has not explicitly picked an interface
-        if (currentSelectedDeviceId === 'default' && audioDeviceSelect) {
-            audioDeviceSelect.value = 'deck-live';
-            currentSelectedDeviceId = 'deck-live';
+        // Only update audio device badge if user explicitly selected deck-live as audio source
+        if (currentSelectedDeviceId === 'deck-live') {
+            if (audioDeviceBadge) {
+                audioDeviceBadge.textContent = 'DECK LIVE';
+                audioDeviceBadge.style.color = '#00ff88';
+                audioDeviceBadge.style.borderColor = '#00ff88';
+            }
+            if (audioStatus && !audioStatus.dataset.screenLink) {
+                audioStatus.innerHTML = `<span style="color:#00ff88">● DECK LIVE (${source})</span>`;
+            }
         }
     }
 
     function setPhraseDisplayMode(mode) {
-        activePhraseDisplayMode = mode;
-        try { localStorage.setItem('dj_vfx_phrase_mode', mode); } catch (e) {}
+        activePhraseDisplayMode = mode || '3000';
+        try { localStorage.setItem('dj_vfx_phrase_mode', activePhraseDisplayMode); } catch (e) {}
         phraseModeBtns.forEach(btn => {
             btn.classList.toggle('active', btn.getAttribute('data-phrasemode') === mode);
         });
-        if (cdj3000View) cdj3000View.style.display = (mode === '3000') ? 'flex' : 'none';
+        if (cdj3000View) cdj3000View.style.display = 'block';
         if (cdj2000View) cdj2000View.style.display = (mode === '2000') ? 'flex' : 'none';
         if (cdjDualView) cdjDualView.style.display = (mode === 'dual') ? 'flex' : 'none';
     }
@@ -4793,6 +4804,14 @@ async function init() {
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
 
+            if (trackData.title && (!trackData.artworkUrl && !trackData.coverart)) {
+                fetchTrackArtwork(trackData.title, trackData.artist).then((artUrl) => {
+                    if (artUrl && vfx.setDeckData) {
+                        vfx.setDeckData({ deck: trackData.deck || 1, artworkUrl: artUrl });
+                    }
+                });
+            }
+
             const activeIdx = (parseInt(trackData.deck, 10) || 1) - 1;
             deckCards.forEach((d, idx) => {
                 if (!d.card) return;
@@ -4825,6 +4844,15 @@ async function init() {
             cachedDeckWaveforms.set(waveformPacket.deck || 1, waveformPacket);
             if (vfx.setDeckWaveform) {
                 vfx.setDeckWaveform(waveformPacket);
+            }
+            if (waveformPacket.cues || waveformPacket.loops) {
+                if (vfx.setDeckData) {
+                    vfx.setDeckData({
+                        deck: waveformPacket.deck || 1,
+                        cues: waveformPacket.cues,
+                        loops: waveformPacket.loops
+                    });
+                }
             }
         },
         onDeckTelemetry: (telemetry) => {

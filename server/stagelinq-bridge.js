@@ -90,7 +90,9 @@ function handleIncomingTrack(trackData) {
                 source: wf.source,
                 duration: wf.duration,
                 bpm: wf.bpm,
-                samples: wf.samples
+                samples: wf.samples,
+                cues: wf.cues || [],
+                loops: wf.loops || []
             };
             lastDeckWaveforms.set(deckNum, wfPacket);
             broadcast(wfPacket);
@@ -332,8 +334,8 @@ const server = http.createServer((req, res) => {
     }
 
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ 
-        status: 'ok', 
+    res.end(JSON.stringify({
+        status: 'ok',
         service: 'DJ VFX Studio Universal Bridge',
         ecosystems: ['denon_stagelinq', 'pioneer_prodjlink', 'rekordbox', 'traktor_pro', 'ableton_link']
     }));
@@ -391,14 +393,14 @@ wss.on('connection', (ws) => {
     lastDeckWaveforms.forEach((wfPacket) => {
         try {
             ws.send(JSON.stringify(wfPacket));
-        } catch (e) {}
+        } catch (e) { }
     });
 
     // Replay full active state snapshot to the connecting client
     globalSyncState.forEach((cachedMsg) => {
         try {
             ws.send(JSON.stringify(cachedMsg));
-        } catch (e) {}
+        } catch (e) { }
     });
 
     // Handle Client Messages
@@ -479,7 +481,7 @@ wss.on('connection', (ws) => {
                 if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm }));
                 if (lastActiveFX !== null && lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
                 globalSyncState.forEach((cachedMsg) => {
-                    try { ws.send(JSON.stringify(cachedMsg)); } catch (e) {}
+                    try { ws.send(JSON.stringify(cachedMsg)); } catch (e) { }
                 });
             } else if (msg.type === 'sync_relay' && msg.payload) {
                 if (msg.payload.type?.startsWith('set_')) {
@@ -487,12 +489,12 @@ wss.on('connection', (ws) => {
                 }
                 relayToOthers(ws, msg.payload);
             } else if (
-                msg.type === 'beat_pulse' || 
-                msg.type === 'flash' || 
+                msg.type === 'beat_pulse' ||
+                msg.type === 'flash' ||
                 msg.type === 'reset_all' ||
-                msg.type?.startsWith('set_') || 
-                msg.type?.startsWith('pop_') || 
-                msg.type?.startsWith('hide_') || 
+                msg.type?.startsWith('set_') ||
+                msg.type?.startsWith('pop_') ||
+                msg.type?.startsWith('hide_') ||
                 msg.type?.startsWith('trigger_')
             ) {
                 if (msg.type?.startsWith('set_')) {
@@ -538,7 +540,7 @@ async function startStageLinq() {
         stagelinqInstance.on('connected', (info) => {
             const devName = info.source || info.software?.name || 'Denon Prime Player';
             console.log(`[StageLinq] 🟢 Hardware Discovered: ${devName}`);
-            
+
             connectedDevices.set('denon', devName);
             handleIncomingStatus({
                 ecosystem: 'stagelinq',
@@ -571,14 +573,14 @@ async function startStageLinq() {
             const artist = status.artist || '';
             const title = status.title || '';
             const trackSignature = `${artist} - ${title}`;
-            
+
             const prevSignature = lastDeckLoadedTracks.get(deckKey);
             if (prevSignature === trackSignature) return;
             lastDeckLoadedTracks.set(deckKey, trackSignature);
 
             const effectiveBpm = status.currentBpm || status.masterTempo || lastBpm || 126.0;
             console.log(`[StageLinq] 🎵 Track Loaded [Deck ${deckNum}]: ${artist} - ${title} (${effectiveBpm} BPM)`);
-            
+
             broadcast({
                 type: 'deck_loaded',
                 deck: deckNum,
@@ -655,7 +657,11 @@ async function startStageLinq() {
             }
         });
 
-        // Listen for direct StateMap changes (Channel Faders, Crossfader, Deck Play states)
+        const deckLoopStates = new Map();
+        const deckLastBeatInt = new Map();
+        const deckLastTelemetryTime = new Map();
+
+        // Listen for direct StateMap changes (Channel Faders, Crossfader, Deck Play states, Loop states)
         stagelinqInstance.on('message', (info, data) => {
             if (!data || !data.message) return;
             const name = data.message.name;
@@ -699,6 +705,30 @@ async function startStageLinq() {
                     ecosystem: 'stagelinq'
                 });
             }
+
+            // Deck Loop status: /Engine/Deck1/Loop/Enable or /Engine/Deck1/Loop/State
+            const deckLoopMatch = name.match(/Engine\/Deck(\d+)\/Loop\/(Enable|State|Active|QuickLoop)/i);
+            if (deckLoopMatch) {
+                const d = parseInt(deckLoopMatch[1], 10);
+                const isLooping = Boolean(json.state ?? json.value);
+                const currentDeck = deckStatuses.get(d) || { deck: d };
+                currentDeck.loopActive = isLooping;
+                currentDeck.isHardware = true;
+                deckStatuses.set(d, currentDeck);
+
+                let loopInfo = deckLoopStates.get(d);
+                if (loopInfo) {
+                    loopInfo.loopActive = isLooping;
+                }
+
+                broadcast({
+                    type: 'deck_telemetry',
+                    deck: d,
+                    loopActive: isLooping,
+                    isHardware: true,
+                    ecosystem: 'stagelinq'
+                });
+            }
         });
 
         // Periodic hardware deck heartbeat (every 1.5s) to ensure continuous streaming lock
@@ -712,10 +742,6 @@ async function startStageLinq() {
                 });
             }
         }, 1500);
-
-        const deckLoopStates = new Map();
-        const deckLastBeatInt = new Map();
-        const deckLastTelemetryTime = new Map();
 
         stagelinqInstance.on('beatMessage', (info, beatData) => {
             if (!beatData || !beatData.decks) return;
@@ -740,17 +766,12 @@ async function startStageLinq() {
                         deckLoopStates.set(deckNum, loopInfo);
                     }
 
-                    // Loop repeat detection: beat jumps backwards by >= 1.5 beats while looping
+                    // Loop repeat detection: ONLY track loop wrap if loop is already active from hardware StateMap
                     let loopStatusChanged = false;
-                    if (loopInfo.lastBeat !== undefined && deckData.beat < loopInfo.lastBeat - 1.5) {
-                        if (!loopInfo.loopActive) loopStatusChanged = true;
-                        loopInfo.loopActive = true;
-                        loopInfo.loopStartBeat = deckData.beat;
-                        loopInfo.loopEndBeat = loopInfo.lastBeat;
-                    } else if (loopInfo.loopActive && deckData.beat > loopInfo.loopEndBeat + 2.5) {
-                        // Broke out of loop
-                        loopInfo.loopActive = false;
-                        loopStatusChanged = true;
+                    if (loopInfo.loopActive && loopInfo.lastBeat !== undefined && deckData.beat < loopInfo.lastBeat - 1.5) {
+                        // Track wrapped around inside active hardware loop
+                        if (!loopInfo.loopStartBeat) loopInfo.loopStartBeat = deckData.beat;
+                        if (!loopInfo.loopEndBeat) loopInfo.loopEndBeat = loopInfo.lastBeat;
                     }
                     loopInfo.lastBeat = deckData.beat;
 
@@ -761,19 +782,22 @@ async function startStageLinq() {
                     const lastSent = deckLastTelemetryTime.get(deckNum) || 0;
                     if (loopStatusChanged || (nowMs - lastSent >= 25)) {
                         deckLastTelemetryTime.set(deckNum, nowMs);
-                        broadcast({
+                        const telemPacket = {
                             type: 'deck_telemetry',
                             deck: deckNum,
                             progress,
                             beat: deckData.beat,
                             totalBeats: deckData.totalBeats,
                             bpm: deckData.bpm || lastBpm,
-                            loopActive: loopInfo.loopActive,
-                            loopStart: loopStartProg,
-                            loopEnd: loopEndProg,
                             isHardware: true,
                             ecosystem: 'stagelinq'
-                        });
+                        };
+                        if (loopInfo.loopActive && loopStartProg > 0 && loopEndProg > loopStartProg) {
+                            telemPacket.loopActive = true;
+                            telemPacket.loopStart = loopStartProg;
+                            telemPacket.loopEnd = loopEndProg;
+                        }
+                        broadcast(telemPacket);
                     }
                 }
             });
