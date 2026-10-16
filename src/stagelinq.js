@@ -15,6 +15,7 @@ export function setupStageLinqClient({
     onEcosystemChange,
     onDeckWaveform,
     onDeckTelemetry,
+    onCrossfader,
     onSync 
 }) {
     const WS_URL = 'ws://localhost:8080';
@@ -63,6 +64,9 @@ export function setupStageLinqClient({
                             break;
                         case 'deck_telemetry':
                             if (onDeckTelemetry) onDeckTelemetry(data);
+                            break;
+                        case 'crossfader':
+                            if (onCrossfader) onCrossfader(data.value, data);
                             break;
                         case 'decks_snapshot':
                             if (onDecksSnapshot) onDecksSnapshot(data.decks);

@@ -687,6 +687,18 @@ async function startStageLinq() {
                 });
             }
 
+            // Mixer Crossfader: /Mixer/CrossfaderPosition, /Mixer/crossfaderPosition, /Mixer/XFader
+            const xfMatch = name.match(/Mixer\/(?:Crossfader|XFader|crossfader)Position/i);
+            if (xfMatch) {
+                const xfVal = (json.value !== undefined) ? Number(json.value) : 0.5;
+                broadcast({
+                    type: 'crossfader',
+                    value: xfVal,
+                    isHardware: true,
+                    ecosystem: 'stagelinq'
+                });
+            }
+
             // Deck Play status: /Engine/Deck1/Play or /Engine/Deck2/Play
             const deckPlayMatch = name.match(/Engine\/Deck(\d+)\/Play(?:State)?/i);
             if (deckPlayMatch) {
@@ -782,6 +794,7 @@ async function startStageLinq() {
                     const lastSent = deckLastTelemetryTime.get(deckNum) || 0;
                     if (loopStatusChanged || (nowMs - lastSent >= 25)) {
                         deckLastTelemetryTime.set(deckNum, nowMs);
+                        const currentStatus = deckStatuses.get(deckNum);
                         const telemPacket = {
                             type: 'deck_telemetry',
                             deck: deckNum,
@@ -789,6 +802,8 @@ async function startStageLinq() {
                             beat: deckData.beat,
                             totalBeats: deckData.totalBeats,
                             bpm: deckData.bpm || lastBpm,
+                            play: currentStatus ? currentStatus.play : undefined,
+                            fader: currentStatus ? currentStatus.fader : undefined,
                             isHardware: true,
                             ecosystem: 'stagelinq'
                         };

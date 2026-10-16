@@ -667,6 +667,47 @@ async function init() {
     window.vfx = vfx;
     vfx.setBloomMultiplier(0.35);
 
+    // Allow clicking the 4 deck boxes in the status bar to manually route active on-air deck
+    deckCards.forEach((d, idx) => {
+        if (!d.card) return;
+        d.card.style.cursor = 'pointer';
+        d.card.title = `Click to set Deck ${idx + 1} On Air`;
+        d.card.addEventListener('click', () => {
+            const targetDeck = idx + 1;
+            console.log(`[Manual Deck Switch] Selected Deck ${targetDeck}`);
+            if (vfx.setActiveDeck) {
+                vfx.setActiveDeck(targetDeck);
+            }
+            deckCards.forEach((dc, dci) => {
+                if (!dc.card) return;
+                if (dci === idx) {
+                    const deckCol = (dci === 1) ? '#ff4d2e' : '#ffaa00';
+                    const deckBg = (dci === 1) ? 'rgba(255, 77, 46, 0.28)' : 'rgba(255, 170, 0, 0.28)';
+                    dc.card.style.borderColor = deckCol;
+                    dc.card.style.background = deckBg;
+                    if (dc.state) dc.state.textContent = '● ON AIR';
+                } else {
+                    dc.card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    dc.card.style.background = 'rgba(255, 255, 255, 0.03)';
+                    if (dc.state && dc.state.textContent && dc.state.textContent.includes('ON AIR')) {
+                        dc.state.textContent = 'STANDBY';
+                    }
+                }
+            });
+            const deckInfo = vfx.getDeckData ? vfx.getDeckData(targetDeck) : (cachedDeckWaveforms.get(targetDeck) || null);
+            if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                showTrackBanner({
+                    title: deckInfo.title,
+                    artist: deckInfo.artist,
+                    deck: targetDeck,
+                    bpm: deckInfo.bpm,
+                    key: deckInfo.key,
+                    artworkUrl: deckInfo.artworkUrl
+                }, { force: true });
+            }
+        });
+    });
+
     // Load Default Animated Logo Video (jkmclaren Shock MP4)
     vfx.loadLogoMedia('/images/logo/jkmclaren_shock.mp4', true);
 
@@ -4053,6 +4094,7 @@ async function init() {
     function selectFX(index, broadcast = true) {
         const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
         vfx.switchFX(targetIndex);
+        window.selectFX = selectFX;
 
         try {
             localStorage.setItem('dj_vfx_current_fx', String(targetIndex));
@@ -4481,6 +4523,10 @@ async function init() {
     function updateDenonStageBarUI(telemetry) {
         if (!telemetry || telemetry.beat === undefined) return;
 
+        const activeDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
+        const targetDeck = (telemetry.deck === 2 || telemetry.deck === '2' || telemetry.deck === 'B') ? 2 : 1;
+        if (targetDeck !== activeDeck) return;
+
         const beat = Number(telemetry.beat);
         const totalBeats = Number(telemetry.totalBeats) || 776;
         const currentBeatInt = Math.floor(beat);
@@ -4895,17 +4941,38 @@ async function init() {
             }
             updateDenonStageBarUI(telemetry);
 
+            const targetDeck = (telemetry.deck === 2 || telemetry.deck === '2' || telemetry.deck === 'B') ? 2 : 1;
+
+            // Automatically switch on-air track banner when transitioning decks on mixer or playback
+            const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : targetDeck;
+            if (pDeck !== lastDisplayedTrackDeck) {
+                const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
+                if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                    showTrackBanner({
+                        title: deckInfo.title,
+                        artist: deckInfo.artist,
+                        deck: pDeck,
+                        bpm: deckInfo.bpm,
+                        key: deckInfo.key,
+                        artworkUrl: deckInfo.artworkUrl
+                    }, { force: true });
+                }
+            }
+
             // Update Track Banner Edison Filament Progress Bar
             const progFill = document.getElementById('track-banner-progress-fill');
             const progNeedle = document.getElementById('track-banner-needle');
             if (progFill && progNeedle && telemetry.progress !== undefined) {
-                const targetDeck = (telemetry.deck === 2 || telemetry.deck === '2' || telemetry.deck === 'B') ? 2 : 1;
-                if (!lastDisplayedTrackDeck || lastDisplayedTrackDeck === targetDeck) {
+                const currentOnAirDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : (lastDisplayedTrackDeck || 1);
+                if (targetDeck === currentOnAirDeck) {
                     const pPct = Math.max(0, Math.min(100, Number(telemetry.progress) * 100));
                     progFill.style.width = `${pPct}%`;
                     progNeedle.style.left = `${pPct}%`;
                 }
             }
+        },
+        onCrossfader: (xfVal) => {
+            if (vfx.setCrossfader) vfx.setCrossfader(xfVal);
         },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
@@ -4929,6 +4996,22 @@ async function init() {
                     }
                     if (vfx.setDeckData) vfx.setDeckData(deckData);
                 });
+
+                // Check if on-air deck changed after snapshot processing
+                const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
+                if (pDeck !== lastDisplayedTrackDeck) {
+                    const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
+                    if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                        showTrackBanner({
+                            title: deckInfo.title,
+                            artist: deckInfo.artist,
+                            deck: pDeck,
+                            bpm: deckInfo.bpm,
+                            key: deckInfo.key,
+                            artworkUrl: deckInfo.artworkUrl
+                        }, { force: true });
+                    }
+                }
             }
         },
         onStatusChange: (status) => {
