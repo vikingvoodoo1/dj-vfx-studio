@@ -2382,6 +2382,8 @@ const DJDeckWaveformShader = {
         uLoopActive: { value: 0.0 },
         uLoopStart: { value: 0.0 },
         uLoopEnd: { value: 0.0 },
+        uDeck1SmokePhase: { value: 0.0 },
+        uDeck2SmokePhase: { value: 1.0 },
         uTotalBeats: { value: 776.1085 },
         uDeck1TotalBeats: { value: 776.1085 },
         uDeck2TotalBeats: { value: 756.0 }
@@ -2417,6 +2419,8 @@ const DJDeckWaveformShader = {
         uniform float uLoopActive;
         uniform float uLoopStart;
         uniform float uLoopEnd;
+        uniform float uDeck1SmokePhase;
+        uniform float uDeck2SmokePhase;
         uniform float uTotalBeats;
         uniform float uDeck1TotalBeats;
         uniform float uDeck2TotalBeats;
@@ -2441,7 +2445,7 @@ const DJDeckWaveformShader = {
             return f / 0.9375;
         }
 
-        // Procedural Roaring Audio-Reactive Fire Waveform Shader
+        // Procedural Roaring Audio-Reactive Fire Waveform Shader with Multi-Tier Cinders & Smoke Phase-Out Dissolution
         vec4 renderFireWaveform(
             float texU, 
             float absDeckY, 
@@ -2454,9 +2458,10 @@ const DJDeckWaveformShader = {
             float weight, 
             float time, 
             float bassImp, 
-            float transImp
+            float transImp,
+            float smokePhase
         ) {
-            if (weight <= 0.002) return vec4(0.0);
+            if (weight <= 0.002 || smokePhase >= 0.998) return vec4(0.0);
 
             vec4 audioSlice = texture2D(uAudioHistory, vec2(fract(texU), vRow));
             float rawBass = audioSlice.r;
@@ -2496,7 +2501,7 @@ const DJDeckWaveformShader = {
 
             // 3. Smoke & Heat Haze Aura beyond flame envelope
             if (absDeckY > hFlame + 0.04) {
-                float halo = exp(-(absDeckY - hFlame) * 38.0) * (0.18 + bassSurge * 0.20) * weight;
+                float halo = exp(-(absDeckY - hFlame) * 38.0) * (0.18 + bassSurge * 0.20) * weight * (1.0 - smokePhase);
                 vec3 smokeAura = mix(cFlameTip, vec3(0.20, 0.04, 0.01), clamp((absDeckY - hFlame) * 9.0, 0.0, 1.0));
                 return vec4(smokeAura * halo, halo * 0.85);
             }
@@ -2524,22 +2529,85 @@ const DJDeckWaveformShader = {
             float flameStrand = smoothstep(0.22, 0.92, turb * 0.72 + tongueTurb * 0.48);
             fireCol *= (0.68 + flameStrand * 0.82);
 
-            // 6. Flying Convective Fire Embers / Spark Micro-Particles
-            vec2 sparkGrid = vec2(texU * 240.0, absDeckY * 38.0 - time * 6.0);
+            // 6. Realistic Multi-Tier Chunky Flying Cinders & Ember Sparks
+            // Tier 1: Large Chunky Tumbling Cinders (Random sizes, tumbling oblong shapes, molten cores)
+            float totalCinderSpill = 0.0;
+            vec2 cinderGrid1 = vec2(texU * 48.0, absDeckY * 14.0 - time * 3.6);
+            vec2 cinderCell1 = floor(cinderGrid1);
+            float cinderHash1 = fireHash(cinderCell1);
+            if (cinderHash1 > 0.80) {
+                vec2 cinderFrac = fract(cinderGrid1) - 0.5;
+                float cinderAngle = time * (2.8 + cinderHash1 * 4.5) + cinderHash1 * 6.28;
+                float cosA = cos(cinderAngle);
+                float sinA = sin(cinderAngle);
+                vec2 rotFrac = vec2(cinderFrac.x * cosA - cinderFrac.y * sinA, cinderFrac.x * sinA + cinderFrac.y * cosA);
+                // Irregular tumbling cinder shape with jagged angular facet
+                float cinderDist = length(rotFrac * vec2(1.0, 1.45)) + sin(cinderAngle * 3.0 + rotFrac.x * 8.0) * 0.04;
+                // Randomized size: chunky coals up to 3.8x
+                float sizeBoost = (cinderHash1 > 0.94) ? 1.65 : 1.0;
+                float cinderRadius = (0.22 + (cinderHash1 - 0.80) * 2.6) * sizeBoost;
+                if (cinderDist < cinderRadius) {
+                    float edge = cinderDist / cinderRadius;
+                    vec3 cinderCol = mix(vec3(1.0, 0.98, 0.88), vec3(1.0, 0.42, 0.04), edge * 0.70);
+                    // Crusty charred coal edge
+                    if (edge > 0.68) {
+                        cinderCol = mix(cinderCol, vec3(0.18, 0.05, 0.02), (edge - 0.68) / 0.32);
+                    }
+                    float cinderGlow = smoothstep(cinderRadius, cinderRadius * 0.15, cinderDist) * (1.2 + bassImp * 1.5);
+                    fireCol += cinderCol * cinderGlow;
+                    totalCinderSpill = max(totalCinderSpill, cinderGlow * 0.85);
+                }
+            }
+
+            // Tier 2: Medium Rising Glowing Flecks
+            vec2 cinderGrid2 = vec2(texU * 110.0 + sin(time * 3.5) * 2.2, absDeckY * 26.0 - time * 5.8);
+            float cinderHash2 = fireHash(floor(cinderGrid2));
+            if (cinderHash2 > 0.88) {
+                vec2 fFrac = fract(cinderGrid2) - 0.5;
+                float fDist = length(fFrac);
+                float fRadius = 0.16 + (cinderHash2 - 0.88) * 2.2;
+                float fGlow = smoothstep(fRadius, fRadius * 0.20, fDist) * (1.0 + highCrackle * 1.6);
+                fireCol += vec3(1.0, 0.76, 0.22) * fGlow;
+                totalCinderSpill = max(totalCinderSpill, fGlow * 0.70);
+            }
+
+            // Tier 3: Transient Audio-Reactive Micro-Sparks
+            vec2 sparkGrid = vec2(texU * 220.0, absDeckY * 42.0 - time * 8.6);
             float sparkCell = fireHash(floor(sparkGrid));
-            if (sparkCell > 0.93) {
+            if (sparkCell > 0.90) {
                 vec2 sparkFrac = fract(sparkGrid) - 0.5;
                 float sparkDist = length(sparkFrac);
-                float sparkIntensity = smoothstep(0.42, 0.05, sparkDist) * (0.9 + highCrackle * 1.6);
-                fireCol += vec3(1.0, 0.94, 0.70) * sparkIntensity * (1.0 - lobeU * 0.5);
+                float sparkIntensity = smoothstep(0.42, 0.05, sparkDist) * (1.3 + transImp * 2.4 + highCrackle * 1.8);
+                fireCol += vec3(1.0, 0.98, 0.78) * sparkIntensity;
+                totalCinderSpill = max(totalCinderSpill, sparkIntensity * 0.60);
             }
 
             // 7. White-Hot Fire Spine at zero baseline
             float spine = exp(-absDeckY * 90.0);
             fireCol += vec3(1.0, 0.98, 0.92) * spine * (1.85 + bassImp * 1.35);
 
-            // Anti-aliased outer flame edge mask
-            float alpha = 1.0 - smoothstep(hFlame - 0.012, hFlame + 0.006, absDeckY);
+            // Anti-aliased outer flame edge mask + leaping cinder spill into air
+            float baseFlameMask = 1.0 - smoothstep(hFlame - 0.012, hFlame + 0.006, absDeckY);
+            float alpha = clamp(baseFlameMask + totalCinderSpill, 0.0, 1.0);
+
+            // 8. Inactive Deck Smoke Phase-Out Dissolution FX
+            // When a deck is not in play, flame cools into smoldering charcoal & dissolves in convective smoke curls
+            if (smokePhase > 0.001) {
+                // A. Thermal Extinction: White-hot fire cools into smoldering charcoal & dark ash
+                vec3 ashSootCol = vec3(0.22, 0.12, 0.07);
+                vec3 smokeDustCol = vec3(0.38, 0.32, 0.28);
+                vec3 deadFlame = mix(ashSootCol, smokeDustCol, fireTurbulenceFbm(vec2(texU * 42.0, absDeckY * 11.0 - time * 1.9)));
+                fireCol = mix(fireCol, deadFlame * (0.35 + 0.65 * (1.0 - smokePhase)), smoothstep(0.04, 0.70, smokePhase));
+
+                // B. Convective Smoke Vortex Erosion: Smoke curls dissolve waveform geometry
+                vec2 smokeUV = vec2(texU * 34.0 + sin(absDeckY * 7.5 - time * 2.4) * 0.45, absDeckY * 8.0 - time * 3.4);
+                float smokeErosion = fireTurbulenceFbm(smokeUV);
+                float dissolveCut = smokePhase * 1.18;
+                float smokeMask = smoothstep(dissolveCut - 0.22, dissolveCut + 0.16, smokeErosion + (1.0 - absDeckY) * 0.42);
+
+                alpha *= smokeMask * (1.0 - smokePhase);
+                fireCol *= smokeMask;
+            }
 
             return vec4(fireCol * weight, clamp(alpha * weight, 0.0, 1.0));
         }
@@ -2584,32 +2652,34 @@ const DJDeckWaveformShader = {
                 vec3 cBass2     = vec3(0.98, 0.15, 0.06);
                 vec3 cFlameTip2 = vec3(0.48, 0.05, 0.02);
 
-                // Compute audio-reactive fire waveforms
+                // Compute audio-reactive fire waveforms with smoke phase-out
                 vec4 wave1 = renderFireWaveform(
                     texU1, absDeckY, 0.25, totalTrackBeats1,
                     cCore1, cMid1, cBass1, cFlameTip1,
-                    uDeck1Weight, uTime, uBass, uTransient
+                    uDeck1Weight, uTime, uBass, uTransient,
+                    uDeck1SmokePhase
                 );
 
                 vec4 wave2 = renderFireWaveform(
                     texU2, absDeckY, 0.75, totalTrackBeats2,
                     cCore2, cMid2, cBass2, cFlameTip2,
-                    uDeck2Weight, uTime, uBass, uTransient
+                    uDeck2Weight, uTime, uBass, uTransient,
+                    uDeck2SmokePhase
                 );
 
                 vec3 waveCol = vec3(0.0);
                 float waveAlpha = 0.0;
 
-                if (uDeck1Weight > 0.002 && uDeck2Weight > 0.002) {
+                if (wave1.a > 0.001 && wave2.a > 0.001) {
                     // Both decks blending into dual fire inferno
-                    waveCol = wave1.rgb + wave2.rgb * 1.20;
+                    waveCol = wave1.rgb + wave2.rgb * 1.15;
                     waveAlpha = max(wave1.a, wave2.a);
-                } else if (uDeck2Weight > 0.002) {
-                    // Deck 2 sole active fire
+                } else if (wave2.a > 0.001) {
+                    // Deck 2 active fire
                     waveCol = wave2.rgb;
                     waveAlpha = wave2.a;
                 } else {
-                    // Deck 1 sole active fire
+                    // Deck 1 active fire
                     waveCol = wave1.rgb;
                     waveAlpha = wave1.a;
                 }
@@ -2634,27 +2704,28 @@ const DJDeckWaveformShader = {
                 float flicker = clamp(0.96 + sag + hum + wander, 0.25, 1.32);
                 float heat = clamp((flicker - 0.25) / 1.05, 0.0, 1.0);
 
-                // Radiant Center Playhead Pillar of Fire
+                // Radiant Center Playhead Pillar of Fire (attenuated when decks are phased out in smoke)
+                float deckActivity = clamp(max(1.0 - uDeck1SmokePhase, 1.0 - uDeck2SmokePhase), 0.0, 1.0);
                 vec3 flameGold = vec3(1.0, 0.75, 0.22);
                 vec3 fireCore = vec3(1.0, 0.98, 0.92);
                 vec3 warmHoneyAmber = (uPrimaryDeck == 2.0) ? vec3(1.0, 0.38, 0.10) : vec3(1.0, 0.52, 0.06);
 
-                float playheadCore = 1.0 - smoothstep(0.0, 0.0035, playheadDist);
-                float playheadHalo = exp(-playheadDist * 55.0) * (0.25 + heat * 0.85) * flicker;
+                float playheadCore = (1.0 - smoothstep(0.0, 0.0035, playheadDist)) * deckActivity;
+                float playheadHalo = exp(-playheadDist * 55.0) * (0.25 + heat * 0.85) * flicker * deckActivity;
 
                 waveCol += fireCore * playheadCore * 2.8 * flicker + mix(warmHoneyAmber, flameGold, playheadCore) * playheadHalo * 2.2;
 
                 // Fire Refraction & Thermal Sheen near boundaries
-                float glassSheen = pow(absDeckY, 12.0) * 0.35 * (0.6 + heat * 0.4);
+                float glassSheen = pow(absDeckY, 12.0) * 0.35 * (0.6 + heat * 0.4) * deckActivity;
                 vec3 glassCol = mix(warmHoneyAmber, flameGold, heat);
                 waveCol += glassCol * glassSheen;
 
                 // Horizontal Window Border Rails: Fiery ember guidelines
-                float windowBorder = 1.0 - smoothstep(0.0, 0.018, abs(absDeckY - 1.0));
+                float windowBorder = (1.0 - smoothstep(0.0, 0.018, abs(absDeckY - 1.0))) * deckActivity;
                 waveCol += mix(warmHoneyAmber, flameGold, heat) * windowBorder * (0.50 + heat * 0.45);
 
                 // Horizontal Zero-Line: Radiant ember guideline
-                float zeroLine = 1.0 - smoothstep(0.0, 0.015, absDeckY);
+                float zeroLine = (1.0 - smoothstep(0.0, 0.015, absDeckY)) * deckActivity;
                 waveCol += warmHoneyAmber * zeroLine * (0.18 + heat * 0.26);
 
                 // Smooth horizontal edge fade
@@ -10356,6 +10427,8 @@ export function createVFXScene(container) {
             uLoopActive: { value: 0.0 },
             uLoopStart: { value: 0.0 },
             uLoopEnd: { value: 0.0 },
+            uDeck1SmokePhase: { value: 0.0 },
+            uDeck2SmokePhase: { value: 1.0 },
             uTotalBeats: { value: 776.1085 },
             uDeck1TotalBeats: { value: 776.1085 },
             uDeck2TotalBeats: { value: 756.0 }
@@ -10371,11 +10444,18 @@ export function createVFXScene(container) {
     djWaveMesh.position.set(0, 0, -2.0);
     gDJWaveforms.add(djWaveMesh);
 
-    // 2b. Wave Smoke Shader (Subtle atmospheric vapor rising procedurally off the moving waveform lobes)
+    // 2b. Wave Smoke Shader (Atmospheric vapor & dense billowing smoke phase-out on inactive decks)
     const WaveSmokeShader = {
         uniforms: {
             uAudioHistory: { value: djAudioHistoryTex },
             uTrackProgress: { value: 0.35 },
+            uDeck1Progress: { value: 0.35 },
+            uDeck2Progress: { value: 0.0 },
+            uDeck1Weight: { value: 1.0 },
+            uDeck2Weight: { value: 0.0 },
+            uDeck1SmokePhase: { value: 0.0 },
+            uDeck2SmokePhase: { value: 1.0 },
+            uPrimaryDeck: { value: 1.0 },
             uZoom: { value: 0.08 },
             uTime: { value: 0.0 },
             uBass: { value: 0.0 },
@@ -10396,6 +10476,13 @@ export function createVFXScene(container) {
             varying vec3 vWorldPos;
             uniform sampler2D uAudioHistory;
             uniform float uTrackProgress;
+            uniform float uDeck1Progress;
+            uniform float uDeck2Progress;
+            uniform float uDeck1Weight;
+            uniform float uDeck2Weight;
+            uniform float uDeck1SmokePhase;
+            uniform float uDeck2SmokePhase;
+            uniform float uPrimaryDeck;
             uniform float uZoom;
             uniform float uTime;
             uniform float uBass;
@@ -10427,8 +10514,6 @@ export function createVFXScene(container) {
                 float curl = n1 * 0.65 + n2 * 0.35;
 
                 // 3. Smoke emission envelope (rising off the wave lobes into the air)
-                // In world space, wave center is around Y = 0.0, wave lobes are Y in [-3.5, +3.5]
-                // Plane is centered at Y = 0.5, height 14.0, so vUv.y ranges from Y = -6.5 to +7.5
                 float waveLobeY = 0.46 + waveAmp * 0.24;
                 float bottomOrigin = smoothstep(0.18, 0.38, vUv.y);
                 float upwardFade = 1.0 - smoothstep(0.60, 0.95, vUv.y);
@@ -10437,18 +10522,32 @@ export function createVFXScene(container) {
                 // Soft horizontal boundary edge falloff
                 float horizontalFade = smoothstep(0.02, 0.15, vUv.x) * smoothstep(0.98, 0.85, vUv.x);
 
-                // 4. Density calculation
+                // 4. Subtle ambient smoke density on playing wave
                 float rawDensity = smoothstep(0.20, 0.75, curl);
                 float audioReact = 0.65 + uBass * 0.40 + waveAmp * 0.45 + uTransient * 0.30;
-                float smokeDensity = rawDensity * waveEmanation * horizontalFade * audioReact;
+                float ambientSmoke = rawDensity * waveEmanation * horizontalFade * audioReact * 0.18;
 
-                // 5. Delicate warm amber/charcoal atmospheric smoke
-                vec3 smokeCol = mix(vec3(0.96, 0.72, 0.42), vec3(0.48, 0.36, 0.25), curl * 0.45);
-                
-                // Very subtle opacity for ethereal low-light presence
-                float alpha = smokeDensity * 0.18;
+                // 5. Billowing Dissolution Smoke FX when a deck is not in play
+                // Thick plumes of curling smoke erupt over the inactive/phasing deck to make it disappear
+                float billow1 = smoothstep(0.01, 0.45, uDeck1SmokePhase) * (1.0 - smoothstep(0.68, 1.0, uDeck1SmokePhase * 0.96));
+                float billow2 = smoothstep(0.01, 0.45, uDeck2SmokePhase) * (1.0 - smoothstep(0.68, 1.0, uDeck2SmokePhase * 0.96));
+                float activeBillow = max(billow1, billow2);
 
-                gl_FragColor = vec4(smokeCol, alpha);
+                // Lingering subtle wisps of smoke when completely phased out
+                float lingeringSmoke = max(uDeck1SmokePhase, uDeck2SmokePhase) * 0.10;
+
+                // Plume envelops the entire waveform height during phase-out
+                float phaseHeightMask = smoothstep(0.10, 0.28, vUv.y) * (1.0 - smoothstep(0.70, 0.98, vUv.y));
+                float phaseBillowSmoke = smoothstep(0.14, 0.68, curl) * (activeBillow * 0.76 + lingeringSmoke * 0.35) * horizontalFade * phaseHeightMask;
+
+                float totalDensity = ambientSmoke + phaseBillowSmoke;
+
+                // 6. Smoldering ash and smoke color palette
+                vec3 ambientColor = mix(vec3(0.96, 0.72, 0.42), vec3(0.48, 0.36, 0.25), curl * 0.45);
+                vec3 ashSmokeColor = mix(vec3(0.58, 0.46, 0.38), vec3(0.32, 0.26, 0.22), curl * 0.60);
+                vec3 finalSmokeCol = mix(ambientColor, ashSmokeColor, clamp(activeBillow * 1.4 + lingeringSmoke, 0.0, 1.0));
+
+                gl_FragColor = vec4(finalSmokeCol, clamp(totalDensity, 0.0, 0.88));
             }
         `
     };
@@ -10511,6 +10610,8 @@ export function createVFXScene(container) {
     let manualPrimaryDeck = null;
     let deck1Weight = 1.0;
     let deck2Weight = 0.0;
+    let smoothDeck1SmokePhase = 0.0;
+    let smoothDeck2SmokePhase = 1.0;
     let deck1Stationary = false;
     let deck2Stationary = false;
     let deck1LastBeat = undefined;
@@ -10807,76 +10908,162 @@ export function createVFXScene(container) {
     flameMesh.renderOrder = 12;
     gDJWaveforms.add(flameMesh);
 
-    // 5. 🔥 Rising Fire Embers & Sparks (Floating upward from the flame tips)
-    function createEmberGlowTexture() {
-        const c = document.createElement('canvas');
-        c.width = 64;
-        c.height = 64;
-        const ctx = c.getContext('2d');
-        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
-        grad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)');
-        grad.addColorStop(0.25, 'rgba(255, 200, 80, 0.85)');
-        grad.addColorStop(0.60, 'rgba(255, 120, 20, 0.35)');
-        grad.addColorStop(1.00, 'rgba(0, 0, 0, 0.0)');
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 64, 64);
-        const tex = new THREE.CanvasTexture(c);
-        tex.generateMipmaps = true;
-        return tex;
-    }
-
-    const emberGlowTex = createEmberGlowTexture();
-    const flameEmberCount = 280;
+    // 5. 🔥 Rising Fire Embers & Cinders (Multi-tier irregular tumbling burning cinders)
+    const flameEmberCount = 520;
     const flameEmberGeo = new THREE.BufferGeometry();
     const flameEmberPos = new Float32Array(flameEmberCount * 3);
     const flameEmberCol = new Float32Array(flameEmberCount * 3);
+    const flameEmberSize = new Float32Array(flameEmberCount);
     const flameEmberSpeed = new Float32Array(flameEmberCount);
     const flameEmberSeed = new Float32Array(flameEmberCount);
+    const flameEmberTumble = new Float32Array(flameEmberCount);
+    const flameEmberChar = new Float32Array(flameEmberCount);
 
     for (let i = 0; i < flameEmberCount; i++) {
-        flameEmberPos[i * 3]     = (Math.random() - 0.5) * 34.0;
-        flameEmberPos[i * 3 + 1] = -8.5 + Math.random() * 8.0;
-        flameEmberPos[i * 3 + 2] = -2.10 + (Math.random() - 0.5) * 0.3;
+        // Broad screen-wide distribution
+        flameEmberPos[i * 3]     = (Math.random() - 0.5) * 36.0;
+        // Distribute from base up through upper screen so embers are active across all heights immediately
+        flameEmberPos[i * 3 + 1] = -8.8 + Math.random() * 18.6;
+        // In front of waveform and HUD planes (z = -1.78)
+        flameEmberPos[i * 3 + 2] = -1.78 + (Math.random() - 0.5) * 0.25;
 
-        // Fiery ember colors: bright gold, intense amber, fiery ruby
-        const u = Math.random();
-        if (u < 0.35) {
+        // Multi-tier power law size distribution: chunky cinders, medium embers, and micro-sparks
+        const uSize = Math.random();
+        if (uSize < 0.22) {
+            // 22% Large Chunky Molten Coals / Tumbling Cinders (prominent, dramatic)
+            flameEmberSize[i] = 2.8 + Math.random() * 2.6; // 2.8 to 5.4
+            flameEmberSpeed[i] = 0.45 + Math.random() * 0.75; // Heavier buoyant drift
+        } else if (uSize < 0.65) {
+            // 43% Medium Glowing Embers
+            flameEmberSize[i] = 1.3 + Math.random() * 1.4; // 1.3 to 2.7
+            flameEmberSpeed[i] = 0.75 + Math.random() * 1.1;
+        } else {
+            // 35% Flecks & Crackling Hot Sparks
+            flameEmberSize[i] = 0.45 + Math.random() * 0.75; // 0.45 to 1.2
+            flameEmberSpeed[i] = 1.2 + Math.random() * 1.6; // High velocity zip
+        }
+
+        // Fiery ember colors: white-gold core, blazing amber, hot ruby
+        const uCol = Math.random();
+        if (uCol < 0.25) {
             // White-hot gold spark
             flameEmberCol[i * 3]     = 1.0;
-            flameEmberCol[i * 3 + 1] = 0.85;
-            flameEmberCol[i * 3 + 2] = 0.35;
-        } else if (u < 0.75) {
+            flameEmberCol[i * 3 + 1] = 0.94;
+            flameEmberCol[i * 3 + 2] = 0.65;
+        } else if (uCol < 0.72) {
             // Radiant golden amber ember
             flameEmberCol[i * 3]     = 1.0;
-            flameEmberCol[i * 3 + 1] = 0.55;
+            flameEmberCol[i * 3 + 1] = 0.56;
             flameEmberCol[i * 3 + 2] = 0.08;
         } else {
             // Hot ruby cinder
-            flameEmberCol[i * 3]     = 1.0;
-            flameEmberCol[i * 3 + 1] = 0.25;
+            flameEmberCol[i * 3]     = 0.98;
+            flameEmberCol[i * 3 + 1] = 0.22;
             flameEmberCol[i * 3 + 2] = 0.02;
         }
 
-        flameEmberSpeed[i] = 0.65 + Math.random() * 1.4;
-        flameEmberSeed[i]  = Math.random() * 100.0;
+        flameEmberSeed[i]   = Math.random() * 100.0;
+        flameEmberTumble[i] = (Math.random() - 0.5) * 4.5;
+        flameEmberChar[i]   = Math.random();
     }
 
     flameEmberGeo.setAttribute('position', new THREE.BufferAttribute(flameEmberPos, 3));
     flameEmberGeo.setAttribute('color', new THREE.BufferAttribute(flameEmberCol, 3));
+    flameEmberGeo.setAttribute('aSize', new THREE.BufferAttribute(flameEmberSize, 1));
+    flameEmberGeo.setAttribute('aSeed', new THREE.BufferAttribute(flameEmberSeed, 1));
+    flameEmberGeo.setAttribute('aTumble', new THREE.BufferAttribute(flameEmberTumble, 1));
+    flameEmberGeo.setAttribute('aChar', new THREE.BufferAttribute(flameEmberChar, 1));
 
-    const flameEmberMat = new THREE.PointsMaterial({
-        size: 0.16,
-        map: emberGlowTex,
+    const flameEmberMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uTransient: { value: 0.0 }
+        },
+        vertexShader: `
+            attribute vec3 color;
+            attribute float aSize;
+            attribute float aSeed;
+            attribute float aTumble;
+            attribute float aChar;
+            varying vec3 vColor;
+            varying float vSeed;
+            varying float vTumble;
+            varying float vChar;
+            uniform float uTime;
+            uniform float uBass;
+            uniform float uTransient;
+
+            void main() {
+                vColor = color;
+                vSeed = aSeed;
+                vTumble = aTumble;
+                vChar = aChar;
+
+                vec4 mvPos = modelViewMatrix * vec4(position, 1.0);
+                // Audio-reactive heat expansion & transient pulse
+                float heatPulse = 1.0 + sin(uTime * 9.0 + aSeed * 3.7) * 0.14 + uBass * 0.35 + uTransient * 0.45;
+                float pSize = aSize * heatPulse * (850.0 / -mvPos.z);
+                gl_PointSize = clamp(pSize, 5.0, 150.0);
+                gl_Position = projectionMatrix * mvPos;
+            }
+        `,
+        fragmentShader: `
+            varying vec3 vColor;
+            varying float vSeed;
+            varying float vTumble;
+            varying float vChar;
+            uniform float uTime;
+
+            void main() {
+                vec2 p = gl_PointCoord - vec2(0.5);
+                float angle = atan(p.y, p.x) + vTumble * uTime * 1.6;
+                float dist = length(p);
+
+                // Irregular cinder deformation (chunky, angular, realistic)
+                float deform = sin(angle * 3.0 + vSeed) * 0.08 + cos(angle * 5.0 + vSeed * 2.3) * 0.05 + sin(angle * 7.0) * 0.03;
+                float r = dist + deform;
+
+                // Outer incandescent heat aura around the cinder
+                float aura = exp(-dist * 5.0) * 0.38;
+
+                if (r > 0.48 && aura < 0.02) discard;
+
+                float coreU = clamp(r / 0.48, 0.0, 1.0);
+                float flicker = 0.88 + sin(uTime * 14.0 + vSeed * 11.0) * 0.12;
+
+                vec3 col;
+                if (coreU < 0.22) {
+                    // Molten white-hot gold core
+                    col = mix(vec3(1.0, 0.98, 0.90), vColor * 1.35, coreU / 0.22);
+                } else if (coreU < 0.65) {
+                    // Radiant amber-ruby body
+                    col = mix(vColor * 1.35, vColor, (coreU - 0.22) / 0.43);
+                } else {
+                    // Burnt crusty rim / charcoal perimeter
+                    float crust = (coreU - 0.65) / 0.35;
+                    vec3 darkCrust = mix(vColor * 0.30, vec3(0.09, 0.02, 0.01), vChar * 0.85);
+                    col = mix(vColor, darkCrust, crust);
+                }
+
+                float coreAlpha = smoothstep(0.48, 0.30, r);
+                float alpha = clamp(coreAlpha + aura, 0.0, 1.0) * flicker;
+                vec3 finalCol = col * flicker + vec3(1.0, 0.55, 0.12) * aura;
+                gl_FragColor = vec4(finalCol, alpha * 0.95);
+            }
+        `,
         vertexColors: true,
         transparent: true,
-        opacity: 0.90,
         blending: THREE.AdditiveBlending,
+        depthTest: false,
         depthWrite: false
     });
 
     const flameEmberField = new THREE.Points(flameEmberGeo, flameEmberMat);
     flameEmberField.frustumCulled = false;
-    flameEmberField.renderOrder = 14;
+    flameEmberField.renderOrder = 25;
+    window._flameEmberField = flameEmberField;
+    window._flameEmberMat = flameEmberMat;
     gDJWaveforms.add(flameEmberField);
 
     // -------------------------------------------------------------------------
@@ -15972,15 +16159,6 @@ export function createVFXScene(container) {
 
             updateSynthesizedDeckSpectrum();
 
-            // 2. Animate Wave Smoke Shader (Subtle atmospheric vapor rising procedurally off waveform lobes)
-            if (waveSmokeMat) {
-                waveSmokeMat.uniforms.uTime.value = elapsedTime;
-                waveSmokeMat.uniforms.uTrackProgress.value = (primaryDeck === 2) ? deck2Progress : deck1Progress;
-                waveSmokeMat.uniforms.uZoom.value = 0.08;
-                waveSmokeMat.uniforms.uBass.value = audio.bass || 0;
-                waveSmokeMat.uniforms.uTransient.value = audio.transient || 0;
-            }
-
             // 3. 🔥 Animate Audio-Reactive Flame Spectrum
             // Update 64 frequency band amplitudes into the flame texture
             for (let b = 0; b < specBands; b++) {
@@ -16021,21 +16199,27 @@ export function createVFXScene(container) {
                 flameMat.uniforms.uTransient.value = audio.transient || 0;
             }
 
-            // Animate Rising Fiery Embers & Sparks
+            // Animate Rising Fiery Embers & Cinders
+            if (flameEmberMat && flameEmberMat.uniforms) {
+                flameEmberMat.uniforms.uTime.value = elapsedTime;
+                flameEmberMat.uniforms.uBass.value = audio ? (audio.bass || 0) : 0;
+                flameEmberMat.uniforms.uTransient.value = audio ? (audio.transientImpulse || audio.transient || 0) : 0;
+            }
+
             if (flameEmberGeo) {
                 const ePos = flameEmberGeo.attributes.position.array;
                 const draftSpeed = 1.0 + (audio.bass || 0) * 0.8 + (audio.transient || 0) * 0.6;
                 for (let i = 0; i < flameEmberCount; i++) {
                     const seed = flameEmberSeed[i];
-                    // Upward convective ascent
+                    // Upward buoyant convective ascent
                     ePos[i * 3 + 1] += delta * flameEmberSpeed[i] * draftSpeed * 1.8;
                     // Horizontal thermal eddy swirl
-                    ePos[i * 3] += Math.sin(elapsedTime * 2.5 + seed) * (0.015 * flameEmberSpeed[i]);
+                    ePos[i * 3] += Math.sin(elapsedTime * 2.2 + seed) * (0.018 * flameEmberSpeed[i]) + Math.cos(elapsedTime * 0.9 + seed * 1.7) * 0.010;
 
-                    // Respawn at flame base when rising past moving waveform
-                    if (ePos[i * 3 + 1] > -1.5) {
-                        ePos[i * 3 + 1] = -8.5 - Math.random() * 0.5;
-                        ePos[i * 3]     = (Math.random() - 0.5) * 34.0;
+                    // Respawn when rising completely off the top of the screen (y > 9.8)
+                    if (ePos[i * 3 + 1] > 9.8) {
+                        ePos[i * 3 + 1] = -8.8 - Math.random() * 0.8;
+                        ePos[i * 3]     = (Math.random() - 0.5) * 36.0;
                     }
                 }
                 flameEmberGeo.attributes.position.needsUpdate = true;
@@ -16166,6 +16350,17 @@ export function createVFXScene(container) {
             const primaryTotalBeats = (primaryDeck === 2) ? (deck2Data.totalBeats || 756.0) : (deck1Data.totalBeats || 776.1085);
             const beatPhaseVal = (elapsedTime * (primaryBpm / 60.0)) % 1.0;
 
+            // Smooth smoke phase-out for inactive decks
+            // A deck is in play when actively playing/moving and its mixer weight is up
+            const d1InPlay = (deck1Playing || d1IsMoving) && (w1 > 0.02);
+            const d2InPlay = (deck2Playing || d2IsMoving) && (w2 > 0.02);
+
+            const targetD1Smoke = d1InPlay ? 0.0 : 1.0;
+            const targetD2Smoke = d2InPlay ? 0.0 : 1.0;
+
+            smoothDeck1SmokePhase = THREE.MathUtils.damp(smoothDeck1SmokePhase, targetD1Smoke, 3.2, delta);
+            smoothDeck2SmokePhase = THREE.MathUtils.damp(smoothDeck2SmokePhase, targetD2Smoke, 3.2, delta);
+
             // Update Shader Uniforms: dynamic routing to active on-air deck
             djWaveMat.uniforms.uTime.value = elapsedTime;
             djWaveMat.uniforms.uHeadPos.value = primaryProg;
@@ -16174,8 +16369,25 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uDeck2Progress.value = deck2Progress;
             djWaveMat.uniforms.uDeck1Weight.value = w1;
             djWaveMat.uniforms.uDeck2Weight.value = w2;
+            djWaveMat.uniforms.uDeck1SmokePhase.value = smoothDeck1SmokePhase;
+            djWaveMat.uniforms.uDeck2SmokePhase.value = smoothDeck2SmokePhase;
             djWaveMat.uniforms.uPrimaryDeck.value = primaryDeck;
             djWaveMat.uniforms.uDeck2Active.value = w2;
+
+            if (waveSmokeMat) {
+                waveSmokeMat.uniforms.uTime.value = elapsedTime;
+                waveSmokeMat.uniforms.uTrackProgress.value = (primaryDeck === 2) ? deck2Progress : deck1Progress;
+                waveSmokeMat.uniforms.uDeck1Progress.value = deck1Progress;
+                waveSmokeMat.uniforms.uDeck2Progress.value = deck2Progress;
+                waveSmokeMat.uniforms.uDeck1Weight.value = w1;
+                waveSmokeMat.uniforms.uDeck2Weight.value = w2;
+                waveSmokeMat.uniforms.uDeck1SmokePhase.value = smoothDeck1SmokePhase;
+                waveSmokeMat.uniforms.uDeck2SmokePhase.value = smoothDeck2SmokePhase;
+                waveSmokeMat.uniforms.uPrimaryDeck.value = primaryDeck;
+                waveSmokeMat.uniforms.uZoom.value = 0.08;
+                waveSmokeMat.uniforms.uBass.value = audio ? (audio.smoothedBass || audio.bass || 0) : 0;
+                waveSmokeMat.uniforms.uTransient.value = audio ? (audio.transientImpulse || audio.transient || 0) : 0;
+            }
             djWaveMat.uniforms.uTotalBeats.value = primaryTotalBeats;
             djWaveMat.uniforms.uDeck1TotalBeats.value = deck1Data.totalBeats || 776.1085;
             djWaveMat.uniforms.uDeck2TotalBeats.value = deck2Data.totalBeats || 756.0;
@@ -18811,6 +19023,24 @@ export function createVFXScene(container) {
             deck2Weight
         }),
         setActiveDeck: (deckNum) => {
+            const d = (deckNum === 2 || deckNum === 4 || deckNum === '2' || deckNum === '4' || deckNum === 'B' || deckNum === 'D') ? 2 : 1;
+            manualPrimaryDeck = d;
+            primaryDeck = d;
+            if (d === 2) {
+                deck1Fader = 0.0;
+                deck2Fader = 1.0;
+                deck1Weight = 0.0;
+                deck2Weight = 1.0;
+                deck2Active = true;
+            } else {
+                deck1Fader = 1.0;
+                deck2Fader = 0.0;
+                deck1Weight = 1.0;
+                deck2Weight = 0.0;
+                deck1Active = true;
+            }
+        },
+        setPrimaryDeck: (deckNum) => {
             const d = (deckNum === 2 || deckNum === 4 || deckNum === '2' || deckNum === '4' || deckNum === 'B' || deckNum === 'D') ? 2 : 1;
             manualPrimaryDeck = d;
             primaryDeck = d;
