@@ -1837,6 +1837,52 @@
             max-width: 360px;
         }
 
+        /* Vintage Edison LED Filament Track Position Bar in Banner */
+        .edison-track-progress-bar {
+            width: 100%;
+            height: 8px;
+            margin-top: 6px;
+            position: relative;
+            background: rgba(14, 10, 6, 0.85);
+            border: 1px solid rgba(255, 170, 30, 0.45);
+            border-radius: 4px;
+            padding: 1px 2px;
+            box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.9), 0 0 8px rgba(255, 120, 20, 0.2);
+            display: flex;
+            align-items: center;
+        }
+        .edison-glass-rail {
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(180deg, rgba(255, 200, 100, 0.15) 0%, rgba(255, 120, 20, 0.08) 100%);
+            border-radius: 2px;
+            position: relative;
+            overflow: visible;
+        }
+        .edison-wire-glow {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: linear-gradient(90deg, #ff6600 0%, #ffaa00 65%, #fff0aa 100%);
+            border-radius: 2px;
+            box-shadow: 0 0 6px #ffaa00, 0 0 12px rgba(255, 140, 0, 0.7);
+            transition: width 0.08s linear;
+        }
+        .edison-needle-bead {
+            position: absolute;
+            top: 50%;
+            width: 7px;
+            height: 10px;
+            transform: translate(-50%, -50%);
+            background: radial-gradient(circle at 40% 35%, #ffffff 0%, #ffe088 40%, #ff9900 80%, #6b3e04 100%);
+            border: 0.8px solid #ffe890;
+            border-radius: 2px;
+            box-shadow: 0 0 6px #ffcc44, 0 0 12px rgba(255, 160, 20, 0.9);
+            z-index: 2;
+            transition: left 0.08s linear;
+        }
+
         .click-prompt {
             cursor: pointer;
             color: #00ffff;
@@ -4280,6 +4326,13 @@
             </div>
             <div class="track-title" id="track-title">Live Track</div>
             <div class="track-artist" id="track-artist">Live Performance</div>
+            <!-- Vintage Edison LED Filament Track Position Bar -->
+            <div class="edison-track-progress-bar" id="track-banner-progress-wrap" title="Track Position Progress">
+                <div class="edison-glass-rail">
+                    <div class="edison-wire-glow" id="track-banner-progress-fill" style="width: 0%;"></div>
+                    <div class="edison-needle-bead" id="track-banner-needle" style="left: 0%;"></div>
+                </div>
+            </div>
         </div>
     </div>
 

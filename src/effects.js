@@ -2483,6 +2483,8 @@ const DJDeckWaveformShader = {
                 // -------------------------------------------------------------
                 // DECK 2 OVERLAID MOVING WAVEFORM (When Track 2 is active/blending)
                 // -------------------------------------------------------------
+                float deck2Blend = 0.0;
+                float deck2Mask = 0.0;
                 if (uDeck2Active > 0.05) {
                     float headPos2 = uDeck2Progress;
                     float texU2 = fract(headPos2 + (uv.x - 0.5) * zoomFactor);
@@ -2492,10 +2494,10 @@ const DJDeckWaveformShader = {
                     float rawHigh2 = audioSlice2.b;
                     float rawHit2  = audioSlice2.a;
 
-                    // Deck 2 Signature Palette: Hot Fuchsia / Violet / Gold Peak
-                    vec3 cBass2 = vec3(0.95, 0.02, 0.55); // Vibrant Hot Fuchsia
-                    vec3 cMid2  = vec3(0.65, 0.08, 0.98); // Electric Violet
-                    vec3 cHigh2 = vec3(1.00, 0.88, 0.25); // Warm Gold
+                    // Deck 2 Signature Edison Secondary Palette: Incandescent Sunset Molten-Coral / Golden Apricot / Champagne Gold
+                    vec3 cBass2 = vec3(0.98, 0.24, 0.10); // Glowing Sunset Coral / Ember
+                    vec3 cMid2  = vec3(1.00, 0.58, 0.12); // Golden Apricot
+                    vec3 cHigh2 = vec3(1.00, 0.94, 0.70); // Incandescent Champagne Gold
 
                     float hLow2  = clamp(rawBass2 * 0.90 + rawHit2 * 0.05, 0.03, 0.90);
                     float hMid2  = clamp(rawMid2 * 0.70 + rawHit2 * 0.04, 0.02, 0.75);
@@ -2507,12 +2509,17 @@ const DJDeckWaveformShader = {
 
                     vec3 waveCol2 = vec3(0.0);
                     if (maskLow2 > 0.05) waveCol2 = cBass2;
-                    if (maskMid2 > 0.05) waveCol2 = cMid2;
-                    if (maskHigh2 > 0.05) waveCol2 = cHigh2;
+                    if (maskMid2 > 0.05) waveCol2 = mix(waveCol2, cMid2, maskMid2 * 0.95);
+                    if (maskHigh2 > 0.05) waveCol2 = mix(waveCol2, cHigh2, maskHigh2 * 0.98);
 
-                    float deck2Blend = clamp(uDeck2Active, 0.0, 1.0) * 0.65;
+                    deck2Blend = clamp(uDeck2Active, 0.0, 1.0);
+                    deck2Mask = maskLow2;
                     if (maskLow2 > 0.05) {
-                        waveCol = mix(waveCol, waveCol + waveCol2 * 1.2, deck2Blend);
+                        if (maskLow > 0.05) {
+                            waveCol = mix(waveCol, waveCol * 0.45 + waveCol2 * 1.35, deck2Blend * 0.82);
+                        } else {
+                            waveCol = waveCol2 * 1.25;
+                        }
                     }
                 }
 
@@ -2561,7 +2568,8 @@ const DJDeckWaveformShader = {
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
-                float finalAlpha = clamp(maskLow + playheadCore + playheadHalo * 0.3 + windowBorder * 0.25 + zeroLine * 0.25, 0.0, 1.0);
+                float deckCombinedAlpha = max(maskLow, deck2Mask * deck2Blend);
+                float finalAlpha = clamp(deckCombinedAlpha + playheadCore + playheadHalo * 0.3 + windowBorder * 0.25 + zeroLine * 0.25, 0.0, 1.0);
                 finalAlpha *= edgeFade;
 
                 col = waveCol * edgeFade;
@@ -7854,9 +7862,279 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
         return `rgb(${r}, ${g}, ${b})`;
     }
 
+    // -------------------------------------------------------------------------
+    // VINTAGE EDISON LED FILAMENT DRAWING UTILITIES
+    // -------------------------------------------------------------------------
+    function drawEdisonFilamentNeedle(needleX, topY, height, bulbStyle, deckNum, deckColor, label = '') {
+        ctx.save();
+        const botY = topY + height;
+
+        // 1. Broad Candlelight Plasma Aura
+        const ambW = 34.0 * bulbStyle.auraSpread;
+        const ambGrad = ctx.createLinearGradient(needleX - ambW, 0, needleX + ambW, 0);
+        ambGrad.addColorStop(0, 'rgba(255, 100, 10, 0)');
+        ambGrad.addColorStop(0.35, bulbStyle.auraColorOuter);
+        ambGrad.addColorStop(0.50, bulbStyle.auraColorInner);
+        ambGrad.addColorStop(0.65, bulbStyle.auraColorOuter);
+        ambGrad.addColorStop(1, 'rgba(255, 100, 10, 0)');
+        ctx.fillStyle = ambGrad;
+        ctx.fillRect(needleX - ambW, topY - 3, ambW * 2, height + 6);
+
+        // 2. Vintage Edison Tubular Glass Envelope (Cylinder Capsule)
+        const tubeW = 10.0;
+        ctx.beginPath();
+        ctx.roundRect(needleX - tubeW / 2, topY, tubeW, height, 5.0);
+        const tubeGrad = ctx.createLinearGradient(needleX - tubeW / 2, 0, needleX + tubeW / 2, 0);
+        tubeGrad.addColorStop(0, `rgba(255, 140, 20, ${0.28 * bulbStyle.flicker})`);
+        tubeGrad.addColorStop(0.5, `rgba(255, 220, 120, ${0.40 * bulbStyle.flicker})`);
+        tubeGrad.addColorStop(1, `rgba(255, 140, 20, ${0.28 * bulbStyle.flicker})`);
+        ctx.fillStyle = tubeGrad;
+        ctx.fill();
+        ctx.lineWidth = 1.0;
+        ctx.strokeStyle = `rgba(255, 235, 160, ${0.55 * bulbStyle.flicker})`;
+        ctx.stroke();
+
+        // Glass specular sheen along left side
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.35 * bulbStyle.flicker})`;
+        ctx.fillRect(needleX - 3.2, topY + 4, 1.2, height - 8);
+
+        // 3. Radiant Phosphor Jacket Aura
+        const auraW = 15.0 * bulbStyle.auraSpread;
+        const auraGrad = ctx.createLinearGradient(needleX - auraW, 0, needleX + auraW, 0);
+        auraGrad.addColorStop(0, 'rgba(255, 120, 10, 0)');
+        auraGrad.addColorStop(0.35, bulbStyle.auraColorOuter);
+        auraGrad.addColorStop(0.50, bulbStyle.auraColorInner);
+        auraGrad.addColorStop(0.65, bulbStyle.auraColorOuter);
+        auraGrad.addColorStop(1, 'rgba(255, 120, 10, 0)');
+        ctx.fillStyle = auraGrad;
+        ctx.fillRect(needleX - auraW, topY, auraW * 2, height);
+
+        // 4. Glowing Internal LED Filament Wire with Phosphor Micro-Beads
+        ctx.shadowColor = bulbStyle.shadowColor;
+        ctx.shadowBlur = (14 + (transient || 0) * 6) * bulbStyle.shadowSpread;
+        ctx.fillStyle = bulbStyle.coreColor;
+        ctx.fillRect(needleX - 1.8, topY + 3, 3.6, height - 6);
+
+        // Luminous micro-beads along the coiled filament (the tiny LED filament chips)
+        const beadSpacing = 6.0;
+        const numBeads = Math.floor((height - 12) / beadSpacing);
+        for (let b = 0; b <= numBeads; b++) {
+            const by = topY + 6 + b * beadSpacing;
+            ctx.beginPath();
+            ctx.arc(needleX, by, 1.8, 0, Math.PI * 2);
+            ctx.fillStyle = '#fffce8';
+            ctx.fill();
+        }
+
+        // Specular ultra-white micro-core thread
+        if (bulbStyle.specularColor !== 'transparent') {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = bulbStyle.specularColor;
+            ctx.fillRect(needleX - 0.75, topY + 4, 1.5, height - 8);
+        }
+
+        // 5. Turned Brass / Copper End Caps
+        const capGrad = ctx.createLinearGradient(needleX - 6, 0, needleX + 6, 0);
+        capGrad.addColorStop(0, '#5c3a02');
+        capGrad.addColorStop(0.4, '#ffe590');
+        capGrad.addColorStop(0.8, '#c99318');
+        capGrad.addColorStop(1, '#5c3a02');
+
+        // Top brass cap
+        ctx.shadowBlur = 0;
+        ctx.beginPath();
+        ctx.arc(needleX, topY + 2, 4.8, 0, Math.PI * 2);
+        ctx.fillStyle = capGrad;
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 240, 180, 0.85)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
+        // Bottom brass cap
+        ctx.beginPath();
+        ctx.arc(needleX, botY - 2, 4.8, 0, Math.PI * 2);
+        ctx.fillStyle = capGrad;
+        ctx.fill();
+        ctx.stroke();
+
+        // 6. Deck Tag Pill above needle (e.g. "D1" or "D2")
+        const tagText = label || `D${deckNum}`;
+        ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        const tagW = ctx.measureText(tagText).width + 8;
+        ctx.beginPath();
+        ctx.roundRect(needleX - tagW / 2, topY - 14, tagW, 13, 3);
+        ctx.fillStyle = deckColor === '#ff4d2e' ? 'rgba(255, 77, 46, 0.35)' : 'rgba(255, 170, 20, 0.35)';
+        ctx.fill();
+        ctx.strokeStyle = deckColor;
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.fillText(tagText, needleX, topY - 4);
+
+        // Bottom diamond anchor
+        ctx.beginPath();
+        ctx.moveTo(needleX, botY + 1);
+        ctx.lineTo(needleX - 3.5, botY + 5);
+        ctx.lineTo(needleX, botY + 9);
+        ctx.lineTo(needleX + 3.5, botY + 5);
+        ctx.closePath();
+        ctx.fillStyle = deckColor;
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    function drawEdisonFilamentRail(startX, railY, railW, progress, bulbStyle, activeColor = '#ffaa18') {
+        ctx.save();
+        const activeW = Math.max(0, Math.min(railW, progress * railW));
+
+        // 1. Ambient warm glow along active track
+        if (activeW > 2) {
+            const hAmbGrad = ctx.createLinearGradient(0, railY - 8, 0, railY + 8);
+            hAmbGrad.addColorStop(0, 'transparent');
+            hAmbGrad.addColorStop(0.5, bulbStyle.auraColorOuter);
+            hAmbGrad.addColorStop(1, 'transparent');
+            ctx.fillStyle = hAmbGrad;
+            ctx.fillRect(startX, railY - 8, activeW, 16);
+        }
+
+        // 2. Full Glass Tube Rail
+        ctx.fillStyle = 'rgba(255, 190, 80, 0.16)';
+        ctx.fillRect(startX, railY - 1.8, railW, 3.6);
+
+        // 3. Glowing Active Filament Core (played portion)
+        if (activeW > 1) {
+            ctx.shadowColor = bulbStyle.shadowColor;
+            ctx.shadowBlur = 8 * bulbStyle.shadowSpread;
+            ctx.fillStyle = bulbStyle.coreColor;
+            ctx.fillRect(startX, railY - 1.0, activeW, 2.0);
+            if (bulbStyle.specularColor !== 'transparent') {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = bulbStyle.specularColor;
+                ctx.fillRect(startX, railY - 0.45, activeW, 0.9);
+            }
+        }
+        ctx.shadowBlur = 0;
+
+        // 4. Brass end caps
+        const bCap = ctx.createLinearGradient(startX - 3, 0, startX + 3, 0);
+        bCap.addColorStop(0, '#7a5105'); bCap.addColorStop(0.5, '#ffe590'); bCap.addColorStop(1, '#5c3a02');
+        ctx.beginPath(); ctx.arc(startX, railY, 2.8, 0, Math.PI * 2); ctx.fillStyle = bCap; ctx.fill();
+        ctx.beginPath(); ctx.arc(startX + railW, railY, 2.8, 0, Math.PI * 2); ctx.fillStyle = bCap; ctx.fill();
+        ctx.restore();
+    }
+
+    function drawMiniWaveform(x, topY, w, h, profileType, colorScheme) {
+        const numBars = Math.floor(w / 2.5);
+        const barW = w / numBars;
+        const waveBaseY = topY + h - 5;
+        const maxBarH = h - 10;
+
+        for (let i = 0; i < numBars; i++) {
+            const u = i / numBars;
+            const bx = x + i * barW;
+
+            let profile = 0.55;
+            let subRatio = 0.35;
+            let midRatio = 0.65;
+
+            if (profileType === 1) {
+                // Deck 1 Profile
+                if (u < 0.15) {
+                    profile = 0.40 + Math.sin(u * 80.0) * 0.08 + Math.cos(u * 140.0) * 0.05;
+                    subRatio = 0.25; midRatio = 0.55;
+                } else if (u < 0.35) {
+                    profile = 0.52 + Math.sin(u * 95.0) * 0.10 + Math.sin(u * 210.0) * 0.06;
+                    subRatio = 0.32; midRatio = 0.68;
+                } else if (u < 0.50) {
+                    profile = 0.88 + Math.sin(u * 120.0) * 0.10 + Math.cos(u * 300.0) * 0.04;
+                    subRatio = 0.36; midRatio = 0.72;
+                } else if (u < 0.62) {
+                    profile = 0.28 + Math.sin(u * 60.0) * 0.06;
+                    subRatio = 0.04; midRatio = 0.60;
+                } else if (u < 0.86) {
+                    profile = 0.96 + Math.sin(u * 150.0) * 0.04 + Math.cos(u * 280.0) * 0.04;
+                    subRatio = 0.38; midRatio = 0.74;
+                } else {
+                    const outFade = (1.0 - u) / 0.14;
+                    profile = (0.45 + Math.sin(u * 70.0) * 0.08) * outFade;
+                    subRatio = 0.25; midRatio = 0.55;
+                }
+            } else {
+                // Deck 2 Profile (Distinct alternative arrangement)
+                if (u < 0.12) {
+                    profile = 0.42 + Math.sin(u * 90.0) * 0.09;
+                    subRatio = 0.30; midRatio = 0.60;
+                } else if (u < 0.32) {
+                    profile = 0.65 + Math.sin(u * 110.0) * 0.12 + Math.cos(u * 220.0) * 0.05;
+                    subRatio = 0.40; midRatio = 0.70;
+                } else if (u < 0.45) {
+                    profile = 0.92 + Math.sin(u * 140.0) * 0.08;
+                    subRatio = 0.42; midRatio = 0.75;
+                } else if (u < 0.58) {
+                    profile = 0.32 + Math.sin(u * 50.0) * 0.08;
+                    subRatio = 0.08; midRatio = 0.55;
+                } else if (u < 0.88) {
+                    profile = 0.98 + Math.sin(u * 160.0) * 0.05 + Math.cos(u * 310.0) * 0.04;
+                    subRatio = 0.44; midRatio = 0.76;
+                } else {
+                    profile = (0.50 + Math.sin(u * 80.0) * 0.08) * ((1.0 - u) / 0.12);
+                    subRatio = 0.25; midRatio = 0.55;
+                }
+            }
+
+            profile = Math.max(0.06, Math.min(1.0, profile));
+            const totalH = profile * maxBarH;
+            const bH = totalH * subRatio;
+            const mH = totalH * midRatio;
+
+            // Base layer
+            if (bH > 1.0) {
+                ctx.fillStyle = colorScheme.bass;
+                ctx.fillRect(bx, waveBaseY - bH, barW - 0.5, bH);
+            }
+            // Mid layer
+            if (mH > bH) {
+                ctx.fillStyle = colorScheme.mid;
+                ctx.fillRect(bx, waveBaseY - mH, barW - 0.5, mH - bH);
+            }
+            // High peak layer
+            if (totalH > mH) {
+                ctx.fillStyle = colorScheme.high;
+                ctx.fillRect(bx, waveBaseY - totalH, barW - 0.5, totalH - mH);
+            }
+        }
+
+        // Amber/yellow warm glow wash over waveform
+        const washGrad = ctx.createLinearGradient(0, topY, 0, topY + h);
+        washGrad.addColorStop(0.0, colorScheme.washTop);
+        washGrad.addColorStop(0.5, colorScheme.washMid);
+        washGrad.addColorStop(1.0, 'rgba(255, 80, 0, 0.02)');
+        ctx.fillStyle = washGrad;
+        ctx.fillRect(x, topY, w, h);
+    }
+
+    // Active Loops and Hot Cues
+    const activeLoops = (d1 && d1.loops && d1.loops.length > 0)
+        ? d1.loops
+        : [
+            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
+            { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
+        ];
+
+    const activeCues = (d1 && d1.cues && d1.cues.length > 0)
+        ? d1.cues
+        : [
+            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
+            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
+        ];
+
     // =========================================================================
-    // 1. DECK 1 MASTER HEADER (Artwork + Metadata + Time + Badges)
+    // 1. DUAL / SINGLE DECK HEADER & TRACK METADATA
     // =========================================================================
+    const hasD2 = Boolean((d2Active || (d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—')));
+
     const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(1) : Number(bpm).toFixed(1);
     const d1Title = (d1 && d1.title) ? d1.title.toUpperCase() : 'FIGURE IT OUT (EXTENDED MIX)';
     const d1Artist = (d1 && d1.artist) ? d1.artist.toUpperCase() : 'LP GIOBBI, HOUSE GOSPEL CHOIR';
@@ -7865,501 +8143,330 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     const el1 = prog1 * totalSec1;
     const rem1 = Math.max(0, totalSec1 - el1);
 
+    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(1) : Number(bpm).toFixed(1);
+    const d2Title = (d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—') ? d2.title.toUpperCase() : 'TRACK 2 (HOT MIX)';
+    const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : 'DENON PRIME LIVE';
+    const d2Key = (d2 && d2.key) ? d2.key : '8A';
+    const totalSec2 = (d2 && d2.duration) ? d2.duration : 360;
+    const el2 = prog2 * totalSec2;
+    const rem2 = Math.max(0, totalSec2 - el2);
+
     const headerW = width - (padX * 2);
-    // Low, soothing, borderless ambient wash (zero rigid framework)
-    const headerGrad = ctx.createLinearGradient(padX, 26, padX, 124);
-    headerGrad.addColorStop(0.0, 'rgba(14, 10, 6, 0.45)');
+    // Soothing ambient wash
+    const headerGrad = ctx.createLinearGradient(padX, 24, padX, 122);
+    headerGrad.addColorStop(0.0, 'rgba(14, 10, 6, 0.48)');
     headerGrad.addColorStop(1.0, 'rgba(14, 10, 6, 0.0)');
     ctx.fillStyle = headerGrad;
     ctx.beginPath();
-    ctx.roundRect(padX, 26, headerW, 98, 12);
+    ctx.roundRect(padX, 24, headerW, 98, 12);
     ctx.fill();
 
-    // 1A. Album Cover Artwork Thumbnail (Far Left)
-    const artX = padX + 14;
-    const artY = 36;
-    const artSize = 78;
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(artX, artY, artSize, artSize, 8);
-    ctx.clip();
-    if (d1 && d1.artworkImg && d1.artworkImg.complete && d1.artworkImg.naturalWidth > 0) {
-        ctx.drawImage(d1.artworkImg, artX, artY, artSize, artSize);
-    } else {
-        if (d1 && d1.artworkUrl && !d1.artworkImg) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => { d1.artworkImg = img; };
-            img.src = d1.artworkUrl;
-        } else if (d1 && !d1._artRequested && d1.title) {
-            d1._artRequested = true;
-            loadDeckArtwork(d1.title, d1.artist, d1);
+    function drawArtwork(artX, artY, artSize, deckObj, defaultVinylColor = '#ff7700') {
+        ctx.save();
+        ctx.beginPath();
+        ctx.roundRect(artX, artY, artSize, artSize, 8);
+        ctx.clip();
+        if (deckObj && deckObj.artworkImg && deckObj.artworkImg.complete && deckObj.artworkImg.naturalWidth > 0) {
+            ctx.drawImage(deckObj.artworkImg, artX, artY, artSize, artSize);
+        } else {
+            if (deckObj && deckObj.artworkUrl && !deckObj.artworkImg) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => { deckObj.artworkImg = img; };
+                img.src = deckObj.artworkUrl;
+            } else if (deckObj && !deckObj._artRequested && deckObj.title) {
+                deckObj._artRequested = true;
+                loadDeckArtwork(deckObj.title, deckObj.artist, deckObj);
+            }
+            // Procedural Denon Vinyl Sleeve & Grooved Disc
+            ctx.fillStyle = '#0f131a';
+            ctx.fillRect(artX, artY, artSize, artSize);
+            ctx.beginPath();
+            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.44, 0, Math.PI * 2);
+            ctx.fillStyle = '#06080c';
+            ctx.fill();
+            ctx.strokeStyle = defaultVinylColor;
+            ctx.lineWidth = 1.8;
+            ctx.stroke();
+            // Vinyl grooves
+            ctx.beginPath();
+            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.28, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.stroke();
+            // Spindle center
+            ctx.beginPath();
+            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.12, 0, Math.PI * 2);
+            ctx.fillStyle = defaultVinylColor;
+            ctx.fill();
         }
-        // Procedural Denon Vinyl Sleeve & Grooved Disc
-        ctx.fillStyle = '#0f131a';
-        ctx.fillRect(artX, artY, artSize, artSize);
+        ctx.restore();
+
+        // Warm ambient shadow
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 160, 40, 0.28)';
+        ctx.shadowBlur = 8;
         ctx.beginPath();
-        ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.44, 0, Math.PI * 2);
-        ctx.fillStyle = '#06080c';
-        ctx.fill();
-        ctx.strokeStyle = '#ff7700';
-        ctx.lineWidth = 1.8;
+        ctx.roundRect(artX, artY, artSize, artSize, 8);
+        ctx.strokeStyle = 'rgba(255, 185, 90, 0.22)';
+        ctx.lineWidth = 1.0;
         ctx.stroke();
-        // Vinyl grooves
-        ctx.beginPath();
-        ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.28, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-        ctx.stroke();
-        // Spindle center
-        ctx.beginPath();
-        ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.12, 0, Math.PI * 2);
-        ctx.fillStyle = '#00ffcc';
-        ctx.fill();
+        ctx.restore();
     }
-    ctx.restore();
 
-    // Soft warm ambient shadow around album artwork (zero rigid cyan outline)
-    ctx.save();
-    ctx.shadowColor = 'rgba(255, 160, 40, 0.28)';
-    ctx.shadowBlur = 8;
-    ctx.beginPath();
-    ctx.roundRect(artX, artY, artSize, artSize, 8);
-    ctx.strokeStyle = 'rgba(255, 185, 90, 0.22)';
-    ctx.lineWidth = 1.0;
-    ctx.stroke();
-    ctx.restore();
+    // 1A. DECK 1 (Always on Left)
+    const artSize = 76;
+    drawArtwork(padX + 14, 34, artSize, d1, '#ef8130');
 
-    // 1B. Track Title & Artist: Soothing Warm Candlelight Typography
-    const textStartX = artX + artSize + 18;
+    const textStartX = padX + 14 + artSize + 18;
     ctx.textAlign = 'left';
-    ctx.font = 'bold 22px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#fff4e2';
-    ctx.fillText(d1Title.slice(0, 48), textStartX, 62);
+    const maxTitleLen1 = hasD2 ? 28 : 46;
+    ctx.fillText(d1Title.slice(0, maxTitleLen1), textStartX, 58);
 
-    ctx.font = '15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#d9c5a5';
-    ctx.fillText(d1Artist.slice(0, 44), textStartX, 86);
+    ctx.fillText(d1Artist.slice(0, hasD2 ? 30 : 44), textStartX, 80);
 
-    // 1C. Badges Line: Warm Honey Amber Tones
-    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    // Badges Line for Deck 1
+    ctx.font = 'bold 12.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#ffb74d';
-    ctx.fillText(`${d1Bpm} BPM`, textStartX, 110);
+    ctx.fillText(`${d1Bpm} BPM`, textStartX, 103);
 
-    // Key Pill: Borderless warm golden-honey badge
-    const keyPillX = textStartX + 95;
+    // Key Pill
+    const keyPillX = textStartX + 84;
     ctx.beginPath();
-    ctx.roundRect(keyPillX, 98, 68, 20, 4);
+    ctx.roundRect(keyPillX, 92, 54, 18, 4);
     ctx.fillStyle = 'rgba(216, 175, 105, 0.18)';
     ctx.fill();
     ctx.fillStyle = '#f3d19e';
     ctx.textAlign = 'center';
-    ctx.fillText(`${d1Key} ♪`, keyPillX + 34, 109);
+    ctx.fillText(`${d1Key} ♪`, keyPillX + 27, 104);
 
-    // Loop info: Borderless warm amber badge
-    ctx.textAlign = 'left';
-    const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * Number(d1Bpm));
-    const loopProgLen = (d1 && d1.loopEnd > d1.loopStart) ? (d1.loopEnd - d1.loopStart) : 0;
-    const loopBeats = (loopProgLen > 0) ? Math.max(1, Math.round(loopProgLen * totalBeats1)) : 8;
-
-    const loopPillX = keyPillX + 80;
-    if (d1 && d1.loopActive) {
-        ctx.beginPath();
-        ctx.roundRect(loopPillX, 98, 148, 20, 4);
-        ctx.fillStyle = 'rgba(255, 140, 20, 0.20)';
-        ctx.fill();
-        ctx.fillStyle = '#ffb24d';
-        ctx.fillText(`↶ LOOP 2 (${loopBeats} BEATS)`, loopPillX + 7, 109);
-    } else {
-        ctx.fillStyle = '#f3ba60';
-        ctx.fillText(`↶ ${loopBeats} BEATS`, loopPillX + 5, 110);
-    }
-
-    const isSyncActive = Boolean(d1 && (d1.sync || d1.isSync || d1.syncActive || d1.syncMode === "master" || d1.syncMode === "lead"));
-    const syncX = loopPillX + 162;
-    if (isSyncActive) {
-        ctx.fillStyle = '#80eec0';
-        ctx.fillText('SYNC LOCK', syncX, 110);
-    }
-    const pitchX = isSyncActive ? (syncX + 90) : syncX;
-    ctx.fillStyle = '#b8aa94';
-    ctx.fillText('±8  0.00%', pitchX, 110);
-
-    // Integrated Time Readouts (Right side of Header: Soothing Warm Candlelight Glow)
-    const timeX = padX + headerW - 28;
-    ctx.textAlign = 'right';
-
-    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffb042';
-    ctx.fillText('REMAIN', timeX, 48);
-
-    ctx.font = 'bold 28px "SF Mono", Menlo, Consolas, monospace';
-    ctx.fillStyle = '#fffaee';
-    ctx.shadowColor = 'rgba(255, 160, 40, 0.35)';
-    ctx.shadowBlur = 8;
-    const remMin = Math.floor(rem1 / 60);
-    const remSec = Math.floor(rem1 % 60);
-    const remHun = Math.floor((rem1 * 100) % 100);
-    const remStr = `-${remMin}:${remSec.toString().padStart(2, "0")}.${remHun.toString().padStart(2, "0")}`;
-    ctx.fillText(remStr, timeX, 78);
-    ctx.shadowBlur = 0;
-
-    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#b8a892';
-    const elMin = Math.floor(el1 / 60);
-    const elSec = Math.floor(el1 % 60);
-    const elStr = `${elMin}:${elSec.toString().padStart(2, "0")}`;
-    ctx.fillText(`ELAPSED  ${elStr}`, timeX, 102);
-
-    // =========================================================================
-    // 2. OVERVIEW WAVEFORM STRIP (Top Mini Waveform: Borderless Floating Space)
-    // =========================================================================
-    const overviewTopY = 132;
-    const overviewH = 74;
-    const overviewW = width - (padX * 2);
-    // Borderless soothing ambient wash (zero rigid framework)
-    const overGrad = ctx.createLinearGradient(padX, overviewTopY, padX, overviewTopY + overviewH);
-    overGrad.addColorStop(0.0, 'rgba(14, 10, 6, 0.40)');
-    overGrad.addColorStop(1.0, 'rgba(14, 10, 6, 0.08)');
-    ctx.fillStyle = overGrad;
+    // Deck 1 Role Pill
+    const d1RoleX = keyPillX + 62;
     ctx.beginPath();
-    ctx.roundRect(padX, overviewTopY, overviewW, overviewH, 8);
+    ctx.roundRect(d1RoleX, 92, 70, 18, 4);
+    ctx.fillStyle = 'rgba(255, 140, 20, 0.25)';
     ctx.fill();
+    ctx.strokeStyle = 'rgba(255, 170, 30, 0.60)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.fillStyle = '#ffcf77';
+    ctx.fillText('DECK 1', d1RoleX + 35, 104);
 
-    // 2A. Mini Header Metrics inside Overview Strip
-    ctx.font = "bold 13px -apple-system, BlinkMacSystemFont, \"Segoe UI\", Roboto, sans-serif";
-    ctx.textAlign = "left";
-    ctx.fillStyle = '#00ff66';
-    ctx.fillText('⟲ 8', padX + 16, overviewTopY + 18);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText('⤺ 4', padX + 54, overviewTopY + 18);
+    if (hasD2) {
+        // ---------------------------------------------------------------------
+        // DUAL DECK HEADER: Deck 2 on the Right & Sync Badge in Center
+        // ---------------------------------------------------------------------
+        // Center: Dual Deck Phase Sync / Blend Pill
+        const centerPillW = 210;
+        const centerPillX = width / 2 - centerPillW / 2;
+        ctx.beginPath();
+        ctx.roundRect(centerPillX, 56, centerPillW, 32, 16);
+        ctx.fillStyle = 'rgba(255, 120, 20, 0.22)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 180, 60, 0.65)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.fillStyle = '#fffaee';
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText('⮂ DUAL DECK BLEND', width / 2, 72);
+        ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffc266';
+        ctx.fillText(`BEAT SYNC • ${(Number(d1Bpm) === Number(d2Bpm)) ? 'LOCKED' : `${d1Bpm} / ${d2Bpm}`}`, width / 2, 84);
 
-    // Center LEAD badge
-    ctx.textAlign = 'center';
-    ctx.fillStyle = '#9ca3af';
-    ctx.font = 'bold 14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillText('——  LEAD  ——', padX + overviewW / 2, overviewTopY + 18);
+        // Deck 2 Artwork & Metadata on Far Right
+        const d2ArtX = rightX - artSize - 14;
+        drawArtwork(d2ArtX, 34, artSize, d2, '#ff4d2e');
 
-    // Right Pitch readout
-    ctx.textAlign = 'right';
-    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#d1d5db';
-    ctx.fillText('▲▼   ±8   0.00%', padX + overviewW - 16, overviewTopY + 18);
+        const d2TextEndX = d2ArtX - 18;
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffeedd';
+        ctx.fillText(d2Title.slice(0, 28), d2TextEndX, 58);
 
-    // 2B. 3-Band Discrete Waveform Bars (Picture 2)
-    const waveBaseY = overviewTopY + overviewH - 8;
-    const waveMaxH = 46;
-    const numBars = Math.floor(overviewW / 2.5);
-    const barW = overviewW / numBars;
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#d9bda5';
+        ctx.fillText(d2Artist.slice(0, 30), d2TextEndX, 80);
 
-    for (let i = 0; i < numBars; i++) {
-        const u = i / numBars;
-        const bx = padX + i * barW;
+        // Deck 2 Badges
+        ctx.font = 'bold 12.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ff7a59';
+        ctx.fillText(`${d2Bpm} BPM`, d2TextEndX, 103);
 
-        // Structured song profile matching Picture 2 (Intro -> Groove -> Drop 1 -> Breakdown -> Main Drop -> Outro)
-        let profile = 0.55;
-        let subBassRatio = 0.35;
-        let midRatio = 0.65;
+        const d2KeyPillX = d2TextEndX - 84 - 54;
+        ctx.beginPath();
+        ctx.roundRect(d2KeyPillX, 92, 54, 18, 4);
+        ctx.fillStyle = 'rgba(255, 77, 46, 0.22)';
+        ctx.fill();
+        ctx.fillStyle = '#ffad99';
+        ctx.textAlign = 'center';
+        ctx.fillText(`${d2Key} ♪`, d2KeyPillX + 27, 104);
 
-        if (u < 0.15) {
-            profile = 0.40 + Math.sin(u * 80.0) * 0.08 + Math.cos(u * 140.0) * 0.05;
-            subBassRatio = 0.25;
-            midRatio = 0.55;
-        } else if (u < 0.35) {
-            profile = 0.52 + Math.sin(u * 95.0) * 0.10 + Math.sin(u * 210.0) * 0.06;
-            subBassRatio = 0.32;
-            midRatio = 0.68;
-        } else if (u < 0.50) {
-            profile = 0.88 + Math.sin(u * 120.0) * 0.10 + Math.cos(u * 300.0) * 0.04;
-            subBassRatio = 0.36;
-            midRatio = 0.72;
-        } else if (u < 0.62) {
-            profile = 0.28 + Math.sin(u * 60.0) * 0.06;
-            subBassRatio = 0.04;
-            midRatio = 0.60;
-        } else if (u < 0.86) {
-            profile = 0.96 + Math.sin(u * 150.0) * 0.04 + Math.cos(u * 280.0) * 0.04;
-            subBassRatio = 0.38;
-            midRatio = 0.74;
-        } else {
-            const outFade = (1.0 - u) / 0.14;
-            profile = (0.45 + Math.sin(u * 70.0) * 0.08) * outFade;
-            subBassRatio = 0.25;
-            midRatio = 0.55;
-        }
+        const d2RoleX = d2KeyPillX - 78;
+        ctx.beginPath();
+        ctx.roundRect(d2RoleX, 92, 70, 18, 4);
+        ctx.fillStyle = 'rgba(255, 77, 46, 0.28)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(255, 100, 60, 0.65)';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+        ctx.fillStyle = '#ff9980';
+        ctx.fillText('DECK 2', d2RoleX + 35, 104);
 
-        profile = Math.max(0.06, Math.min(1.0, profile));
-        const totalBarH = profile * waveMaxH;
-        const blueH = totalBarH * subBassRatio;
-        const greenH = totalBarH * midRatio;
+    } else {
+        // SINGLE DECK HEADER: Deck 1 Large Time Readout on Right
+        const timeX = padX + headerW - 28;
+        ctx.textAlign = 'right';
 
-        // Solid Warm Amber-Copper base layer
-        if (blueH > 1.0) {
-            ctx.fillStyle = '#d95800';
-            ctx.fillRect(bx, waveBaseY - blueH, barW - 0.5, blueH);
-        }
-        // Solid Radiant Golden Honey mid layer
-        if (greenH > blueH) {
-            ctx.fillStyle = '#ffaa14';
-            ctx.fillRect(bx, waveBaseY - greenH, barW - 0.5, greenH - blueH);
-        }
-        // Solid Incandescent White-Gold top spikes
-        if (totalBarH > greenH) {
-            ctx.fillStyle = '#fff6d4';
-            ctx.fillRect(bx, waveBaseY - totalBarH, barW - 0.5, totalBarH - greenH);
-        }
-    }
+        ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffb042';
+        ctx.fillText('REMAIN', timeX, 48);
 
-    // Warm Yellow / Golden Amber Glow Overlay washed over the top overview waveform
-    const overAmberWash = ctx.createLinearGradient(0, overviewTopY, 0, overviewTopY + overviewH);
-    overAmberWash.addColorStop(0.0, 'rgba(255, 215, 75, 0.30)');
-    overAmberWash.addColorStop(0.45, 'rgba(255, 155, 30, 0.16)');
-    overAmberWash.addColorStop(1.0, 'rgba(255, 80, 0, 0.02)');
-    ctx.fillStyle = overAmberWash;
-    ctx.fillRect(padX, overviewTopY, overviewW, overviewH);
-
-    // 2B. Horizontal Overview Baseline Rail: Vintage Edison Filament Bar
-    const nowMsBase = performance.now();
-    const baseStyle = getVintageBulbStyle(getVintageBulbFlicker(nowMsBase * 0.001, 0.55));
-
-    // Ambient warm aura across the baseline
-    const hAmbGrad = ctx.createLinearGradient(0, waveBaseY - 10, 0, waveBaseY + 10);
-    hAmbGrad.addColorStop(0, 'transparent');
-    hAmbGrad.addColorStop(0.5, baseStyle.auraColorOuter);
-    hAmbGrad.addColorStop(1, 'transparent');
-    ctx.fillStyle = hAmbGrad;
-    ctx.fillRect(padX, waveBaseY - 10, overviewW, 20);
-
-    // Glass tube body
-    ctx.fillStyle = `rgba(255, 195, 90, ${0.28 * baseStyle.flicker})`;
-    ctx.fillRect(padX, waveBaseY - 2.0, overviewW, 4.0);
-
-    // Glowing filament core with thermal color shift
-    ctx.shadowColor = baseStyle.shadowColor;
-    ctx.shadowBlur = 12 * baseStyle.shadowSpread;
-    ctx.fillStyle = baseStyle.coreColor;
-    ctx.fillRect(padX, waveBaseY - 0.9, overviewW, 2.0);
-    if (baseStyle.specularColor !== 'transparent') {
+        ctx.font = 'bold 28px "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = '#fffaee';
+        ctx.shadowColor = 'rgba(255, 160, 40, 0.35)';
+        ctx.shadowBlur = 8;
+        const remMin = Math.floor(rem1 / 60);
+        const remSec = Math.floor(rem1 % 60);
+        const remHun = Math.floor((rem1 * 100) % 100);
+        const remStr = `-${remMin}:${remSec.toString().padStart(2, "0")}.${remHun.toString().padStart(2, "0")}`;
+        ctx.fillText(remStr, timeX, 78);
         ctx.shadowBlur = 0;
-        ctx.fillStyle = baseStyle.specularColor;
-        ctx.fillRect(padX, waveBaseY - 0.45, overviewW, 1.0);
-    }
-    ctx.shadowBlur = 0;
 
-    // Brass end caps for overview baseline
-    const bCapL = ctx.createLinearGradient(padX - 4, 0, padX + 2, 0);
-    bCapL.addColorStop(0, '#7a5105'); bCapL.addColorStop(0.5, '#ffe590'); bCapL.addColorStop(1, '#5c3a02');
-    ctx.beginPath(); ctx.arc(padX, waveBaseY, 3.5, 0, Math.PI * 2); ctx.fillStyle = bCapL; ctx.fill();
-    const bCapR = ctx.createLinearGradient(padX + overviewW - 2, 0, padX + overviewW + 4, 0);
-    bCapR.addColorStop(0, '#7a5105'); bCapR.addColorStop(0.5, '#ffe590'); bCapR.addColorStop(1, '#5c3a02');
-    ctx.beginPath(); ctx.arc(padX + overviewW, waveBaseY, 3.5, 0, Math.PI * 2); ctx.fillStyle = bCapR; ctx.fill();
-
-    // Baseline subdivision ticks and small bar numbers every 32 bars
-    ctx.font = 'bold 8px -apple-system, BlinkMacSystemFont, "SF Mono", monospace';
-    ctx.textAlign = 'center';
-    const totalBars1 = Math.floor(totalBeats1 / 4.0);
-    for (let bar = 8; bar <= totalBars1; bar += 8) {
-        const tickProg = (bar * 4.0) / totalBeats1;
-        const tickX = padX + tickProg * overviewW;
-        const isMajor32 = (bar % 32 === 0);
-        ctx.fillStyle = isMajor32 ? 'rgba(255, 235, 180, 0.90)' : 'rgba(255, 200, 120, 0.45)';
-        ctx.fillRect(tickX - 0.5, waveBaseY + 2, 1, isMajor32 ? 6 : 3);
-        if (isMajor32) {
-            ctx.fillStyle = 'rgba(255, 225, 160, 0.90)';
-            ctx.fillText(String(bar), tickX, waveBaseY + 14);
-        }
+        ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#b8a892';
+        const elMin = Math.floor(el1 / 60);
+        const elSec = Math.floor(el1 % 60);
+        const elStr = `${elMin}:${elSec.toString().padStart(2, "0")}`;
+        ctx.fillText(`ELAPSED  ${elStr}`, timeX, 102);
     }
 
-    // 2C. Authentic Denon Hardware Loops (Loop 2 in Orange, Loop 7 in Cyan)
-    const activeLoops = (d1 && d1.loops && d1.loops.length > 0)
-        ? d1.loops
-        : [
+    // =========================================================================
+    // 2. VINTAGE EDISON LED FILAMENT TRACK POSITION BARS & OVERVIEW WAVEFORMS
+    // =========================================================================
+    const nowMsHUD = performance.now();
+    const bulbStyle1 = getVintageBulbStyle(getVintageBulbFlicker(nowMsHUD * 0.001, 0.0));
+    const bulbStyle2 = getVintageBulbStyle(getVintageBulbFlicker(nowMsHUD * 0.001, 1.4));
+
+    const overviewW = width - (padX * 2);
+    const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * Number(d1Bpm));
+    const totalBeats2 = (d2 && d2.totalBeats) || ((totalSec2 / 60.0) * Number(d2Bpm));
+
+    const themeDeck1 = {
+        bass: '#d95800',
+        mid: '#ffaa14',
+        high: '#fff6d4',
+        washTop: 'rgba(255, 215, 75, 0.28)',
+        washMid: 'rgba(255, 155, 30, 0.14)',
+        needleCore: '#ffeedd',
+        needlePhosphor: '#ffaa18',
+        tagColor: '#ffaa18'
+    };
+
+    const themeDeck2 = {
+        bass: '#d63010',
+        mid: '#ff6a20',
+        high: '#ffe2a0',
+        washTop: 'rgba(255, 120, 60, 0.28)',
+        washMid: 'rgba(255, 70, 20, 0.14)',
+        needleCore: '#fff0ee',
+        needlePhosphor: '#ff4d2e',
+        tagColor: '#ff4d2e'
+    };
+
+    if (hasD2) {
+        // ---------------------------------------------------------------------
+        // DUAL TRACK POSITION BARS (Deck 1 Top Strip + Deck 2 Bottom Strip)
+        // ---------------------------------------------------------------------
+        const barH = 50;
+        const bar1Y = 126;
+        const bar2Y = 182;
+
+        // Strip 1 Background
+        ctx.fillStyle = 'rgba(18, 12, 6, 0.40)';
+        ctx.beginPath();
+        ctx.roundRect(padX, bar1Y, overviewW, barH, 6);
+        ctx.fill();
+
+        // Strip 1 Waveform
+        drawMiniWaveform(padX, bar1Y, overviewW, barH, 1, themeDeck1);
+
+        // Strip 1 Vintage LED Filament Rail
+        const rail1Y = bar1Y + barH - 6;
+        drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
+
+        // Strip 1 Active Hot Cues & Loops
+        const activeLoops1 = (d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
+            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' }
+        ];
+        activeLoops1.forEach(loop => {
+            const lx1 = padX + loop.startProgress * overviewW;
+            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+            ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
+            ctx.fillRect(lx1, bar1Y + 14, Math.max(3, lx2 - lx1), barH - 20);
+        });
+
+        // Strip 1 Track Position Needle (Vintage LED Filament Tube)
+        const prog1X = padX + prog1 * overviewW;
+        const el1Min = Math.floor(el1 / 60);
+        const el1Sec = Math.floor(el1 % 60);
+        drawEdisonFilamentNeedle(prog1X, bar1Y + 12, barH - 18, bulbStyle1, 1, '#ffaa18', `D1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+
+        // Strip 2 Background
+        ctx.fillStyle = 'rgba(22, 10, 6, 0.40)';
+        ctx.beginPath();
+        ctx.roundRect(padX, bar2Y, overviewW, barH, 6);
+        ctx.fill();
+
+        // Strip 2 Waveform
+        drawMiniWaveform(padX, bar2Y, overviewW, barH, 2, themeDeck2);
+
+        // Strip 2 Vintage LED Filament Rail
+        const rail2Y = bar2Y + barH - 6;
+        drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
+
+        // Strip 2 Track Position Needle (Vintage LED Filament Tube)
+        const prog2X = padX + prog2 * overviewW;
+        const el2Min = Math.floor(el2 / 60);
+        const el2Sec = Math.floor(el2 % 60);
+        drawEdisonFilamentNeedle(prog2X, bar2Y + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', `D2  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`);
+
+    } else {
+        // ---------------------------------------------------------------------
+        // SINGLE TRACK POSITION BAR (Deck 1 Large Spacious Overview)
+        // ---------------------------------------------------------------------
+        const barH = 78;
+        const bar1Y = 128;
+
+        ctx.fillStyle = 'rgba(16, 11, 6, 0.42)';
+        ctx.beginPath();
+        ctx.roundRect(padX, bar1Y, overviewW, barH, 8);
+        ctx.fill();
+
+        drawMiniWaveform(padX, bar1Y, overviewW, barH, 1, themeDeck1);
+
+        const rail1Y = bar1Y + barH - 8;
+        drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
+
+        // Active Hot Cues & Loops
+        const activeLoops1 = (d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
             { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
             { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
         ];
+        activeLoops1.forEach(loop => {
+            const lx1 = padX + loop.startProgress * overviewW;
+            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+            ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
+            ctx.fillRect(lx1, bar1Y + 18, Math.max(3, lx2 - lx1), barH - 26);
+        });
 
-    activeLoops.forEach(loop => {
-        const col = loop.color || '#ef8130';
-        const startBeat = Math.round(loop.startProgress * totalBeats1);
-        const loopBeats = loop.beats || Math.max(1, Math.round((loop.endProgress - loop.startProgress) * totalBeats1));
-        const lx1 = padX + (startBeat / totalBeats1) * overviewW;
-        const lx2 = padX + ((startBeat + loopBeats) / totalBeats1) * overviewW;
-        const blockW = Math.max(3, lx2 - lx1);
-
-        // Highlight block on overview
-        ctx.fillStyle = hexToRgba(col, 0.38);
-        ctx.fillRect(lx1, overviewTopY + 22, blockW, waveBaseY - (overviewTopY + 22) + 2);
-
-        // Loop In needle & marker triangles (▲ at bottom, ▼ at top)
-        ctx.fillStyle = col;
-        ctx.fillRect(lx1 - 1, overviewTopY + 22, 2, waveBaseY - (overviewTopY + 22) + 2);
-        ctx.beginPath();
-        ctx.moveTo(lx1, waveBaseY + 2);
-        ctx.lineTo(lx1 - 5, waveBaseY + 10);
-        ctx.lineTo(lx1 + 5, waveBaseY + 10);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(lx1, overviewTopY + 22);
-        ctx.lineTo(lx1 - 4.5, overviewTopY + 15);
-        ctx.lineTo(lx1 + 4.5, overviewTopY + 15);
-        ctx.closePath();
-        ctx.fill();
-
-        // Loop Out needle & marker triangles
-        ctx.fillRect(lx2 - 1, overviewTopY + 22, 2, waveBaseY - (overviewTopY + 22) + 2);
-        ctx.beginPath();
-        ctx.moveTo(lx2, waveBaseY + 2);
-        ctx.lineTo(lx2 - 5, waveBaseY + 10);
-        ctx.lineTo(lx2 + 5, waveBaseY + 10);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.moveTo(lx2, overviewTopY + 22);
-        ctx.lineTo(lx2 - 4.5, overviewTopY + 15);
-        ctx.lineTo(lx2 + 4.5, overviewTopY + 15);
-        ctx.closePath();
-        ctx.fill();
-
-        // Loop name tag (e.g. "LOOP 2" or "LOOP 7")
-        ctx.font = 'bold 8.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillStyle = col;
-        ctx.fillText(loop.name || `LOOP ${loop.num}`, Math.min(padX + overviewW - 18, Math.max(padX + 18, lx1 + blockW / 2)), overviewTopY + 17);
-    });
-
-    // 2D. Two Track Hot Cues (Denon Deck Colors & Numbers from m.db)
-    const activeCues = (d1 && d1.cues && d1.cues.length > 0)
-        ? d1.cues
-        : [
-            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
-            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
-        ];
-
-    activeCues.forEach(cue => {
-        const col = cue.color || '#ef8130';
-        const cueBeat = Math.round(cue.progress * totalBeats1);
-        const cx = padX + (cueBeat / totalBeats1) * overviewW;
-
-        ctx.fillStyle = col;
-        ctx.fillRect(cx - 1.0, overviewTopY + 24, 2.0, waveBaseY - (overviewTopY + 24) + 2);
-
-        // Diamond anchor at bottom
-        ctx.beginPath();
-        ctx.moveTo(cx, waveBaseY + 2);
-        ctx.lineTo(cx - 4.5, waveBaseY + 8);
-        ctx.lineTo(cx, waveBaseY + 14);
-        ctx.lineTo(cx + 4.5, waveBaseY + 8);
-        ctx.closePath();
-        ctx.fill();
-
-        // Badge at top
-        ctx.font = 'bold 9px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(cue.name || `CUE ${cue.num}`, Math.min(padX + overviewW - 14, Math.max(padX + 14, cx)), overviewTopY + 10);
-    });
-
-    // 2E. Current Track Position Needle: Warm & Homely Vintage Edison Filament Tube
-    ctx.save();
-    const nowMs1 = performance.now();
-    const needleStyle1 = getVintageBulbStyle(getVintageBulbFlicker(nowMs1 * 0.001, 0.0));
-
-    const progX = padX + prog1 * overviewW;
-    const needleTopY = overviewTopY + 22;
-    const needleBotY = waveBaseY + 2;
-    const needleH = needleBotY - needleTopY;
-
-    // 1. Broad homely candlelight ambient aura (bathes adjacent overview in warm honey glow)
-    const ambW1 = 36.0 * needleStyle1.auraSpread;
-    const ambGrad1 = ctx.createLinearGradient(progX - ambW1, 0, progX + ambW1, 0);
-    ambGrad1.addColorStop(0, 'rgba(255, 100, 10, 0)');
-    ambGrad1.addColorStop(0.35, needleStyle1.auraColorOuter);
-    ambGrad1.addColorStop(0.50, needleStyle1.auraColorInner);
-    ambGrad1.addColorStop(0.65, needleStyle1.auraColorOuter);
-    ambGrad1.addColorStop(1, 'rgba(255, 100, 10, 0)');
-    ctx.fillStyle = ambGrad1;
-    ctx.fillRect(progX - ambW1, needleTopY - 4, ambW1 * 2, needleH + 8);
-
-    // 2. Vintage Edison glass tube cylinder enclosure
-    const tubeW1 = 9.0;
-    ctx.beginPath();
-    ctx.roundRect(progX - tubeW1 / 2, needleTopY, tubeW1, needleH, 4.5);
-    const tubeGrad1 = ctx.createLinearGradient(progX - tubeW1 / 2, 0, progX + tubeW1 / 2, 0);
-    tubeGrad1.addColorStop(0, `rgba(255, 140, 20, ${0.30 * needleStyle1.flicker})`);
-    tubeGrad1.addColorStop(0.5, `rgba(255, 215, 110, ${0.45 * needleStyle1.flicker})`);
-    tubeGrad1.addColorStop(1, `rgba(255, 140, 20, ${0.30 * needleStyle1.flicker})`);
-    ctx.fillStyle = tubeGrad1;
-    ctx.fill();
-    ctx.lineWidth = 1.0;
-    ctx.strokeStyle = `rgba(255, 230, 150, ${0.55 * needleStyle1.flicker})`;
-    ctx.stroke();
-
-    // 3. Radiant honey-butterscotch plasma glow
-    const auraW1 = 14.0 * needleStyle1.auraSpread;
-    const auraGrad1 = ctx.createLinearGradient(progX - auraW1, 0, progX + auraW1, 0);
-    auraGrad1.addColorStop(0, 'rgba(255, 120, 10, 0)');
-    auraGrad1.addColorStop(0.30, needleStyle1.auraColorOuter);
-    auraGrad1.addColorStop(0.50, needleStyle1.auraColorInner);
-    auraGrad1.addColorStop(0.70, needleStyle1.auraColorOuter);
-    auraGrad1.addColorStop(1, 'rgba(255, 120, 10, 0)');
-    ctx.fillStyle = auraGrad1;
-    ctx.fillRect(progX - auraW1, needleTopY, auraW1 * 2, needleH);
-
-    // 4. Brilliant white-hot or ember filament core with dynamic blackbody thermal shift
-    ctx.shadowColor = needleStyle1.shadowColor;
-    ctx.shadowBlur = (16 + (transient || 0) * 6) * needleStyle1.shadowSpread;
-    ctx.fillStyle = needleStyle1.coreColor;
-    ctx.fillRect(progX - 2.0, needleTopY + 2, 4.0, needleH - 4);
-
-    // Specular ultra-white micro-core thread during hot surges
-    if (needleStyle1.specularColor !== 'transparent') {
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = needleStyle1.specularColor;
-        ctx.fillRect(progX - 0.9, needleTopY + 4, 1.8, needleH - 8);
-    }
-
-    // 5. Vintage Edison brass / golden end caps
-    const capGrad1 = ctx.createLinearGradient(progX - 5, 0, progX + 5, 0);
-    capGrad1.addColorStop(0, '#7a5105');
-    capGrad1.addColorStop(0.4, '#ffe590');
-    capGrad1.addColorStop(0.8, '#c99318');
-    capGrad1.addColorStop(1, '#5c3a02');
-
-    // Top brass cap
-    ctx.beginPath();
-    ctx.arc(progX, needleTopY + 2, 5.0, 0, Math.PI * 2);
-    ctx.fillStyle = capGrad1;
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 240, 180, 0.8)';
-    ctx.lineWidth = 0.8;
-    ctx.stroke();
-
-    // Bottom brass cap
-    ctx.beginPath();
-    ctx.arc(progX, needleBotY - 2, 5.0, 0, Math.PI * 2);
-    ctx.fillStyle = capGrad1;
-    ctx.fill();
-    ctx.stroke();
-    ctx.restore();
-
-    // 2E. Deck 2 Overlay Badge in Header when Track 2 is active
-    if (d2Active && d2 && d2.title) {
-        const d2BadgeW = 280;
-        const d2BadgeX = padX + overviewW / 2 - d2BadgeW / 2;
-        ctx.beginPath();
-        ctx.roundRect(d2BadgeX, 2, d2BadgeW, 22, 4);
-        ctx.fillStyle = 'rgba(255, 0, 127, 0.28)';
-        ctx.fill();
-        ctx.strokeStyle = '#ff007f';
-        ctx.lineWidth = 1.0;
-        ctx.stroke();
-
-        ctx.fillStyle = '#ff66b2';
-        ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText(`⮂ DECK 2 OVERLAID: ${d2.title.slice(0, 24)} (${Number(d2.bpm || bpm).toFixed(1)} BPM)`, d2BadgeX + d2BadgeW / 2, 17);
+        const prog1X = padX + prog1 * overviewW;
+        const el1Min = Math.floor(el1 / 60);
+        const el1Sec = Math.floor(el1 % 60);
+        drawEdisonFilamentNeedle(prog1X, bar1Y + 16, barH - 24, bulbStyle1, 1, '#ffaa18', `DECK 1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
     }
 
     // =========================================================================
@@ -8569,12 +8676,23 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     ctx.fillStyle = needleStyle2.coreColor;
     ctx.fillRect(playX - 2.75, waveTopY + 3, 5.5, waveBoxH - 6);
 
-    // Specular ultra-white micro-core thread during hot surges
-    if (needleStyle2.specularColor !== 'transparent') {
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = needleStyle2.specularColor;
-        ctx.fillRect(playX - 1.2, waveTopY + 5, 2.4, waveBoxH - 10);
-    }
+        // Luminous micro-beads along the coiled filament (the tiny LED filament chips)
+        const beadSpacingP = 9.0;
+        const numBeadsP = Math.floor((waveBoxH - 24) / beadSpacingP);
+        for (let b = 0; b <= numBeadsP; b++) {
+            const by = waveTopY + 12 + b * beadSpacingP;
+            ctx.beginPath();
+            ctx.arc(playX, by, 2.4, 0, Math.PI * 2);
+            ctx.fillStyle = '#fffce8';
+            ctx.fill();
+        }
+
+        // Specular ultra-white micro-core thread during hot surges
+        if (needleStyle2.specularColor !== 'transparent') {
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = needleStyle2.specularColor;
+            ctx.fillRect(playX - 1.2, waveTopY + 5, 2.4, waveBoxH - 10);
+        }
 
     // 5. Vintage Edison brass / golden end caps
     const pCapGrad = ctx.createLinearGradient(playX - 7, 0, playX + 7, 0);
@@ -9933,6 +10051,7 @@ export function createVFXScene(container) {
     const djAudioHistoryData = new Uint8Array(512 * 2 * 4);
     // Initialize with organic default wave groove so it looks rich before first audio frame
     for (let i = 0; i < 512; i++) {
+        const u = i / 512.0;
         const phi = (i / 512) * Math.PI * 16.0;
         const b1 = Math.floor((Math.sin(phi) * 0.4 + 0.5) * 180);
         const m1 = Math.floor((Math.sin(phi * 2.1) * 0.3 + 0.5) * 160);
@@ -9945,11 +10064,38 @@ export function createVFXScene(container) {
         djAudioHistoryData[idx1 + 2] = h1;
         djAudioHistoryData[idx1 + 3] = t1;
 
+        // Deck 2 Synthetic Track Profile (Distinct club track arrangement for seamless dual-deck blending)
+        let prof2 = 0.52;
+        let bRatio2 = 0.38;
+        let mRatio2 = 0.62;
+        if (u < 0.12) {
+            prof2 = 0.42 + Math.sin(u * 90.0) * 0.09;
+            bRatio2 = 0.30;
+        } else if (u < 0.32) {
+            prof2 = 0.65 + Math.sin(u * 110.0) * 0.12 + Math.cos(u * 220.0) * 0.05;
+            bRatio2 = 0.40;
+        } else if (u < 0.45) {
+            prof2 = 0.92 + Math.sin(u * 140.0) * 0.08;
+            bRatio2 = 0.42;
+        } else if (u < 0.58) {
+            prof2 = 0.32 + Math.sin(u * 50.0) * 0.08;
+            bRatio2 = 0.08; // Atmospheric breakdown
+        } else if (u < 0.88) {
+            prof2 = 0.98 + Math.sin(u * 160.0) * 0.05 + Math.cos(u * 310.0) * 0.04;
+            bRatio2 = 0.44; // Main high-energy drop
+        } else {
+            prof2 = (0.50 + Math.sin(u * 80.0) * 0.08) * ((1.0 - u) / 0.12);
+        }
+        const b2 = Math.floor(prof2 * bRatio2 * 255);
+        const m2 = Math.floor(prof2 * mRatio2 * 255);
+        const h2 = Math.floor(prof2 * 0.85 * 255);
+        const t2 = (i % 32 === 0) ? 220 : 0;
+
         const idx2 = (512 + i) * 4;
-        djAudioHistoryData[idx2]     = 0;
-        djAudioHistoryData[idx2 + 1] = 0;
-        djAudioHistoryData[idx2 + 2] = 0;
-        djAudioHistoryData[idx2 + 3] = 0;
+        djAudioHistoryData[idx2]     = b2;
+        djAudioHistoryData[idx2 + 1] = m2;
+        djAudioHistoryData[idx2 + 2] = h2;
+        djAudioHistoryData[idx2 + 3] = t2;
     }
 
     const djAudioHistoryTex = new THREE.DataTexture(djAudioHistoryData, 512, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -10101,10 +10247,13 @@ export function createVFXScene(container) {
         map: djHudTex,
         transparent: true,
         blending: THREE.NormalBlending,
+        side: THREE.DoubleSide,
         depthTest: false,
         depthWrite: false
     });
     const djHudMesh = new THREE.Mesh(new THREE.PlaneGeometry(36.5, 20.5), djHudMat);
+    window._djHudCanvas = djHudCanvas;
+    window._djHudMesh = djHudMesh;
     djHudMesh.position.set(0, 0, -1.9);
     djHudMesh.renderOrder = 20;
     djWaveMesh.renderOrder = 10;
@@ -10156,7 +10305,21 @@ export function createVFXScene(container) {
     defaultDeckArtImg.src = deck1Data.artworkUrl;
     loadDeckArtwork(deck1Data.title, deck1Data.artist, deck1Data);
 
-    let deck2Data = { artist: "DENON PRIME", title: "TRACK 2 (HOT MIX)", bpm: 126.0, key: "8A" };
+    let deck2Data = { 
+        artist: "DENON PRIME", 
+        title: "TRACK 2 (HOT MIX)", 
+        bpm: 126.0, 
+        key: "8A",
+        duration: 360,
+        totalBeats: 756.0,
+        cues: [
+            { name: "CUE 1", num: 1, progress: 0.125, color: "#ff4d2e" },
+            { name: "CUE 2", num: 2, progress: 0.500, color: "#ffaa33" }
+        ],
+        loops: [],
+        artworkUrl: "",
+        artworkImg: null
+    };
 
     // Persistent low-pass temporal smoothing state for jitter-free audio reactivity
     let wireSmoothBass = 0.0;
@@ -15511,11 +15674,16 @@ export function createVFXScene(container) {
                 djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
                 djAudioHistoryTex.needsUpdate = true;
             }
+            if (!deck2HasHardwareWaveform && deck2Active) {
+                const progIdx2 = Math.floor(deck2Progress * 512) % 512;
+                const d2Offset = (512 + progIdx2) * 4;
+                djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(rawBass * 255));
+                djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(rawMid * 255));
+                djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(rawTreble * 255));
+                djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
+                djAudioHistoryTex.needsUpdate = true;
+            }
 
-            // Update 3D Particle Spectrum Field Across All 64 Frequency Bands
-            const posArr = specParticleGeo.attributes.position.array;
-            const colArr = specParticleGeo.attributes.color.array;
-            let specColorsNeedUpdate = false;
             const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
 
             // Sample live wire audio slice from deck waveform with fractional bilinear interpolation & temporal smoothing
@@ -15640,9 +15808,27 @@ export function createVFXScene(container) {
                 deck1Progress = (deck1Progress + progressDelta) % 1.0;
             }
 
-            if (deck2Active) {
-                const trackSec2 = deck2Data.duration || 360;
+            const trackSec2 = deck2Data.duration || 360;
+            if (deck2WireProgress !== undefined && !isNaN(deck2WireProgress)) {
+                const diff2 = deck2WireProgress - deck2Progress;
+                if (diff2 < -0.0001 || Math.abs(diff2) > 0.002) {
+                    deck2Progress = deck2WireProgress;
+                } else {
+                    deck2Progress += (delta / trackSec2) + diff2 * Math.min(1.0, delta * 24.0);
+                }
+            } else if (deck2Playing || deck2Active) {
                 deck2Progress = (deck2Progress + (delta / trackSec2)) % 1.0;
+            }
+
+            let blend2 = 0.0;
+            if (deck2Active) {
+                if (deck2Fader > 0.01) {
+                    blend2 = Math.max(0.35, Math.min(1.0, deck2Fader));
+                } else if (deck2Playing) {
+                    blend2 = 0.85;
+                } else {
+                    blend2 = 0.65; // Track 2 loaded on deck / cued ready to blend
+                }
             }
 
             const beatPhaseVal = (elapsedTime * (currentBPM / 60.0)) % 1.0;
@@ -15652,7 +15838,7 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uHeadPos.value = deck1Progress;
             djWaveMat.uniforms.uTrackProgress.value = deck1Progress;
             djWaveMat.uniforms.uDeck2Progress.value = deck2Progress;
-            djWaveMat.uniforms.uDeck2Active.value = deck2Active ? 1.0 : 0.0;
+            djWaveMat.uniforms.uDeck2Active.value = blend2;
             if (djWaveMat.uniforms.uTotalBeats) {
                 djWaveMat.uniforms.uTotalBeats.value = (deck1Data && deck1Data.totalBeats) ? deck1Data.totalBeats : 776.1085;
             }
@@ -18146,11 +18332,32 @@ export function createVFXScene(container) {
                 if (data.artist) deck2Data.artist = data.artist;
                 if (data.bpm) deck2Data.bpm = data.bpm;
                 if (data.key) deck2Data.key = data.key;
-                if (data.progress !== undefined) deck2Progress = data.progress;
+                if (data.artworkUrl) {
+                    deck2Data.artworkUrl = data.artworkUrl;
+                    const img = new Image();
+                    img.crossOrigin = 'anonymous';
+                    img.onload = () => { deck2Data.artworkImg = img; };
+                    img.src = data.artworkUrl;
+                } else if (deck2Data.title && !deck2Data._artRequested) {
+                    deck2Data._artRequested = true;
+                    loadDeckArtwork(deck2Data.title, deck2Data.artist, deck2Data);
+                }
+                if (data.duration) deck2Data.duration = Number(data.duration);
+                if (data.totalBeats) deck2Data.totalBeats = Number(data.totalBeats);
+                if (data.cues && Array.isArray(data.cues)) deck2Data.cues = data.cues;
+                if (data.loops && Array.isArray(data.loops)) deck2Data.loops = data.loops;
 
-                // Deck 2 strictly stays inactive (black/zero-line standby) unless playing AND fader is more than 3/4 way up (> 75%)
+                if (data.progress !== undefined) {
+                    const newProg2 = Number(data.progress);
+                    if (newProg2 < deck2Progress - 0.0001 || Math.abs(newProg2 - deck2Progress) > 0.002) {
+                        deck2Progress = newProg2;
+                    }
+                    deck2WireProgress = newProg2;
+                }
+
+                // Deck 2 is active whenever Track 2 is loaded in the player
                 const hasValidTrack = !!(deck2Data.title && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—');
-                deck2Active = deck2Playing && hasValidTrack && (deck2Fader > 0.75);
+                deck2Active = hasValidTrack;
             }
         },
         setDeckWaveform: (waveformPacket) => {

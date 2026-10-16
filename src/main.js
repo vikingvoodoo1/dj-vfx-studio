@@ -664,6 +664,7 @@ async function init() {
 
     // 1. Initialize Three.js VFX Scene
     const vfx = createVFXScene(container);
+    window.vfx = vfx;
     vfx.setBloomMultiplier(0.35);
 
     // Load Default Animated Logo Video (jkmclaren Shock MP4)
@@ -1065,12 +1066,7 @@ async function init() {
             return;
         }
 
-        if (!force && vfx && vfx.getCurrentFX && vfx.getCurrentFX() === 3) {
-            // Scene 4 (DJ Deck Waveforms) already features integrated 3D Deck HUD with title, artist, key & digital clock.
-            // Suppress the duplicate HTML banner so it does not occlude the top-right digital time clock.
-            hideTrackBanner();
-            return;
-        }
+
 
         const title = trackData?.title || (force ? (trackTitle ? trackTitle.textContent : '') : '');
         const artist = trackData?.artist || (force ? (trackArtist ? trackArtist.textContent.split(' • ')[0] : '') : '');
@@ -1111,9 +1107,36 @@ async function init() {
 
         // Update DOM elements on HUD, Banner and Now Playing Pane
         if (trackTitle) trackTitle.textContent = title;
-        if (trackArtist) trackArtist.textContent = artist ? `${artist} • ${deckLabel}` : deckLabel;
-        if (trackDeckBadge) trackDeckBadge.textContent = deckLabel;
+        if (trackDeckBadge) {
+            trackDeckBadge.textContent = deckLabel;
+            if (rawDeck === 2 || rawDeck === '2' || rawDeck === 'B') {
+                trackDeckBadge.style.background = 'rgba(255, 77, 46, 0.25)';
+                trackDeckBadge.style.borderColor = '#ff4d2e';
+                trackDeckBadge.style.color = '#ff6a4d';
+            } else {
+                trackDeckBadge.style.background = 'rgba(255, 170, 0, 0.22)';
+                trackDeckBadge.style.borderColor = '#ffaa00';
+                trackDeckBadge.style.color = '#ffbb33';
+            }
+        }
         if (trackBpmBadge) trackBpmBadge.textContent = `${bpm.toFixed(1)} BPM`;
+
+        // Update Edison Filament Progress Bar on Track Banner
+        const progFill = document.getElementById('track-banner-progress-fill');
+        const progNeedle = document.getElementById('track-banner-needle');
+        if (progFill && progNeedle) {
+            if (rawDeck === 2 || rawDeck === '2' || rawDeck === 'B') {
+                progFill.style.background = 'linear-gradient(90deg, #d62000 0%, #ff4d2e 65%, #ffd490 100%)';
+                progFill.style.boxShadow = '0 0 6px #ff4d2e, 0 0 12px rgba(255, 77, 46, 0.7)';
+                progNeedle.style.background = 'radial-gradient(circle at 40% 35%, #ffffff 0%, #ffc0a0 40%, #ff4d2e 80%, #6b1404 100%)';
+                progNeedle.style.borderColor = '#ff8866';
+            } else {
+                progFill.style.background = 'linear-gradient(90deg, #ff6600 0%, #ffaa00 65%, #fff0aa 100%)';
+                progFill.style.boxShadow = '0 0 6px #ffaa00, 0 0 12px rgba(255, 140, 0, 0.7)';
+                progNeedle.style.background = 'radial-gradient(circle at 40% 35%, #ffffff 0%, #ffe088 40%, #ff9900 80%, #6b3e04 100%)';
+                progNeedle.style.borderColor = '#ffe890';
+            }
+        }
 
         if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = title;
         if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = artist || 'Live Performance';
@@ -4759,6 +4782,14 @@ async function init() {
             // Immediately pipe loaded deck metadata to 3D visualizer and DJ Deck Waveforms scene (FX 3)
             if (vfx.setDeckData) vfx.setDeckData(data);
 
+            if (data.title && (!data.artworkUrl && !data.coverart)) {
+                fetchTrackArtwork(data.title, data.artist).then((artUrl) => {
+                    if (artUrl && vfx.setDeckData) {
+                        vfx.setDeckData({ deck: data.deck || 1, artworkUrl: artUrl });
+                    }
+                });
+            }
+
             if (data.bpm && data.bpm > 40 && data.bpm < 300) {
                 bpmVal.textContent = Number(data.bpm).toFixed(1);
                 vfx.setBPM(data.bpm);
@@ -4816,8 +4847,10 @@ async function init() {
             deckCards.forEach((d, idx) => {
                 if (!d.card) return;
                 if (idx === activeIdx) {
-                    d.card.style.borderColor = '#00ffcc';
-                    d.card.style.background = 'rgba(0, 255, 204, 0.18)';
+                    const deckCol = (idx === 1) ? '#ff4d2e' : '#ffaa00';
+                    const deckBg = (idx === 1) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(255, 170, 0, 0.22)';
+                    d.card.style.borderColor = deckCol;
+                    d.card.style.background = deckBg;
                     if (d.bpm && trackData.bpm) d.bpm.textContent = Number(trackData.bpm).toFixed(1);
                     if (d.state) d.state.textContent = '● MASTER';
                 } else {
@@ -4861,6 +4894,18 @@ async function init() {
                 vfx.setDeckData(telemetry);
             }
             updateDenonStageBarUI(telemetry);
+
+            // Update Track Banner Edison Filament Progress Bar
+            const progFill = document.getElementById('track-banner-progress-fill');
+            const progNeedle = document.getElementById('track-banner-needle');
+            if (progFill && progNeedle && telemetry.progress !== undefined) {
+                const targetDeck = (telemetry.deck === 2 || telemetry.deck === '2' || telemetry.deck === 'B') ? 2 : 1;
+                if (!lastDisplayedTrackDeck || lastDisplayedTrackDeck === targetDeck) {
+                    const pPct = Math.max(0, Math.min(100, Number(telemetry.progress) * 100));
+                    progFill.style.width = `${pPct}%`;
+                    progNeedle.style.left = `${pPct}%`;
+                }
+            }
         },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
@@ -4875,6 +4920,12 @@ async function init() {
                     if (deckCards[idx]) {
                         if (deckCards[idx].bpm && deckData.bpm) deckCards[idx].bpm.textContent = Number(deckData.bpm).toFixed(1);
                         if (deckCards[idx].state) deckCards[idx].state.textContent = deckData.play ? '● ACTIVE' : 'STANDBY';
+                        if (deckData.play) {
+                            const deckCol = (idx === 1) ? '#ff4d2e' : '#ffaa00';
+                            const deckBg = (idx === 1) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(255, 170, 0, 0.22)';
+                            deckCards[idx].card.style.borderColor = deckCol;
+                            deckCards[idx].card.style.background = deckBg;
+                        }
                     }
                     if (vfx.setDeckData) vfx.setDeckData(deckData);
                 });
