@@ -2570,13 +2570,17 @@ const DJDeckWaveformShader = {
                 float totalTrackBeats = (364.0 / 60.0) * bpmVal;
                 float beatPos = texU * totalTrackBeats;
 
-                // Authentic 3-Band Vertical Layer Heights (Denon Engine OS 3-Band Architecture)
-                // Low band (Bass/Kicks): Outer envelope (tallest blue lobes from real database audio)
-                float hLow  = clamp(rawBass * 0.94 + rawHit * 0.12 + 0.03, 0.03, 0.96);
+                // Authentic Denon Engine DJ Waveform Architecture
+                float intraBeat = fract(beatPos);
+                float beatEnvelope = exp(-intraBeat * 3.2) * 0.58 + 0.42;
+                float transientSpike = exp(-intraBeat * 12.0);
+
+                // Low band (Bass/Kicks): Outer envelope (tallest blue lobes matching Denon photo)
+                float hLow  = clamp((rawBass * 0.92 + rawHit * 0.10) * beatEnvelope + 0.04, 0.04, 0.96);
                 // Mid band (Vocals/Melody): Middle envelope (emerald green layer)
-                float hMid  = clamp(rawMid * 0.78 + rawHit * 0.05 + 0.02, 0.02, 0.80);
-                // High band (Hi-hats/Transients): Inner crisp ice white core needle
-                float hHigh = clamp(rawHigh * 0.52 + rawHit * 0.08 + 0.01, 0.01, 0.52);
+                float hMid  = clamp((rawMid * 0.72 + rawHit * 0.06) * (beatEnvelope * 0.85 + 0.15) + 0.02, 0.02, 0.80);
+                // High band (Hi-hats/Transients): Inner crisp ice white needle core
+                float hHigh = clamp((rawHigh * 0.45 + rawHit * 0.08) * (transientSpike * 0.75 + 0.25) + 0.01, 0.01, 0.52);
 
                 // Anti-aliased band masks based on vertical distance from center zero-line
                 float maskLow  = 1.0 - smoothstep(hLow  - 0.008, hLow  + 0.004, absDeckY);
@@ -7870,25 +7874,29 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
 
     // Loop info: Denon Orange pill
     ctx.textAlign = 'left';
+    const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * Number(d1Bpm));
+    const loopProgLen = (d1 && d1.loopEnd > d1.loopStart) ? (d1.loopEnd - d1.loopStart) : 0;
+    const loopBeats = (loopProgLen > 0) ? Math.max(1, Math.round(loopProgLen * totalBeats1)) : 8;
+
     if (d1 && d1.loopActive) {
         ctx.beginPath();
-        ctx.roundRect(padX + 195, 94, 120, 20, 4);
+        ctx.roundRect(padX + 195, 94, 132, 20, 4);
         ctx.fillStyle = 'rgba(255, 119, 0, 0.25)';
         ctx.fill();
         ctx.strokeStyle = '#ff7700';
         ctx.lineWidth = 1.0;
         ctx.stroke();
         ctx.fillStyle = '#ff9933';
-        ctx.fillText('↶ LOOP 2 ACTIVE', padX + 204, 105);
+        ctx.fillText(`↶ LOOP 2 (${loopBeats}B)`, padX + 202, 105);
     } else {
         ctx.fillStyle = '#ffaa00';
-        ctx.fillText('↶ 4 BEATS', padX + 200, 106);
+        ctx.fillText(`↶ ${loopBeats} BEATS`, padX + 200, 106);
     }
 
     ctx.fillStyle = '#00ff88';
-    ctx.fillText('SYNC LOCK', padX + 335, 106);
+    ctx.fillText('SYNC LOCK', padX + 342, 106);
     ctx.fillStyle = '#8899aa';
-    ctx.fillText('±8  0.00%', padX + 430, 106);
+    ctx.fillText('±8  0.00%', padX + 435, 106);
 
     // Integrated Time Readouts (Merged cleanly into right side of Left Card)
     const timeX = padX + leftCardW - 24;
@@ -16825,12 +16833,12 @@ export function createVFXScene(container) {
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
         }
-        // Camera Recoil: strictly disabled for FX 4 (Disco Ball) and FX 16-21
-        if (audio.isOnset && currentFXIndex !== 4 && currentFXIndex !== 21 && (currentFXIndex < 16 || currentFXIndex > 21)) {
+        // Camera Recoil: strictly disabled for FX 3 (DJ Deck Waveform), FX 4 (Disco Ball) and FX 16-21
+        if (audio.isOnset && currentFXIndex !== 3 && currentFXIndex !== 4 && currentFXIndex !== 21 && (currentFXIndex < 16 || currentFXIndex > 21)) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) {
+        } else if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -16853,17 +16861,17 @@ export function createVFXScene(container) {
         }
 
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        // Strictly disable audio bloom boost, glitch and aberration for FX 4 & FX 21
-        const fxBloomBoost = (currentFXIndex === 4 || currentFXIndex === 21) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
-        const targetBloom = (currentFXIndex === 4 || currentFXIndex === 21)
-            ? 0.22 * bloomMultiplier
+        // Strictly disable audio bloom boost, glitch and aberration for FX 3 (DJ Deck), FX 4 & FX 21
+        const fxBloomBoost = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
+        const targetBloom = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21)
+            ? 0.18 * bloomMultiplier
             : Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -16875,8 +16883,8 @@ export function createVFXScene(container) {
 
         nightclubPass.uniforms.uTime.value = elapsedTime;
 
-        // Global Scene Lights: Disabled for FX 4 & FX 21 so they don't pulse neon colors
-        if (currentFXIndex === 4 || currentFXIndex === 21) {
+        // Global Scene Lights: Disabled for FX 3 (DJ Deck), FX 4 & FX 21 so they don't pulse neon colors
+        if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21) {
             lightCyan.intensity = 0.0;
             lightMagenta.intensity = 0.0;
         } else {

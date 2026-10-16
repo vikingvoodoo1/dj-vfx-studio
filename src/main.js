@@ -4410,10 +4410,10 @@ async function init() {
         if (audioStatus && !audioStatus.dataset.screenLink) {
             audioStatus.innerHTML = `<span style="color:#00ff88">● DECK LIVE (${source})</span>`;
         }
-        if (audioDeviceSelect && audioDeviceSelect.value !== 'deck-live') {
+        // Only set default to deck-live once if user has not explicitly picked an interface
+        if (currentSelectedDeviceId === 'default' && audioDeviceSelect) {
             audioDeviceSelect.value = 'deck-live';
             currentSelectedDeviceId = 'deck-live';
-            try { localStorage.setItem('dj_vfx_audio_device_id', 'deck-live'); } catch (e) {}
         }
     }
 
@@ -4438,7 +4438,116 @@ async function init() {
 
     setPhraseDisplayMode(activePhraseDisplayMode);
 
+    function updateDenonStageBarUI(telemetry) {
+        if (!telemetry || telemetry.beat === undefined) return;
+
+        const beat = Number(telemetry.beat);
+        const totalBeats = Number(telemetry.totalBeats) || 776;
+        const currentBeatInt = Math.floor(beat);
+        const beatInBar = ((currentBeatInt % 4) + 4) % 4 + 1;
+        currentBeatInBar = beatInBar;
+
+        triggerBeatPulseVisuals(beatInBar);
+
+        const currentBar = Math.floor(beat / 4) + 1;
+        const totalBars = Math.floor(totalBeats / 4);
+
+        if (telemetry.loopActive && telemetry.loopEnd > telemetry.loopStart) {
+            const startBeat = Math.round(telemetry.loopStart * totalBeats);
+            const endBeat = Math.round(telemetry.loopEnd * totalBeats);
+            const loopBeats = Math.max(1, endBeat - startBeat);
+            const startBar = Math.floor(startBeat / 4) + 1;
+            const endBar = Math.floor(endBeat / 4);
+
+            // Phrase tag: Orange Loop Badge
+            if (cdj3000PhraseTag) {
+                cdj3000PhraseTag.textContent = `↶ LOOP (${loopBeats} BEATS)`;
+                cdj3000PhraseTag.className = 'phrase-tag';
+                cdj3000PhraseTag.style.background = 'rgba(255, 119, 0, 0.28)';
+                cdj3000PhraseTag.style.borderColor = '#ff7700';
+                cdj3000PhraseTag.style.color = '#ff9933';
+            }
+            if (cdjDualPhraseTag) {
+                cdjDualPhraseTag.textContent = `↶ LOOP (${loopBeats}B)`;
+                cdjDualPhraseTag.style.background = 'rgba(255, 119, 0, 0.28)';
+                cdjDualPhraseTag.style.borderColor = '#ff7700';
+                cdjDualPhraseTag.style.color = '#ff9933';
+            }
+
+            // Bar readout: BAR 07 (LOOP 06–08)
+            const barText = `BAR ${String(currentBar).padStart(2, '0')} (LOOP ${String(startBar).padStart(2, '0')}–${String(endBar).padStart(2, '0')})`;
+            if (cdj3000BarText) {
+                cdj3000BarText.textContent = barText;
+                cdj3000BarText.style.color = '#ffaa00';
+            }
+            if (cdjDualBarCount) cdjDualBarCount.textContent = barText;
+
+            if (cdj3000CountdownText) {
+                cdj3000CountdownText.textContent = `● LOOP ACTIVE (BAR ${startBar} TO ${endBar})`;
+                cdj3000CountdownText.style.color = '#ff9933';
+            }
+
+            // Segments: 8-segment track corresponds directly to the beats of the loop
+            const beatInLoop = Math.max(0, currentBeatInt - startBeat) % loopBeats;
+            const activeSeg = Math.min(8, Math.max(1, Math.round(((beatInLoop + 1) / loopBeats) * 8)));
+            const updateSegments = (trackEl) => {
+                if (!trackEl) return;
+                const segments = trackEl.querySelectorAll('.phrase-segment');
+                segments.forEach((seg, idx) => {
+                    const segIdx = idx + 1;
+                    seg.className = 'phrase-segment';
+                    if (segIdx < activeSeg) {
+                        seg.classList.add('filled');
+                        seg.style.background = '#ff9933';
+                    } else if (segIdx === activeSeg) {
+                        seg.classList.add('current');
+                        seg.style.background = '#ffffff';
+                    } else {
+                        seg.style.background = 'rgba(255, 119, 0, 0.12)';
+                    }
+                });
+            };
+            updateSegments(cdj3000BarTrack);
+            updateSegments(cdjDualBarTrack);
+
+            if (cdj2000BarNum) cdj2000BarNum.textContent = String(currentBar).padStart(2, '0');
+            if (cdj2000BeatNum) cdj2000BeatNum.textContent = String(beatInBar);
+        } else {
+            // Normal non-looping playback
+            if (cdj3000PhraseTag) {
+                cdj3000PhraseTag.textContent = 'DENON PRIME 4';
+                cdj3000PhraseTag.className = 'phrase-tag';
+                cdj3000PhraseTag.style.background = 'rgba(0, 255, 204, 0.22)';
+                cdj3000PhraseTag.style.borderColor = '#00ffcc';
+                cdj3000PhraseTag.style.color = '#00ffcc';
+            }
+            if (cdjDualPhraseTag) {
+                cdjDualPhraseTag.textContent = 'DENON PRIME';
+                cdjDualPhraseTag.style.background = 'rgba(0, 255, 204, 0.22)';
+                cdjDualPhraseTag.style.borderColor = '#00ffcc';
+                cdjDualPhraseTag.style.color = '#00ffcc';
+            }
+
+            const barText = `BAR ${String(currentBar).padStart(2, '0')} / ${String(totalBars).padStart(2, '0')}`;
+            if (cdj3000BarText) {
+                cdj3000BarText.textContent = barText;
+                cdj3000BarText.style.color = '#00ffcc';
+            }
+            if (cdjDualBarCount) cdjDualBarCount.textContent = barText;
+
+            if (cdj3000CountdownText) {
+                const barsRem = Math.max(0, totalBars - currentBar);
+                cdj3000CountdownText.textContent = `-${barsRem} BARS REMAINING`;
+                cdj3000CountdownText.style.color = '#00ffcc';
+            }
+
+            if (cdj2000BarNum) cdj2000BarNum.textContent = String(currentBar).padStart(2, '0');
+            if (cdj2000BeatNum) cdj2000BeatNum.textContent = String(beatInBar);
+        }
+    }
+
     function updatePhraseUI() {
+        if (isHardwareDeckStreaming) return; // Prioritize real Denon deck hardware telemetry
         const curPhrase = CDJ_PHRASE_STRUCT[currentPhraseIdx] || CDJ_PHRASE_STRUCT[0];
         const totalBars = curPhrase.bars;
         const barsRemaining = Math.max(0, totalBars - currentBarInPhrase);
@@ -4717,6 +4826,7 @@ async function init() {
             if (vfx.setDeckData) {
                 vfx.setDeckData(telemetry);
             }
+            updateDenonStageBarUI(telemetry);
         },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
@@ -5147,18 +5257,26 @@ async function init() {
         const now = performance.now();
         let data = null;
 
-        // Prioritize golden source Deck Wire Live Audio if connected
-        if ((isHardwareDeckStreaming || currentSelectedDeviceId === 'deck-live') && vfx.getLiveDeckAudioData) {
-            const wireAudio = vfx.getLiveDeckAudioData();
-            if (wireAudio) {
-                data = wireAudio;
+        // 1. Use Deck Wire Live Audio if deck-live is selected
+        if (currentSelectedDeviceId === 'deck-live' && vfx.getLiveDeckAudioData) {
+            data = vfx.getLiveDeckAudioData();
+        }
+
+        // 2. Prioritize real physical audio input (Line-In, Mic, USB Mixer) if connected
+        if (audioProcessor && audioProcessor.isConnected()) {
+            const realAudio = audioProcessor.getAudioData();
+            if (currentSelectedDeviceId !== 'deck-live' || !data) {
+                data = realAudio;
+            } else if (data && realAudio && (realAudio.overall > 0.015 || realAudio.bass > 0.015)) {
+                // If on DECK LIVE but audio is active, blend the real acoustic FFT spectrum into wire audio!
+                data.dataArray = realAudio.dataArray;
+                data.peakDb = realAudio.peakDb;
+                data.lufs = realAudio.lufs;
             }
         }
 
         if (!data) {
-            if (audioProcessor && audioProcessor.isConnected()) {
-                data = audioProcessor.getAudioData();
-            } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
+            if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
                 // Screen Link Active: Consuming live audio from primary console window over WebSocket/BroadcastChannel
                 data = remoteAudioData;
                 if (audioStatus && !audioStatus.dataset.screenLink) {
