@@ -2570,22 +2570,18 @@ const DJDeckWaveformShader = {
                 float totalTrackBeats = (364.0 / 60.0) * bpmVal;
                 float beatPos = texU * totalTrackBeats;
 
-                float intraBeat = fract(beatPos);
-                float beatEnvelope = exp(-intraBeat * 3.5) * 0.55 + 0.45;
-                float transientSpike = exp(-intraBeat * 14.0);
-
                 // Authentic 3-Band Vertical Layer Heights (Denon Engine OS 3-Band Architecture)
-                // Low band (Bass/Kicks): Outer envelope (tallest rounded lobes)
-                float hLow  = clamp((rawBass * 0.92 + rawHit * 0.08) * beatEnvelope + 0.04, 0.04, 0.96);
-                // Mid band (Vocals/Melody): Middle envelope (sharp transient wedges)
-                float hMid  = clamp((rawMid * 0.68 + rawHit * 0.04) * (beatEnvelope * 0.85 + 0.15) + 0.02, 0.02, 0.78);
-                // High band (Hi-hats/Transients): Inner sharp core needle spikes
-                float hHigh = clamp((rawHigh * 0.40 + rawHit * 0.08) * (transientSpike * 0.75 + 0.25) + 0.01, 0.01, 0.50);
+                // Low band (Bass/Kicks): Outer envelope (tallest blue lobes from real database audio)
+                float hLow  = clamp(rawBass * 0.94 + rawHit * 0.12 + 0.03, 0.03, 0.96);
+                // Mid band (Vocals/Melody): Middle envelope (emerald green layer)
+                float hMid  = clamp(rawMid * 0.78 + rawHit * 0.05 + 0.02, 0.02, 0.80);
+                // High band (Hi-hats/Transients): Inner crisp ice white core needle
+                float hHigh = clamp(rawHigh * 0.52 + rawHit * 0.08 + 0.01, 0.01, 0.52);
 
                 // Anti-aliased band masks based on vertical distance from center zero-line
-                float maskLow  = 1.0 - smoothstep(hLow  - 0.010, hLow  + 0.005, absDeckY);
-                float maskMid  = 1.0 - smoothstep(hMid  - 0.008, hMid  + 0.004, absDeckY);
-                float maskHigh = 1.0 - smoothstep(hHigh - 0.006, hHigh + 0.003, absDeckY);
+                float maskLow  = 1.0 - smoothstep(hLow  - 0.008, hLow  + 0.004, absDeckY);
+                float maskMid  = 1.0 - smoothstep(hMid  - 0.006, hMid  + 0.003, absDeckY);
+                float maskHigh = 1.0 - smoothstep(hHigh - 0.005, hHigh + 0.002, absDeckY);
 
                 // Stacked 3-band layer composite
                 vec3 waveCol = cBass * maskLow;
@@ -2597,11 +2593,11 @@ const DJDeckWaveformShader = {
                     bool inLoopRegion = (texU >= uLoopStart && texU <= uLoopEnd);
                     if (inLoopRegion) {
                         // Warm amber/orange wash over the waveform
-                        waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.32 * maskLow);
+                        waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.28 * maskLow);
 
                         // Orange Loop Top Header Bar (matches Loop 2 banner in photo)
                         if (normDeckY > 0.74 && normDeckY < 0.96) {
-                            waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.88);
+                            waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.90);
                             // Notched crenellations on loop header
                             float teeth = step(0.5, fract(beatPos * 2.0));
                             if (normDeckY > 0.88) {
@@ -2609,15 +2605,16 @@ const DJDeckWaveformShader = {
                             }
                         }
                     }
-                    // Loop IN boundary bracket line
-                    float loopInDist = abs(texU - uLoopStart);
-                    if (loopInDist < (0.0028 * zoomFactor / 0.08)) {
-                        waveCol = vec3(1.0, 0.48, 0.05) * 3.5;
+
+                    // Screen-space razor-sharp boundary lines (Loop In & Loop Out brackets)
+                    float screenLoopInX = 0.5 + (uLoopStart - headPos) / zoomFactor;
+                    float screenLoopOutX = 0.5 + (uLoopEnd - headPos) / zoomFactor;
+
+                    if (abs(uv.x - screenLoopInX) < 0.0020) {
+                        waveCol = vec3(1.0, 0.55, 0.08) * 3.5;
                     }
-                    // Loop OUT boundary bracket line
-                    float loopOutDist = abs(texU - uLoopEnd);
-                    if (loopOutDist < (0.0028 * zoomFactor / 0.08)) {
-                        waveCol = vec3(1.0, 0.48, 0.05) * 3.5;
+                    if (abs(uv.x - screenLoopOutX) < 0.0020) {
+                        waveCol = vec3(1.0, 0.55, 0.08) * 3.5;
                     }
                 }
 
@@ -9575,6 +9572,51 @@ export function createVFXScene(container) {
     let wireSmoothTreble = 0.0;
     let wireSmoothHit = 0.0;
     const wireSmoothBins = new Float32Array(128);
+    let deck1BeatInBar = 1;
+
+    function updateSynthesizedDeckSpectrum() {
+        if (!deck1HasHardwareWaveform && !deck1Active) return;
+
+        // Dynamic transient impulses
+        const kickPulse = beatTriggerPulse; // Pulses 1.0 on every true downbeat and decays naturally
+        const isBackBeat = (deck1BeatInBar === 2 || deck1BeatInBar === 4);
+        const snarePulse = isBackBeat ? (kickPulse * 0.85) : (kickPulse * 0.20);
+        const hatPulse = (1.0 - kickPulse) * 0.65; // Hat sizzles between kicks
+
+        const liveBass = Math.min(1.0, wireSmoothBass * 0.55 + kickPulse * 0.75 + wireSmoothHit * 0.25);
+        const liveMid = Math.min(1.0, wireSmoothMid * 0.65 + snarePulse * 0.45 + wireSmoothHit * 0.15);
+        const liveTreble = Math.min(1.0, wireSmoothTreble * 0.60 + hatPulse * 0.40 + kickPulse * 0.20);
+
+        for (let i = 0; i < 128; i++) {
+            let targetAmp = 0;
+            // Harmonic multi-band EQ curve with organic per-bin variation
+            const harmonic = Math.sin(i * 0.45) * 0.08 + Math.cos(i * 1.1) * 0.05;
+            if (i < 16) {
+                // Sub-bass & Kick punch (20Hz - 100Hz)
+                const curve = Math.exp(-Math.pow((i - 4) / 6.0, 2)); // Peak at bin 4 (~60Hz kick thump)
+                targetAmp = (liveBass * (0.45 + curve * 0.70) + kickPulse * (0.60 + curve * 0.50) + harmonic) * 255;
+            } else if (i < 48) {
+                // Bass body & Low-mid (100Hz - 600Hz)
+                const curve = Math.exp(-Math.pow((i - 28) / 14.0, 2)); // Peak at bin 28 (~300Hz punch)
+                targetAmp = (liveMid * (0.40 + curve * 0.55) + snarePulse * 0.45 + harmonic * 0.8) * 255;
+            } else if (i < 85) {
+                // Mid & High-mid vocal/lead (600Hz - 4kHz)
+                const curve = Math.exp(-Math.pow((i - 60) / 18.0, 2));
+                targetAmp = (liveMid * 0.50 + liveTreble * (0.35 + curve * 0.40) + harmonic * 0.6) * 255;
+            } else {
+                // High treble & air (4kHz - 20kHz)
+                const curve = (127 - i) / 42.0;
+                targetAmp = (liveTreble * (0.35 + curve * 0.45) + hatPulse * 0.35 + harmonic * 0.5) * 255;
+            }
+            // Fast attack, smooth analog decay
+            const targetClamped = Math.max(0, Math.min(255, targetAmp));
+            if (targetClamped > wireSmoothBins[i]) {
+                wireSmoothBins[i] += (targetClamped - wireSmoothBins[i]) * 0.65;
+            } else {
+                wireSmoothBins[i] += (targetClamped - wireSmoothBins[i]) * 0.22;
+            }
+        }
+    }
 
     function setDeckWaveform(packet) {
         if (!packet || !packet.samples || packet.samples.length < 3) return;
@@ -14459,21 +14501,18 @@ export function createVFXScene(container) {
             const hatPulse = Math.exp(-Math.abs(bPhaseFX - 0.5) * 8.0) * 0.6;
             const combinedBeatPulse = Math.max(beatTriggerPulse, kickPulse);
 
+            updateSynthesizedDeckSpectrum();
+
             for (let i = 0; i < totalSpecParticles; i++) {
                 const b = specParticleBandIdx[i];
                 const layer = specParticleLayer[i];
                 const spd = specParticleSpeed[i];
                 
                 let rawAmp = 0.0;
-                if (wireAmpBands) {
-                    if (b < 20) {
-                        const nb = b / 20.0;
-                        rawAmp = (wireAmpBands.wR * (0.35 + combinedBeatPulse * 0.85) * (1.0 - nb * 0.25)) + (combinedBeatPulse * 0.45);
-                    } else if (b < 44) {
-                        rawAmp = wireAmpBands.wG * (0.45 + (snarePulse + combinedBeatPulse * 0.3) * 0.75);
-                    } else {
-                        rawAmp = wireAmpBands.wB * (0.40 + hatPulse * 0.85 + combinedBeatPulse * 0.25);
-                    }
+                if (deck1HasHardwareWaveform || wireAmpBands) {
+                    const specIdx = Math.min(127, Math.floor((b / specBands) * 115));
+                    const kickBoost = (b < 18) ? (beatTriggerPulse * 0.40) : 0.0;
+                    rawAmp = Math.min(1.0, (wireSmoothBins[specIdx] / 255.0) * 1.15 + kickBoost);
                 } else {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
                     rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
@@ -14500,8 +14539,23 @@ export function createVFXScene(container) {
             const progressDelta = delta / trackSec;
 
             if (deck1LoopActive && deck1LoopEnd > deck1LoopStart) {
-                deck1Progress += progressDelta;
                 const loopLen = deck1LoopEnd - deck1LoopStart;
+                if (deck1WireProgress !== undefined) {
+                    let diff = deck1WireProgress - deck1Progress;
+                    if (loopLen > 0.001) {
+                        if (diff > loopLen * 0.5) diff -= loopLen;
+                        else if (diff < -loopLen * 0.5) diff += loopLen;
+                    }
+
+                    if (Math.abs(diff) > 0.05) {
+                        deck1Progress = deck1WireProgress;
+                    } else {
+                        deck1Progress += progressDelta + diff * Math.min(1.0, delta * 8.0);
+                    }
+                } else {
+                    deck1Progress += progressDelta;
+                }
+
                 if (deck1Progress >= deck1LoopEnd) {
                     deck1Progress = deck1LoopStart + ((deck1Progress - deck1LoopStart) % loopLen);
                 } else if (deck1Progress < deck1LoopStart) {
@@ -14512,7 +14566,7 @@ export function createVFXScene(container) {
                 if (Math.abs(diff) > 0.05) {
                     deck1Progress = deck1WireProgress;
                 } else {
-                    deck1Progress += progressDelta + diff * Math.min(1.0, delta * 3.5);
+                    deck1Progress += progressDelta + diff * Math.min(1.0, delta * 5.0);
                 }
             } else {
                 deck1Progress = (deck1Progress + progressDelta) % 1.0;
@@ -16915,6 +16969,11 @@ export function createVFXScene(container) {
                 if (data.title) deck1Data.title = data.title;
                 if (data.bpm) deck1Data.bpm = data.bpm;
                 if (data.key) deck1Data.key = data.key;
+                if (data.beat !== undefined) {
+                    deck1BeatInBar = ((Math.floor(data.beat) % 4) + 4) % 4 + 1;
+                } else if (data.count !== undefined) {
+                    deck1BeatInBar = data.count;
+                }
                 if (data.loopActive !== undefined) {
                     deck1LoopActive = Boolean(data.loopActive);
                     if (data.loopStart !== undefined) deck1LoopStart = Number(data.loopStart);
@@ -16932,7 +16991,7 @@ export function createVFXScene(container) {
                         deck1LoopStart = newProg;
                     }
                     deck1WireProgress = newProg;
-                    if (Math.abs(newProg - deck1Progress) > 0.05) {
+                    if (Math.abs(newProg - deck1Progress) > 0.15) {
                         deck1Progress = newProg;
                     }
                 }
@@ -16965,50 +17024,33 @@ export function createVFXScene(container) {
         getLiveDeckAudioData: () => {
             if (!deck1HasHardwareWaveform && !deck1Active) return null;
 
-            // 128 BPM Dynamic Beat Envelope (Physical Kick + Snare + Groove)
-            const beatSec = 60.0 / Math.max(60, currentBPM || 128);
-            const timeSec = performance.now() / 1000.0;
-            const bPhase = (timeSec / beatSec) % 1.0;
-            const kickDecay = Math.exp(-bPhase * 6.5);
-            const snareDecay = (((timeSec / beatSec) % 2.0) >= 1.0) ? Math.exp(-bPhase * 8.0) * 0.7 : 0.0;
-            const hatDecay = Math.exp(-Math.abs(bPhase - 0.5) * 8.0) * 0.6;
-            const combinedHit = Math.max(beatTriggerPulse, kickDecay);
+            updateSynthesizedDeckSpectrum();
 
-            const liveBass = Math.min(1.0, wireSmoothBass * 0.45 + combinedHit * 0.65 + wireSmoothHit * 0.25);
-            const liveMid = Math.min(1.0, wireSmoothMid * 0.60 + snareDecay * 0.35 + combinedHit * 0.20);
-            const liveTreble = Math.min(1.0, wireSmoothTreble * 0.55 + hatDecay * 0.40 + combinedHit * 0.15);
+            const kickPulse = beatTriggerPulse;
+            const liveBass = wireSmoothBins[4] / 255.0;
+            const liveMid = wireSmoothBins[32] / 255.0;
+            const liveTreble = wireSmoothBins[90] / 255.0;
             const overall = Math.min(1.0, liveBass * 0.60 + liveMid * 0.35 + liveTreble * 0.20);
 
-            // Synthesize 128-bin FFT spectrum from smoothed 3-band wire data with dynamic beat modulation
             const synthArray = new Uint8Array(128);
             for (let i = 0; i < 128; i++) {
-                let targetAmp = 0;
-                if (i < 32) {
-                    const frac = i / 32.0;
-                    targetAmp = (liveBass * (1.0 - frac * 0.35) + combinedHit * 0.25) * 255;
-                } else if (i < 80) {
-                    targetAmp = (liveMid * (0.85 + snareDecay * 0.3) + combinedHit * 0.15) * 255;
-                } else {
-                    targetAmp = (liveTreble * (0.80 + hatDecay * 0.4) + combinedHit * 0.10) * 255;
-                }
-                wireSmoothBins[i] += (targetAmp - wireSmoothBins[i]) * 0.35;
                 synthArray[i] = Math.min(255, Math.max(0, Math.floor(wireSmoothBins[i])));
             }
 
-            const peakDb = -0.5 + combinedHit * 0.4;
+            const peakDb = -0.5 + kickPulse * 0.4;
             const lufs = -8.5 + liveBass * 3.0;
 
             return {
                 bass: liveBass,
                 smoothedBass: liveBass,
-                bassImpact: combinedHit > 0.4 ? 0.95 : (liveBass * 0.7),
-                transientImpulse: Math.min(1.0, combinedHit * 0.9 + wireSmoothHit * 0.3),
+                bassImpact: kickPulse > 0.4 ? 0.95 : (liveBass * 0.7),
+                transientImpulse: Math.min(1.0, kickPulse * 0.9 + wireSmoothHit * 0.3),
                 mid: liveMid,
                 smoothedMid: liveMid,
                 treble: liveTreble,
                 smoothedTreble: liveTreble,
                 overall: overall,
-                isOnset: combinedHit > 0.55,
+                isOnset: kickPulse > 0.55,
                 dataArray: synthArray,
                 peakDb: peakDb,
                 peakHoldDb: 0.0,

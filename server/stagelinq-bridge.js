@@ -714,18 +714,26 @@ async function startStageLinq() {
         }, 1500);
 
         const deckLoopStates = new Map();
+        const deckLastBeatInt = new Map();
+        const deckLastTelemetryTime = new Map();
 
         stagelinqInstance.on('beatMessage', (info, beatData) => {
             if (!beatData || !beatData.decks) return;
+            const nowMs = Date.now();
             beatData.decks.forEach((deckData, idx) => {
                 const deckNum = idx + 1;
                 if (deckData.bpm) handleIncomingBPM(deckData.bpm, deckNum, 'stagelinq');
                 if (deckData.beat !== undefined) {
-                    handleIncomingBeat(deckNum, Math.floor(deckData.beat % 4) + 1, 'stagelinq');
+                    const currentBeatInt = Math.floor(deckData.beat);
+                    const prevBeatInt = deckLastBeatInt.get(deckNum);
+                    if (prevBeatInt === undefined || currentBeatInt !== prevBeatInt) {
+                        deckLastBeatInt.set(deckNum, currentBeatInt);
+                        const beatInBar = ((currentBeatInt % 4) + 4) % 4 + 1;
+                        handleIncomingBeat(deckNum, beatInBar, 'stagelinq');
+                    }
                 }
                 if (deckData.totalBeats && deckData.totalBeats > 0 && deckData.beat !== undefined) {
                     const progress = Math.max(0, Math.min(1.0, deckData.beat / deckData.totalBeats));
-                    console.log(`[StageLinq Beat Deck ${deckNum}] beat=${deckData.beat.toFixed(2)}, total=${deckData.totalBeats}, prog=${(progress * 100).toFixed(2)}%`);
                     let loopInfo = deckLoopStates.get(deckNum);
                     if (!loopInfo) {
                         loopInfo = { lastBeat: deckData.beat, loopActive: false, loopStartBeat: 0, loopEndBeat: 0 };
@@ -733,32 +741,40 @@ async function startStageLinq() {
                     }
 
                     // Loop repeat detection: beat jumps backwards by >= 1.5 beats while looping
+                    let loopStatusChanged = false;
                     if (loopInfo.lastBeat !== undefined && deckData.beat < loopInfo.lastBeat - 1.5) {
+                        if (!loopInfo.loopActive) loopStatusChanged = true;
                         loopInfo.loopActive = true;
                         loopInfo.loopStartBeat = deckData.beat;
                         loopInfo.loopEndBeat = loopInfo.lastBeat;
                     } else if (loopInfo.loopActive && deckData.beat > loopInfo.loopEndBeat + 2.5) {
                         // Broke out of loop
                         loopInfo.loopActive = false;
+                        loopStatusChanged = true;
                     }
                     loopInfo.lastBeat = deckData.beat;
 
                     const loopStartProg = loopInfo.loopActive ? Math.max(0, loopInfo.loopStartBeat / deckData.totalBeats) : 0.0;
                     const loopEndProg = loopInfo.loopActive ? Math.min(1.0, loopInfo.loopEndBeat / deckData.totalBeats) : 0.0;
 
-                    broadcast({
-                        type: 'deck_telemetry',
-                        deck: deckNum,
-                        progress,
-                        beat: deckData.beat,
-                        totalBeats: deckData.totalBeats,
-                        bpm: deckData.bpm || lastBpm,
-                        loopActive: loopInfo.loopActive,
-                        loopStart: loopStartProg,
-                        loopEnd: loopEndProg,
-                        isHardware: true,
-                        ecosystem: 'stagelinq'
-                    });
+                    // Throttle telemetry to ~40 FPS (every 25ms) unless loop status changed
+                    const lastSent = deckLastTelemetryTime.get(deckNum) || 0;
+                    if (loopStatusChanged || (nowMs - lastSent >= 25)) {
+                        deckLastTelemetryTime.set(deckNum, nowMs);
+                        broadcast({
+                            type: 'deck_telemetry',
+                            deck: deckNum,
+                            progress,
+                            beat: deckData.beat,
+                            totalBeats: deckData.totalBeats,
+                            bpm: deckData.bpm || lastBpm,
+                            loopActive: loopInfo.loopActive,
+                            loopStart: loopStartProg,
+                            loopEnd: loopEndProg,
+                            isHardware: true,
+                            ecosystem: 'stagelinq'
+                        });
+                    }
                 }
             });
         });
