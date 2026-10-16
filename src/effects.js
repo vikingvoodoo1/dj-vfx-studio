@@ -2439,10 +2439,11 @@ const DJDeckWaveformShader = {
                 float rawHigh = audioSlice.b;
                 float rawHit  = audioSlice.a;
 
-                // Authentic Denon Engine 3-Band Color Composition
-                vec3 cBass = vec3(0.04, 0.38, 0.98); // Cobalt Royal Blue
-                vec3 cMid  = vec3(0.05, 0.92, 0.35); // Vibrant Lime Green
-                vec3 cHigh = vec3(0.98, 0.99, 1.00); // Crisp Ice White Peak
+                // Warm Edison Incandescent Thermal Waveform Color Composition:
+                // Replaces cold blue/cyan with rich glowing amber, honey gold, and incandescent white
+                vec3 cBass = vec3(0.96, 0.44, 0.06); // Radiant Warm Amber-Copper
+                vec3 cMid  = vec3(1.00, 0.74, 0.16); // Luminous Honey Butterscotch
+                vec3 cHigh = vec3(1.00, 0.97, 0.82); // Incandescent Filament White-Gold
 
                 // Beat Grid & Intra-Beat Transient Envelopes anchored directly to metadata track position (texU)
                 float totalTrackBeats = (uTotalBeats > 10.0) ? uTotalBeats : ((364.0 / 60.0) * bpmVal);
@@ -2453,11 +2454,11 @@ const DJDeckWaveformShader = {
                 float beatEnvelope = exp(-intraBeat * 3.2) * 0.58 + 0.42;
                 float transientSpike = exp(-intraBeat * 12.0);
 
-                // Low band (Bass/Kicks): Outer envelope (tallest blue lobes matching Denon photo)
+                // Low band (Bass/Kicks): Outer envelope
                 float hLow  = clamp((rawBass * 0.92 + rawHit * 0.10) * beatEnvelope + 0.04, 0.04, 0.96);
-                // Mid band (Vocals/Melody): Middle envelope (emerald green layer)
+                // Mid band (Vocals/Melody): Middle envelope
                 float hMid  = clamp((rawMid * 0.72 + rawHit * 0.06) * (beatEnvelope * 0.85 + 0.15) + 0.02, 0.02, 0.80);
-                // High band (Hi-hats/Transients): Inner crisp ice white needle core
+                // High band (Hi-hats/Transients): Inner crisp white needle core
                 float hHigh = clamp((rawHigh * 0.45 + rawHit * 0.08) * (transientSpike * 0.75 + 0.25) + 0.01, 0.01, 0.52);
 
                 // Anti-aliased band masks based on vertical distance from center zero-line
@@ -2465,11 +2466,18 @@ const DJDeckWaveformShader = {
                 float maskMid  = 1.0 - smoothstep(hMid  - 0.006, hMid  + 0.003, absDeckY);
                 float maskHigh = 1.0 - smoothstep(hHigh - 0.005, hHigh + 0.002, absDeckY);
 
-                // Stacked discrete solid layers (Denon style: Blue outer, Green middle, White core)
+                // Stacked discrete solid layers
                 vec3 waveCol = col;
                 if (maskLow > 0.05) waveCol = cBass;
                 if (maskMid > 0.05) waveCol = mix(waveCol, cMid, maskMid * 0.95);
                 if (maskHigh > 0.05) waveCol = mix(waveCol, cHigh, maskHigh * 0.98);
+
+                // Luminous Yellow / Amber Glow Overlay washed over the waveform:
+                // Fades smoothly from warm golden yellow down across the waveform lobes
+                float lobeDist = absDeckY / max(0.01, hLow);
+                vec3 amberTopWash = mix(vec3(1.0, 0.88, 0.35), vec3(1.0, 0.52, 0.08), clamp(lobeDist, 0.0, 1.0));
+                waveCol = mix(waveCol, waveCol * 0.45 + amberTopWash * 0.85, 0.55);
+                waveCol += amberTopWash * 0.28 * maskLow;
 
 
                 // -------------------------------------------------------------
@@ -8085,22 +8093,30 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
         const blueH = totalBarH * subBassRatio;
         const greenH = totalBarH * midRatio;
 
-        // Solid Royal Blue base layer
+        // Solid Warm Amber-Copper base layer
         if (blueH > 1.0) {
-            ctx.fillStyle = '#0148fa';
+            ctx.fillStyle = '#d95800';
             ctx.fillRect(bx, waveBaseY - blueH, barW - 0.5, blueH);
         }
-        // Solid Emerald Green mid layer
+        // Solid Radiant Golden Honey mid layer
         if (greenH > blueH) {
-            ctx.fillStyle = '#02ea42';
+            ctx.fillStyle = '#ffaa14';
             ctx.fillRect(bx, waveBaseY - greenH, barW - 0.5, greenH - blueH);
         }
-        // Solid Pure White top spikes
+        // Solid Incandescent White-Gold top spikes
         if (totalBarH > greenH) {
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = '#fff6d4';
             ctx.fillRect(bx, waveBaseY - totalBarH, barW - 0.5, totalBarH - greenH);
         }
     }
+
+    // Warm Yellow / Golden Amber Glow Overlay washed over the top overview waveform
+    const overAmberWash = ctx.createLinearGradient(0, overviewTopY, 0, overviewTopY + overviewH);
+    overAmberWash.addColorStop(0.0, 'rgba(255, 215, 75, 0.30)');
+    overAmberWash.addColorStop(0.45, 'rgba(255, 155, 30, 0.16)');
+    overAmberWash.addColorStop(1.0, 'rgba(255, 80, 0, 0.02)');
+    ctx.fillStyle = overAmberWash;
+    ctx.fillRect(padX, overviewTopY, overviewW, overviewH);
 
     // 2B. Horizontal Overview Baseline Rail: Vintage Edison Filament Bar
     const nowMsBase = performance.now();
@@ -10246,118 +10262,214 @@ export function createVFXScene(container) {
     }
 
     // -------------------------------------------------------------------------
-    // 4. 🎛️ VINTAGE STUDIO LED LADDER SPECTRUM EQUALIZER (Subtle Glow LED Style)
+    // 4. 🔥 AUDIO-REACTIVE PROCEDURAL FLAME SPECTRUM EQUALIZER
     // -------------------------------------------------------------------------
-    // Clean, diffused, warm golden-amber glowing LED segments arranged in 64 precision
-    // vertical hardware ladders across the stage floor. Zero glitter, zero random jitter;
-    // pristine studio hardware metering with soothing resting glow and peak-hold indicators.
-    function createLedGlowTexture() {
+    // Roaring, fluid, blackbody radiant flames rising from the dancefloor base
+    // across all 64 audio frequency bands. Dynamic licking fire tongues, turbulent
+    // convective updrafts, and glowing fire embers floating into the air.
+    const specBands = 64;
+    const specSmoothBands = new Float32Array(specBands);
+
+    // 64-band 1D dynamic audio texture for GPU bilinear interpolation of flame heights
+    const specFlameData = new Uint8Array(specBands * 4);
+    for (let i = 0; i < specBands; i++) {
+        specFlameData[i * 4]     = 40;
+        specFlameData[i * 4 + 1] = 40;
+        specFlameData[i * 4 + 2] = 40;
+        specFlameData[i * 4 + 3] = 255;
+    }
+    const specFlameTex = new THREE.DataTexture(specFlameData, specBands, 1, THREE.RGBAFormat);
+    specFlameTex.magFilter = THREE.LinearFilter;
+    specFlameTex.minFilter = THREE.LinearFilter;
+    specFlameTex.wrapS = THREE.ClampToEdgeWrapping;
+    specFlameTex.wrapT = THREE.ClampToEdgeWrapping;
+    specFlameTex.needsUpdate = true;
+
+    const FlameShader = {
+        uniforms: {
+            uSpecTex: { value: specFlameTex },
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uTransient: { value: 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            void main() {
+                vUv = uv;
+                vec4 worldPos = modelMatrix * vec4(position, 1.0);
+                vWorldPos = worldPos.xyz;
+                gl_Position = projectionMatrix * viewMatrix * worldPos;
+            }
+        `,
+        fragmentShader: `
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            uniform sampler2D uSpecTex;
+            uniform float uTime;
+            uniform float uBass;
+            uniform float uTransient;
+
+            // Ultra-fast, silky continuous procedural fire turbulence
+            float fireTurbulence(vec2 p, float t) {
+                float w1 = sin(p.x * 2.6 + sin(p.y * 3.2 - t * 4.5)) * 0.5 + 0.5;
+                float w2 = cos(p.y * 4.2 - t * 7.0 + sin(p.x * 3.6 + t * 2.2)) * 0.5 + 0.5;
+                float w3 = sin((p.x * 1.6 + p.y * 2.2) * 2.8 - t * 9.5) * 0.5 + 0.5;
+                return w1 * 0.52 + w2 * 0.32 + w3 * 0.16;
+            }
+
+            void main() {
+                // 1. Audio-reactive frequency amplitude sampled from 64-band spectrum texture
+                float specAmp = texture2D(uSpecTex, vec2(vUv.x, 0.5)).r;
+
+                // 2. Dynamic audio-reactive flame height envelope
+                // Resting baseline fire at 0.14 height, surges up to ~0.95 on audio attacks
+                float bassBoost = (1.0 - smoothstep(0.0, 0.40, vUv.x)) * uBass * 0.38;
+                float flameBaseHeight = 0.14 + specAmp * 0.78 + bassBoost + uTransient * 0.15;
+                
+                // High-frequency flickers & tongue agitation
+                float jitter = sin(vUv.x * 54.0 + uTime * 16.0) * 0.05 * specAmp;
+                jitter += cos(vUv.x * 96.0 - uTime * 24.0) * 0.03 * specAmp;
+                float totalHeight = clamp(flameBaseHeight + jitter, 0.06, 0.98);
+
+                // 3. Multi-octave convective upward-flowing fire turbulence
+                vec2 p1 = vec2(vUv.x * 9.0, vUv.y * 2.6);
+                vec2 p2 = vec2(vUv.x * 20.0 + 1.8, vUv.y * 5.2);
+                float n1 = fireTurbulence(p1, uTime * 2.8);
+                float n2 = fireTurbulence(p2, uTime * 4.6);
+                float fireCurl = n1 * 0.65 + n2 * 0.35;
+
+                // Flame contour cutoff with sharp licking tongues per frequency band
+                float tongue = abs(sin(vUv.x * 47.1238 + sin(vUv.x * 94.247 + uTime * 6.0) * 0.45));
+                tongue = pow(tongue, 0.70);
+                float flamePeak = totalHeight * (0.44 + fireCurl * 0.38 + tongue * 0.35);
+                float flameMask = 1.0 - smoothstep(flamePeak - 0.18, flamePeak + 0.04, vUv.y);
+
+                // Soft base ground fade (eliminates flat horizontal line at bottom)
+                float baseFade = smoothstep(0.002, 0.07, vUv.y);
+                flameMask *= baseFade;
+
+                // Horizontal edge fade (soft boundary at left and right walls)
+                flameMask *= smoothstep(0.005, 0.06, vUv.x) * smoothstep(0.995, 0.94, vUv.x);
+
+                if (flameMask < 0.005) {
+                    discard;
+                }
+
+                // 4. Blackbody Thermal Radiation Color Mapping:
+                // Core (bottom) = Incandescent Gold-White -> Mid = Radiant Golden Amber -> Tips = Fiery Ruby Crimson
+                float normY = clamp(vUv.y / max(0.01, flamePeak), 0.0, 1.0);
+                float heat = clamp((1.0 - normY) * (0.50 + fireCurl * 0.50), 0.0, 1.0);
+
+                vec3 colCore  = vec3(1.0, 0.94, 0.72);  // Incandescent Warm White-Gold Core
+                vec3 colGold  = vec3(1.0, 0.68, 0.08);  // Bright Radiant Golden Yellow
+                vec3 colAmber = vec3(1.0, 0.36, 0.01);  // Deep Luminous Amber-Orange
+                vec3 colRuby  = vec3(0.85, 0.10, 0.00); // Fiery Ruby Crimson Tips
+                vec3 colSmoke = vec3(0.20, 0.08, 0.02); // Smoky Charcoal Vapor
+
+                vec3 fireColor;
+                if (heat > 0.75) {
+                    fireColor = mix(colGold, colCore, (heat - 0.75) / 0.25);
+                } else if (heat > 0.45) {
+                    fireColor = mix(colAmber, colGold, (heat - 0.45) / 0.30);
+                } else if (heat > 0.18) {
+                    fireColor = mix(colRuby, colAmber, (heat - 0.18) / 0.27);
+                } else {
+                    fireColor = mix(colSmoke, colRuby, heat / 0.18);
+                }
+
+                // 5. Intense luminous flame output
+                float alpha = flameMask * (0.85 + heat * 0.35);
+                gl_FragColor = vec4(fireColor * (1.10 + heat * 0.45) * alpha, alpha);
+            }
+        `
+    };
+
+    const flameMat = new THREE.ShaderMaterial({
+        uniforms: FlameShader.uniforms,
+        vertexShader: FlameShader.vertexShader,
+        fragmentShader: FlameShader.fragmentShader,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false
+    });
+    // Plane spans from Y = -9.3 up to Y = -2.1 (height 7.2, centered at Y = -5.7)
+    const flameMesh = new THREE.Mesh(new THREE.PlaneGeometry(35.0, 7.2, 64, 16), flameMat);
+    flameMesh.position.set(0, -5.7, -2.12);
+    flameMesh.renderOrder = 12;
+    gDJWaveforms.add(flameMesh);
+
+    // 5. 🔥 Rising Fire Embers & Sparks (Floating upward from the flame tips)
+    function createEmberGlowTexture() {
         const c = document.createElement('canvas');
-        c.width = 128;
-        c.height = 128;
+        c.width = 64;
+        c.height = 64;
         const ctx = c.getContext('2d');
-        const cx = 64, cy = 64;
-
-        // Diffused Gaussian glow falloff: bright diode lens core + warm soothing radiant aura
-        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, 64);
-        grad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)'); // Diode emitter center
-        grad.addColorStop(0.18, 'rgba(255, 240, 200, 0.92)'); // Diffused glass lens
-        grad.addColorStop(0.42, 'rgba(255, 185, 80, 0.48)');  // Warm golden halo
-        grad.addColorStop(0.72, 'rgba(255, 140, 30, 0.12)');  // Soft dissipation aura
+        const grad = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+        grad.addColorStop(0.00, 'rgba(255, 255, 255, 1.0)');
+        grad.addColorStop(0.25, 'rgba(255, 200, 80, 0.85)');
+        grad.addColorStop(0.60, 'rgba(255, 120, 20, 0.35)');
         grad.addColorStop(1.00, 'rgba(0, 0, 0, 0.0)');
-
         ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, 128, 128);
-
+        ctx.fillRect(0, 0, 64, 64);
         const tex = new THREE.CanvasTexture(c);
         tex.generateMipmaps = true;
         return tex;
     }
 
-    const ledGlowTex = createLedGlowTexture();
-    const specBands = 64;
-    const specSegmentsPerBand = 20; // 20 discrete hardware LED segments per ladder
-    const totalSpecParticles = specBands * specSegmentsPerBand; // 1,280 structured LED segments
+    const emberGlowTex = createEmberGlowTexture();
+    const flameEmberCount = 280;
+    const flameEmberGeo = new THREE.BufferGeometry();
+    const flameEmberPos = new Float32Array(flameEmberCount * 3);
+    const flameEmberCol = new Float32Array(flameEmberCount * 3);
+    const flameEmberSpeed = new Float32Array(flameEmberCount);
+    const flameEmberSeed = new Float32Array(flameEmberCount);
 
-    const specParticleGeo = new THREE.BufferGeometry();
-    const specParticlePos = new Float32Array(totalSpecParticles * 3);
-    const specParticleCol = new Float32Array(totalSpecParticles * 3);
-    const specParticleBaseCol = new Float32Array(totalSpecParticles * 3);
-    const specParticleBandIdx = new Float32Array(totalSpecParticles);
-    const specParticleSegIdx = new Float32Array(totalSpecParticles);
+    for (let i = 0; i < flameEmberCount; i++) {
+        flameEmberPos[i * 3]     = (Math.random() - 0.5) * 34.0;
+        flameEmberPos[i * 3 + 1] = -8.5 + Math.random() * 8.0;
+        flameEmberPos[i * 3 + 2] = -2.10 + (Math.random() - 0.5) * 0.3;
 
-    // Audio-reactive tracking states per band
-    const specSmoothBands = new Float32Array(specBands);
-    const specPeakBands = new Float32Array(specBands);
-    const specPeakHoldTimer = new Float32Array(specBands);
-
-    for (let b = 0; b < specBands; b++) {
-        const normBand = b / (specBands - 1);
-        const xPos = (normBand - 0.5) * 34.0; // Spans full wide stage [-17.0, +17.0]
-
-        // Spectral color progression:
-        // Sub-bass/Bass (warm deep amber) -> Mids (honey gold) -> Highs (crisp champagne gold)
-        let bandBaseR = 1.0;
-        let bandBaseG = 0.55 + normBand * 0.22;
-        let bandBaseB = 0.06 + normBand * 0.18;
-
-        for (let s = 0; s < specSegmentsPerBand; s++) {
-            const idx = b * specSegmentsPerBand + s;
-
-            specParticleBandIdx[idx] = b;
-            specParticleSegIdx[idx] = s;
-
-            // Stable, fixed physical grid coordinates (zero random jitter)
-            specParticlePos[idx * 3]     = xPos;
-            specParticlePos[idx * 3 + 1] = -8.80 + s * 0.155; // -8.80 (floor) to -5.855 (cleanly below moving waveform & beat ruler)
-            specParticlePos[idx * 3 + 2] = -2.15; // Vertical plane aligned with waveforms
-
-            // Classic Studio LED Meter Ladder Color Thresholds:
-            let r, g, bl;
-            if (s < 14) {
-                // Levels 1-14: Warm Honey Golden Amber
-                r = bandBaseR;
-                g = bandBaseG;
-                bl = bandBaseB;
-            } else if (s < 17) {
-                // Levels 15-17 (0dB to +3dB transition): Radiant Amber-Orange
-                r = 1.0;
-                g = 0.40;
-                bl = 0.02;
-            } else {
-                // Levels 18-20 (+3dB to +6dB peak overload): Vintage Incandescent Warm Ruby Red
-                r = 1.0;
-                g = 0.14;
-                bl = 0.04;
-            }
-
-            specParticleBaseCol[idx * 3]     = r;
-            specParticleBaseCol[idx * 3 + 1] = g;
-            specParticleBaseCol[idx * 3 + 2] = bl;
-
-            // Initialize with subtle dim resting glow (hardware unlit silhouette)
-            specParticleCol[idx * 3]     = r * 0.045;
-            specParticleCol[idx * 3 + 1] = g * 0.045;
-            specParticleCol[idx * 3 + 2] = bl * 0.045;
+        // Fiery ember colors: bright gold, intense amber, fiery ruby
+        const u = Math.random();
+        if (u < 0.35) {
+            // White-hot gold spark
+            flameEmberCol[i * 3]     = 1.0;
+            flameEmberCol[i * 3 + 1] = 0.85;
+            flameEmberCol[i * 3 + 2] = 0.35;
+        } else if (u < 0.75) {
+            // Radiant golden amber ember
+            flameEmberCol[i * 3]     = 1.0;
+            flameEmberCol[i * 3 + 1] = 0.55;
+            flameEmberCol[i * 3 + 2] = 0.08;
+        } else {
+            // Hot ruby cinder
+            flameEmberCol[i * 3]     = 1.0;
+            flameEmberCol[i * 3 + 1] = 0.25;
+            flameEmberCol[i * 3 + 2] = 0.02;
         }
+
+        flameEmberSpeed[i] = 0.65 + Math.random() * 1.4;
+        flameEmberSeed[i]  = Math.random() * 100.0;
     }
 
-    specParticleGeo.setAttribute("position", new THREE.BufferAttribute(specParticlePos, 3));
-    specParticleGeo.setAttribute("color", new THREE.BufferAttribute(specParticleCol, 3));
+    flameEmberGeo.setAttribute('position', new THREE.BufferAttribute(flameEmberPos, 3));
+    flameEmberGeo.setAttribute('color', new THREE.BufferAttribute(flameEmberCol, 3));
 
-    const specParticleMat = new THREE.PointsMaterial({
-        size: 0.22, // Crisp, perfectly proportioned diffused glowing LED diode
-        map: ledGlowTex,
+    const flameEmberMat = new THREE.PointsMaterial({
+        size: 0.16,
+        map: emberGlowTex,
         vertexColors: true,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.90,
         blending: THREE.AdditiveBlending,
         depthWrite: false
     });
 
-    const specParticleField = new THREE.Points(specParticleGeo, specParticleMat);
-    specParticleField.frustumCulled = false;
-    gDJWaveforms.add(specParticleField);
+    const flameEmberField = new THREE.Points(flameEmberGeo, flameEmberMat);
+    flameEmberField.frustumCulled = false;
+    flameEmberField.renderOrder = 14;
+    gDJWaveforms.add(flameEmberField);
 
     // -------------------------------------------------------------------------
     // 💡 3D BOHO WOVEN RATTAN BASKET LANTERNS (Low Lights, Glowing, Soothing)
@@ -15452,7 +15564,8 @@ export function createVFXScene(container) {
                 waveSmokeMat.uniforms.uTransient.value = audio.transient || 0;
             }
 
-            // 3. 🎛️ Animate Subtle Glow Studio LED Ladder Spectrum
+            // 3. 🔥 Animate Audio-Reactive Flame Spectrum
+            // Update 64 frequency band amplitudes into the flame texture
             for (let b = 0; b < specBands; b++) {
                 let rawAmp = 0.0;
                 // If real live audio FFT is available (from audio interface / line-in), USE REAL AUDIO!
@@ -15469,51 +15582,47 @@ export function createVFXScene(container) {
                     rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
                 }
 
-                // Smooth attack and natural exponential studio decay
+                // Dynamic flame reactivity: fast leaping attack, natural turbulent decay
                 if (rawAmp > specSmoothBands[b]) {
-                    specSmoothBands[b] = THREE.MathUtils.lerp(specSmoothBands[b], rawAmp, 0.48);
+                    specSmoothBands[b] = THREE.MathUtils.lerp(specSmoothBands[b], rawAmp, 0.52);
                 } else {
-                    specSmoothBands[b] = Math.max(0.0, specSmoothBands[b] - delta * 2.2);
+                    specSmoothBands[b] = Math.max(0.0, specSmoothBands[b] - delta * 2.4);
                 }
 
-                // Studio Peak-Hold Indicator: stays suspended at peak for 0.45s, then gently decays
-                if (specSmoothBands[b] >= specPeakBands[b]) {
-                    specPeakBands[b] = specSmoothBands[b];
-                    specPeakHoldTimer[b] = 0.45;
-                } else if (specPeakHoldTimer[b] > 0.0) {
-                    specPeakHoldTimer[b] -= delta;
-                } else {
-                    specPeakBands[b] = Math.max(0.0, specPeakBands[b] - delta * 1.2);
-                }
-                const peakSlot = Math.min(specSegmentsPerBand - 1, Math.floor(specPeakBands[b] * specSegmentsPerBand));
-
-                // Update the 20 discrete LED segments in this band column
-                for (let s = 0; s < specSegmentsPerBand; s++) {
-                    const idx = b * specSegmentsPerBand + s;
-                    const segThreshold = (s + 1) / specSegmentsPerBand;
-                    const prevThreshold = s / specSegmentsPerBand;
-
-                    let brightness = 0.045; // Subtle dim resting glow (unlit hardware state)
-
-                    if (specSmoothBands[b] >= segThreshold) {
-                        brightness = 0.88; // Fully lit glowing LED
-                    } else if (specSmoothBands[b] > prevThreshold) {
-                        // Top active segment smoothly illuminates with proportional intensity
-                        const frac = (specSmoothBands[b] - prevThreshold) * specSegmentsPerBand;
-                        brightness = 0.045 + frac * 0.835;
-                    }
-
-                    // Peak-hold indicator LED (subtle high-water mark)
-                    if (s === peakSlot && specPeakBands[b] > 0.05) {
-                        brightness = Math.max(brightness, 0.95);
-                    }
-
-                    colArr[idx * 3]     = specParticleBaseCol[idx * 3]     * brightness;
-                    colArr[idx * 3 + 1] = specParticleBaseCol[idx * 3 + 1] * brightness;
-                    colArr[idx * 3 + 2] = specParticleBaseCol[idx * 3 + 2] * brightness;
-                }
+                // Write into 64x1 flame texture
+                const val = Math.min(255, Math.floor(specSmoothBands[b] * 255));
+                specFlameData[b * 4]     = val;
+                specFlameData[b * 4 + 1] = val;
+                specFlameData[b * 4 + 2] = val;
+                specFlameData[b * 4 + 3] = 255;
             }
-            specParticleGeo.attributes.color.needsUpdate = true;
+            specFlameTex.needsUpdate = true;
+
+            if (flameMat) {
+                flameMat.uniforms.uTime.value = elapsedTime;
+                flameMat.uniforms.uBass.value = audio.bass || 0;
+                flameMat.uniforms.uTransient.value = audio.transient || 0;
+            }
+
+            // Animate Rising Fiery Embers & Sparks
+            if (flameEmberGeo) {
+                const ePos = flameEmberGeo.attributes.position.array;
+                const draftSpeed = 1.0 + (audio.bass || 0) * 0.8 + (audio.transient || 0) * 0.6;
+                for (let i = 0; i < flameEmberCount; i++) {
+                    const seed = flameEmberSeed[i];
+                    // Upward convective ascent
+                    ePos[i * 3 + 1] += delta * flameEmberSpeed[i] * draftSpeed * 1.8;
+                    // Horizontal thermal eddy swirl
+                    ePos[i * 3] += Math.sin(elapsedTime * 2.5 + seed) * (0.015 * flameEmberSpeed[i]);
+
+                    // Respawn at flame base when rising past moving waveform
+                    if (ePos[i * 3 + 1] > -1.5) {
+                        ePos[i * 3 + 1] = -8.5 - Math.random() * 0.5;
+                        ePos[i * 3]     = (Math.random() - 0.5) * 34.0;
+                    }
+                }
+                flameEmberGeo.attributes.position.needsUpdate = true;
+            }
 
             // Advance track progress: directly locked to hardware deck wire telemetry
             const trackSec = deck1Data.duration || 364;
