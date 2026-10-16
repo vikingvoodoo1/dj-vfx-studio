@@ -2566,13 +2566,12 @@ const DJDeckWaveformShader = {
                 vec3 cMid  = isDeck1 ? vec3(0.05, 0.92, 0.35) : vec3(1.00, 0.65, 0.08);
                 vec3 cHigh = isDeck1 ? vec3(0.98, 0.99, 1.00) : vec3(1.00, 0.98, 0.85);
 
-                // Beat Grid & Intra-Beat Transient Envelopes (Creates the rhythmic peaks & valleys from the deck photo)
-                float bps = bpmVal / 60.0;
-                float beatsVisible = (1.0 / zoomFactor) * 8.0;
-                float beatPos = (uv.x - 0.5) * beatsVisible + (uTime * bps * (isDeck1 ? 1.0 : 0.98)) + (isDeck1 ? 0.0 : 0.5);
+                // Beat Grid & Intra-Beat Transient Envelopes anchored directly to track position (texU)
+                float totalTrackBeats = (364.0 / 60.0) * bpmVal;
+                float beatPos = texU * totalTrackBeats;
 
                 float intraBeat = fract(beatPos);
-                float beatEnvelope = exp(-intraBeat * 3.0) * 0.58 + 0.42;
+                float beatEnvelope = exp(-intraBeat * 3.5) * 0.55 + 0.45;
                 float transientSpike = exp(-intraBeat * 14.0);
 
                 // Authentic 3-Band Vertical Layer Heights (Denon Engine OS 3-Band Architecture)
@@ -2654,18 +2653,6 @@ const DJDeckWaveformShader = {
                 // Window border
                 float windowBorder = 1.0 - smoothstep(0.0, 0.02, abs(absDeckY - 1.0));
                 waveCol += (isDeck1 ? vec3(0.0, 0.4, 0.8) : vec3(0.8, 0.3, 0.1)) * windowBorder * 0.45;
-
-                // Smooth horizontal edge fade
-                float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
-                float finalAlpha = clamp(maskLow + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3 + zeroLine * 0.5, 0.0, 1.0);
-                finalAlpha *= edgeFade;
-
-                col = waveCol * edgeFade;
-                alpha = finalAlpha;
-
-                gl_FragColor = vec4(col, alpha);
-                return;
-            }
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
@@ -7886,7 +7873,7 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
 
     // Loop info: Denon Orange pill
     ctx.textAlign = 'left';
-    if (d1.loopActive || deck1LoopActive) {
+    if (d1 && d1.loopActive) {
         ctx.beginPath();
         ctx.roundRect(padX + 195, 94, 120, 20, 4);
         ctx.fillStyle = 'rgba(255, 119, 0, 0.25)';
@@ -8130,8 +8117,8 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
         ctx.fillStyle = '#ffaa00';
         ctx.fillText(`-${formatDeckTime(rem2)}`, rightX - 160, 591);
 
-        // Deck 2 Hot Cue Tabs
-        const d2Cues = ['1:VOCAL', '2:BUILD', '3:DROP', '4:OUTRO'];
+        // Deck 2 Hot Cue Tabs (1, 2, 3, 4)
+        const d2Cues = ['1', '2', '3', '4'];
         const d2CueCols = ['#ff6600', '#ffd700', '#ff0055', '#00f0ff'];
         d2Cues.forEach((cue, i) => {
             const cx = rightX - 140 + (i % 2) * 65;
@@ -8144,7 +8131,7 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             ctx.fillStyle = d2CueCols[i];
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -14464,6 +14451,14 @@ export function createVFXScene(container) {
                 };
             }
 
+            const beatSecFX = 60.0 / Math.max(60, currentBPM || 128);
+            const timeSecFX = performance.now() / 1000.0;
+            const bPhaseFX = (timeSecFX / beatSecFX) % 1.0;
+            const kickPulse = Math.exp(-bPhaseFX * 6.5);
+            const snarePulse = (((timeSecFX / beatSecFX) % 2.0) >= 1.0) ? Math.exp(-bPhaseFX * 8.0) * 0.7 : 0.0;
+            const hatPulse = Math.exp(-Math.abs(bPhaseFX - 0.5) * 8.0) * 0.6;
+            const combinedBeatPulse = Math.max(beatTriggerPulse, kickPulse);
+
             for (let i = 0; i < totalSpecParticles; i++) {
                 const b = specParticleBandIdx[i];
                 const layer = specParticleLayer[i];
@@ -14473,11 +14468,11 @@ export function createVFXScene(container) {
                 if (wireAmpBands) {
                     if (b < 20) {
                         const nb = b / 20.0;
-                        rawAmp = wireAmpBands.wR * (1.0 - nb * 0.25) + wireAmpBands.wHit * 0.35;
+                        rawAmp = (wireAmpBands.wR * (0.35 + combinedBeatPulse * 0.85) * (1.0 - nb * 0.25)) + (combinedBeatPulse * 0.45);
                     } else if (b < 44) {
-                        rawAmp = wireAmpBands.wG * 0.95 + wireAmpBands.wHit * 0.20;
+                        rawAmp = wireAmpBands.wG * (0.45 + (snarePulse + combinedBeatPulse * 0.3) * 0.75);
                     } else {
-                        rawAmp = wireAmpBands.wB * 0.85 + wireAmpBands.wHit * 0.25;
+                        rawAmp = wireAmpBands.wB * (0.40 + hatPulse * 0.85 + combinedBeatPulse * 0.25);
                     }
                 } else {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
@@ -14506,14 +14501,18 @@ export function createVFXScene(container) {
 
             if (deck1LoopActive && deck1LoopEnd > deck1LoopStart) {
                 deck1Progress += progressDelta;
-                if (deck1Progress >= deck1LoopEnd || deck1Progress < deck1LoopStart) {
+                const loopLen = deck1LoopEnd - deck1LoopStart;
+                if (deck1Progress >= deck1LoopEnd) {
+                    deck1Progress = deck1LoopStart + ((deck1Progress - deck1LoopStart) % loopLen);
+                } else if (deck1Progress < deck1LoopStart) {
                     deck1Progress = deck1LoopStart;
                 }
             } else if (deck1WireProgress !== undefined) {
-                if (Math.abs(deck1WireProgress - deck1Progress) > 0.05) {
+                const diff = deck1WireProgress - deck1Progress;
+                if (Math.abs(diff) > 0.05) {
                     deck1Progress = deck1WireProgress;
                 } else {
-                    deck1Progress += (deck1WireProgress - deck1Progress) * 0.08 + progressDelta * 0.92;
+                    deck1Progress += progressDelta + diff * Math.min(1.0, delta * 3.5);
                 }
             } else {
                 deck1Progress = (deck1Progress + progressDelta) % 1.0;
@@ -14542,6 +14541,10 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uLoopActive.value = deck1LoopActive ? 1.0 : 0.0;
             djWaveMat.uniforms.uLoopStart.value = deck1LoopStart;
             djWaveMat.uniforms.uLoopEnd.value = deck1LoopEnd;
+
+            deck1Data.loopActive = deck1LoopActive;
+            deck1Data.loopStart = deck1LoopStart;
+            deck1Data.loopEnd = deck1LoopEnd;
 
             // Update HUD Canvas texture every ~4 frames for smooth time elapsed/remaining readouts
             djHudFrameCount++;
@@ -16919,13 +16922,19 @@ export function createVFXScene(container) {
                 }
                 if (data.progress !== undefined) {
                     const newProg = Number(data.progress);
-                    if (deck1WireProgress > 0.005 && newProg < deck1WireProgress - 0.003) {
+                    if (data.loopActive !== undefined) {
+                        deck1LoopActive = Boolean(data.loopActive);
+                        if (data.loopStart !== undefined) deck1LoopStart = Number(data.loopStart);
+                        if (data.loopEnd !== undefined) deck1LoopEnd = Number(data.loopEnd);
+                    } else if (deck1WireProgress > 0.005 && newProg < deck1WireProgress - 0.003) {
                         deck1LoopActive = true;
                         deck1LoopEnd = Math.max(deck1LoopEnd, deck1WireProgress);
                         deck1LoopStart = newProg;
-                        deck1Progress = newProg;
                     }
                     deck1WireProgress = newProg;
+                    if (Math.abs(newProg - deck1Progress) > 0.05) {
+                        deck1Progress = newProg;
+                    }
                 }
             } else {
                 if (data.fader !== undefined) {
@@ -16955,42 +16964,58 @@ export function createVFXScene(container) {
         },
         getLiveDeckAudioData: () => {
             if (!deck1HasHardwareWaveform && !deck1Active) return null;
-            const overall = Math.min(1.0, wireSmoothBass * 0.65 + wireSmoothMid * 0.40 + wireSmoothTreble * 0.25);
 
-            // Synthesize 128-bin FFT spectrum from smoothed 3-band wire data
+            // 128 BPM Dynamic Beat Envelope (Physical Kick + Snare + Groove)
+            const beatSec = 60.0 / Math.max(60, currentBPM || 128);
+            const timeSec = performance.now() / 1000.0;
+            const bPhase = (timeSec / beatSec) % 1.0;
+            const kickDecay = Math.exp(-bPhase * 6.5);
+            const snareDecay = (((timeSec / beatSec) % 2.0) >= 1.0) ? Math.exp(-bPhase * 8.0) * 0.7 : 0.0;
+            const hatDecay = Math.exp(-Math.abs(bPhase - 0.5) * 8.0) * 0.6;
+            const combinedHit = Math.max(beatTriggerPulse, kickDecay);
+
+            const liveBass = Math.min(1.0, wireSmoothBass * 0.45 + combinedHit * 0.65 + wireSmoothHit * 0.25);
+            const liveMid = Math.min(1.0, wireSmoothMid * 0.60 + snareDecay * 0.35 + combinedHit * 0.20);
+            const liveTreble = Math.min(1.0, wireSmoothTreble * 0.55 + hatDecay * 0.40 + combinedHit * 0.15);
+            const overall = Math.min(1.0, liveBass * 0.60 + liveMid * 0.35 + liveTreble * 0.20);
+
+            // Synthesize 128-bin FFT spectrum from smoothed 3-band wire data with dynamic beat modulation
             const synthArray = new Uint8Array(128);
             for (let i = 0; i < 128; i++) {
                 let targetAmp = 0;
                 if (i < 32) {
                     const frac = i / 32.0;
-                    targetAmp = (wireSmoothBass * (1.0 - frac * 0.30) + wireSmoothHit * 0.25) * 255;
+                    targetAmp = (liveBass * (1.0 - frac * 0.35) + combinedHit * 0.25) * 255;
                 } else if (i < 80) {
-                    targetAmp = (wireSmoothMid * 0.92 + wireSmoothHit * 0.15) * 255;
+                    targetAmp = (liveMid * (0.85 + snareDecay * 0.3) + combinedHit * 0.15) * 255;
                 } else {
-                    targetAmp = (wireSmoothTreble * 0.88 + wireSmoothHit * 0.20) * 255;
+                    targetAmp = (liveTreble * (0.80 + hatDecay * 0.4) + combinedHit * 0.10) * 255;
                 }
-                wireSmoothBins[i] += (targetAmp - wireSmoothBins[i]) * 0.20;
+                wireSmoothBins[i] += (targetAmp - wireSmoothBins[i]) * 0.35;
                 synthArray[i] = Math.min(255, Math.max(0, Math.floor(wireSmoothBins[i])));
             }
 
+            const peakDb = -0.5 + combinedHit * 0.4;
+            const lufs = -8.5 + liveBass * 3.0;
+
             return {
-                bass: wireSmoothBass,
-                smoothedBass: wireSmoothBass,
-                bassImpact: wireSmoothHit > 0.4 ? 0.85 : (wireSmoothBass * 0.7),
-                transientImpulse: wireSmoothHit,
-                mid: wireSmoothMid,
-                smoothedMid: wireSmoothMid,
-                treble: wireSmoothTreble,
-                smoothedTreble: wireSmoothTreble,
+                bass: liveBass,
+                smoothedBass: liveBass,
+                bassImpact: combinedHit > 0.4 ? 0.95 : (liveBass * 0.7),
+                transientImpulse: Math.min(1.0, combinedHit * 0.9 + wireSmoothHit * 0.3),
+                mid: liveMid,
+                smoothedMid: liveMid,
+                treble: liveTreble,
+                smoothedTreble: liveTreble,
                 overall: overall,
-                isOnset: wireSmoothHit > 0.45,
+                isOnset: combinedHit > 0.55,
                 dataArray: synthArray,
-                peakDb: -0.5,
+                peakDb: peakDb,
                 peakHoldDb: 0.0,
-                lufs: -8.5,
+                lufs: lufs,
                 headroomDb: 0.5,
                 vuPercent: Math.min(100, Math.round(overall * 100)),
-                vuRmsPercent: Math.min(100, Math.round((wireSmoothBass * 0.6 + wireSmoothMid * 0.4) * 85)),
+                vuRmsPercent: Math.min(100, Math.round((liveBass * 0.6 + liveMid * 0.4) * 85)),
                 vuPeakHoldPercent: Math.min(100, Math.round(overall * 100)),
                 isClipping: false
             };
