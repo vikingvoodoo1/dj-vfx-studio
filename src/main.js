@@ -374,7 +374,7 @@ async function init() {
     let shazamStatusDismissTimer = null;
     let lastAutoShazamAttemptTime = 0;
 
-    let isTrackBannerEnabled = true;
+    let isTrackBannerEnabled = false; // Kept strictly in left panel by default, top-right overlay disabled
     let trackDelaySec = 0; // Instant by default so it drops down the moment track changes
     let trackDurationSec = 30;
     let trackBannerScale = 1.4;
@@ -1100,9 +1100,9 @@ async function init() {
     function showTrackBanner(trackData, options = {}) {
         if (!trackBanner) return;
 
-        const { force = false, immediate = false, duration = null, fromShazamAcceptance = false, fromManualInject = false } = options;
+        const { force = false, immediate = false, duration = null, fromShazamAcceptance = false, fromManualInject = false, manualPop = false } = options;
 
-        if (!isTrackBannerEnabled && !force) {
+        if (!isTrackBannerEnabled && !manualPop) {
             hideTrackBanner();
             return;
         }
@@ -1271,11 +1271,14 @@ async function init() {
         if (!isTrackBannerEnabled) {
             hideTrackBanner();
         }
-        showToast(isTrackBannerEnabled ? '🎛️ Track Stream Overlay: ENABLED' : '⚪ Track Stream Overlay: OFF');
         if (broadcast) {
+            showToast(isTrackBannerEnabled ? '🎛️ Track Stream Overlay: ENABLED' : '⚪ Track Stream Overlay: OFF');
             broadcastSync({ type: 'set_track_banner_enabled', enabled: isTrackBannerEnabled });
         }
     }
+
+    // Initialize UI to OFF so Now Playing remains in left panel
+    setTrackBannerEnabled(false, false);
 
     if (btnToggleTrackBanner) {
         btnToggleTrackBanner.addEventListener('click', () => setTrackBannerEnabled(!isTrackBannerEnabled, true));
@@ -1779,7 +1782,7 @@ async function init() {
                 deck: lastDisplayedTrackDeck || 1,
                 bpm: Number(bpmVal?.textContent) || 126.0
             };
-            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec });
+            showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec, manualPop: true });
             showToast('🎛️ Popped Track Banner on Stream');
 
             broadcastSync({
@@ -4130,6 +4133,7 @@ async function init() {
             });
         }
     }
+    window.selectFX = selectFX;
 
     // Bottom Bar FX Button Click Listeners
     fxButtons.forEach((btn) => {

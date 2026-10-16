@@ -1660,6 +1660,7 @@
 
         #track-banner.banner-hidden,
         #track-banner.hidden {
+            display: none !important;
             opacity: 0;
             pointer-events: none;
             transform: translate3d(0, -30px, 0) scale(calc(var(--banner-scale, 1.4) * 0.95));
@@ -2772,9 +2773,9 @@
                         <span class="power-btn-label">FLYER / PROMO [Y]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="flyer-power-status-text">OFF</span></span>
                     </button>
-                    <button class="logo-power-btn active" id="btn-toggle-nowplaying-top" title="Turn Now Playing Track Stream Overlay ON/OFF [N]">
+                    <button class="logo-power-btn" id="btn-toggle-nowplaying-top" title="Turn Now Playing Track Stream Overlay ON/OFF [N]">
                         <span class="power-btn-label">NOW PLAYING [N]</span>
-                        <span class="power-btn-status"><span class="power-led"></span> <span id="nowplaying-power-status-text">ACTIVE ON</span></span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="nowplaying-power-status-text">OFF</span></span>
                     </button>
                 </div>
 
@@ -3776,7 +3777,7 @@
             <div class="ide-tab-pane" id="pane-nowplaying">
                 <div class="pane-section-title">
                     <span>🎵 Now Playing & Track Banner</span>
-                    <span class="hud-badge" id="nowplaying-status-badge" style="background:rgba(0,255,204,0.15); color:#00ffcc; border-color:rgba(0,255,204,0.4);">LIVE ON STREAM</span>
+                    <span class="hud-badge" id="nowplaying-status-badge" style="background:rgba(255,255,255,0.05); color:rgba(255,255,255,0.5); border-color:#323542;">PANEL ONLY (STREAM MUTED)</span>
                 </div>
 
                 <!-- Live Track Banner Monitor Card (Visual Preview of the Stream Banner) -->
@@ -3793,7 +3794,7 @@
                         </div>
                         <div style="flex:1; overflow:hidden;">
                             <div style="display:flex; align-items:center; gap:5px; margin-bottom:2px;">
-                                <span class="track-now-tag" style="font-size:7.5px; padding:1px 4px;">ON STREAM</span>
+                                <span class="track-now-tag" style="font-size:7.5px; padding:1px 4px;">LEFT PANEL</span>
                                 <span class="hud-badge" id="nowplaying-pane-deck" style="font-size:7.5px; padding:1px 5px;">DECK 1</span>
                                 <span class="hud-badge" id="nowplaying-pane-bpm" style="font-size:7.5px; padding:1px 5px; color:#ffaa00; border-color:#ffaa00;">126.0 BPM</span>
                             </div>
@@ -3805,7 +3806,7 @@
 
                 <!-- Master Action Controls -->
                 <div style="display:flex; gap:6px; margin-bottom:10px;">
-                    <button class="btn-mini" id="btn-toggle-track-banner" style="flex:1; font-size:10px; font-weight:800; padding:6px 8px; background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; cursor:pointer;">🟢 TRACK OVERLAY: ON</button>
+                    <button class="btn-mini" id="btn-toggle-track-banner" style="flex:1; font-size:10px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.7); cursor:pointer;">⚪ TRACK OVERLAY: OFF</button>
                     <button class="btn-mini" id="btn-pop-track-banner" style="font-size:10px; font-weight:700; padding:6px 10px; background:rgba(255,0,127,0.18); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;" title="Manually Pop Track Banner On Stream">⚡ POP NOW</button>
                     <button class="btn-mini" id="btn-pop-off-track-banner" style="font-size:10px; font-weight:700; padding:6px 10px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:rgba(255,255,255,0.85); cursor:pointer;" title="Immediately Dismiss Track Banner On Stream">⏹️ POP OFF</button>
                 </div>

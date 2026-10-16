@@ -2421,8 +2421,28 @@ const DJDeckWaveformShader = {
         uniform float uDeck1TotalBeats;
         uniform float uDeck2TotalBeats;
 
-        // Authentic Edison Incandescent Filament Procedural Waveform Function
-        vec4 renderEdisonFilament(
+        // Fast procedural hash for spark micro-particles
+        float fireHash(vec2 p) {
+            vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+            p3 += dot(p3, p3.yzx + 33.33);
+            return fract((p3.x + p3.y) * p3.z);
+        }
+
+        // Multi-octave fluid convective fire turbulence
+        float fireTurbulenceFbm(vec2 p) {
+            float f = 0.0;
+            f += 0.500 * (sin(p.x * 2.8 + sin(p.y * 3.4)) * 0.5 + 0.5);
+            p = p * 2.05 + vec2(1.3, 3.7);
+            f += 0.250 * (sin(p.x * 3.6 - sin(p.y * 2.8)) * 0.5 + 0.5);
+            p = p * 2.12 - vec2(2.1, 1.4);
+            f += 0.125 * (sin(p.x * 5.4 + cos(p.y * 4.1)) * 0.5 + 0.5);
+            p = p * 2.0;
+            f += 0.0625 * (cos(p.x * 8.2 + p.y * 6.5) * 0.5 + 0.5);
+            return f / 0.9375;
+        }
+
+        // Procedural Roaring Audio-Reactive Fire Waveform Shader
+        vec4 renderFireWaveform(
             float texU, 
             float absDeckY, 
             float vRow, 
@@ -2430,7 +2450,7 @@ const DJDeckWaveformShader = {
             vec3 cCore, 
             vec3 cMid, 
             vec3 cBass, 
-            vec3 cEmber, 
+            vec3 cFlameTip, 
             float weight, 
             float time, 
             float bassImp, 
@@ -2449,63 +2469,79 @@ const DJDeckWaveformShader = {
             float beatEnv = exp(-intraBeat * 3.2) * 0.58 + 0.42;
             float transSpike = exp(-intraBeat * 12.0);
 
-            // 50/60Hz AC mains electrical hum & magnetic wire resonance
-            float acHum = sin(time * 314.16) * 0.015 + sin(time * 376.99) * 0.010;
+            // 1. Dynamic Convective Fire Updraft & Flame Licking Turbulence
+            // Flames lick upwards and outwards from the center baseline
+            float fireSpeed = 4.2;
+            vec2 fireUV = vec2(texU * 85.0, absDeckY * 9.0 - time * fireSpeed);
+            // Lateral licking flutter modulated by audio
+            fireUV.x += sin(absDeckY * 16.0 - time * 5.8) * (0.35 + transImp * 0.35);
+            float turb = fireTurbulenceFbm(fireUV);
 
-            // Frequency lobe envelopes
-            float hLow  = clamp((rawBass * 0.92 + rawHit * 0.10 + bassImp * 0.08) * beatEnv + 0.04 + acHum, 0.03, 0.96);
-            float hMid  = clamp((rawMid  * 0.72 + rawHit * 0.06) * (beatEnv * 0.85 + 0.15) + 0.02, 0.02, 0.80);
-            float hHigh = clamp((rawHigh * 0.48 + rawHit * 0.08 + transImp * 0.05) * (transSpike * 0.75 + 0.25) + 0.01, 0.01, 0.52);
+            // Secondary high-speed flame tongue turbulence
+            vec2 tongueUV = vec2(texU * 180.0 + sin(time * 7.5) * 2.5, absDeckY * 15.0 - time * 7.2);
+            float tongueTurb = fireTurbulenceFbm(tongueUV);
 
-            // Ambient thermal warmth falloff beyond outer envelope
-            if (absDeckY > hLow + 0.035) {
-                float halo = exp(-(absDeckY - hLow) * 50.0) * 0.18 * weight;
-                return vec4(cBass * halo, halo);
+            // 2. Audio-reactive flame envelope with explosive flare attacks
+            float bassSurge = (rawBass * 0.94 + rawHit * 0.14 + bassImp * 0.28) * beatEnv;
+            float midSurge  = (rawMid  * 0.74 + rawHit * 0.08) * (beatEnv * 0.85 + 0.15);
+            float highCrackle = (rawHigh * 0.54 + rawHit * 0.12 + transImp * 0.22) * (transSpike * 0.75 + 0.25);
+
+            float hLow  = clamp(bassSurge + 0.04, 0.03, 0.98);
+            float hMid  = clamp(midSurge + 0.02, 0.02, 0.82);
+            float hHigh = clamp(highCrackle + 0.015, 0.01, 0.55);
+
+            // Licking flame tongues extending past base envelope
+            float flameTongues = (turb * 0.65 + tongueTurb * 0.35) * (0.32 + bassSurge * 0.50 + transSpike * 0.25);
+            float hFlame = clamp(hLow * (0.80 + flameTongues * 0.75), 0.03, 1.05);
+
+            // 3. Smoke & Heat Haze Aura beyond flame envelope
+            if (absDeckY > hFlame + 0.04) {
+                float halo = exp(-(absDeckY - hFlame) * 38.0) * (0.18 + bassSurge * 0.20) * weight;
+                vec3 smokeAura = mix(cFlameTip, vec3(0.20, 0.04, 0.01), clamp((absDeckY - hFlame) * 9.0, 0.0, 1.0));
+                return vec4(smokeAura * halo, halo * 0.85);
             }
 
-            float lobeU = clamp(absDeckY / max(0.01, hLow), 0.0, 1.0);
+            float lobeU = clamp(absDeckY / max(0.01, hFlame), 0.0, 1.0);
 
-            // 1. Procedural Helical Coiled Filament Wire Winding (Tungsten Spiral)
-            // Fine organic spiral windings that ripple through the lobes
-            float coilFreq = 380.0;
-            float coilAngle = texU * coilFreq + absDeckY * 26.0 + sin(texU * 35.0 + time * 1.6) * 3.0;
-            float coil = sin(coilAngle);
-            float wireStrand = smoothstep(0.40, 0.98, coil);
-            float wireGroove = smoothstep(-0.95, -0.35, coil) * 0.35;
-
-            // 2. Blackbody Thermal Radiation Spectrum
-            // White-hot core (3200K) -> Molten Butterscotch Gold (2300K) -> Copper Ember (1600K) -> Burnt Garnet Wire (1100K)
-            float coreDist = clamp(1.0 - (absDeckY / max(0.01, hHigh)), 0.0, 1.0);
-            float midDist  = clamp(1.0 - (absDeckY / max(0.01, hMid)), 0.0, 1.0);
-
-            vec3 thermalCol;
-            if (lobeU < 0.28) {
-                thermalCol = mix(cMid, cCore, coreDist);
-            } else if (lobeU < 0.68) {
-                float f = (lobeU - 0.28) / 0.40;
-                thermalCol = mix(cMid, cBass, f);
+            // 4. Blackbody Fire Thermal Spectrum
+            // White-hot plasma core (3400K) -> Molten solar gold -> Blazing fiery amber -> Roaring vermilion fire -> Smoldering flame tips
+            vec3 fireCol;
+            if (lobeU < 0.16) {
+                float f = lobeU / 0.16;
+                fireCol = mix(vec3(1.0, 1.0, 0.98), cCore, f);
+            } else if (lobeU < 0.48) {
+                float f = (lobeU - 0.16) / 0.32;
+                fireCol = mix(cCore, cMid, f);
+            } else if (lobeU < 0.78) {
+                float f = (lobeU - 0.48) / 0.30;
+                fireCol = mix(cMid, cBass, f);
             } else {
-                float f = (lobeU - 0.68) / 0.32;
-                thermalCol = mix(cBass, cEmber, f);
+                float f = (lobeU - 0.78) / 0.22;
+                fireCol = mix(cBass, cFlameTip, f);
             }
 
-            // Modulate with helical filament wire strands
-            vec3 filamentCol = thermalCol * (0.72 + wireStrand * 0.68 - wireGroove * 0.38);
+            // 5. Fire convection streaks & leaping flame tongues modulation
+            float flameStrand = smoothstep(0.22, 0.92, turb * 0.72 + tongueTurb * 0.48);
+            fireCol *= (0.68 + flameStrand * 0.82);
 
-            // 3. Phosphor Micro-Bead Lattices (Microscopic LED filament emitters along quarter-beats)
-            float beadGrid = fract(beatPos * 4.0);
-            float beadPulse = exp(-abs(beadGrid - 0.5) * 16.0);
-            float beadGlow = exp(-absDeckY * 26.0) * beadPulse * (rawHigh * 1.8 + transSpike * 0.7 + 0.25);
-            filamentCol += cCore * beadGlow * 0.90;
+            // 6. Flying Convective Fire Embers / Spark Micro-Particles
+            vec2 sparkGrid = vec2(texU * 240.0, absDeckY * 38.0 - time * 6.0);
+            float sparkCell = fireHash(floor(sparkGrid));
+            if (sparkCell > 0.93) {
+                vec2 sparkFrac = fract(sparkGrid) - 0.5;
+                float sparkDist = length(sparkFrac);
+                float sparkIntensity = smoothstep(0.42, 0.05, sparkDist) * (0.9 + highCrackle * 1.6);
+                fireCol += vec3(1.0, 0.94, 0.70) * sparkIntensity * (1.0 - lobeU * 0.5);
+            }
 
-            // 4. White-Hot Filament Center Spine at zero-line
-            float spine = exp(-absDeckY * 80.0);
-            filamentCol += cCore * spine * 1.35;
+            // 7. White-Hot Fire Spine at zero baseline
+            float spine = exp(-absDeckY * 90.0);
+            fireCol += vec3(1.0, 0.98, 0.92) * spine * (1.85 + bassImp * 1.35);
 
-            // Lobe boundary anti-aliased edge mask
-            float alpha = 1.0 - smoothstep(hLow - 0.006, hLow + 0.003, absDeckY);
+            // Anti-aliased outer flame edge mask
+            float alpha = 1.0 - smoothstep(hFlame - 0.012, hFlame + 0.006, absDeckY);
 
-            return vec4(filamentCol * weight, clamp(alpha * weight, 0.0, 1.0));
+            return vec4(fireCol * weight, clamp(alpha * weight, 0.0, 1.0));
         }
 
         void main() {
@@ -2515,7 +2551,7 @@ const DJDeckWaveformShader = {
             float playheadDist = abs(uv.x - 0.5);
 
             // -----------------------------------------------------------------
-            // DENON PRIME 4 MOVING WAVEFORM DISPLAY
+            // DENON PRIME 4 MOVING WAVEFORM DISPLAY (Roaring Fire Shader)
             // (Takes up central region: uv.y from ~0.24 to 0.76)
             // -----------------------------------------------------------------
             float waveCenterY = 0.500;
@@ -2536,28 +2572,28 @@ const DJDeckWaveformShader = {
                 float totalTrackBeats2 = (uDeck2TotalBeats > 10.0) ? uDeck2TotalBeats : ((360.0 / 60.0) * bpmVal2);
                 float texU2 = fract(uDeck2Progress + (uv.x - 0.5) * zoomFactor);
 
-                // Deck 1 Warm Amber / Honey Edison Palette
-                vec3 cCore1  = vec3(1.00, 0.98, 0.92); // White-hot incandescent tungsten core
-                vec3 cMid1   = vec3(1.00, 0.72, 0.16); // Luminous honey butterscotch
-                vec3 cBass1  = vec3(0.96, 0.40, 0.06); // Radiant warm amber-copper
-                vec3 cEmber1 = vec3(0.60, 0.12, 0.02); // Cooling burnt garnet ember wire
+                // Deck 1 Caribbean Bonfire Fire Palette (Solar White Core -> Blazing Amber -> Roaring Scarlet -> Burnt Ruby Ember)
+                vec3 cCore1     = vec3(1.00, 0.96, 0.78);
+                vec3 cMid1      = vec3(1.00, 0.58, 0.08);
+                vec3 cBass1     = vec3(0.96, 0.24, 0.03);
+                vec3 cFlameTip1 = vec3(0.45, 0.07, 0.01);
 
-                // Deck 2 Molten Sunset Coral / Golden Apricot Edison Palette
-                vec3 cCore2  = vec3(1.00, 0.95, 0.88); // Champagne gold incandescent core
-                vec3 cMid2   = vec3(1.00, 0.55, 0.14); // Golden apricot
-                vec3 cBass2  = vec3(0.98, 0.22, 0.08); // Glowing sunset molten coral
-                vec3 cEmber2 = vec3(0.62, 0.08, 0.04); // Deep ruby ember wire
+                // Deck 2 Volcanic Dragon Fire Palette (Sunset Champagne Core -> Molten Vermilion -> Electric Ruby -> Volcanic Ember)
+                vec3 cCore2     = vec3(1.00, 0.92, 0.82);
+                vec3 cMid2      = vec3(1.00, 0.42, 0.10);
+                vec3 cBass2     = vec3(0.98, 0.15, 0.06);
+                vec3 cFlameTip2 = vec3(0.48, 0.05, 0.02);
 
-                // Compute filament waveforms
-                vec4 wave1 = renderEdisonFilament(
+                // Compute audio-reactive fire waveforms
+                vec4 wave1 = renderFireWaveform(
                     texU1, absDeckY, 0.25, totalTrackBeats1,
-                    cCore1, cMid1, cBass1, cEmber1,
+                    cCore1, cMid1, cBass1, cFlameTip1,
                     uDeck1Weight, uTime, uBass, uTransient
                 );
 
-                vec4 wave2 = renderEdisonFilament(
+                vec4 wave2 = renderFireWaveform(
                     texU2, absDeckY, 0.75, totalTrackBeats2,
-                    cCore2, cMid2, cBass2, cEmber2,
+                    cCore2, cMid2, cBass2, cFlameTip2,
                     uDeck2Weight, uTime, uBass, uTransient
                 );
 
@@ -2565,20 +2601,20 @@ const DJDeckWaveformShader = {
                 float waveAlpha = 0.0;
 
                 if (uDeck1Weight > 0.002 && uDeck2Weight > 0.002) {
-                    // Both decks blending
-                    waveCol = wave1.rgb + wave2.rgb * 1.15;
+                    // Both decks blending into dual fire inferno
+                    waveCol = wave1.rgb + wave2.rgb * 1.20;
                     waveAlpha = max(wave1.a, wave2.a);
                 } else if (uDeck2Weight > 0.002) {
-                    // Deck 2 sole active deck
+                    // Deck 2 sole active fire
                     waveCol = wave2.rgb;
                     waveAlpha = wave2.a;
                 } else {
-                    // Deck 1 sole active deck
+                    // Deck 1 sole active fire
                     waveCol = wave1.rgb;
                     waveAlpha = wave1.a;
                 }
 
-                // Authentic incandescent vintage light bulb flicker model
+                // Dynamic Fire Thermal Flickering
                 float time = uTime;
                 float cycle = fract(time * 0.217);
                 float sag = 0.0;
@@ -2598,37 +2634,32 @@ const DJDeckWaveformShader = {
                 float flicker = clamp(0.96 + sag + hum + wander, 0.25, 1.32);
                 float heat = clamp((flicker - 0.25) / 1.05, 0.0, 1.0);
 
-                // Thermal blackbody color shifts for center needle & rails
-                vec3 emberRed = vec3(0.86, 0.22, 0.04);
-                vec3 warmButterGold = vec3(1.0, 0.78, 0.28);
-                vec3 incandescentIvory = vec3(1.0, 0.99, 0.95);
-                vec3 filamentColor = (heat < 0.5) 
-                    ? mix(emberRed, warmButterGold, heat * 2.0) 
-                    : mix(warmButterGold, incandescentIvory, (heat - 0.5) * 2.0);
-                vec3 warmHoneyAmber = (uPrimaryDeck == 2.0) ? vec3(1.0, 0.38, 0.12) : vec3(1.0, 0.48, 0.08);
+                // Radiant Center Playhead Pillar of Fire
+                vec3 flameGold = vec3(1.0, 0.75, 0.22);
+                vec3 fireCore = vec3(1.0, 0.98, 0.92);
+                vec3 warmHoneyAmber = (uPrimaryDeck == 2.0) ? vec3(1.0, 0.38, 0.10) : vec3(1.0, 0.52, 0.06);
 
                 float playheadCore = 1.0 - smoothstep(0.0, 0.0035, playheadDist);
-                float playheadHalo = exp(-playheadDist * 60.0) * (0.20 + heat * 0.75) * flicker;
+                float playheadHalo = exp(-playheadDist * 55.0) * (0.25 + heat * 0.85) * flicker;
 
-                waveCol += filamentColor * playheadCore * 2.5 * flicker + mix(warmHoneyAmber, warmButterGold, playheadCore) * playheadHalo * 1.8;
+                waveCol += fireCore * playheadCore * 2.8 * flicker + mix(warmHoneyAmber, flameGold, playheadCore) * playheadHalo * 2.2;
 
-                // Tubular Schott Glass Cylindrical Enclosure Envelope:
-                // Refraction & Specular Sheen near top/bottom boundaries
+                // Fire Refraction & Thermal Sheen near boundaries
                 float glassSheen = pow(absDeckY, 12.0) * 0.35 * (0.6 + heat * 0.4);
-                vec3 glassCol = mix(warmHoneyAmber, warmButterGold, heat);
+                vec3 glassCol = mix(warmHoneyAmber, flameGold, heat);
                 waveCol += glassCol * glassSheen;
 
-                // Horizontal Window Border Rails: Warm vintage Edison filament rails
+                // Horizontal Window Border Rails: Fiery ember guidelines
                 float windowBorder = 1.0 - smoothstep(0.0, 0.018, abs(absDeckY - 1.0));
-                waveCol += mix(warmHoneyAmber, warmButterGold, heat) * windowBorder * (0.50 + heat * 0.45);
+                waveCol += mix(warmHoneyAmber, flameGold, heat) * windowBorder * (0.50 + heat * 0.45);
 
-                // Horizontal Zero-Line: Warm glowing guideline
+                // Horizontal Zero-Line: Radiant ember guideline
                 float zeroLine = 1.0 - smoothstep(0.0, 0.015, absDeckY);
-                waveCol += warmHoneyAmber * zeroLine * (0.15 + heat * 0.22);
+                waveCol += warmHoneyAmber * zeroLine * (0.18 + heat * 0.26);
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
-                float finalAlpha = clamp(waveAlpha + playheadCore + playheadHalo * 0.3 + windowBorder * 0.25 + zeroLine * 0.25 + glassSheen * 0.4, 0.0, 1.0);
+                float finalAlpha = clamp(waveAlpha + playheadCore + playheadHalo * 0.35 + windowBorder * 0.25 + zeroLine * 0.25 + glassSheen * 0.4, 0.0, 1.0);
                 finalAlpha *= edgeFade;
 
                 col = waveCol * edgeFade;
@@ -7876,6 +7907,63 @@ function getVintageBulbStyle(flickerVal) {
     };
 }
 
+// Authentic Caribbean / Pirates of the Caribbean Tavern Candlelight Model
+// Simulates a tallow candle burning inside an open wicker basket lantern:
+// rapid micro-flutters from drafts, irregular deep guttering dips, oxygen flare-ups, and natural flame dance
+function getPiratesCandleFlicker(timeSec, seedOffset = 0) {
+    const t = timeSec * 1.45 + seedOffset;
+    
+    // 1. High-frequency chaotic flutter (drafts catching the flame: 10Hz - 24Hz)
+    const flutter = Math.sin(t * 78.5) * 0.10 
+                  + Math.sin(t * 123.4) * 0.07 
+                  + Math.sin(t * 189.2) * 0.05;
+                  
+    // 2. Medium speed turbulence (flame licking & air eddies: 2Hz - 7Hz)
+    const turbulence = Math.sin(t * 14.3) * 0.13 
+                     + Math.cos(t * 23.7) * 0.09 
+                     + Math.sin(t * 37.1) * 0.06;
+
+    // 3. Low-frequency natural flame breathing & draft wander
+    const wander = Math.sin(t * 2.8) * 0.15 + Math.cos(t * 5.1) * 0.10;
+
+    // 4. Irregular Guttering (Sudden sea breeze gust blowing into wicker lattice)
+    // and Sudden Flare (flame leaps up with fresh oxygen)
+    const gustCycle = (t * 0.19) % 1.0;
+    let gust = 0.0;
+    // Gust 1: sudden deep drop into ember guttering (phase 0.14 - 0.22)
+    if (gustCycle > 0.14 && gustCycle < 0.22) {
+        const p = (gustCycle - 0.14) / 0.08;
+        gust -= 0.65 * Math.sin(p * Math.PI);
+    }
+    // Flare 1: explosive flare-up recovery right after guttering (phase 0.22 - 0.28)
+    else if (gustCycle >= 0.22 && gustCycle < 0.28) {
+        const p = (gustCycle - 0.22) / 0.06;
+        gust += 0.44 * Math.sin(p * Math.PI);
+    }
+    // Gust 2: sharp flicker stutter (phase 0.45 - 0.52)
+    else if (gustCycle > 0.45 && gustCycle < 0.52) {
+        const p = (gustCycle - 0.45) / 0.07;
+        gust -= 0.50 * Math.sin(p * Math.PI);
+    }
+    // Flare 2: bright lick (phase 0.52 - 0.57)
+    else if (gustCycle >= 0.52 && gustCycle < 0.57) {
+        const p = (gustCycle - 0.52) / 0.05;
+        gust += 0.38 * Math.sin(p * Math.PI);
+    }
+    // Gust 3: gentle gutter (phase 0.78 - 0.85)
+    else if (gustCycle > 0.78 && gustCycle < 0.85) {
+        const p = (gustCycle - 0.78) / 0.07;
+        gust -= 0.42 * Math.sin(p * Math.PI);
+    }
+
+    const raw = 0.88 + flutter + turbulence + wander + gust;
+    return Math.max(0.12, Math.min(1.65, raw));
+}
+
+// Dynamic Overview Track Bar Animation State (realigns active on-air deck to top track bar)
+let animDeck1BarY = 126.0;
+let animDeck2BarY = 182.0;
+
 function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2, d1Weight = 1.0, d2Weight = 0.0, primaryDeck = 1, audio = null) {
     if (typeof d1Weight === 'boolean') {
         const wasActive = d1Weight;
@@ -8470,24 +8558,39 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
 
     if (hasD2) {
         // ---------------------------------------------------------------------
-        // DUAL TRACK POSITION BARS (Deck 1 Top Strip + Deck 2 Bottom Strip)
+        // DUAL TRACK POSITION BARS (Dynamically Realigned on Deck Transition)
+        // Active On-Air Deck smoothly realigns to the top track bar slot!
         // ---------------------------------------------------------------------
         const barH = 50;
-        const bar1Y = 126;
-        const bar2Y = 182;
+        const topSlotY = 126;
+        const botSlotY = 182;
 
-        // Strip 1 (Deck 1): If Deck 2 is on air, dim Deck 1 strip
+        // Dynamic Realignment: If Deck 2 is primary/on-air, Deck 2 takes top slot (Y=126), Deck 1 takes lower slot (Y=182)
+        const isDeck2Primary = (primaryDeck === 2 || (d2Weight > d1Weight && d2Weight > 0.45));
+        const targetD1Y = isDeck2Primary ? botSlotY : topSlotY;
+        const targetD2Y = isDeck2Primary ? topSlotY : botSlotY;
+
+        // Smooth fluid animation lerp for seamless transition realignment
+        animDeck1BarY += (targetD1Y - animDeck1BarY) * 0.18;
+        animDeck2BarY += (targetD2Y - animDeck2BarY) * 0.18;
+
+        const d1BarY = animDeck1BarY;
+        const d2BarY = animDeck2BarY;
+
+        const isTransitioning = (!isD1OnAir && !isD2OnAir && d1Weight > 0.05 && d2Weight > 0.05);
+
+        // Strip 1 (Deck 1): If Deck 2 is exclusively on air, dim Deck 1 strip; during transition keep full clarity
         ctx.save();
-        if (isD2OnAir) ctx.globalAlpha = 0.35;
+        if (isD2OnAir && !isTransitioning) ctx.globalAlpha = 0.38;
 
-        ctx.fillStyle = 'rgba(18, 12, 6, 0.40)';
+        ctx.fillStyle = 'rgba(18, 12, 6, 0.45)';
         ctx.beginPath();
-        ctx.roundRect(padX, bar1Y, overviewW, barH, 6);
+        ctx.roundRect(padX, d1BarY, overviewW, barH, 6);
         ctx.fill();
 
-        drawMiniWaveform(padX, bar1Y, overviewW, barH, 1, themeDeck1);
+        drawMiniWaveform(padX, d1BarY, overviewW, barH, 1, themeDeck1);
 
-        const rail1Y = bar1Y + barH - 6;
+        const rail1Y = d1BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
 
         // Strip 1 Active Hot Cues & Loops
@@ -8498,36 +8601,74 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
             const lx1 = padX + loop.startProgress * overviewW;
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
             ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
-            ctx.fillRect(lx1, bar1Y + 14, Math.max(3, lx2 - lx1), barH - 20);
+            ctx.fillRect(lx1, d1BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
         });
 
         // Strip 1 Track Position Needle (Vintage LED Filament Tube)
         const prog1X = padX + prog1 * overviewW;
         const el1Min = Math.floor(el1 / 60);
         const el1Sec = Math.floor(el1 % 60);
-        drawEdisonFilamentNeedle(prog1X, bar1Y + 12, barH - 18, bulbStyle1, 1, '#ffaa18', isD2OnAir ? 'D1 (STANDBY)' : `D1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+        const d1Tag = isD2OnAir 
+            ? 'D1 (STANDBY)' 
+            : (isTransitioning 
+                ? `D1 (TRANSITION)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` 
+                : `D1 (ON AIR)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+        drawEdisonFilamentNeedle(prog1X, d1BarY + 12, barH - 18, bulbStyle1, 1, '#ffaa18', d1Tag);
         ctx.restore();
 
-        // Strip 2 (Deck 2): If Deck 1 is on air, dim Deck 2 strip
+        // Strip 2 (Deck 2): If Deck 1 is exclusively on air, dim Deck 2 strip; during transition keep full clarity
         ctx.save();
-        if (isD1OnAir) ctx.globalAlpha = 0.35;
+        if (isD1OnAir && !isTransitioning) ctx.globalAlpha = 0.38;
 
-        ctx.fillStyle = 'rgba(22, 10, 6, 0.40)';
+        ctx.fillStyle = 'rgba(22, 10, 6, 0.45)';
         ctx.beginPath();
-        ctx.roundRect(padX, bar2Y, overviewW, barH, 6);
+        ctx.roundRect(padX, d2BarY, overviewW, barH, 6);
         ctx.fill();
 
-        drawMiniWaveform(padX, bar2Y, overviewW, barH, 2, themeDeck2);
+        drawMiniWaveform(padX, d2BarY, overviewW, barH, 2, themeDeck2);
 
-        const rail2Y = bar2Y + barH - 6;
+        const rail2Y = d2BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
 
         // Strip 2 Track Position Needle (Vintage LED Filament Tube)
         const prog2X = padX + prog2 * overviewW;
         const el2Min = Math.floor(el2 / 60);
         const el2Sec = Math.floor(el2 % 60);
-        drawEdisonFilamentNeedle(prog2X, bar2Y + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', isD1OnAir ? 'D2 (STANDBY)' : `D2  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`);
+        const d2Tag = isD1OnAir 
+            ? 'D2 (STANDBY)' 
+            : (isTransitioning 
+                ? `D2 (TRANSITION)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}` 
+                : `D2 (ON AIR)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`);
+        drawEdisonFilamentNeedle(prog2X, d2BarY + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', d2Tag);
         ctx.restore();
+
+        // Active Transition Realignment Guide & Beat Sync Bridge
+        if (isTransitioning) {
+            ctx.save();
+            ctx.lineWidth = 1.5;
+            const alignGrad = ctx.createLinearGradient(prog1X, d1BarY, prog2X, d2BarY);
+            alignGrad.addColorStop(0, 'rgba(255, 170, 24, 0.75)');
+            alignGrad.addColorStop(0.5, 'rgba(255, 240, 160, 0.95)');
+            alignGrad.addColorStop(1, 'rgba(255, 77, 46, 0.75)');
+            ctx.strokeStyle = alignGrad;
+            ctx.setLineDash([4, 3]);
+            ctx.beginPath();
+            ctx.moveTo(prog1X, d1BarY + barH / 2);
+            ctx.lineTo(prog2X, d2BarY + barH / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Alignment Sync Indicator Bead at the midpoint
+            const midX = (prog1X + prog2X) / 2;
+            const midY = (d1BarY + d2BarY) / 2 + barH / 2;
+            ctx.beginPath();
+            ctx.arc(midX, midY, 4.5, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.shadowColor = '#ffaa18';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.restore();
+        }
 
     } else {
         // ---------------------------------------------------------------------
@@ -11011,7 +11152,8 @@ export function createVFXScene(container) {
             seed: cfg.seed,
             filamentMat,
             glowSprite,
-            light: pLight
+            light: pLight,
+            origLightPos: new THREE.Vector3(0, spriteY, 0)
         });
     }
 
@@ -16043,6 +16185,15 @@ export function createVFXScene(container) {
             if (djWaveMat.uniforms.uTransient) {
                 djWaveMat.uniforms.uTransient.value = audio ? (audio.transientImpulse || 0) : 0;
             }
+            if (djWaveMat.uniforms.uBass) {
+                djWaveMat.uniforms.uBass.value = audio ? (audio.smoothedBass || audio.bass || 0) : 0;
+            }
+            if (djWaveMat.uniforms.uMid) {
+                djWaveMat.uniforms.uMid.value = audio ? (audio.smoothedMid || audio.mid || 0) : 0;
+            }
+            if (djWaveMat.uniforms.uTreble) {
+                djWaveMat.uniforms.uTreble.value = audio ? (audio.smoothedTreble || audio.treble || 0) : 0;
+            }
 
             const activeLoop = (primaryDeck === 2) ? (deck2Data.loopActive || false) : deck1LoopActive;
             const activeLoopStart = (primaryDeck === 2) ? (deck2Data.loopStart || 0.0) : deck1LoopStart;
@@ -16068,42 +16219,68 @@ export function createVFXScene(container) {
             );
             djHudTex.needsUpdate = true;
 
-            // 💡 3D Woven Rattan Basket Lanterns & Soothing Loft Ambient Animation
+            // 💡 3D Woven Wicker Basket Lanterns - Pirates of the Caribbean / Castaway Candlelight
             if (edisonBulbs && edisonBulbs.length > 0) {
-                const audioBreathing = ((audio.smoothedBass || audio.bass || 0) * 0.28 + (audio.overall || 0) * 0.18);
+                const audioBreathing = ((audio.smoothedBass || audio.bass || 0) * 0.45 + (audio.overall || 0) * 0.20);
+                const audioKickFlicker = (audio.transientImpulse || 0) * 0.35;
 
                 for (let b = 0; b < edisonBulbs.length; b++) {
                     const bulb = edisonBulbs[b];
 
-                    // 1. Slow, Calming Harmonic Pendulum Sway
-                    const omega = bulb.omega * 0.72; // Slower, tranquil, soothing motion
-                    const swayZ = Math.sin(elapsedTime * omega + bulb.seed * 3.1) * 0.018;
-                    const swayX = Math.cos(elapsedTime * (omega * 0.85) + bulb.seed * 1.8) * 0.014;
+                    // 1. Caribbean Sea Breeze Nautical Rope Lantern Sway
+                    const omega = bulb.omega * 0.88;
+                    const swayZ = Math.sin(elapsedTime * omega + bulb.seed * 3.1) * 0.034 + Math.sin(elapsedTime * 0.5 + bulb.seed) * 0.012;
+                    const swayX = Math.cos(elapsedTime * (omega * 0.82) + bulb.seed * 1.8) * 0.026 + Math.cos(elapsedTime * 0.7) * 0.008;
                     bulb.pivot.rotation.z = swayZ;
                     bulb.pivot.rotation.x = swayX;
 
-                    // 2. Low Lights: Gentle Candlelight Breathing Glow
-                    const bulbFlicker = getVintageBulbFlicker(elapsedTime * 0.5, bulb.seed); // Smoother, relaxing flicker
-                    const heat = Math.max(0.18, Math.min(0.78, bulbFlicker * 0.52 + audioBreathing * 0.28));
+                    // 2. Authentic Pirates Candlelight Multi-Frequency Flutter & Guttering
+                    const candleFlicker = getPiratesCandleFlicker(elapsedTime, bulb.seed);
+                    // Combine candle draft physics with sound wave air pulses from the DJ subwoofers
+                    const heat = Math.max(0.10, Math.min(1.45, candleFlicker * 0.72 + audioBreathing * 0.35 + audioKickFlicker));
 
-                    // Soothing honey-amber candlelight color (pure warm tones, zero white-hot flares)
-                    const u = heat;
-                    const r = 255;
-                    const g = Math.round(135 + u * 50); // 135 to 175 (warm rich golden amber)
-                    const bl = Math.round(18 + u * 25); // Deep warm low blue
+                    // 3. Flame Spatial Dancing Jitter inside the wicker basket
+                    // A real candle flame tip flutters horizontally and licks vertically, casting shifting shadows
+                    const jitterX = (Math.sin(elapsedTime * 19.3 + bulb.seed * 4.7) * 0.06 + Math.sin(elapsedTime * 33.1) * 0.035);
+                    const jitterY = (Math.sin(elapsedTime * 24.5 + bulb.seed * 3.2) * 0.07 + Math.abs(Math.sin(elapsedTime * 12.8)) * 0.05);
+                    const jitterZ = (Math.cos(elapsedTime * 21.2 + bulb.seed * 5.1) * 0.06 + Math.cos(elapsedTime * 29.4) * 0.03);
+
+                    const basePos = bulb.origLightPos || new THREE.Vector3(0, -1.40, 0);
+                    bulb.light.position.set(basePos.x + jitterX, basePos.y + jitterY, basePos.z + jitterZ);
+                    bulb.glowSprite.position.set(basePos.x + jitterX * 0.5, basePos.y + jitterY * 0.5, basePos.z + jitterZ * 0.5);
+
+                    // 4. Pirates of the Caribbean Tavern Candlelight Palette
+                    // Guttering ember (1600K blood-orange) -> Warm tallow flame (2000K honey amber) -> Flare wick (2400K golden yellow)
+                    let r, g, bl;
+                    if (heat < 0.45) {
+                        const u = heat / 0.45;
+                        r = 255;
+                        g = Math.round(75 + u * 60); // 75 -> 135
+                        bl = Math.round(5 + u * 15);  // 5 -> 20
+                    } else if (heat < 0.90) {
+                        const u = (heat - 0.45) / 0.45;
+                        r = 255;
+                        g = Math.round(135 + u * 45); // 135 -> 180
+                        bl = Math.round(20 + u * 25); // 20 -> 45
+                    } else {
+                        const u = Math.min(1.0, (heat - 0.90) / 0.55);
+                        r = 255;
+                        g = Math.round(180 + u * 40); // 180 -> 220
+                        bl = Math.round(45 + u * 40);  // 45 -> 85
+                    }
 
                     bulb.filamentMat.color.setRGB(r / 255, g / 255, bl / 255);
 
-                    // Gentle, soothing bloom
-                    const targetGlowOpacity = 0.25 + heat * 0.30;
+                    // Dynamic candle flame bloom
+                    const targetGlowOpacity = 0.20 + heat * 0.42;
                     bulb.glowSprite.material.opacity = targetGlowOpacity;
-                    const spriteScale = 2.4 + heat * 0.6;
+                    const spriteScale = 2.2 + heat * 0.95;
                     bulb.glowSprite.scale.set(spriteScale, spriteScale, 1.0);
 
-                    // Low lights Point Light intensity: soft, intimate, soothing
-                    const lightInt = 0.40 + heat * 0.50; // Max ~0.80 - 0.90
+                    // Point Light: deep warm candle illumination with dynamic sea breeze flicker
+                    const lightInt = 0.25 + heat * 0.85; // Drops on guttering, leaps on flares
                     bulb.light.intensity = lightInt;
-                    bulb.light.color.setRGB(1.0, 0.60, 0.15); // Warm 2200K candlelight
+                    bulb.light.color.setRGB(r / 255, Math.min(1.0, (g / 255) * 1.05), Math.max(0.04, bl / 255));
                 }
             }
 
