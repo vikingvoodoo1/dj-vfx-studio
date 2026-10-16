@@ -68,6 +68,22 @@ export class WaveformService {
     }
 
     /**
+     * Add and prioritize a live database path (transferred over wire from deck USB)
+     */
+    addEngineDb(dbPath) {
+        if (!dbPath || !fs.existsSync(dbPath)) return;
+        const exists = this.engineDbPaths.some(p => p.dbPath === dbPath);
+        if (!exists) {
+            this.engineDbPaths.unshift({
+                dbPath,
+                overviewDir: path.join(path.dirname(dbPath), 'OverviewData')
+            });
+            console.log('[Waveform Service] ⚡ Added Live Wire Database to Index:', dbPath);
+            this.cache.clear();
+        }
+    }
+
+    /**
      * Find waveform for a track by artist and title (or trackId)
      */
     async getWaveform(artist = '', title = '', trackId = null) {

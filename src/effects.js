@@ -2536,14 +2536,9 @@ const DJDeckWaveformShader = {
                 float rawHigh = audioSlice.b;
                 float rawHit  = audioSlice.a;
 
-                // Center playhead immediate reactivity boost
+                // Authentic wire spectral values (pure unadulterated track data, no mic contamination)
+                // Center Laser Playhead Proximity
                 float playheadProximity = exp(-playheadDist * 25.0);
-                if (isDeck1) {
-                    rawBass = mix(rawBass, max(rawBass, uBass), playheadProximity * 0.8);
-                    rawMid  = mix(rawMid,  max(rawMid,  uMid),  playheadProximity * 0.8);
-                    rawHigh = mix(rawHigh, max(rawHigh, uTreble), playheadProximity * 0.8);
-                    rawHit  = mix(rawHit,  max(rawHit,  uTransient), playheadProximity * 0.9);
-                }
 
                 // Authentic Denon Engine 3-Band Color Composition
                 // Lows (L): Electric Royal Cobalt Blue
@@ -2620,7 +2615,7 @@ const DJDeckWaveformShader = {
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
-                float finalAlpha = clamp(bassLayer + midLayer + highLayer + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3, 0.0, 1.0);
+                float finalAlpha = clamp(waveMask + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3 + zeroLine * 0.5, 0.0, 1.0);
                 finalAlpha *= edgeFade;
 
                 col = waveCol * edgeFade;

@@ -882,6 +882,7 @@ async function init() {
     if (btnSetupPopoutScreen) btnSetupPopoutScreen.addEventListener('click', openSecondScreenWindow);
 
     let stagelinqClient = null;
+    const cachedDeckWaveforms = new Map();
 
     // Cross-Process Sync Broadcaster (Sends across BOTH Local BroadcastChannel AND Network WebSocket to OBS / 2nd Screen)
     function broadcastSync(msg) {
@@ -4021,6 +4022,12 @@ async function init() {
         if (broadcast) {
             broadcastSync({ type: 'set_fx', fx: targetIndex });
         }
+
+        if (targetIndex === 3) {
+            cachedDeckWaveforms.forEach((pkt) => {
+                if (vfx.setDeckWaveform) vfx.setDeckWaveform(pkt);
+            });
+        }
     }
 
     // Bottom Bar FX Button Click Listeners
@@ -4671,6 +4678,7 @@ async function init() {
         onDeckWaveform: (waveformPacket) => {
             if (!waveformPacket) return;
             console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);
+            cachedDeckWaveforms.set(waveformPacket.deck || 1, waveformPacket);
             if (vfx.setDeckWaveform) {
                 vfx.setDeckWaveform(waveformPacket);
             }

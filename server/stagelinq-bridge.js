@@ -54,6 +54,8 @@ function relayToOthers(senderWs, messageObj) {
     });
 }
 
+const lastDeckWaveforms = new Map();
+
 // Unified Handlers for Hardware Telemetry
 function handleIncomingTrack(trackData) {
     lastTrackData = trackData;
@@ -80,7 +82,7 @@ function handleIncomingTrack(trackData) {
     waveformService.getWaveform(currentDeck.artist, currentDeck.title, trackData.trackId).then((wf) => {
         if (wf && wf.samples) {
             console.log(`[Universal Bridge] 🌊 Transmitting authentic ${wf.source} 3-band waveform for [Deck ${deckNum}] "${wf.title}" (${wf.samples.length / 3} slices)`);
-            broadcast({
+            const wfPacket = {
                 type: 'deck_waveform',
                 deck: deckNum,
                 title: wf.title,
@@ -89,26 +91,34 @@ function handleIncomingTrack(trackData) {
                 duration: wf.duration,
                 bpm: wf.bpm,
                 samples: wf.samples
-            });
+            };
+            lastDeckWaveforms.set(deckNum, wfPacket);
+            broadcast(wfPacket);
         }
     }).catch(err => console.warn('[Universal Bridge] Waveform lookup notice:', err.message));
 }
 
 function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
     if (bpm > 40 && bpm < 300) {
-        lastBpm = bpm;
         const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
         currentDeck.bpm = bpm;
         currentDeck.isHardware = true;
         deckStatuses.set(deckNum, currentDeck);
 
-        broadcast({
-            type: 'bpm',
-            deck: deckNum,
-            bpm,
-            isHardware: true,
-            ecosystem
-        });
+        // Only update master console BPM if this deck is actively playing, or if no other deck is playing
+        const otherPlaying = Array.from(deckStatuses.values()).some(d => d.deck !== deckNum && d.play && (d.fader === undefined || d.fader > 0.5));
+        const thisDeckIsPlaying = currentDeck.play;
+
+        if (thisDeckIsPlaying || !otherPlaying) {
+            lastBpm = bpm;
+            broadcast({
+                type: 'bpm',
+                deck: deckNum,
+                bpm,
+                isHardware: true,
+                ecosystem
+            });
+        }
     }
 }
 
@@ -377,6 +387,13 @@ wss.on('connection', (ws) => {
         decks: Array.from(deckStatuses.values())
     }));
 
+    // Replay pre-analyzed deck waveforms so freshly loaded or refreshed clients get immediate waveform rendering
+    lastDeckWaveforms.forEach((wfPacket) => {
+        try {
+            ws.send(JSON.stringify(wfPacket));
+        } catch (e) {}
+    });
+
     // Replay full active state snapshot to the connecting client
     globalSyncState.forEach((cachedMsg) => {
         try {
@@ -504,9 +521,17 @@ async function startStageLinq() {
 
         stagelinqInstance = new StageLinqInstance({
             actingAs: ActingAsDevice?.NowPlaying || 'NowPlaying',
-            downloadDbSources: false,
-            enableFileTranfer: false
+            downloadDbSources: true,
+            enableFileTranfer: true
         });
+
+        // When StageLinQ transfers the m.db SQLite database from the USB inserted in the deck, index it immediately
+        if (stagelinqInstance.databases) {
+            stagelinqInstance.databases.on('dbDownloaded', (sourceId, dbPath) => {
+                console.log(`[StageLinq] 💾 Wire Database Transferred from Deck [${sourceId}]: ${dbPath}`);
+                waveformService.addEngineDb(dbPath);
+            });
+        }
 
         console.log('[StageLinq] 🔍 Scanning local network for Denon Prime players/mixers (UDP 50010)...');
 
