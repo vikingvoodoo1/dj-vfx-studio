@@ -2374,7 +2374,10 @@ const DJDeckWaveformShader = {
         uDeck2Progress: { value: 0.18 },
         uDeck2Active: { value: 0.0 },
         uPlayState: { value: 1.0 },
-        uZoom: { value: 0.08 }
+        uZoom: { value: 0.08 },
+        uLoopActive: { value: 0.0 },
+        uLoopStart: { value: 0.0 },
+        uLoopEnd: { value: 0.0 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -2400,6 +2403,9 @@ const DJDeckWaveformShader = {
         uniform float uDeck2Active;
         uniform float uPlayState;
         uniform float uZoom;
+        uniform float uLoopActive;
+        uniform float uLoopStart;
+        uniform float uLoopEnd;
 
         void main() {
             vec2 uv = vUv;
@@ -2475,12 +2481,16 @@ const DJDeckWaveformShader = {
                 float miniDistY = abs(normMiniY);
                 float inMiniWave = 1.0 - smoothstep(songEnergy - 0.08, songEnergy, miniDistY);
 
-                // Denon Engine 3-Band overview coloring: Low (Blue), Mid (Emerald Green), High (White/Cyan)
-                vec3 miniWaveColor = isDeck1 
-                    ? mix(vec3(0.04, 0.35, 0.98), vec3(0.05, 0.95, 0.35), clamp(overviewSlice.g * 1.5, 0.0, 1.0))
-                    : mix(vec3(0.95, 0.25, 0.05), vec3(1.0, 0.75, 0.15), clamp(overviewSlice.g * 1.5, 0.0, 1.0));
-                if (overviewSlice.b > 0.4) {
-                    miniWaveColor = mix(miniWaveColor, vec3(0.95, 0.98, 1.0), (overviewSlice.b - 0.4) * 1.6);
+                // Denon Engine 3-Band overview coloring: Low (Blue), Mid (Emerald Green), High (Ice White)
+                vec3 miniWaveColor;
+                if (isDeck1) {
+                    miniWaveColor = vec3(0.04, 0.38, 0.98);
+                    miniWaveColor = mix(miniWaveColor, vec3(0.05, 0.92, 0.35), clamp(overviewSlice.g * 1.3, 0.0, 0.85));
+                    miniWaveColor = mix(miniWaveColor, vec3(0.96, 0.98, 1.00), clamp(overviewSlice.b * 0.75, 0.0, 0.65));
+                } else {
+                    miniWaveColor = vec3(0.95, 0.25, 0.05);
+                    miniWaveColor = mix(miniWaveColor, vec3(1.0, 0.75, 0.15), clamp(overviewSlice.g * 1.3, 0.0, 0.85));
+                    miniWaveColor = mix(miniWaveColor, vec3(1.0, 0.95, 0.80), clamp(overviewSlice.b * 0.75, 0.0, 0.65));
                 }
 
                 if (uv.x < trackProg) {
@@ -2489,16 +2499,26 @@ const DJDeckWaveformShader = {
                     col = miniWaveColor * inMiniWave * 0.95 + vec3(0.03, 0.06, 0.08);
                 }
 
+                // Active Loop Bracket on Mini-Overview Strip (Luminous emerald region & brackets)
+                if (isDeck1 && uLoopActive > 0.5 && uLoopEnd > uLoopStart) {
+                    if (uv.x >= uLoopStart && uv.x <= uLoopEnd) {
+                        col += vec3(0.0, 0.85, 0.55) * inMiniWave * 0.65;
+                        if (abs(normMiniY) > 0.70) {
+                            col += vec3(0.0, 1.0, 0.75) * 1.8;
+                        }
+                    }
+                    if (abs(uv.x - uLoopStart) < 0.0035) {
+                        col += vec3(0.0, 1.0, 0.80) * 2.8;
+                    }
+                    if (abs(uv.x - uLoopEnd) < 0.0035) {
+                        col += vec3(0.0, 1.0, 0.80) * 2.8;
+                    }
+                }
+
                 // Mini Playhead position marker
                 float miniPlayheadDist = abs(uv.x - trackProg);
                 float miniPlayhead = 1.0 - smoothstep(0.0, 0.003, miniPlayheadDist);
                 col += vec3(1.0, 1.0, 1.0) * miniPlayhead * 2.5;
-
-                // Hot Cue dots on overview strip
-                if (abs(uv.x - 0.10) < 0.004) col += vec3(0.0, 1.0, 0.4) * 1.8;
-                if (abs(uv.x - 0.32) < 0.004) col += vec3(1.0, 0.0, 0.8) * 1.8;
-                if (abs(uv.x - 0.58) < 0.004) col += vec3(0.0, 0.8, 1.0) * 1.8;
-                if (abs(uv.x - 0.78) < 0.004) col += vec3(1.0, 0.8, 0.0) * 1.8;
 
                 // Border
                 float miniBorder = 1.0 - smoothstep(0.0, 0.003, abs(abs(uv.y - miniCenterY) - miniHalfH));
@@ -2536,50 +2556,49 @@ const DJDeckWaveformShader = {
                 float rawHigh = audioSlice.b;
                 float rawHit  = audioSlice.a;
 
-                // Authentic wire spectral values (pure unadulterated track data, no mic contamination)
-                // Center Laser Playhead Proximity
-                float playheadProximity = exp(-playheadDist * 25.0);
-
                 // Authentic Denon Engine 3-Band Color Composition
-                // Lows (L): Electric Royal Cobalt Blue
-                // Mids (M): Vibrant Emerald Green
-                // Highs (H): Crisp Ice White Transients
-                vec3 d1_bass = vec3(0.04, 0.35, 0.98);
-                vec3 d1_mid  = vec3(0.05, 0.95, 0.32);
-                vec3 d1_high = vec3(0.96, 0.98, 1.00);
+                // Deck 1: Cobalt Royal Blue (Low) / Vibrant Emerald Green (Mid) / Crisp Ice White (High)
+                vec3 cBass = isDeck1 ? vec3(0.04, 0.38, 0.98) : vec3(0.98, 0.16, 0.22);
+                vec3 cMid  = isDeck1 ? vec3(0.05, 0.92, 0.35) : vec3(1.00, 0.65, 0.08);
+                vec3 cHigh = isDeck1 ? vec3(0.98, 0.99, 1.00) : vec3(1.00, 0.98, 0.85);
 
-                // Deck 2: Crimson Red (Low) / Amber Orange (Mid) / Champagne Gold (High)
-                vec3 d2_bass = vec3(0.98, 0.16, 0.22);
-                vec3 d2_mid  = vec3(1.00, 0.62, 0.08);
-                vec3 d2_high = vec3(1.00, 0.96, 0.75);
+                // Authentic 3-Band Vertical Layer Heights (Denon Engine OS 3-Band Architecture)
+                // Low band (Bass/Kicks): Outer envelope (tallest)
+                float hLow  = clamp(rawBass * 0.94 + rawHit * 0.08 + 0.03, 0.03, 0.96);
+                // Mid band (Vocals/Melody): Middle envelope
+                float hMid  = clamp(rawMid * 0.68 + rawHit * 0.04 + 0.02, 0.02, 0.78);
+                // High band (Hi-hats/Transients): Inner sharp core
+                float hHigh = clamp(rawHigh * 0.40 + rawHit * 0.08 + 0.01, 0.01, 0.50);
 
-                vec3 colBass = isDeck1 ? d1_bass : d2_bass;
-                vec3 colMid  = isDeck1 ? d1_mid  : d2_mid;
-                vec3 colHigh = isDeck1 ? d1_high : d2_high;
+                // Anti-aliased band masks based on vertical distance from center zero-line
+                float maskLow  = 1.0 - smoothstep(hLow  - 0.010, hLow  + 0.005, absDeckY);
+                float maskMid  = 1.0 - smoothstep(hMid  - 0.008, hMid  + 0.004, absDeckY);
+                float maskHigh = 1.0 - smoothstep(hHigh - 0.006, hHigh + 0.003, absDeckY);
 
-                // Frequency band dominance blending (matches Engine OS color separation)
-                float maxBand = max(rawBass, max(rawMid, rawHigh));
-                float totalBand = rawBass + rawMid + rawHigh + 0.001;
-                float wMid  = rawMid / totalBand;
-                float wHigh = rawHigh / totalBand;
+                // Stacked 3-band layer composite
+                vec3 waveCol = cBass * maskLow;
+                waveCol = mix(waveCol, cMid, maskMid * 0.94);
+                waveCol = mix(waveCol, cHigh, maskHigh * 0.98);
 
-                vec3 bandCol = colBass;
-                bandCol = mix(bandCol, colMid, smoothstep(0.20, 0.52, wMid));
-                bandCol = mix(bandCol, colHigh, smoothstep(0.18, 0.48, wHigh));
+                // Active Loop Bracket & In/Out Flags on Scrolling Waveform
+                if (isDeck1 && uLoopActive > 0.5 && uLoopEnd > uLoopStart) {
+                    bool inLoopRegion = (texU >= uLoopStart && texU <= uLoopEnd);
+                    if (inLoopRegion) {
+                        waveCol += vec3(0.0, 0.22, 0.16) * maskLow;
+                    }
+                    float loopInDist = abs(texU - uLoopStart);
+                    if (loopInDist < (0.0025 * zoomFactor / 0.08)) {
+                        waveCol += vec3(0.0, 1.0, 0.80) * 2.8;
+                    }
+                    float loopOutDist = abs(texU - uLoopEnd);
+                    if (loopOutDist < (0.0025 * zoomFactor / 0.08)) {
+                        waveCol += vec3(0.0, 1.0, 0.80) * 2.8;
+                    }
+                }
 
-                // Mirrored solid waveform envelope
-                float totalHeight = clamp(maxBand * 0.90 + rawHit * 0.08 + 0.04, 0.04, 0.96);
-                float waveMask = 1.0 - smoothstep(totalHeight - 0.012, totalHeight + 0.006, absDeckY);
-
-                // Transient core highlight on sharp transients
-                float highCore = (1.0 - smoothstep(rawHigh * 0.55 + rawHit * 0.25, rawHigh * 0.55 + rawHit * 0.25 + 0.015, absDeckY)) * step(0.18, wHigh);
-
-                vec3 waveCol = bandCol * waveMask;
-                waveCol = mix(waveCol, colHigh, highCore * 0.85);
-
-                // Filament zero-line
-                float zeroLine = 1.0 - smoothstep(0.0, 0.025, absDeckY);
-                waveCol += (isDeck1 ? vec3(0.08, 0.60, 0.95) : vec3(0.95, 0.45, 0.08)) * zeroLine * 0.35;
+                // Filament zero-line (center glow)
+                float zeroLine = 1.0 - smoothstep(0.0, 0.022, absDeckY);
+                waveCol += (isDeck1 ? vec3(0.12, 0.70, 1.0) : vec3(1.0, 0.50, 0.10)) * zeroLine * 0.45;
 
                 // Beat Grid & Bar Markers
                 float bps = bpmVal / 60.0;
@@ -2615,7 +2634,7 @@ const DJDeckWaveformShader = {
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
-                float finalAlpha = clamp(waveMask + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3 + zeroLine * 0.5, 0.0, 1.0);
+                float finalAlpha = clamp(maskLow + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3 + zeroLine * 0.5, 0.0, 1.0);
                 finalAlpha *= edgeFade;
 
                 col = waveCol * edgeFade;
@@ -9409,7 +9428,10 @@ export function createVFXScene(container) {
             uDeck2Progress: { value: 0.0 },
             uDeck2Active: { value: 0.0 },
             uPlayState: { value: 1.0 },
-            uZoom: { value: 0.08 }
+            uZoom: { value: 0.08 },
+            uLoopActive: { value: 0.0 },
+            uLoopStart: { value: 0.0 },
+            uLoopEnd: { value: 0.0 }
         },
         vertexShader: DJDeckWaveformShader.vertexShader,
         fragmentShader: DJDeckWaveformShader.fragmentShader,
@@ -9445,7 +9467,12 @@ export function createVFXScene(container) {
     let djHistoryHead = 0;
     let djHudFrameCount = 0;
     let deck1Progress = 0.38;
+    let deck1WireProgress = 0.38;
+    let deck1LoopActive = false;
+    let deck1LoopStart = 0.0;
+    let deck1LoopEnd = 0.0;
     let deck2Progress = 0.0;
+    let deck2WireProgress = 0.0;
     let deck1Active = true;
     let deck2Active = false;
     let deck2Playing = false;
@@ -14303,14 +14330,36 @@ export function createVFXScene(container) {
             const posArr = specParticleGeo.attributes.position.array;
             const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
 
+            // Sample live wire audio slice from deck waveform if available (pure deck wire audio)
+            let wireAmpBands = null;
+            if (deck1HasHardwareWaveform) {
+                const sampleIdx = Math.floor(deck1Progress * 512) % 512;
+                const wR = djAudioHistoryData[sampleIdx * 4] / 255.0;
+                const wG = djAudioHistoryData[sampleIdx * 4 + 1] / 255.0;
+                const wB = djAudioHistoryData[sampleIdx * 4 + 2] / 255.0;
+                const wHit = djAudioHistoryData[sampleIdx * 4 + 3] / 255.0;
+                wireAmpBands = { wR, wG, wB, wHit };
+            }
+
             for (let i = 0; i < totalSpecParticles; i++) {
                 const b = specParticleBandIdx[i];
                 const layer = specParticleLayer[i];
                 const spd = specParticleSpeed[i];
                 
-                // Map to actual live FFT bin
-                const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
-                const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
+                let rawAmp = 0.0;
+                if (wireAmpBands) {
+                    if (b < 20) {
+                        const nb = b / 20.0;
+                        rawAmp = wireAmpBands.wR * (1.0 - nb * 0.25) + wireAmpBands.wHit * 0.35;
+                    } else if (b < 44) {
+                        rawAmp = wireAmpBands.wG * 0.95 + wireAmpBands.wHit * 0.20;
+                    } else {
+                        rawAmp = wireAmpBands.wB * 0.85 + wireAmpBands.wHit * 0.25;
+                    }
+                } else {
+                    const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(b / specBands, 1.3) * 56) + 1);
+                    rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : 0.0;
+                }
                 
                 // Active height target for this particle in the frequency fountain
                 const targetY = -7.5 + (rawAmp * 14.5 * (0.3 + layer * 0.7)) + Math.sin(elapsedTime * 3.0 * spd + b * 0.2) * 0.25 * rawAmp;
@@ -14328,8 +14377,19 @@ export function createVFXScene(container) {
             }
             specParticleGeo.attributes.position.needsUpdate = true;
 
-            // Advance track progress smoothly
-            deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
+            // Advance track progress: follow wire progress or iterate within hardware loop
+            if (deck1LoopActive && deck1LoopEnd > deck1LoopStart) {
+                // If in active hardware loop, advance smoothly and wrap at loop end
+                deck1Progress += delta * (currentBPM / 60.0) * ((deck1LoopEnd - deck1LoopStart) / 16.0);
+                if (deck1Progress >= deck1LoopEnd || deck1Progress < deck1LoopStart) {
+                    deck1Progress = deck1LoopStart;
+                }
+            } else if (deck1WireProgress !== undefined && Math.abs(deck1WireProgress - deck1Progress) > 0.001) {
+                deck1Progress = THREE.MathUtils.lerp(deck1Progress, deck1WireProgress, 0.2);
+            } else {
+                deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
+            }
+
             if (deck2Active) {
                 deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
             }
@@ -14339,16 +14399,19 @@ export function createVFXScene(container) {
             // Update Shader Uniforms
             djWaveMat.uniforms.uTime.value = elapsedTime;
             djWaveMat.uniforms.uHeadPos.value = deck1HasHardwareWaveform ? deck1Progress : (djHistoryHead / 512.0);
-            djWaveMat.uniforms.uBass.value = bassPop;
-            djWaveMat.uniforms.uMid.value = audio.smoothedMid || 0;
-            djWaveMat.uniforms.uTreble.value = audio.smoothedTreble || 0;
-            djWaveMat.uniforms.uTransient.value = audio.transientImpulse || 0;
+            djWaveMat.uniforms.uBass.value = wireAmpBands ? wireAmpBands.wR : bassPop;
+            djWaveMat.uniforms.uMid.value = wireAmpBands ? wireAmpBands.wG : (audio.smoothedMid || 0);
+            djWaveMat.uniforms.uTreble.value = wireAmpBands ? wireAmpBands.wB : (audio.smoothedTreble || 0);
+            djWaveMat.uniforms.uTransient.value = wireAmpBands ? wireAmpBands.wHit : (audio.transientImpulse || 0);
             djWaveMat.uniforms.uBPM.value = currentBPM;
             djWaveMat.uniforms.uDeck2BPM.value = deck2Data.bpm || currentBPM;
             djWaveMat.uniforms.uBeatPhase.value = beatPhaseVal;
             djWaveMat.uniforms.uTrackProgress.value = deck1Progress;
             djWaveMat.uniforms.uDeck2Progress.value = deck2Progress;
             djWaveMat.uniforms.uDeck2Active.value = deck2Active ? 1.0 : 0.0;
+            djWaveMat.uniforms.uLoopActive.value = deck1LoopActive ? 1.0 : 0.0;
+            djWaveMat.uniforms.uLoopStart.value = deck1LoopStart;
+            djWaveMat.uniforms.uLoopEnd.value = deck1LoopEnd;
 
             // Update HUD Canvas texture every ~4 frames for smooth time elapsed/remaining readouts
             djHudFrameCount++;
@@ -16719,7 +16782,21 @@ export function createVFXScene(container) {
                 if (data.title) deck1Data.title = data.title;
                 if (data.bpm) deck1Data.bpm = data.bpm;
                 if (data.key) deck1Data.key = data.key;
-                if (data.progress !== undefined) deck1Progress = data.progress;
+                if (data.loopActive !== undefined) {
+                    deck1LoopActive = Boolean(data.loopActive);
+                    if (data.loopStart !== undefined) deck1LoopStart = Number(data.loopStart);
+                    if (data.loopEnd !== undefined) deck1LoopEnd = Number(data.loopEnd);
+                }
+                if (data.progress !== undefined) {
+                    const newProg = Number(data.progress);
+                    if (deck1WireProgress > 0.005 && newProg < deck1WireProgress - 0.003) {
+                        deck1LoopActive = true;
+                        deck1LoopEnd = Math.max(deck1LoopEnd, deck1WireProgress);
+                        deck1LoopStart = newProg;
+                        deck1Progress = newProg;
+                    }
+                    deck1WireProgress = newProg;
+                }
             } else {
                 if (data.fader !== undefined) {
                     deck2Fader = Number(data.fader);
@@ -16745,6 +16822,52 @@ export function createVFXScene(container) {
         },
         setDeckWaveform: (waveformPacket) => {
             setDeckWaveform(waveformPacket);
+        },
+        getLiveDeckAudioData: () => {
+            if (!deck1HasHardwareWaveform && !deck1Active) return null;
+            const sampleIdx = Math.floor(deck1Progress * 512) % 512;
+            const r = djAudioHistoryData[sampleIdx * 4] / 255.0;
+            const g = djAudioHistoryData[sampleIdx * 4 + 1] / 255.0;
+            const b = djAudioHistoryData[sampleIdx * 4 + 2] / 255.0;
+            const hit = djAudioHistoryData[sampleIdx * 4 + 3] / 255.0;
+            const overall = Math.min(1.0, r * 0.65 + g * 0.40 + b * 0.25);
+
+            // Synthesize 128-bin FFT spectrum from 3-band wire data
+            const synthArray = new Uint8Array(128);
+            for (let i = 0; i < 128; i++) {
+                let amp = 0;
+                if (i < 36) {
+                    const frac = i / 36.0;
+                    amp = (r * (1.0 - frac * 0.30) + hit * 0.35) * 255;
+                } else if (i < 88) {
+                    amp = (g * 0.95 + hit * 0.2) * 255;
+                } else {
+                    amp = (b * 0.85 + hit * 0.25) * 255;
+                }
+                synthArray[i] = Math.min(255, Math.max(0, Math.floor(amp)));
+            }
+
+            return {
+                bass: r,
+                smoothedBass: r,
+                bassImpact: hit > 0.4 ? 0.85 : (r * 0.7),
+                transientImpulse: hit,
+                mid: g,
+                smoothedMid: g,
+                treble: b,
+                smoothedTreble: b,
+                overall: overall,
+                isOnset: hit > 0.45,
+                dataArray: synthArray,
+                peakDb: -0.5,
+                peakHoldDb: 0.0,
+                lufs: -8.5,
+                headroomDb: 0.5,
+                vuPercent: Math.min(100, Math.round(overall * 100)),
+                vuRmsPercent: Math.min(100, Math.round((r * 0.6 + g * 0.4) * 85)),
+                vuPeakHoldPercent: Math.min(100, Math.round(overall * 100)),
+                isClipping: false
+            };
         },
         getCurrentFX: () => currentFXIndex,
         getFXCount: () => fxRoots.length,

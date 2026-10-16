@@ -1049,6 +1049,13 @@ async function init() {
             return;
         }
 
+        if (!force && vfx && vfx.getCurrentFX && vfx.getCurrentFX() === 3) {
+            // Scene 4 (DJ Deck Waveforms) already features integrated 3D Deck HUD with title, artist, key & digital clock.
+            // Suppress the duplicate HTML banner so it does not occlude the top-right digital time clock.
+            hideTrackBanner();
+            return;
+        }
+
         const title = trackData?.title || (force ? (trackTitle ? trackTitle.textContent : '') : '');
         const artist = trackData?.artist || (force ? (trackArtist ? trackArtist.textContent.split(' • ')[0] : '') : '');
         const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
@@ -2254,6 +2261,14 @@ async function init() {
         defaultOpt.value = 'default';
         defaultOpt.textContent = 'Default System / Deck Input';
         audioDeviceSelect.appendChild(defaultOpt);
+
+        const deckLiveOpt = document.createElement('option');
+        deckLiveOpt.value = 'deck-live';
+        deckLiveOpt.textContent = '🟢 DECK LIVE (StageLinQ IN)';
+        if (currentId === 'deck-live' || (isHardwareDeckStreaming && currentId === 'default')) {
+            deckLiveOpt.selected = true;
+        }
+        audioDeviceSelect.appendChild(deckLiveOpt);
 
         if (currentId === 'system-tab-audio') {
             const sysOpt = document.createElement('option');
@@ -4024,6 +4039,7 @@ async function init() {
         }
 
         if (targetIndex === 3) {
+            if (trackBanner) trackBanner.classList.add('banner-hidden');
             cachedDeckWaveforms.forEach((pkt) => {
                 if (vfx.setDeckWaveform) vfx.setDeckWaveform(pkt);
             });
@@ -4383,8 +4399,16 @@ async function init() {
         if (phraseSyncSource) {
             phraseSyncSource.style.display = 'inline-block';
             phraseSyncSource.textContent = source;
-            phraseSyncSource.style.color = '#ffaa00';
-            phraseSyncSource.style.borderColor = '#ffaa00';
+            phraseSyncSource.style.color = '#00ff88';
+            phraseSyncSource.style.borderColor = '#00ff88';
+        }
+        if (audioDeviceBadge) {
+            audioDeviceBadge.textContent = 'DECK LIVE';
+            audioDeviceBadge.style.color = '#00ff88';
+            audioDeviceBadge.style.borderColor = '#00ff88';
+        }
+        if (audioStatus && !audioStatus.dataset.screenLink) {
+            audioStatus.innerHTML = `<span style="color:#00ff88">● DECK LIVE (${source})</span>`;
         }
     }
 
@@ -5118,22 +5142,32 @@ async function init() {
         const now = performance.now();
         let data = null;
 
-        if (audioProcessor && audioProcessor.isConnected()) {
-            data = audioProcessor.getAudioData();
-        } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
-            // Screen Link Active: Consuming live audio from primary console window over WebSocket/BroadcastChannel
-            data = remoteAudioData;
-            if (audioStatus && !audioStatus.dataset.screenLink) {
-                audioStatus.dataset.screenLink = '1';
-                audioStatus.innerHTML = `<span style="color:#00ffcc">● OBS / Remote Sync (Live Link Active)</span>`;
-                if (hudStatus) {
-                    hudStatus.textContent = isOBSMode ? 'OBS STREAM LINK' : '2ND SCREEN SYNC';
-                    hudStatus.style.borderColor = '#00ffcc';
-                    hudStatus.style.color = '#00ffcc';
-                }
+        // Prioritize golden source Deck Wire Live Audio if connected
+        if ((isHardwareDeckStreaming || currentSelectedDeviceId === 'deck-live') && vfx.getLiveDeckAudioData) {
+            const wireAudio = vfx.getLiveDeckAudioData();
+            if (wireAudio) {
+                data = wireAudio;
             }
-        } else if (audioProcessor) {
-            data = audioProcessor.getAudioData();
+        }
+
+        if (!data) {
+            if (audioProcessor && audioProcessor.isConnected()) {
+                data = audioProcessor.getAudioData();
+            } else if (remoteAudioData && (now - lastRemoteAudioTime < 2500)) {
+                // Screen Link Active: Consuming live audio from primary console window over WebSocket/BroadcastChannel
+                data = remoteAudioData;
+                if (audioStatus && !audioStatus.dataset.screenLink) {
+                    audioStatus.dataset.screenLink = '1';
+                    audioStatus.innerHTML = `<span style="color:#00ffcc">● OBS / Remote Sync (Live Link Active)</span>`;
+                    if (hudStatus) {
+                        hudStatus.textContent = isOBSMode ? 'OBS STREAM LINK' : '2ND SCREEN SYNC';
+                        hudStatus.style.borderColor = '#00ffcc';
+                        hudStatus.style.color = '#00ffcc';
+                    }
+                }
+            } else if (audioProcessor) {
+                data = audioProcessor.getAudioData();
+            }
         }
 
         // Relay live audio frame over BroadcastChannel & WebSocket to OBS / 2nd Screen (~50 FPS)
