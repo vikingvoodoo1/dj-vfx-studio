@@ -140,7 +140,7 @@ export class WaveformService {
 
                 let trackRow = null;
                 if (trackId) {
-                    trackRow = db.prepare('SELECT id, title, artist, length, bpm FROM Track WHERE id = ?').get(trackId);
+                    trackRow = db.prepare('SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE CAST(id AS TEXT) = ?').get(String(trackId));
                 }
 
                 if (!trackRow && (title || artist)) {
@@ -153,28 +153,28 @@ export class WaveformService {
                     // Stage 1: Exact substring match on both title and artist
                     if (cleanTitle && cleanArtist) {
                         trackRow = db.prepare(
-                            'SELECT id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
+                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
                         ).get(`%${cleanTitle}%`, `%${cleanArtist}%`);
                     }
 
                     // Stage 2: Base title and base artist match
                     if (!trackRow && baseTitle && baseArtist) {
                         trackRow = db.prepare(
-                            'SELECT id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
+                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
                         ).get(`%${baseTitle}%`, `%${baseArtist}%`);
                     }
 
                     // Stage 3: Base title match
                     if (!trackRow && baseTitle) {
                         trackRow = db.prepare(
-                            'SELECT id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
+                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
                         ).get(`%${baseTitle}%`);
                     }
 
                     // Stage 4: Clean title match
                     if (!trackRow && cleanTitle) {
                         trackRow = db.prepare(
-                            'SELECT id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
+                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
                         ).get(`%${cleanTitle}%`);
                     }
                 }
@@ -182,8 +182,8 @@ export class WaveformService {
                 if (trackRow && trackRow.id) {
                     // 1. Try PerformanceData table in m.db
                     const perfRow = db.prepare(
-                        'SELECT overviewWaveFormData FROM PerformanceData WHERE trackId = ? AND overviewWaveFormData IS NOT NULL'
-                    ).get(trackRow.id);
+                        'SELECT overviewWaveFormData FROM PerformanceData WHERE CAST(trackId AS TEXT) = ? AND overviewWaveFormData IS NOT NULL'
+                    ).get(String(trackRow.id));
 
                     if (perfRow && perfRow.overviewWaveFormData) {
                         const rawBuf = Buffer.from(perfRow.overviewWaveFormData);

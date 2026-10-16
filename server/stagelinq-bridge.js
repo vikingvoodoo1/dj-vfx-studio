@@ -725,6 +725,7 @@ async function startStageLinq() {
                 }
                 if (deckData.totalBeats && deckData.totalBeats > 0 && deckData.beat !== undefined) {
                     const progress = Math.max(0, Math.min(1.0, deckData.beat / deckData.totalBeats));
+                    console.log(`[StageLinq Beat Deck ${deckNum}] beat=${deckData.beat.toFixed(2)}, total=${deckData.totalBeats}, prog=${(progress * 100).toFixed(2)}%`);
                     let loopInfo = deckLoopStates.get(deckNum);
                     if (!loopInfo) {
                         loopInfo = { lastBeat: deckData.beat, loopActive: false, loopStartBeat: 0, loopEndBeat: 0 };

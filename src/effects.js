@@ -2481,7 +2481,7 @@ const DJDeckWaveformShader = {
                 float miniDistY = abs(normMiniY);
                 float inMiniWave = 1.0 - smoothstep(songEnergy - 0.08, songEnergy, miniDistY);
 
-                // Denon Engine 3-Band overview coloring: Low (Blue), Mid (Emerald Green), High (Ice White)
+                // Denon Engine 3-Band overview coloring: Low (Blue on bottom), Mid (Emerald Green), High (Ice White peaks)
                 vec3 miniWaveColor;
                 if (isDeck1) {
                     miniWaveColor = vec3(0.04, 0.38, 0.98);
@@ -2499,26 +2499,30 @@ const DJDeckWaveformShader = {
                     col = miniWaveColor * inMiniWave * 0.95 + vec3(0.03, 0.06, 0.08);
                 }
 
-                // Active Loop Bracket on Mini-Overview Strip (Luminous emerald region & brackets)
+                // Active Loop Bracket on Mini-Overview Strip (Denon Vibrant Orange Loop Indicator)
                 if (isDeck1 && uLoopActive > 0.5 && uLoopEnd > uLoopStart) {
                     if (uv.x >= uLoopStart && uv.x <= uLoopEnd) {
-                        col += vec3(0.0, 0.85, 0.55) * inMiniWave * 0.65;
+                        col += vec3(1.0, 0.45, 0.05) * inMiniWave * 0.75;
                         if (abs(normMiniY) > 0.70) {
-                            col += vec3(0.0, 1.0, 0.75) * 1.8;
+                            col += vec3(1.0, 0.55, 0.10) * 1.8;
                         }
                     }
                     if (abs(uv.x - uLoopStart) < 0.0035) {
-                        col += vec3(0.0, 1.0, 0.80) * 2.8;
+                        col += vec3(1.0, 0.55, 0.10) * 2.8;
                     }
                     if (abs(uv.x - uLoopEnd) < 0.0035) {
-                        col += vec3(0.0, 1.0, 0.80) * 2.8;
+                        col += vec3(1.0, 0.55, 0.10) * 2.8;
                     }
                 }
 
-                // Mini Playhead position marker
+                // Mini Playhead position marker (Cyan needle with bottom triangle pointer ▲)
                 float miniPlayheadDist = abs(uv.x - trackProg);
-                float miniPlayhead = 1.0 - smoothstep(0.0, 0.003, miniPlayheadDist);
-                col += vec3(1.0, 1.0, 1.0) * miniPlayhead * 2.5;
+                float miniPlayhead = 1.0 - smoothstep(0.0, 0.0025, miniPlayheadDist);
+                col += vec3(0.0, 0.95, 1.0) * miniPlayhead * 2.6;
+                // Bottom anchor triangle pointer
+                if (normMiniY < -0.40 && miniPlayheadDist < 0.007 * (1.0 - (-normMiniY - 0.40) * 1.6)) {
+                    col += vec3(0.0, 1.0, 0.90) * 2.4;
+                }
 
                 // Border
                 float miniBorder = 1.0 - smoothstep(0.0, 0.003, abs(abs(uv.y - miniCenterY) - miniHalfH));
@@ -2557,18 +2561,27 @@ const DJDeckWaveformShader = {
                 float rawHit  = audioSlice.a;
 
                 // Authentic Denon Engine 3-Band Color Composition
-                // Deck 1: Cobalt Royal Blue (Low) / Vibrant Emerald Green (Mid) / Crisp Ice White (High)
+                // Deck 1: Cobalt Royal Blue (Low) / Vibrant Lime Green (Mid) / Crisp Ice White (High)
                 vec3 cBass = isDeck1 ? vec3(0.04, 0.38, 0.98) : vec3(0.98, 0.16, 0.22);
                 vec3 cMid  = isDeck1 ? vec3(0.05, 0.92, 0.35) : vec3(1.00, 0.65, 0.08);
                 vec3 cHigh = isDeck1 ? vec3(0.98, 0.99, 1.00) : vec3(1.00, 0.98, 0.85);
 
+                // Beat Grid & Intra-Beat Transient Envelopes (Creates the rhythmic peaks & valleys from the deck photo)
+                float bps = bpmVal / 60.0;
+                float beatsVisible = (1.0 / zoomFactor) * 8.0;
+                float beatPos = (uv.x - 0.5) * beatsVisible + (uTime * bps * (isDeck1 ? 1.0 : 0.98)) + (isDeck1 ? 0.0 : 0.5);
+
+                float intraBeat = fract(beatPos);
+                float beatEnvelope = exp(-intraBeat * 3.0) * 0.58 + 0.42;
+                float transientSpike = exp(-intraBeat * 14.0);
+
                 // Authentic 3-Band Vertical Layer Heights (Denon Engine OS 3-Band Architecture)
-                // Low band (Bass/Kicks): Outer envelope (tallest)
-                float hLow  = clamp(rawBass * 0.94 + rawHit * 0.08 + 0.03, 0.03, 0.96);
-                // Mid band (Vocals/Melody): Middle envelope
-                float hMid  = clamp(rawMid * 0.68 + rawHit * 0.04 + 0.02, 0.02, 0.78);
-                // High band (Hi-hats/Transients): Inner sharp core
-                float hHigh = clamp(rawHigh * 0.40 + rawHit * 0.08 + 0.01, 0.01, 0.50);
+                // Low band (Bass/Kicks): Outer envelope (tallest rounded lobes)
+                float hLow  = clamp((rawBass * 0.92 + rawHit * 0.08) * beatEnvelope + 0.04, 0.04, 0.96);
+                // Mid band (Vocals/Melody): Middle envelope (sharp transient wedges)
+                float hMid  = clamp((rawMid * 0.68 + rawHit * 0.04) * (beatEnvelope * 0.85 + 0.15) + 0.02, 0.02, 0.78);
+                // High band (Hi-hats/Transients): Inner sharp core needle spikes
+                float hHigh = clamp((rawHigh * 0.40 + rawHit * 0.08) * (transientSpike * 0.75 + 0.25) + 0.01, 0.01, 0.50);
 
                 // Anti-aliased band masks based on vertical distance from center zero-line
                 float maskLow  = 1.0 - smoothstep(hLow  - 0.010, hLow  + 0.005, absDeckY);
@@ -2580,19 +2593,32 @@ const DJDeckWaveformShader = {
                 waveCol = mix(waveCol, cMid, maskMid * 0.94);
                 waveCol = mix(waveCol, cHigh, maskHigh * 0.98);
 
-                // Active Loop Bracket & In/Out Flags on Scrolling Waveform
+                // Denon Engine Orange Active Loop Region (Loop 2 Header, Boundary Lines & Interior Wash)
                 if (isDeck1 && uLoopActive > 0.5 && uLoopEnd > uLoopStart) {
                     bool inLoopRegion = (texU >= uLoopStart && texU <= uLoopEnd);
                     if (inLoopRegion) {
-                        waveCol += vec3(0.0, 0.22, 0.16) * maskLow;
+                        // Warm amber/orange wash over the waveform
+                        waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.32 * maskLow);
+
+                        // Orange Loop Top Header Bar (matches Loop 2 banner in photo)
+                        if (normDeckY > 0.74 && normDeckY < 0.96) {
+                            waveCol = mix(waveCol, vec3(1.0, 0.45, 0.05), 0.88);
+                            // Notched crenellations on loop header
+                            float teeth = step(0.5, fract(beatPos * 2.0));
+                            if (normDeckY > 0.88) {
+                                waveCol += vec3(1.0, 0.70, 0.20) * teeth * 0.9;
+                            }
+                        }
                     }
+                    // Loop IN boundary bracket line
                     float loopInDist = abs(texU - uLoopStart);
-                    if (loopInDist < (0.0025 * zoomFactor / 0.08)) {
-                        waveCol += vec3(0.0, 1.0, 0.80) * 2.8;
+                    if (loopInDist < (0.0028 * zoomFactor / 0.08)) {
+                        waveCol = vec3(1.0, 0.48, 0.05) * 3.5;
                     }
+                    // Loop OUT boundary bracket line
                     float loopOutDist = abs(texU - uLoopEnd);
-                    if (loopOutDist < (0.0025 * zoomFactor / 0.08)) {
-                        waveCol += vec3(0.0, 1.0, 0.80) * 2.8;
+                    if (loopOutDist < (0.0028 * zoomFactor / 0.08)) {
+                        waveCol = vec3(1.0, 0.48, 0.05) * 3.5;
                     }
                 }
 
@@ -2600,37 +2626,46 @@ const DJDeckWaveformShader = {
                 float zeroLine = 1.0 - smoothstep(0.0, 0.022, absDeckY);
                 waveCol += (isDeck1 ? vec3(0.12, 0.70, 1.0) : vec3(1.0, 0.50, 0.10)) * zeroLine * 0.45;
 
-                // Beat Grid & Bar Markers
-                float bps = bpmVal / 60.0;
-                float beatsVisible = (1.0 / zoomFactor) * 8.0;
-                float beatPos = (uv.x - 0.5) * beatsVisible + (uTime * bps * (isDeck1 ? 1.0 : 0.98)) + (isDeck1 ? 0.0 : 0.5);
-
+                // Beat Grid & Bar Markers (Authentic Red Bar Heads matching Denon photo)
                 float beatFrac = abs(fract(beatPos) - 0.5);
                 float barFrac  = abs(fract(beatPos / 4.0) - 0.5);
 
                 float beatLine = 1.0 - smoothstep(0.0, 0.014, beatFrac);
                 float barLine  = 1.0 - smoothstep(0.0, 0.010, barFrac);
 
-                waveCol += vec3(0.15, 0.30, 0.45) * beatLine * 0.4;
-                waveCol += (isDeck1 ? vec3(0.95, 0.15, 0.35) : vec3(1.0, 0.85, 0.25)) * barLine * 0.9;
+                waveCol += vec3(0.18, 0.32, 0.48) * beatLine * 0.4;
+                // Red bar lines at bar heads (bars 6, 7, 8, 9 in photo)
+                waveCol += (isDeck1 ? vec3(1.0, 0.15, 0.22) : vec3(1.0, 0.85, 0.25)) * barLine * 1.6;
 
-                // Center Laser Playhead Needle (x = 0.5)
+                // Center Laser Playhead Needle (x = 0.5: White/Cyan Needle with Anchor)
                 float playheadCore = 1.0 - smoothstep(0.0, 0.0022, playheadDist);
                 float playheadHalo = exp(-playheadDist * 160.0) * (0.8 + uTransient * 1.2);
-                vec3 playheadLaserCol = vec3(1.0, 0.15, 0.30);
-                waveCol += vec3(1.0, 1.0, 1.0) * playheadCore * 3.0 + playheadLaserCol * playheadHalo * 1.5;
+                vec3 playheadLaserCol = vec3(0.95, 0.98, 1.0);
+                waveCol += vec3(1.0, 1.0, 1.0) * playheadCore * 3.2 + playheadLaserCol * playheadHalo * 1.2;
 
                 // Playhead top & bottom arrow pointers
                 if (normDeckY > 0.88 && abs(uv.x - 0.5) < 0.015) {
-                    waveCol += vec3(1.0, 0.2, 0.4) * 2.2;
+                    waveCol += vec3(0.0, 0.95, 1.0) * 2.2;
                 }
                 if (normDeckY < -0.88 && abs(uv.x - 0.5) < 0.015) {
-                    waveCol += vec3(1.0, 0.2, 0.4) * 2.2;
+                    waveCol += vec3(0.0, 0.95, 1.0) * 2.2;
                 }
 
                 // Window border
                 float windowBorder = 1.0 - smoothstep(0.0, 0.02, abs(absDeckY - 1.0));
                 waveCol += (isDeck1 ? vec3(0.0, 0.4, 0.8) : vec3(0.8, 0.3, 0.1)) * windowBorder * 0.45;
+
+                // Smooth horizontal edge fade
+                float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
+                float finalAlpha = clamp(maskLow + barLine * 0.5 + playheadCore + playheadHalo * 0.5 + windowBorder * 0.3 + zeroLine * 0.5, 0.0, 1.0);
+                finalAlpha *= edgeFade;
+
+                col = waveCol * edgeFade;
+                alpha = finalAlpha;
+
+                gl_FragColor = vec4(col, alpha);
+                return;
+            }
 
                 // Smooth horizontal edge fade
                 float edgeFade = smoothstep(0.0, 0.035, uv.x) * smoothstep(1.0, 0.965, uv.x);
@@ -7794,20 +7829,23 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     }
 
     // =========================================================================
-    // 1. DECK 1 HEADER (TOP: Neon Cyan / Electric Cobalt)
+    // 1. MERGED DECK 1 HEADER (TOP LEFT: Full Metadata + Integrated Digital Time)
     // =========================================================================
-    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(2) : Number(bpm).toFixed(2);
-    const d1Title = (d1 && d1.title) ? d1.title.toUpperCase() : 'OPUS (LIVE MIX)';
-    const d1Artist = (d1 && d1.artist) ? d1.artist.toUpperCase() : 'ERIC PRYDZ';
-    const d1Key = (d1 && d1.key) ? d1.key : '8A';
+    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(1) : Number(bpm).toFixed(1);
+    const d1Title = (d1 && d1.title) ? d1.title.toUpperCase() : 'FIGURE IT OUT (EXTENDED MIX)';
+    const d1Artist = (d1 && d1.artist) ? d1.artist.toUpperCase() : 'LP GIOBBI, HOUSE GOSPEL CHOIR';
+    const d1Key = (d1 && d1.key) ? d1.key : '9A';
+    const totalSec1 = (d1 && d1.duration) ? d1.duration : 364;
+    const el1 = prog1 * totalSec1;
+    const rem1 = Math.max(0, totalSec1 - el1);
 
-    // Top Left: Deck 1 Metadata Card
-    drawGlassPanel(padX, 36, 560, 84, 10, 'rgba(3, 14, 26, 0.85)', 'rgba(0, 240, 255, 0.45)');
+    const leftCardW = 1140;
+    drawGlassPanel(padX, 32, leftCardW, 92, 10, 'rgba(4, 12, 22, 0.92)', 'rgba(0, 240, 255, 0.50)');
 
-    // Deck Badge Pill
+    // Deck 1 Master Badge Pill
     ctx.beginPath();
-    ctx.roundRect(padX + 16, 48, 140, 26, 6);
-    ctx.fillStyle = 'rgba(0, 240, 255, 0.2)';
+    ctx.roundRect(padX + 16, 44, 136, 26, 6);
+    ctx.fillStyle = 'rgba(0, 240, 255, 0.22)';
     ctx.fill();
     ctx.strokeStyle = '#00f0ff';
     ctx.lineWidth = 1.2;
@@ -7817,70 +7855,132 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
     ctx.fillStyle = '#00f0ff';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('▶ DECK 1  MASTER', padX + 86, 61);
+    ctx.fillText('▶ DECK 1  MASTER', padX + 84, 57);
 
     // Track Title & Artist
     ctx.textAlign = 'left';
-    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.font = 'bold 21px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#ffffff';
-    ctx.fillText(d1Title.slice(0, 38), padX + 170, 62);
+    ctx.fillText(d1Title.slice(0, 42), padX + 168, 56);
 
     ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#77eeff';
-    ctx.fillText(d1Artist.slice(0, 36), padX + 170, 84);
+    ctx.fillText(d1Artist.slice(0, 40), padX + 168, 80);
 
-    // Badges line
-    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    // Badges line: BPM, Key, Loop status, Sync
+    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
     ctx.fillStyle = '#00ffcc';
-    ctx.fillText(`${d1Bpm} BPM`, padX + 18, 104);
-    ctx.fillStyle = '#99eeff';
-    ctx.fillText(`KEY ${d1Key}`, padX + 115, 104);
-    ctx.fillStyle = '#ffaa00';
-    ctx.fillText('LOOP 4', padX + 185, 104);
-    ctx.fillStyle = '#00ff88';
-    ctx.fillText('SYNC LOCK', padX + 250, 104);
+    ctx.fillText(`${d1Bpm} BPM`, padX + 18, 106);
 
-    // Top Right: Deck 1 Digital Time & Hot Cues
-    drawGlassPanel(rightX - 520, 36, 520, 84, 10, 'rgba(3, 14, 26, 0.85)', 'rgba(0, 240, 255, 0.45)');
-    const totalSec1 = 360;
-    const el1 = prog1 * totalSec1;
-    const rem1 = totalSec1 - el1;
+    // Key Pill (Purple pill matching Denon 9A ♪)
+    ctx.beginPath();
+    ctx.roundRect(padX + 115, 94, 68, 20, 4);
+    ctx.fillStyle = 'rgba(192, 132, 252, 0.22)';
+    ctx.fill();
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+    ctx.fillStyle = '#c084fc';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${d1Key} ♪`, padX + 149, 105);
 
-    ctx.textAlign = 'right';
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#a0d8ef';
-    ctx.fillText('ELAPSED', rightX - 280, 60);
-    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(formatDeckTime(el1), rightX - 160, 60);
-
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#00f0ff';
-    ctx.fillText('REMAIN', rightX - 280, 85);
-    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
-    ctx.fillStyle = '#00f0ff';
-    ctx.fillText(`-${formatDeckTime(rem1)}`, rightX - 160, 85);
-
-    // Deck 1 Hot Cue Tabs
-    const d1Cues = ['1:INTRO', '2:DROP 1', '3:BREAK', '4:DROP 2'];
-    const d1CueCols = ['#00ff66', '#ff00aa', '#00f0ff', '#ffcc00'];
-    d1Cues.forEach((cue, i) => {
-        const cx = rightX - 140 + (i % 2) * 65;
-        const cy = 48 + Math.floor(i / 2) * 30;
+    // Loop info: Denon Orange pill
+    ctx.textAlign = 'left';
+    if (d1.loopActive || deck1LoopActive) {
         ctx.beginPath();
-        ctx.roundRect(cx, cy, 60, 24, 4);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.roundRect(padX + 195, 94, 120, 20, 4);
+        ctx.fillStyle = 'rgba(255, 119, 0, 0.25)';
         ctx.fill();
-        ctx.strokeStyle = d1CueCols[i];
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#ff7700';
+        ctx.lineWidth = 1.0;
+        ctx.stroke();
+        ctx.fillStyle = '#ff9933';
+        ctx.fillText('↶ LOOP 2 ACTIVE', padX + 204, 105);
+    } else {
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('↶ 4 BEATS', padX + 200, 106);
+    }
+
+    ctx.fillStyle = '#00ff88';
+    ctx.fillText('SYNC LOCK', padX + 335, 106);
+    ctx.fillStyle = '#8899aa';
+    ctx.fillText('±8  0.00%', padX + 430, 106);
+
+    // Integrated Time Readouts (Merged cleanly into right side of Left Card)
+    const timeX = padX + leftCardW - 24;
+    ctx.textAlign = 'right';
+
+    ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+    ctx.fillStyle = '#00f0ff';
+    ctx.fillText('REMAIN', timeX, 48);
+
+    ctx.font = 'bold 28px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillText(`-${formatDeckTime(rem1)}`, timeX, 74);
+
+    ctx.font = '13px "SF Mono", Menlo, Consolas, monospace';
+    ctx.fillStyle = '#a0d8ef';
+    ctx.fillText(`ELAPSED ${formatDeckTime(el1)}`, timeX, 102);
+
+    // =========================================================================
+    // 2. TOP RIGHT: DECK 2 CARD (Standby Vinyl Disc Icon matching Denon photo)
+    // =========================================================================
+    const rightCardW = 460;
+    const rightCardX = rightX - rightCardW;
+
+    if (!d2Active) {
+        // Authentic Denon Deck 2 Standby Card
+        drawGlassPanel(rightCardX, 32, rightCardW, 92, 10, 'rgba(12, 16, 24, 0.85)', 'rgba(255, 60, 60, 0.35)');
+
+        // Top accent line in red (matches Deck 2 red color in photo)
+        ctx.beginPath();
+        ctx.moveTo(rightCardX + 10, 33);
+        ctx.lineTo(rightCardX + rightCardW - 10, 33);
+        ctx.strokeStyle = '#ff3344';
+        ctx.lineWidth = 2.5;
         ctx.stroke();
 
-        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = d1CueCols[i];
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(cue, cx + 30, cy + 12);
-    });
+        // Vinyl Disc Icon
+        ctx.beginPath();
+        ctx.arc(rightCardX + 46, 78, 22, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+        ctx.strokeStyle = '#8899aa';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(rightCardX + 46, 78, 7, 0, Math.PI * 2);
+        ctx.fillStyle = '#8899aa';
+        ctx.fill();
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText('Deck 2', rightCardX + 85, 72);
+
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#778899';
+        ctx.fillText('STANDBY • FADER DOWN', rightCardX + 85, 94);
+    } else {
+        // Active Deck 2
+        drawGlassPanel(rightCardX, 32, rightCardW, 92, 10, 'rgba(24, 10, 8, 0.90)', 'rgba(255, 60, 60, 0.55)');
+        const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(1) : Number(bpm).toFixed(1);
+        const d2Title = (d2 && d2.title) ? d2.title.toUpperCase() : 'NO TRACK';
+        const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : '';
+        const d2Key = (d2 && d2.key) ? d2.key : '8A';
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(d2Title.slice(0, 26), rightCardX + 20, 58);
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffaa88';
+        ctx.fillText(d2Artist.slice(0, 26), rightCardX + 20, 80);
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ff6633';
+        ctx.fillText(`${d2Bpm} BPM  •  KEY ${d2Key}`, rightCardX + 20, 104);
+    }
 
     // =========================================================================
     // 2. CENTER PHASE METER HUD (MIDDLE: y = 492 to 532)
@@ -9481,6 +9581,13 @@ export function createVFXScene(container) {
     let deck2HasHardwareWaveform = false;
     let deck1Data = { artist: '', title: '', bpm: 126.0, key: '8A' };
     let deck2Data = { artist: '', title: '', bpm: 126.0, key: '8A' };
+
+    // Persistent low-pass temporal smoothing state for jitter-free audio reactivity
+    let wireSmoothBass = 0.0;
+    let wireSmoothMid = 0.0;
+    let wireSmoothTreble = 0.0;
+    let wireSmoothHit = 0.0;
+    const wireSmoothBins = new Float32Array(128);
 
     function setDeckWaveform(packet) {
         if (!packet || !packet.samples || packet.samples.length < 3) return;
@@ -14330,15 +14437,31 @@ export function createVFXScene(container) {
             const posArr = specParticleGeo.attributes.position.array;
             const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
 
-            // Sample live wire audio slice from deck waveform if available (pure deck wire audio)
+            // Sample live wire audio slice from deck waveform with fractional bilinear interpolation & temporal smoothing
             let wireAmpBands = null;
             if (deck1HasHardwareWaveform) {
-                const sampleIdx = Math.floor(deck1Progress * 512) % 512;
-                const wR = djAudioHistoryData[sampleIdx * 4] / 255.0;
-                const wG = djAudioHistoryData[sampleIdx * 4 + 1] / 255.0;
-                const wB = djAudioHistoryData[sampleIdx * 4 + 2] / 255.0;
-                const wHit = djAudioHistoryData[sampleIdx * 4 + 3] / 255.0;
-                wireAmpBands = { wR, wG, wB, wHit };
+                const floatIdx = (deck1Progress * 512) % 512;
+                const i0 = Math.floor(floatIdx);
+                const i1 = (i0 + 1) % 512;
+                const f = floatIdx - i0;
+
+                const rawR = (djAudioHistoryData[i0 * 4] * (1.0 - f) + djAudioHistoryData[i1 * 4] * f) / 255.0;
+                const rawG = (djAudioHistoryData[i0 * 4 + 1] * (1.0 - f) + djAudioHistoryData[i1 * 4 + 1] * f) / 255.0;
+                const rawB = (djAudioHistoryData[i0 * 4 + 2] * (1.0 - f) + djAudioHistoryData[i1 * 4 + 2] * f) / 255.0;
+                const rawHit = (djAudioHistoryData[i0 * 4 + 3] * (1.0 - f) + djAudioHistoryData[i1 * 4 + 3] * f) / 255.0;
+
+                // Organic exponential decay smoothing (prevents abrupt jumping between discrete buckets)
+                wireSmoothBass += (rawR - wireSmoothBass) * 0.16;
+                wireSmoothMid += (rawG - wireSmoothMid) * 0.16;
+                wireSmoothTreble += (rawB - wireSmoothTreble) * 0.16;
+                wireSmoothHit += (rawHit - wireSmoothHit) * 0.22;
+
+                wireAmpBands = { 
+                    wR: wireSmoothBass, 
+                    wG: wireSmoothMid, 
+                    wB: wireSmoothTreble, 
+                    wHit: wireSmoothHit 
+                };
             }
 
             for (let i = 0; i < totalSpecParticles; i++) {
@@ -14377,21 +14500,28 @@ export function createVFXScene(container) {
             }
             specParticleGeo.attributes.position.needsUpdate = true;
 
-            // Advance track progress: follow wire progress or iterate within hardware loop
+            // Advance track progress: continuous smooth progression based on track duration + soft wire alignment
+            const trackSec = deck1Data.duration || 364;
+            const progressDelta = delta / trackSec;
+
             if (deck1LoopActive && deck1LoopEnd > deck1LoopStart) {
-                // If in active hardware loop, advance smoothly and wrap at loop end
-                deck1Progress += delta * (currentBPM / 60.0) * ((deck1LoopEnd - deck1LoopStart) / 16.0);
+                deck1Progress += progressDelta;
                 if (deck1Progress >= deck1LoopEnd || deck1Progress < deck1LoopStart) {
                     deck1Progress = deck1LoopStart;
                 }
-            } else if (deck1WireProgress !== undefined && Math.abs(deck1WireProgress - deck1Progress) > 0.001) {
-                deck1Progress = THREE.MathUtils.lerp(deck1Progress, deck1WireProgress, 0.2);
+            } else if (deck1WireProgress !== undefined) {
+                if (Math.abs(deck1WireProgress - deck1Progress) > 0.05) {
+                    deck1Progress = deck1WireProgress;
+                } else {
+                    deck1Progress += (deck1WireProgress - deck1Progress) * 0.08 + progressDelta * 0.92;
+                }
             } else {
-                deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
+                deck1Progress = (deck1Progress + progressDelta) % 1.0;
             }
 
             if (deck2Active) {
-                deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
+                const trackSec2 = deck2Data.duration || 360;
+                deck2Progress = (deck2Progress + (delta / trackSec2)) % 1.0;
             }
 
             const beatPhaseVal = (elapsedTime * (currentBPM / 60.0)) % 1.0;
@@ -16825,46 +16955,42 @@ export function createVFXScene(container) {
         },
         getLiveDeckAudioData: () => {
             if (!deck1HasHardwareWaveform && !deck1Active) return null;
-            const sampleIdx = Math.floor(deck1Progress * 512) % 512;
-            const r = djAudioHistoryData[sampleIdx * 4] / 255.0;
-            const g = djAudioHistoryData[sampleIdx * 4 + 1] / 255.0;
-            const b = djAudioHistoryData[sampleIdx * 4 + 2] / 255.0;
-            const hit = djAudioHistoryData[sampleIdx * 4 + 3] / 255.0;
-            const overall = Math.min(1.0, r * 0.65 + g * 0.40 + b * 0.25);
+            const overall = Math.min(1.0, wireSmoothBass * 0.65 + wireSmoothMid * 0.40 + wireSmoothTreble * 0.25);
 
-            // Synthesize 128-bin FFT spectrum from 3-band wire data
+            // Synthesize 128-bin FFT spectrum from smoothed 3-band wire data
             const synthArray = new Uint8Array(128);
             for (let i = 0; i < 128; i++) {
-                let amp = 0;
-                if (i < 36) {
-                    const frac = i / 36.0;
-                    amp = (r * (1.0 - frac * 0.30) + hit * 0.35) * 255;
-                } else if (i < 88) {
-                    amp = (g * 0.95 + hit * 0.2) * 255;
+                let targetAmp = 0;
+                if (i < 32) {
+                    const frac = i / 32.0;
+                    targetAmp = (wireSmoothBass * (1.0 - frac * 0.30) + wireSmoothHit * 0.25) * 255;
+                } else if (i < 80) {
+                    targetAmp = (wireSmoothMid * 0.92 + wireSmoothHit * 0.15) * 255;
                 } else {
-                    amp = (b * 0.85 + hit * 0.25) * 255;
+                    targetAmp = (wireSmoothTreble * 0.88 + wireSmoothHit * 0.20) * 255;
                 }
-                synthArray[i] = Math.min(255, Math.max(0, Math.floor(amp)));
+                wireSmoothBins[i] += (targetAmp - wireSmoothBins[i]) * 0.20;
+                synthArray[i] = Math.min(255, Math.max(0, Math.floor(wireSmoothBins[i])));
             }
 
             return {
-                bass: r,
-                smoothedBass: r,
-                bassImpact: hit > 0.4 ? 0.85 : (r * 0.7),
-                transientImpulse: hit,
-                mid: g,
-                smoothedMid: g,
-                treble: b,
-                smoothedTreble: b,
+                bass: wireSmoothBass,
+                smoothedBass: wireSmoothBass,
+                bassImpact: wireSmoothHit > 0.4 ? 0.85 : (wireSmoothBass * 0.7),
+                transientImpulse: wireSmoothHit,
+                mid: wireSmoothMid,
+                smoothedMid: wireSmoothMid,
+                treble: wireSmoothTreble,
+                smoothedTreble: wireSmoothTreble,
                 overall: overall,
-                isOnset: hit > 0.45,
+                isOnset: wireSmoothHit > 0.45,
                 dataArray: synthArray,
                 peakDb: -0.5,
                 peakHoldDb: 0.0,
                 lufs: -8.5,
                 headroomDb: 0.5,
                 vuPercent: Math.min(100, Math.round(overall * 100)),
-                vuRmsPercent: Math.min(100, Math.round((r * 0.6 + g * 0.4) * 85)),
+                vuRmsPercent: Math.min(100, Math.round((wireSmoothBass * 0.6 + wireSmoothMid * 0.4) * 85)),
                 vuPeakHoldPercent: Math.min(100, Math.round(overall * 100)),
                 isClipping: false
             };

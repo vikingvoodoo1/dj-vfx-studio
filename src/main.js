@@ -4410,6 +4410,11 @@ async function init() {
         if (audioStatus && !audioStatus.dataset.screenLink) {
             audioStatus.innerHTML = `<span style="color:#00ff88">● DECK LIVE (${source})</span>`;
         }
+        if (audioDeviceSelect && audioDeviceSelect.value !== 'deck-live') {
+            audioDeviceSelect.value = 'deck-live';
+            currentSelectedDeviceId = 'deck-live';
+            try { localStorage.setItem('dj_vfx_audio_device_id', 'deck-live'); } catch (e) {}
+        }
     }
 
     function setPhraseDisplayMode(mode) {
