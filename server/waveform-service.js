@@ -238,16 +238,32 @@ export class WaveformService {
             }
 
             const decompressed = zlib.inflateSync(zlibPayload);
-            // Engine RGB waveforms contain triplets: [R (bass), G (mid), B (high)]
-            const totalTriplets = Math.floor(decompressed.length / 3);
+            // In Denon Engine OS, the decompressed waveform data begins after a 24-byte header
+            const headerOffset = (decompressed.length > 24 && (decompressed.length - 24) % 3 === 0) ? 24 : 0;
+            const audioData = decompressed.subarray(headerOffset);
+            const totalTriplets = Math.floor(audioData.length / 3);
             const targetSlices = 512; // Resample to 512 standard slices for GPU shader
             const normalized = [];
 
+            // Calculate peak values for balanced 3-band normalization
+            let peakR = 1, peakG = 1, peakB = 1;
+            for (let i = 0; i < audioData.length; i += 3) {
+                if (audioData[i] > peakR) peakR = audioData[i];
+                if (audioData[i + 1] > peakG) peakG = audioData[i + 1];
+                if (audioData[i + 2] > peakB) peakB = audioData[i + 2];
+            }
+
             for (let i = 0; i < targetSlices; i++) {
                 const srcIdx = Math.floor((i / targetSlices) * totalTriplets) * 3;
-                const r = decompressed[srcIdx] || 0;
-                const g = decompressed[srcIdx + 1] || 0;
-                const b = decompressed[srcIdx + 2] || 0;
+                const rawR = audioData[srcIdx] || 0;
+                const rawG = audioData[srcIdx + 1] || 0;
+                const rawB = audioData[srcIdx + 2] || 0;
+
+                // Scale with dynamic headroom matching Engine OS visual curves
+                const r = Math.min(255, Math.floor((rawR / peakR) * 250));
+                const g = Math.min(255, Math.floor((rawG / peakG) * 220));
+                const b = Math.min(255, Math.floor((rawB / peakB) * 240));
+
                 normalized.push(r, g, b);
             }
             return normalized;

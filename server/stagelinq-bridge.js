@@ -630,6 +630,64 @@ async function startStageLinq() {
             }
         });
 
+        // Listen for direct StateMap changes (Channel Faders, Crossfader, Deck Play states)
+        stagelinqInstance.on('message', (info, data) => {
+            if (!data || !data.message) return;
+            const name = data.message.name;
+            const json = data.message.json;
+            if (!name || !json) return;
+
+            // Mixer channel faders: /Mixer/CH1faderPosition, /Mixer/CH2faderPosition, etc.
+            const chMatch = name.match(/Mixer\/CH(\d+)faderPosition/i);
+            if (chMatch) {
+                const ch = parseInt(chMatch[1], 10);
+                const faderVal = (json.value !== undefined) ? Number(json.value) : (json.state ? 1.0 : 0.0);
+                const currentDeck = deckStatuses.get(ch) || { deck: ch };
+                currentDeck.fader = faderVal;
+                currentDeck.isHardware = true;
+                deckStatuses.set(ch, currentDeck);
+
+                broadcast({
+                    type: 'deck_telemetry',
+                    deck: ch,
+                    fader: faderVal,
+                    isHardware: true,
+                    ecosystem: 'stagelinq'
+                });
+            }
+
+            // Deck Play status: /Engine/Deck1/Play or /Engine/Deck2/Play
+            const deckPlayMatch = name.match(/Engine\/Deck(\d+)\/Play(?:State)?/i);
+            if (deckPlayMatch) {
+                const d = parseInt(deckPlayMatch[1], 10);
+                const isPlaying = Boolean(json.state ?? json.value);
+                const currentDeck = deckStatuses.get(d) || { deck: d };
+                currentDeck.play = isPlaying;
+                currentDeck.isHardware = true;
+                deckStatuses.set(d, currentDeck);
+
+                broadcast({
+                    type: 'deck_telemetry',
+                    deck: d,
+                    play: isPlaying,
+                    isHardware: true,
+                    ecosystem: 'stagelinq'
+                });
+            }
+        });
+
+        // Periodic hardware deck heartbeat (every 1.5s) to ensure continuous streaming lock
+        setInterval(() => {
+            if (connectedDevices.size > 0 || lastTrackData) {
+                broadcast({
+                    type: 'decks_snapshot',
+                    isHardware: connectedDevices.size > 0,
+                    ecosystem: 'stagelinq',
+                    decks: Array.from(deckStatuses.values())
+                });
+            }
+        }, 1500);
+
         stagelinqInstance.on('beatMessage', (info, beatData) => {
             if (!beatData || !beatData.decks) return;
             beatData.decks.forEach((deckData, idx) => {

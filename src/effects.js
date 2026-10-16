@@ -2372,8 +2372,9 @@ const DJDeckWaveformShader = {
         uBeatPhase: { value: 0.0 },
         uTrackProgress: { value: 0.35 },
         uDeck2Progress: { value: 0.18 },
+        uDeck2Active: { value: 0.0 },
         uPlayState: { value: 1.0 },
-        uZoom: { value: 0.32 }
+        uZoom: { value: 0.08 }
     },
     vertexShader: `
         varying vec2 vUv;
@@ -2396,6 +2397,7 @@ const DJDeckWaveformShader = {
         uniform float uBeatPhase;
         uniform float uTrackProgress;
         uniform float uDeck2Progress;
+        uniform float uDeck2Active;
         uniform float uPlayState;
         uniform float uZoom;
 
@@ -2456,20 +2458,30 @@ const DJDeckWaveformShader = {
 
             // Full Track Mini-Overview Stripe
             if (abs(uv.y - miniCenterY) < miniHalfH) {
+                if (!isDeck1 && uDeck2Active < 0.5) {
+                    float miniBorder = 1.0 - smoothstep(0.0, 0.003, abs(abs(uv.y - miniCenterY) - miniHalfH));
+                    col = vec3(0.012, 0.016, 0.022) + vec3(0.12, 0.15, 0.18) * miniBorder * 0.3;
+                    gl_FragColor = vec4(col, 0.5);
+                    return;
+                }
+
                 float normMiniY = (uv.y - miniCenterY) / miniHalfH;
                 float trackProg = isDeck1 ? uTrackProgress : uDeck2Progress;
 
-                // Structural energy profile contour
-                float posFactor = uv.x * 3.14159 * 6.0;
-                float songEnergy = 0.35 + sin(posFactor) * 0.25 + cos(posFactor * 2.3) * 0.15 + sin(posFactor * 5.1) * 0.1;
-                songEnergy = clamp(songEnergy, 0.1, 0.9);
+                // Sample actual audio overview slice across song duration (uv.x from 0.0 to 1.0)
+                vec4 overviewSlice = texture2D(uAudioHistory, vec2(uv.x, isDeck1 ? 0.25 : 0.75));
+                float songEnergy = clamp(overviewSlice.r * 0.75 + overviewSlice.g * 0.35 + overviewSlice.b * 0.2 + 0.08, 0.08, 0.95);
 
                 float miniDistY = abs(normMiniY);
-                float inMiniWave = 1.0 - smoothstep(songEnergy - 0.1, songEnergy, miniDistY);
+                float inMiniWave = 1.0 - smoothstep(songEnergy - 0.08, songEnergy, miniDistY);
 
+                // Denon Engine 3-Band overview coloring: Low (Blue), Mid (Emerald Green), High (White/Cyan)
                 vec3 miniWaveColor = isDeck1 
-                    ? mix(vec3(0.0, 0.4, 0.9), vec3(0.0, 0.9, 0.8), miniDistY)
-                    : mix(vec3(0.9, 0.2, 0.1), vec3(1.0, 0.7, 0.1), miniDistY);
+                    ? mix(vec3(0.04, 0.35, 0.98), vec3(0.05, 0.95, 0.35), clamp(overviewSlice.g * 1.5, 0.0, 1.0))
+                    : mix(vec3(0.95, 0.25, 0.05), vec3(1.0, 0.75, 0.15), clamp(overviewSlice.g * 1.5, 0.0, 1.0));
+                if (overviewSlice.b > 0.4) {
+                    miniWaveColor = mix(miniWaveColor, vec3(0.95, 0.98, 1.0), (overviewSlice.b - 0.4) * 1.6);
+                }
 
                 if (uv.x < trackProg) {
                     col = miniWaveColor * inMiniWave * 0.45 + vec3(0.02, 0.04, 0.06);
@@ -2502,6 +2514,14 @@ const DJDeckWaveformShader = {
                 float normDeckY = (uv.y - waveCenterY) / waveHalfH;
                 float absDeckY = abs(normDeckY);
 
+                if (!isDeck1 && uDeck2Active < 0.5) {
+                    col = vec3(0.012, 0.016, 0.022);
+                    float zeroLine = 1.0 - smoothstep(0.0, 0.02, absDeckY);
+                    col += vec3(0.25, 0.30, 0.35) * zeroLine * 0.25;
+                    gl_FragColor = vec4(col, 0.6);
+                    return;
+                }
+
                 // Sample Live Rolling Audio History Buffer
                 float bpmVal = isDeck1 ? uBPM : uDeck2BPM;
                 float zoomFactor = uZoom;
@@ -2525,46 +2545,46 @@ const DJDeckWaveformShader = {
                     rawHit  = mix(rawHit,  max(rawHit,  uTransient), playheadProximity * 0.9);
                 }
 
-                // Micro audio sample comb texture (44.1kHz audio tooth styling)
-                float microSample = fract(sin(texU * 1024.0 + floor(uv.x * 320.0) * 2.1) * 43758.5453);
-                float fineComb = 0.88 + microSample * 0.24;
+                // Authentic Denon Engine 3-Band Color Composition
+                // Lows (L): Electric Royal Cobalt Blue
+                // Mids (M): Vibrant Emerald Green
+                // Highs (H): Crisp Ice White Transients
+                vec3 d1_bass = vec3(0.04, 0.35, 0.98);
+                vec3 d1_mid  = vec3(0.05, 0.95, 0.32);
+                vec3 d1_high = vec3(0.96, 0.98, 1.00);
 
-                // 3-Band Height Envelopes:
-                // 1. Sub-Bass (Low Core)
-                float bassHeight = (rawBass * 0.52 + rawHit * 0.35 + 0.05) * (1.0 + (isDeck1 ? uBass : 0.0) * 0.2);
-                bassHeight = clamp(bassHeight, 0.04, 0.95);
-                float bassLayer = 1.0 - smoothstep(bassHeight - 0.03, bassHeight + 0.01, absDeckY);
-
-                // 2. Mid-Range (Vocals / Synths)
-                float midHeight = (rawMid * 0.72 + rawBass * 0.25 + 0.08) * fineComb * (1.0 + (isDeck1 ? uMid : 0.0) * 0.15);
-                midHeight = clamp(midHeight, 0.06, 0.98);
-                float midLayer = 1.0 - smoothstep(midHeight - 0.03, midHeight + 0.01, absDeckY);
-
-                // 3. Highs & Transients (Hi-hats, claps, transients)
-                float highHeight = (rawHigh * 0.92 + rawHit * 0.55 + rawMid * 0.20 + 0.05) * fineComb * (1.0 + (isDeck1 ? uTreble : 0.0) * 0.2);
-                highHeight = clamp(highHeight, 0.05, 1.0);
-                float highLayer = 1.0 - smoothstep(highHeight - 0.02, highHeight + 0.01, absDeckY);
-
-                // Authentic 3-Band Color Palettes
-                // Deck 1: Electric Blue / Neon Cyan / Ice White
-                vec3 d1_bass = vec3(0.04, 0.25, 0.98);
-                vec3 d1_mid  = vec3(0.0, 0.92, 0.72);
-                vec3 d1_high = vec3(0.92, 0.98, 1.0);
-
-                // Deck 2: Crimson Red / Amber Orange / Champagne Gold
-                vec3 d2_bass = vec3(0.98, 0.12, 0.20);
-                vec3 d2_mid  = vec3(1.0, 0.58, 0.05);
-                vec3 d2_high = vec3(1.0, 0.95, 0.65);
+                // Deck 2: Crimson Red (Low) / Amber Orange (Mid) / Champagne Gold (High)
+                vec3 d2_bass = vec3(0.98, 0.16, 0.22);
+                vec3 d2_mid  = vec3(1.00, 0.62, 0.08);
+                vec3 d2_high = vec3(1.00, 0.96, 0.75);
 
                 vec3 colBass = isDeck1 ? d1_bass : d2_bass;
                 vec3 colMid  = isDeck1 ? d1_mid  : d2_mid;
                 vec3 colHigh = isDeck1 ? d1_high : d2_high;
 
-                vec3 waveCol = colBass * bassLayer * 1.15 + colMid * midLayer * 1.35 + colHigh * highLayer * 1.85;
+                // Frequency band dominance blending (matches Engine OS color separation)
+                float maxBand = max(rawBass, max(rawMid, rawHigh));
+                float totalBand = rawBass + rawMid + rawHigh + 0.001;
+                float wMid  = rawMid / totalBand;
+                float wHigh = rawHigh / totalBand;
+
+                vec3 bandCol = colBass;
+                bandCol = mix(bandCol, colMid, smoothstep(0.20, 0.52, wMid));
+                bandCol = mix(bandCol, colHigh, smoothstep(0.18, 0.48, wHigh));
+
+                // Mirrored solid waveform envelope
+                float totalHeight = clamp(maxBand * 0.90 + rawHit * 0.08 + 0.04, 0.04, 0.96);
+                float waveMask = 1.0 - smoothstep(totalHeight - 0.012, totalHeight + 0.006, absDeckY);
+
+                // Transient core highlight on sharp transients
+                float highCore = (1.0 - smoothstep(rawHigh * 0.55 + rawHit * 0.25, rawHigh * 0.55 + rawHit * 0.25 + 0.015, absDeckY)) * step(0.18, wHigh);
+
+                vec3 waveCol = bandCol * waveMask;
+                waveCol = mix(waveCol, colHigh, highCore * 0.85);
 
                 // Filament zero-line
-                float zeroLine = 1.0 - smoothstep(0.0, 0.03, absDeckY);
-                waveCol += (isDeck1 ? vec3(0.1, 0.7, 1.0) : vec3(1.0, 0.5, 0.1)) * zeroLine * 0.35;
+                float zeroLine = 1.0 - smoothstep(0.0, 0.025, absDeckY);
+                waveCol += (isDeck1 ? vec3(0.08, 0.60, 0.95) : vec3(0.95, 0.45, 0.08)) * zeroLine * 0.35;
 
                 // Beat Grid & Bar Markers
                 float bps = bpmVal / 60.0;
@@ -7743,7 +7763,7 @@ function formatDeckTime(totalSeconds) {
 }
 
 // 2D High-Resolution DJ Deck HUD Overlay Renderer (Deck 1 / Master, Deck 2 / Sync & Center Phase Meter)
-function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2) {
+function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2, d2Active = false) {
     ctx.clearRect(0, 0, width, height);
 
     const padX = 70;
@@ -7885,96 +7905,138 @@ function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, 
 
     ctx.textAlign = 'right';
     ctx.fillStyle = '#ffaa00';
-    ctx.fillText('PHASE LOCK ▶', centerPanelX + centerPanelW - 24, 513);
-
+     // =========================================================================
+    // 3. DECK 2 HEADER (BOTTOM: Warm Amber / Gold / Crimson or Sleek Standby)
     // =========================================================================
-    // 3. DECK 2 HEADER (BOTTOM: Warm Amber / Gold / Crimson)
-    // =========================================================================
-    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(2) : Number(bpm).toFixed(2);
-    const d2Title = (d2 && d2.title) ? d2.title.toUpperCase() : 'GLUE (CLUB EDIT)';
-    const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : 'BICEP';
-    const d2Key = (d2 && d2.key) ? d2.key : '8A';
+    if (!d2Active) {
+        // Deck 2 in Standby Mode
+        drawGlassPanel(padX, 542, 560, 84, 10, 'rgba(12, 14, 18, 0.70)', 'rgba(255, 255, 255, 0.12)');
 
-    // Bottom Left: Deck 2 Metadata Card
-    drawGlassPanel(padX, 542, 560, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
-
-    // Deck 2 Badge Pill
-    ctx.beginPath();
-    ctx.roundRect(padX + 16, 554, 140, 26, 6);
-    ctx.fillStyle = 'rgba(255, 170, 0, 0.2)';
-    ctx.fill();
-    ctx.strokeStyle = '#ffaa00';
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-
-    ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffaa00';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('▶ DECK 2  SYNC', padX + 86, 567);
-
-    // Track Title & Artist
-    ctx.textAlign = 'left';
-    ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(d2Title.slice(0, 38), padX + 170, 568);
-
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffcc77';
-    ctx.fillText(d2Artist.slice(0, 36), padX + 170, 590);
-
-    // Badges line
-    ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffbb00';
-    ctx.fillText(`${d2Bpm} BPM`, padX + 18, 610);
-    ctx.fillStyle = '#ffe099';
-    ctx.fillText(`KEY ${d2Key}`, padX + 115, 610);
-    ctx.fillStyle = '#ff8800';
-    ctx.fillText('PITCH +0.0%', padX + 185, 610);
-    ctx.fillStyle = '#00ff88';
-    ctx.fillText('SYNC ACTIVE', padX + 275, 610);
-
-    // Bottom Right: Deck 2 Digital Time & Hot Cues
-    drawGlassPanel(rightX - 520, 542, 520, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
-    const totalSec2 = 320;
-    const el2 = prog2 * totalSec2;
-    const rem2 = totalSec2 - el2;
-
-    ctx.textAlign = 'right';
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffddaa';
-    ctx.fillText('ELAPSED', rightX - 280, 566);
-    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
-    ctx.fillStyle = '#ffffff';
-    ctx.fillText(formatDeckTime(el2), rightX - 160, 566);
-
-    ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = '#ffaa00';
-    ctx.fillText('REMAIN', rightX - 280, 591);
-    ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
-    ctx.fillStyle = '#ffaa00';
-    ctx.fillText(`-${formatDeckTime(rem2)}`, rightX - 160, 591);
-
-    // Deck 2 Hot Cue Tabs
-    const d2Cues = ['1:VOCAL', '2:BUILD', '3:DROP', '4:OUTRO'];
-    const d2CueCols = ['#ff6600', '#ffd700', '#ff0055', '#00f0ff'];
-    d2Cues.forEach((cue, i) => {
-        const cx = rightX - 140 + (i % 2) * 65;
-        const cy = 554 + Math.floor(i / 2) * 30;
+        // Standby Badge
         ctx.beginPath();
-        ctx.roundRect(cx, cy, 60, 24, 4);
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.roundRect(padX + 16, 554, 140, 26, 6);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.05)';
         ctx.fill();
-        ctx.strokeStyle = d2CueCols[i];
-        ctx.lineWidth = 1;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.20)';
+        ctx.lineWidth = 1.0;
         ctx.stroke();
 
-        ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = d2CueCols[i];
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(cue, cx + 30, cy + 12);
-    });
+        ctx.fillText('⏸ DECK 2  STANDBY', padX + 86, 567);
+
+        // Standby Text
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 18px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillText('NO TRACK PLAYING', padX + 170, 568);
+
+        ctx.font = '13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+        ctx.fillText('Awaiting platter start or fader up (> 75%)', padX + 170, 590);
+
+        ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillText('STANDBY', padX + 18, 610);
+
+        // Standby Right Box
+        drawGlassPanel(rightX - 520, 542, 520, 84, 10, 'rgba(12, 14, 18, 0.70)', 'rgba(255, 255, 255, 0.12)');
+        ctx.textAlign = 'right';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+        ctx.fillText('STATUS', rightX - 280, 578);
+        ctx.font = 'bold 16px "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+        ctx.fillText('READY / ARMED', rightX - 160, 578);
+    } else {
+        const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(2) : Number(bpm).toFixed(2);
+        const d2Title = (d2 && d2.title) ? d2.title.toUpperCase() : 'NO TRACK LOADED';
+        const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : 'DECK 2';
+        const d2Key = (d2 && d2.key) ? d2.key : '8A';
+
+        // Bottom Left: Deck 2 Metadata Card
+        drawGlassPanel(padX, 542, 560, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
+
+        // Deck 2 Badge Pill
+        ctx.beginPath();
+        ctx.roundRect(padX + 16, 554, 140, 26, 6);
+        ctx.fillStyle = 'rgba(255, 170, 0, 0.2)';
+        ctx.fill();
+        ctx.strokeStyle = '#ffaa00';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+
+        ctx.font = 'bold 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffaa00';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('▶ DECK 2  SYNC', padX + 86, 567);
+
+        // Track Title & Artist
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(d2Title.slice(0, 38), padX + 170, 568);
+
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffcc77';
+        ctx.fillText(d2Artist.slice(0, 36), padX + 170, 590);
+
+        // Badges line
+        ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffbb00';
+        ctx.fillText(`${d2Bpm} BPM`, padX + 18, 610);
+        ctx.fillStyle = '#ffe099';
+        ctx.fillText(`KEY ${d2Key}`, padX + 115, 610);
+        ctx.fillStyle = '#ff8800';
+        ctx.fillText('PITCH +0.0%', padX + 185, 610);
+        ctx.fillStyle = '#00ff88';
+        ctx.fillText('SYNC ACTIVE', padX + 275, 610);
+
+        // Bottom Right: Deck 2 Digital Time & Hot Cues
+        drawGlassPanel(rightX - 520, 542, 520, 84, 10, 'rgba(26, 14, 4, 0.85)', 'rgba(255, 170, 0, 0.45)');
+        const totalSec2 = 320;
+        const el2 = prog2 * totalSec2;
+        const rem2 = totalSec2 - el2;
+
+        ctx.textAlign = 'right';
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffddaa';
+        ctx.fillText('ELAPSED', rightX - 280, 566);
+        ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(formatDeckTime(el2), rightX - 160, 566);
+
+        ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText('REMAIN', rightX - 280, 591);
+        ctx.font = 'bold 20px "SF Mono", Menlo, Consolas, monospace';
+        ctx.fillStyle = '#ffaa00';
+        ctx.fillText(`-${formatDeckTime(rem2)}`, rightX - 160, 591);
+
+        // Deck 2 Hot Cue Tabs
+        const d2Cues = ['1:VOCAL', '2:BUILD', '3:DROP', '4:OUTRO'];
+        const d2CueCols = ['#ff6600', '#ffd700', '#ff0055', '#00f0ff'];
+        d2Cues.forEach((cue, i) => {
+            const cx = rightX - 140 + (i % 2) * 65;
+            const cy = 554 + Math.floor(i / 2) * 30;
+            ctx.beginPath();
+            ctx.roundRect(cx, cy, 60, 24, 4);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.fill();
+            ctx.strokeStyle = d2CueCols[i];
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            ctx.font = 'bold 10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillStyle = d2CueCols[i];
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(cue, cx + 30, cy + 12);
+        });
+    }
 }
 
 export function createVFXScene(container) {
@@ -9322,10 +9384,10 @@ export function createVFXScene(container) {
         djAudioHistoryData[idx1 + 3] = t1;
 
         const idx2 = (512 + i) * 4;
-        djAudioHistoryData[idx2]     = Math.floor(b1 * 0.85);
-        djAudioHistoryData[idx2 + 1] = Math.floor(m1 * 0.90);
-        djAudioHistoryData[idx2 + 2] = Math.floor(h1 * 0.80);
-        djAudioHistoryData[idx2 + 3] = ((i + 16) % 32 === 0) ? 200 : 0;
+        djAudioHistoryData[idx2]     = 0;
+        djAudioHistoryData[idx2 + 1] = 0;
+        djAudioHistoryData[idx2 + 2] = 0;
+        djAudioHistoryData[idx2 + 3] = 0;
     }
 
     const djAudioHistoryTex = new THREE.DataTexture(djAudioHistoryData, 512, 2, THREE.RGBAFormat, THREE.UnsignedByteType);
@@ -9349,9 +9411,10 @@ export function createVFXScene(container) {
             uDeck2BPM: { value: 126.0 },
             uBeatPhase: { value: 0.0 },
             uTrackProgress: { value: 0.35 },
-            uDeck2Progress: { value: 0.18 },
+            uDeck2Progress: { value: 0.0 },
+            uDeck2Active: { value: 0.0 },
             uPlayState: { value: 1.0 },
-            uZoom: { value: 0.32 }
+            uZoom: { value: 0.08 }
         },
         vertexShader: DJDeckWaveformShader.vertexShader,
         fragmentShader: DJDeckWaveformShader.fragmentShader,
@@ -9387,11 +9450,15 @@ export function createVFXScene(container) {
     let djHistoryHead = 0;
     let djHudFrameCount = 0;
     let deck1Progress = 0.38;
-    let deck2Progress = 0.16;
+    let deck2Progress = 0.0;
+    let deck1Active = true;
+    let deck2Active = false;
+    let deck2Playing = false;
+    let deck2Fader = 0.0;
     let deck1HasHardwareWaveform = false;
     let deck2HasHardwareWaveform = false;
-    let deck1Data = { artist: 'ERIC PRYDZ', title: 'OPUS (LIVE MIX)', bpm: 126.0, key: '8A' };
-    let deck2Data = { artist: 'BICEP', title: 'GLUE (CLUB EDIT)', bpm: 126.0, key: '8A' };
+    let deck1Data = { artist: '', title: '', bpm: 126.0, key: '8A' };
+    let deck2Data = { artist: '', title: '', bpm: 126.0, key: '8A' };
 
     function setDeckWaveform(packet) {
         if (!packet || !packet.samples || packet.samples.length < 3) return;
@@ -14212,22 +14279,27 @@ export function createVFXScene(container) {
                 djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
             }
 
-            // 3. Write Deck 2 (Row 1) spectral slice if no hardware waveform loaded
+            // 3. Write Deck 2 (Row 1) spectral slice only if Deck 2 is actually active
             if (!deck2HasHardwareWaveform) {
                 const d2Offset = (512 + djHistoryHead) * 4;
-                const d2Groove = (Math.sin(elapsedTime * (deck2Data.bpm || currentBPM) / 60.0 * Math.PI) * 0.5 + 0.5);
-                const d2Bass = Math.min(1.0, rawBass * 0.85 + d2Groove * 0.15);
-                const d2Mid = Math.min(1.0, rawMid * 0.80 + (1.0 - d2Groove) * 0.20);
-                const d2Treble = Math.min(1.0, rawTreble * 0.90 + d2Groove * 0.10);
-                const d2Hit = (d2Groove > 0.88) ? 0.9 : (rawHit * 0.6);
-
-                djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(d2Bass * 255));
-                djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(d2Mid * 255));
-                djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(d2Treble * 255));
-                djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(d2Hit * 255));
+                if (deck2Active) {
+                    const d2Bass = Math.min(1.0, rawBass * 0.85);
+                    const d2Mid = Math.min(1.0, rawMid * 0.80);
+                    const d2Treble = Math.min(1.0, rawTreble * 0.90);
+                    const d2Hit = rawHit * 0.6;
+                    djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(d2Bass * 255));
+                    djAudioHistoryData[d2Offset + 1] = Math.min(255, Math.floor(d2Mid * 255));
+                    djAudioHistoryData[d2Offset + 2] = Math.min(255, Math.floor(d2Treble * 255));
+                    djAudioHistoryData[d2Offset + 3] = Math.min(255, Math.floor(d2Hit * 255));
+                } else {
+                    djAudioHistoryData[d2Offset]     = 0;
+                    djAudioHistoryData[d2Offset + 1] = 0;
+                    djAudioHistoryData[d2Offset + 2] = 0;
+                    djAudioHistoryData[d2Offset + 3] = 0;
+                }
             }
 
-            if (!deck1HasHardwareWaveform || !deck2HasHardwareWaveform) {
+            if (!deck1HasHardwareWaveform || (deck2Active && !deck2HasHardwareWaveform)) {
                 djAudioHistoryTex.needsUpdate = true;
                 djHistoryHead = (djHistoryHead + 1) % 512;
             }
@@ -14263,7 +14335,9 @@ export function createVFXScene(container) {
 
             // Advance track progress smoothly
             deck1Progress = (deck1Progress + delta * (currentBPM / 126.0) * 0.003) % 1.0;
-            deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
+            if (deck2Active) {
+                deck2Progress = (deck2Progress + delta * ((deck2Data.bpm || currentBPM) / 126.0) * 0.0025) % 1.0;
+            }
 
             const beatPhaseVal = (elapsedTime * (currentBPM / 60.0)) % 1.0;
 
@@ -14279,11 +14353,12 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uBeatPhase.value = beatPhaseVal;
             djWaveMat.uniforms.uTrackProgress.value = deck1Progress;
             djWaveMat.uniforms.uDeck2Progress.value = deck2Progress;
+            djWaveMat.uniforms.uDeck2Active.value = deck2Active ? 1.0 : 0.0;
 
             // Update HUD Canvas texture every ~4 frames for smooth time elapsed/remaining readouts
             djHudFrameCount++;
             if (djHudFrameCount % 4 === 0) {
-                renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress);
+                renderDJDeckHUD(djHudCtx, 2048, 1024, deck1Data, deck2Data, currentBPM, beatPhaseVal, audio.transientImpulse || 0, deck1Progress, deck2Progress, deck2Active);
                 djHudTex.needsUpdate = true;
             }
         }
@@ -16644,17 +16719,33 @@ export function createVFXScene(container) {
             if (!data) return;
             const targetDeck = (data.deck === 2 || data.deck === 4 || data.deck === '2' || data.deck === '4' || data.deck === 'B' || data.deck === 'D') ? 2 : 1;
             if (targetDeck === 1) {
+                deck1Active = true;
                 if (data.artist) deck1Data.artist = data.artist;
                 if (data.title) deck1Data.title = data.title;
                 if (data.bpm) deck1Data.bpm = data.bpm;
                 if (data.key) deck1Data.key = data.key;
                 if (data.progress !== undefined) deck1Progress = data.progress;
             } else {
+                if (data.fader !== undefined) {
+                    deck2Fader = Number(data.fader);
+                }
+                if (data.play !== undefined) {
+                    deck2Playing = Boolean(data.play);
+                }
+                if (data.title) {
+                    const cleanT = String(data.title).trim();
+                    if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
+                        deck2Data.title = data.title;
+                    }
+                }
                 if (data.artist) deck2Data.artist = data.artist;
-                if (data.title) deck2Data.title = data.title;
                 if (data.bpm) deck2Data.bpm = data.bpm;
                 if (data.key) deck2Data.key = data.key;
                 if (data.progress !== undefined) deck2Progress = data.progress;
+
+                // Deck 2 strictly stays inactive (black/zero-line standby) unless playing AND fader is more than 3/4 way up (> 75%)
+                const hasValidTrack = !!(deck2Data.title && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—');
+                deck2Active = deck2Playing && hasValidTrack && (deck2Fader > 0.75);
             }
         },
         setDeckWaveform: (waveformPacket) => {

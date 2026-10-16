@@ -1050,10 +1050,16 @@ async function init() {
 
         const title = trackData?.title || (force ? (trackTitle ? trackTitle.textContent : '') : '');
         const artist = trackData?.artist || (force ? (trackArtist ? trackArtist.textContent.split(' • ')[0] : '') : '');
+        const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
+        const deckLabel = String(rawDeck).toUpperCase().startsWith('DECK') ? String(rawDeck).toUpperCase() : `DECK ${rawDeck}`;
 
         // If not explicitly forced by user action (e.g. manual injection or Shazam acceptance)
         // AND not actively receiving real hardware deck packets on the wire with valid title, do not show!
         if (!force && (!title || title.trim() === '' || title === 'Live Track' || title === 'No Track Loaded' || title === 'Opus (Live Intro Mix)' || title === '—')) {
+            // If Deck 2 is in standby or has no track, do not dismiss Deck 1's currently visible banner!
+            if (rawDeck === 2 || rawDeck === '2' || rawDeck === 'B') {
+                return;
+            }
             hideTrackBanner();
             return;
         }
@@ -1063,8 +1069,6 @@ async function init() {
             return;
         }
 
-        const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
-        const deckLabel = String(rawDeck).toUpperCase().startsWith('DECK') ? String(rawDeck).toUpperCase() : `DECK ${rawDeck}`;
         const bpm = (trackData?.bpm && trackData.bpm > 40 && trackData.bpm < 300) 
             ? Number(trackData.bpm) 
             : (Number(bpmVal?.textContent) || 126.0);
@@ -1131,7 +1135,8 @@ async function init() {
         const renderVisible = () => {
             trackBanner.classList.remove('banner-hidden', 'hidden');
 
-            if (effectiveDuration > 0) {
+            // If duration > 0 and user is not streaming live from hardware deck (or explicit duration override), auto fadeout
+            if (effectiveDuration > 0 && (!isHardwareDeckStreaming || duration !== null)) {
                 trackBannerFadeTimer = setTimeout(() => {
                     hideTrackBanner();
                 }, effectiveDuration * 1000);
@@ -4582,9 +4587,7 @@ async function init() {
         },
         onDeckLoaded: (data) => {
             if (!data) return;
-            if (data.isHardware) {
-                notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'DENON STAGELINQ');
-            }
+            notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'DENON STAGELINQ');
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
                 if (deckCards[dIdx].bpm && data.bpm) deckCards[dIdx].bpm.textContent = Number(data.bpm).toFixed(1);
@@ -4605,6 +4608,11 @@ async function init() {
             if (data.artist) {
                 trackArtist.textContent = `${data.artist} • Deck ${data.deck || 1}`;
                 if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = data.artist;
+            }
+
+            const cleanT = data.title ? data.title.trim() : '';
+            if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
+                showTrackBanner(data, { force: false });
             }
         },
         onTrack: (trackData) => {
@@ -4675,9 +4683,11 @@ async function init() {
         },
         onDecksSnapshot: (decks) => {
             if (Array.isArray(decks) && decks.length > 0) {
-                const hasActivePlaying = decks.some(d => d.play && d.isHardware && (d.title || d.artist));
+                const hasActivePlaying = decks.some(d => d.play && d.isHardware);
                 if (hasActivePlaying) {
-                    notifyHardwareDeckPacket('PRO DJ LINK');
+                    const activeDeck = decks.find(d => d.play && d.isHardware);
+                    const eco = activeDeck?.ecosystem ? activeDeck.ecosystem.toUpperCase() : 'DENON STAGELINQ';
+                    notifyHardwareDeckPacket(eco);
                 }
                 decks.forEach(deckData => {
                     const idx = (parseInt(deckData.deck, 10) || 1) - 1;
@@ -4685,6 +4695,7 @@ async function init() {
                         if (deckCards[idx].bpm && deckData.bpm) deckCards[idx].bpm.textContent = Number(deckData.bpm).toFixed(1);
                         if (deckCards[idx].state) deckCards[idx].state.textContent = deckData.play ? '● ACTIVE' : 'STANDBY';
                     }
+                    if (vfx.setDeckData) vfx.setDeckData(deckData);
                 });
             }
         },
@@ -5284,7 +5295,7 @@ async function init() {
 
         // Only update / sweep phase needle and show CDJ widgets when streaming straight from live decks
         if (isHardwareDeckStreaming) {
-            if (now - lastHardwarePacketTimestamp > 6000) {
+            if (now - lastHardwarePacketTimestamp > 60000) {
                 // Deck stream timed out / disconnected
                 isHardwareDeckStreaming = false;
                 if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
