@@ -5301,6 +5301,11 @@ async function init() {
             fxSearchCount.textContent = `${visibleCount} / ${TOTAL_FX}`;
         }
 
+        const fxVideoCatBanner = document.getElementById('fx-video-cat-action-banner');
+        if (fxVideoCatBanner) {
+            fxVideoCatBanner.style.display = (currentFxCategory === 'video') ? 'flex' : 'none';
+        }
+
         // Show "no results" state if 0 visible
         let noResults = document.getElementById('fx-pane-no-results');
         if (visibleCount === 0) {
@@ -5355,6 +5360,11 @@ async function init() {
             currentFxCategory = cat;
             fxCategoryBtns.forEach(b => b.classList.toggle('active', (b.getAttribute('data-fxcat') || 'all') === cat));
             filterFxCards();
+
+            // When user clicks the Video category tab in the Visual FX Studio, immediately activate Scene 22!
+            if (cat === 'video') {
+                selectFX(22);
+            }
         });
     });
 
@@ -5367,6 +5377,35 @@ async function init() {
             }
         });
     });
+
+    // Scene 22 Card & Banner Quick Action Buttons
+    const btnCard22GoLive = document.getElementById('btn-card22-go-live');
+    const btnCard22OpenConsole = document.getElementById('btn-card22-open-console');
+    const btnFxBannerGoLive = document.getElementById('btn-fx-banner-go-live');
+    const btnFxBannerOpenConsole = document.getElementById('btn-fx-banner-open-console');
+
+    if (btnCard22GoLive) {
+        btnCard22GoLive.addEventListener('click', (e) => {
+            e.stopPropagation();
+            selectFX(22);
+        });
+    }
+    if (btnCard22OpenConsole) {
+        btnCard22OpenConsole.addEventListener('click', (e) => {
+            e.stopPropagation();
+            switchTab('video');
+        });
+    }
+    if (btnFxBannerGoLive) {
+        btnFxBannerGoLive.addEventListener('click', () => {
+            selectFX(22);
+        });
+    }
+    if (btnFxBannerOpenConsole) {
+        btnFxBannerOpenConsole.addEventListener('click', () => {
+            switchTab('video');
+        });
+    }
 
     // =========================================================================
     // Procedural Live Animated Thumbnails for Scene Selection Grid (22 Scenes)
