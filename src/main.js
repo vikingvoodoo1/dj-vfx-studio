@@ -894,6 +894,9 @@ async function init() {
                     selectFX(22);
                 }
             }
+            if (window.videoPlaybackManager && typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
+                window.videoPlaybackManager.ensureFirstFrames();
+            }
         }
     }
 
@@ -904,6 +907,9 @@ async function init() {
             vfx.switchFX(22);
         }
         switchTab('video');
+        if (window.videoPlaybackManager && typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
+            window.videoPlaybackManager.ensureFirstFrames();
+        }
         if (typeof showToast === 'function') {
             showToast('🎬 Scene 23: Cyber Cinema 3D • Video Loops & Library Console Loaded');
         }
@@ -4222,7 +4228,14 @@ async function init() {
 
         function saveBanks() {
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(banks));
+                const serializable = banks.map(b => ({
+                    ...b,
+                    videos: (b.videos || []).map(v => {
+                        const { thumbnailUrl, ...rest } = v;
+                        return rest;
+                    })
+                }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
             } catch (e) {}
         }
 
@@ -4321,7 +4334,8 @@ async function init() {
 
                 card.innerHTML = `
                     <div class="video-thumb-preview-box" title="Click to Cue Video / Hover to Preview">
-                        <video class="video-card-video" src="${vid.url}" preload="metadata" muted playsinline></video>
+                        <img class="video-card-poster" src="${vid.thumbnailUrl || ''}" alt="${vid.title}" style="${vid.thumbnailUrl ? 'display:block;' : 'display:none;'}">
+                        <video class="video-card-video" src="${vid.url}" preload="auto" muted playsinline></video>
                         <div class="video-thumb-overlay-hint">▶ HOVER</div>
                         <div class="video-thumb-dur-badge">${durLabel}</div>
                         <div class="video-thumb-playing-tag">● ON AIR</div>
@@ -4338,22 +4352,59 @@ async function init() {
                     </div>
                 `;
 
-                // Hover to preview
                 const thumbVid = card.querySelector('.video-card-video');
+                const posterImg = card.querySelector('.video-card-poster');
+
+                const captureFrame = () => {
+                    if (!vid.thumbnailUrl && thumbVid && thumbVid.videoWidth > 0 && thumbVid.videoHeight > 0) {
+                        try {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = Math.min(320, thumbVid.videoWidth);
+                            canvas.height = Math.round(canvas.width * (thumbVid.videoHeight / thumbVid.videoWidth)) || 180;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(thumbVid, 0, 0, canvas.width, canvas.height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                            if (dataUrl && dataUrl.length > 200) {
+                                vid.thumbnailUrl = dataUrl;
+                                if (posterImg) {
+                                    posterImg.src = dataUrl;
+                                    posterImg.style.display = 'block';
+                                    posterImg.style.opacity = '1';
+                                }
+                            }
+                        } catch (e) {
+                            // Cross-origin tainted canvas fallback: thumbVid itself shows the frame
+                        }
+                    }
+                };
+
+                const seekToFirstFrame = () => {
+                    try {
+                        if (thumbVid && (thumbVid.currentTime === 0 || isNaN(thumbVid.currentTime))) {
+                            thumbVid.currentTime = 0.05;
+                        }
+                    } catch (e) {}
+                };
+
+                // Hover to preview
                 card.addEventListener('mouseenter', () => {
-                    if (thumbVid && thumbVid.paused) {
+                    if (posterImg) posterImg.style.opacity = '0';
+                    if (thumbVid) {
                         thumbVid.currentTime = 0;
                         thumbVid.play().catch(() => {});
                     }
                 });
                 card.addEventListener('mouseleave', () => {
-                    if (thumbVid && !thumbVid.paused) {
-                        thumbVid.pause();
-                        thumbVid.currentTime = 0;
+                    if (thumbVid) {
+                        if (!thumbVid.paused) thumbVid.pause();
+                        thumbVid.currentTime = 0.05;
+                    }
+                    if (posterImg && vid.thumbnailUrl) {
+                        posterImg.style.opacity = '1';
                     }
                 });
 
-                // Update duration once metadata loads
+                // Update duration & seek to first frame once metadata loads
                 if (thumbVid) {
                     thumbVid.addEventListener('loadedmetadata', () => {
                         if (thumbVid.duration && !isNaN(thumbVid.duration)) {
@@ -4363,7 +4414,18 @@ async function init() {
                                 durBadge.textContent = `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}`;
                             }
                         }
+                        seekToFirstFrame();
                     });
+
+                    thumbVid.addEventListener('loadeddata', seekToFirstFrame);
+                    thumbVid.addEventListener('canplay', seekToFirstFrame);
+                    thumbVid.addEventListener('seeked', () => {
+                        captureFrame();
+                    });
+
+                    if (thumbVid.readyState >= 1) {
+                        seekToFirstFrame();
+                    }
                 }
 
                 // Checkbox toggle
@@ -4398,6 +4460,51 @@ async function init() {
                 });
 
                 videoGridContainer.appendChild(card);
+            });
+
+            // Ensure first frames decode and paint across cards
+            ensureFirstFrames();
+        }
+
+        function ensureFirstFrames() {
+            requestAnimationFrame(() => {
+                if (!videoGridContainer) return;
+                const currentBank = banks[activeBankIndex];
+                const vids = (currentBank && currentBank.videos) || [];
+                const cards = videoGridContainer.querySelectorAll('.video-card-item');
+
+                cards.forEach((card, idx) => {
+                    const vid = vids[idx];
+                    if (!vid) return;
+
+                    const thumbVid = card.querySelector('.video-card-video');
+                    const posterImg = card.querySelector('.video-card-poster');
+
+                    if (vid.thumbnailUrl && posterImg) {
+                        if (posterImg.src !== vid.thumbnailUrl) {
+                            posterImg.src = vid.thumbnailUrl;
+                        }
+                        posterImg.style.display = 'block';
+                        posterImg.style.opacity = '1';
+                    }
+
+                    if (thumbVid) {
+                        if (thumbVid.paused) {
+                            if (thumbVid.currentTime === 0 || isNaN(thumbVid.currentTime)) {
+                                thumbVid.currentTime = 0.05;
+                            }
+                        }
+                        if (thumbVid.readyState === 0) {
+                            thumbVid.load();
+                        }
+                    }
+                });
+
+                if (videoActivePreviewVid) {
+                    if (videoActivePreviewVid.paused && (videoActivePreviewVid.currentTime === 0 || isNaN(videoActivePreviewVid.currentTime))) {
+                        videoActivePreviewVid.currentTime = 0.05;
+                    }
+                }
             });
         }
 
@@ -4937,6 +5044,20 @@ async function init() {
             }
         }
 
+        const paneVideo = document.getElementById('pane-video');
+        if (paneVideo && typeof MutationObserver !== 'undefined') {
+            const observer = new MutationObserver((mutations) => {
+                mutations.forEach(m => {
+                    if (m.type === 'attributes' && m.attributeName === 'class') {
+                        if (paneVideo.classList.contains('active')) {
+                            ensureFirstFrames();
+                        }
+                    }
+                });
+            });
+            observer.observe(paneVideo, { attributes: true });
+        }
+
         return {
             onSceneActivated: () => {
                 syncBadges();
@@ -4948,7 +5069,9 @@ async function init() {
                 }
             },
             nextClip: transitionToNextVideo,
-            playVideoItem
+            playVideoItem,
+            ensureFirstFrames,
+            renderGrid: renderVideoGrid
         };
     }
 

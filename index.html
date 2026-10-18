@@ -4658,16 +4658,54 @@
             position: relative;
             width: 100%;
             aspect-ratio: 16 / 9;
-            background: #000000;
+            background: #080a10;
             overflow: hidden;
             cursor: pointer;
+            border-radius: 3px 3px 0 0;
+        }
+
+        .video-card-poster {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+            z-index: 2;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            background: #06080e;
+        }
+
+        .video-card-item:hover .video-card-poster {
+            opacity: 0;
+            pointer-events: none;
         }
 
         .video-card-video {
+            position: absolute;
+            inset: 0;
             width: 100%;
             height: 100%;
             object-fit: cover;
             display: block;
+            z-index: 1;
+            background: #05070c;
+        }
+
+        .video-thumb-dur-badge {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 3px;
+            padding: 2px 4px;
+            font-size: 7.5px;
+            font-weight: 700;
+            color: #8c98b2;
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            z-index: 4;
         }
 
         .video-thumb-overlay-hint {
@@ -4683,6 +4721,7 @@
             font-family: 'JetBrains Mono', monospace;
             pointer-events: none;
             transition: opacity 0.2s ease;
+            z-index: 4;
         }
 
         .video-card-item:hover .video-thumb-overlay-hint {
@@ -4702,6 +4741,7 @@
             display: none;
             font-family: 'JetBrains Mono', monospace;
             letter-spacing: 0.5px;
+            z-index: 4;
         }
 
         .video-card-item.active-on-air .video-thumb-playing-tag {
