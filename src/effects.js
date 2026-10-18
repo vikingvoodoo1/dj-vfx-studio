@@ -13538,6 +13538,7 @@ export function createVFXScene(container) {
             fixtureGroup,
             yokeGroup,
             headGroup,
+            lensMesh,
             lensMat,
             lensCoronaMat,
             lensCoreMat,
@@ -17618,32 +17619,62 @@ export function createVFXScene(container) {
             pRightTargetObj.position.copy(targetRightPos);
 
             // Update Rotating Moving-Head Fixture Orientations (Motorized Pan / Tilt tracking)
-            const leftFixtureHeadPos = pLeftFixturePos.clone().add(new THREE.Vector3(0, 0.9, 0));
-            const leftFixtureDir = targetLeftPos.clone().sub(leftFixtureHeadPos);
-            const leftBeamDist = leftFixtureDir.length();
-            const leftFixtureDirNorm = leftFixtureDir.clone().normalize();
+            const leftHeadPivotPos = pLeftFixturePos.clone().add(new THREE.Vector3(0, 1.25, 0));
+            const leftFixtureDir = targetLeftPos.clone().sub(leftHeadPivotPos);
+            const leftPan = Math.atan2(leftFixtureDir.x, leftFixtureDir.z);
+            const leftHorizDist = Math.sqrt(leftFixtureDir.x * leftFixtureDir.x + leftFixtureDir.z * leftFixtureDir.z);
+            const leftTilt = -Math.atan2(leftFixtureDir.y, leftHorizDist);
 
-            pLeftFixture.headGroup.lookAt(targetLeftPos);
-            pLeftFixture.yokeGroup.rotation.y = Math.atan2(leftFixtureDirNorm.x, leftFixtureDirNorm.z);
+            pLeftFixture.yokeGroup.rotation.y = leftPan;
+            pLeftFixture.headGroup.rotation.set(leftTilt, 0, 0);
+            pLeftFixture.fixtureGroup.updateMatrixWorld(true);
 
-            const rightFixtureHeadPos = pRightFixturePos.clone().add(new THREE.Vector3(0, 0.9, 0));
-            const rightFixtureDir = targetRightPos.clone().sub(rightFixtureHeadPos);
-            const rightBeamDist = rightFixtureDir.length();
-            const rightFixtureDirNorm = rightFixtureDir.clone().normalize();
+            // Calculate exact world position of the optical glass lens center
+            const leftLensWorldPos = new THREE.Vector3();
+            pLeftFixture.lensMesh.getWorldPosition(leftLensWorldPos);
 
-            pRightFixture.headGroup.lookAt(targetRightPos);
-            pRightFixture.yokeGroup.rotation.y = Math.atan2(rightFixtureDirNorm.x, rightFixtureDirNorm.z);
+            // Vector from center of lens to target on pumpkin
+            const leftBeamVector = targetLeftPos.clone().sub(leftLensWorldPos);
+            const leftBeamDist = leftBeamVector.length();
+            const leftBeamDirNorm = leftBeamVector.clone().normalize();
 
-            // Align volumetric beams and inner cores along fixture-to-target vectors
-            // Terminate EXACTLY at the front surface hit coordinate (ZERO penetration through or behind pumpkin)
+            // Align volumetric beams and inner cores to originate bang in the center of the lens
             const upVec = new THREE.Vector3(0, -1, 0);
-            pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
-            pLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, leftFixtureDirNorm);
+            pLeftBeamMesh.position.copy(leftLensWorldPos);
+            pLeftCoreBeamMesh.position.copy(leftLensWorldPos);
+            pBottomLeftSpot.position.copy(leftLensWorldPos);
+
+            pLeftBeamMesh.quaternion.setFromUnitVectors(upVec, leftBeamDirNorm);
+            pLeftCoreBeamMesh.quaternion.setFromUnitVectors(upVec, leftBeamDirNorm);
             pLeftBeamMesh.scale.set(1.0, leftBeamDist / 22.0, 1.0);
             pLeftCoreBeamMesh.scale.set(1.0, leftBeamDist / 22.0, 1.0);
 
-            pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
-            pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightFixtureDirNorm);
+            // Right moving-head fixture orientation
+            const rightHeadPivotPos = pRightFixturePos.clone().add(new THREE.Vector3(0, 1.25, 0));
+            const rightFixtureDir = targetRightPos.clone().sub(rightHeadPivotPos);
+            const rightPan = Math.atan2(rightFixtureDir.x, rightFixtureDir.z);
+            const rightHorizDist = Math.sqrt(rightFixtureDir.x * rightFixtureDir.x + rightFixtureDir.z * rightFixtureDir.z);
+            const rightTilt = -Math.atan2(rightFixtureDir.y, rightHorizDist);
+
+            pRightFixture.yokeGroup.rotation.y = rightPan;
+            pRightFixture.headGroup.rotation.set(rightTilt, 0, 0);
+            pRightFixture.fixtureGroup.updateMatrixWorld(true);
+
+            // Calculate exact world position of the right optical glass lens center
+            const rightLensWorldPos = new THREE.Vector3();
+            pRightFixture.lensMesh.getWorldPosition(rightLensWorldPos);
+
+            // Vector from center of lens to target on pumpkin
+            const rightBeamVector = targetRightPos.clone().sub(rightLensWorldPos);
+            const rightBeamDist = rightBeamVector.length();
+            const rightBeamDirNorm = rightBeamVector.clone().normalize();
+
+            pRightBeamMesh.position.copy(rightLensWorldPos);
+            pRightCoreBeamMesh.position.copy(rightLensWorldPos);
+            pBottomRightSpot.position.copy(rightLensWorldPos);
+
+            pRightBeamMesh.quaternion.setFromUnitVectors(upVec, rightBeamDirNorm);
+            pRightCoreBeamMesh.quaternion.setFromUnitVectors(upVec, rightBeamDirNorm);
             pRightBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
             pRightCoreBeamMesh.scale.set(1.0, rightBeamDist / 22.0, 1.0);
 
