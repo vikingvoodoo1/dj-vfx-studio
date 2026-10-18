@@ -2130,13 +2130,121 @@
             outline: none;
         }
 
-        /* FX Bank Channel Strip Cards & Grid */
+        /* Micro Pulse Clock inside Tempo Box */
+        .bpm-micro-pulse-wrap {
+            position: relative;
+            width: 100%;
+            height: 10px;
+            margin-top: 3px;
+            background: rgba(0, 20, 10, 0.4);
+            border: 1px solid rgba(0, 255, 136, 0.2);
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .bpm-micro-pulse-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .bpm-micro-pulse-line {
+            stroke: #00ff88;
+            filter: drop-shadow(0 0 2px #00ff88);
+            transition: stroke 0.15s ease, stroke-width 0.15s ease;
+        }
+
+        .bpm-micro-pulse-line.silent {
+            stroke: rgba(0, 255, 136, 0.25);
+            filter: none;
+        }
+
+        .bpm-micro-pulse-line.pulse-hit {
+            stroke: #ffffff;
+            stroke-width: 1.8;
+            filter: drop-shadow(0 0 5px #00ff88);
+        }
+
+        .bpm-micro-dot {
+            position: absolute;
+            top: 50%;
+            left: 0%;
+            width: 3.5px;
+            height: 3.5px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 6px #00ff88;
+            transform: translate(-50%, -50%);
+            animation: microEcgSweep 2.0s infinite linear;
+            pointer-events: none;
+        }
+
+        @keyframes microEcgSweep {
+            0% { left: 0%; opacity: 0; }
+            15% { opacity: 0.9; }
+            85% { opacity: 0.9; }
+            100% { left: 100%; opacity: 0; }
+        }
+
+        /* FX Bank Channel Strip Cards & Grid (Scrollable with Sleek Cyber Scrollbar) */
         .fx-pane-grid {
             display: grid;
             grid-template-columns: repeat(2, 1fr);
-            gap: 5px;
+            gap: 6px;
             margin-top: 4px;
             margin-bottom: 8px;
+            max-height: 520px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .fx-pane-grid::-webkit-scrollbar {
+            width: 5px;
+        }
+
+        .fx-pane-grid::-webkit-scrollbar-track {
+            background: rgba(10, 12, 18, 0.6);
+            border-radius: 4px;
+        }
+
+        .fx-pane-grid::-webkit-scrollbar-thumb {
+            background: linear-gradient(180deg, #ffaa00, #00ffcc);
+            border-radius: 4px;
+            box-shadow: 0 0 6px rgba(255, 170, 0, 0.4);
+        }
+
+        .fx-card-thumb-wrap {
+            position: relative;
+            width: 100%;
+            height: 44px;
+            background: #07080c;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 3px;
+        }
+
+        .fx-card-thumb-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .fx-card-thumb-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.4) 100%);
+            pointer-events: none;
+        }
+
+        .fx-pane-card.active .fx-card-thumb-wrap {
+            border-color: rgba(255, 170, 0, 0.7);
+            box-shadow: 0 0 10px rgba(255, 170, 0, 0.35);
         }
 
         .fx-pane-card {
@@ -4750,6 +4858,13 @@
                                 <span class="bpm-display" id="bpm-val" style="font-size: 21px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
                                 <span class="bpm-unit" style="font-size: 8.5px; color: #00ffcc; font-weight: 800;">BPM</span>
                             </div>
+                            <!-- Micro Pulse Clock inside Tempo Box indicating active audio listening -->
+                            <div class="bpm-micro-pulse-wrap" id="bpm-micro-pulse-wrap" title="Micro pulse clock: actively listening to audio input">
+                                <svg class="bpm-micro-pulse-svg" viewBox="0 0 64 8" preserveAspectRatio="none">
+                                    <path class="bpm-micro-pulse-line" id="bpm-micro-pulse-line" d="M 0 4 L 18 4 L 21 2 L 25 6 L 28 4 L 31 1 L 34 7 L 37 2 L 40 5 L 43 4 L 64 4" fill="none" stroke="#00ff88" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+                                </svg>
+                                <div class="bpm-micro-dot" id="bpm-micro-dot"></div>
+                            </div>
                         </div>
 
                         <!-- Right: Hardware Deck Beat, Loop, and Bar Telemetry Container -->
@@ -5007,9 +5122,12 @@
                 </div>
 
                 <!-- Live Quick Macro Faders -->
-                <div class="pane-section-title" style="margin-top:10px; padding-top:8px; border-top:1px solid #2b2e3a;">
+                <div class="pane-section-title" style="margin-top:10px; padding-top:8px; border-top:1px solid #2b2e3a; display:flex; justify-content:space-between; align-items:center;">
                     <span>🎚️ Performance Macro Faders</span>
-                    <span class="hud-badge">PUNCH</span>
+                    <div style="display:flex; align-items:center; gap:5px;">
+                        <span class="hud-badge" id="macro-profile-status" style="font-size:7px; color:#8c909e; border-color:rgba(255,255,255,0.15);" title="Indicates whether this scene has customized macro fader values or uses default profile">DEFAULT</span>
+                        <button class="btn-micro" id="btn-reset-macro-faders" style="font-size:7.5px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#c0c4d0; border-radius:3px; cursor:pointer;" title="Reset macro faders to defaults for this scene">↺ RESET</button>
+                    </div>
                 </div>
 
                 <div class="slider-row">
@@ -5129,39 +5247,60 @@
                 </div>
 
                 <!-- FX Cards Grid (22 Shaders) -->
+                <!-- FX Cards Grid (22 Shaders with Live Animated Thumbnails) -->
                 <div class="fx-pane-grid" id="fx-pane-grid">
                     <!-- 📊 Equalizers & Decks -->
                     <div class="fx-pane-card active" data-fx="0" data-fxcat="eq" title="Hot key: 1">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="0"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">1</span>
-                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                            <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
                         <div class="fx-pane-card-title">📊 3D Studio EQ</div>
                     </div>
                     <div class="fx-pane-card" data-fx="1" data-fxcat="eq" title="Hot key: 2">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="1"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">2</span>
-                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                            <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
                         <div class="fx-pane-card-title">🎯 Circular Spectrum</div>
                     </div>
                     <div class="fx-pane-card" data-fx="2" data-fxcat="eq" title="Hot key: 3">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="2"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">3</span>
-                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                            <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
                         <div class="fx-pane-card-title">🌊 Fluid Wave Matrix</div>
                     </div>
                     <div class="fx-pane-card" data-fx="3" data-fxcat="eq" title="Hot key: 4">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="3"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">4</span>
-                            <span class="fx-pane-cat-tag">EQ & Decks</span>
+                            <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
                         <div class="fx-pane-card-title">🎚️ DJ Deck Waveforms</div>
                     </div>
 
                     <!-- ⚡ Lasers -->
                     <div class="fx-pane-card" data-fx="5" data-fxcat="laser" title="Hot key: 6">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="5"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">6</span>
                             <span class="fx-pane-cat-tag">Lasers</span>
@@ -5169,6 +5308,10 @@
                         <div class="fx-pane-card-title">⚡ Dual Lasers</div>
                     </div>
                     <div class="fx-pane-card" data-fx="6" data-fxcat="laser" title="Hot key: 7">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="6"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">7</span>
                             <span class="fx-pane-cat-tag">Lasers</span>
@@ -5176,6 +5319,10 @@
                         <div class="fx-pane-card-title">💥 Multi-Beams</div>
                     </div>
                     <div class="fx-pane-card" data-fx="7" data-fxcat="laser" title="Hot key: 8">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="7"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">8</span>
                             <span class="fx-pane-cat-tag">Lasers</span>
@@ -5185,36 +5332,56 @@
 
                     <!-- 🪩 Disco & Stage Lights -->
                     <div class="fx-pane-card" data-fx="4" data-fxcat="disco" title="Hot key: 5">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="4"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">5</span>
-                            <span class="fx-pane-cat-tag">Disco & Stage</span>
+                            <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
                         <div class="fx-pane-card-title">🪩 Disco Ball</div>
                     </div>
                     <div class="fx-pane-card" data-fx="16" data-fxcat="disco" title="Hot key: U">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="16"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">U</span>
-                            <span class="fx-pane-cat-tag">Disco & Stage</span>
+                            <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
                         <div class="fx-pane-card-title">🔦 Sweeping Godrays</div>
                     </div>
                     <div class="fx-pane-card" data-fx="17" data-fxcat="disco" title="Hot key: I">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="17"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">I</span>
-                            <span class="fx-pane-cat-tag">Disco & Stage</span>
+                            <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">☁️ White Godrays & Fog</div>
+                        <div class="fx-pane-card-title">☁️ White Godrays &amp; Fog</div>
                     </div>
                     <div class="fx-pane-card" data-fx="18" data-fxcat="disco" title="Hot key: O">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="18"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">O</span>
-                            <span class="fx-pane-cat-tag">Disco & Stage</span>
+                            <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">🪩 Disco Floor & Godrays</div>
+                        <div class="fx-pane-card-title">🪩 Disco Floor &amp; Godrays</div>
                     </div>
 
                     <!-- 🎃 Halloween & Spooky Special -->
                     <div class="fx-pane-card" data-fx="20" data-fxcat="spooky" title="Hot key: [">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="20"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">[</span>
                             <span class="fx-pane-cat-tag">🎃 Spooky Special</span>
@@ -5222,6 +5389,10 @@
                         <div class="fx-pane-card-title">🎃 Pumpkin Disco Ball</div>
                     </div>
                     <div class="fx-pane-card" data-fx="21" data-fxcat="spooky" title="Hot key: ]">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="21"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">]</span>
                             <span class="fx-pane-cat-tag">🎃 Spooky Special</span>
@@ -5231,70 +5402,107 @@
 
                     <!-- 🕸️ Cyber & Retro -->
                     <div class="fx-pane-card" data-fx="8" data-fxcat="wire" title="Hot key: 9">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="8"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">9</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
                         <div class="fx-pane-card-title">🌅 Synthwave Grid</div>
                     </div>
                     <div class="fx-pane-card" data-fx="9" data-fxcat="wire" title="Hot key: 0">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="9"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">0</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">🌄 River & Sun</div>
+                        <div class="fx-pane-card-title">🌄 River &amp; Sun</div>
                     </div>
                     <div class="fx-pane-card" data-fx="10" data-fxcat="wire" title="Hot key: Q">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="10"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">Q</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
                         <div class="fx-pane-card-title">💻 Matrix Rain</div>
                     </div>
                     <div class="fx-pane-card" data-fx="11" data-fxcat="wire" title="Hot key: W">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="11"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">W</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
                         <div class="fx-pane-card-title">👾 Arcade 80s</div>
                     </div>
                     <div class="fx-pane-card" data-fx="15" data-fxcat="wire" title="Hot key: Y">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="15"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">Y</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
                         <div class="fx-pane-card-title">⏱️ Time.is Clock</div>
                     </div>
                     <div class="fx-pane-card" data-fx="19" data-fxcat="wire" title="Hot key: P">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="19"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">P</span>
-                            <span class="fx-pane-cat-tag">Cyber & Retro</span>
+                            <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
                         <div class="fx-pane-card-title">📼 VHS Dreamlover</div>
                     </div>
 
                     <!-- 🌌 Space & Galaxy -->
                     <div class="fx-pane-card" data-fx="12" data-fxcat="space" title="Hot key: E">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="12"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">E</span>
-                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                            <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
                         <div class="fx-pane-card-title">🚀 Warp Starfield</div>
                     </div>
                     <div class="fx-pane-card" data-fx="13" data-fxcat="space" title="Hot key: R">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="13"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">R</span>
-                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                            <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
                         <div class="fx-pane-card-title">🌌 Spiral Galaxy</div>
                     </div>
                     <div class="fx-pane-card" data-fx="14" data-fxcat="space" title="Hot key: T">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="14"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
                         <div class="fx-pane-card-top">
                             <span class="fx-pane-key">T</span>
-                            <span class="fx-pane-cat-tag">Space & Galaxy</span>
+                            <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
                         <div class="fx-pane-card-title">✨ Particle Stream</div>
-                    </div></div>
+                    </div>
+                </div>
             </div>
 
             <!-- ========================================================================= -->
