@@ -338,10 +338,36 @@ export class PhilipsHueService {
     async turnOnLights(groupId = null) {
         this.config.enabled = true;
         await this.saveConfig().catch(() => {});
-        const target = (groupId === 'all' || !groupId) ? '0' : String(groupId);
+        const target = (groupId === 'all' || !groupId) ? (this.config.targetGroup || '3') : String(groupId);
         console.log(`[Philips Hue] 💡 Turning ON physical lights for Group ${target}...`);
-        const targetBri = Math.max(15, Math.round((this.config.minBrightness || 0.10) * 254));
+        const targetBri = Math.max(120, Math.round((this.config.intensity || 0.70) * 254));
         await this.sendAction(target, { on: true, bri: targetBri, transitiontime: 2 }, true);
+    }
+
+    async resetWarmWhite70(groupId = null) {
+        if (this.decayTimer) {
+            clearTimeout(this.decayTimer);
+            this.decayTimer = null;
+        }
+        this.queuedPayload = null;
+        this.lastSentBri = 178; // 70% of 254
+        this.lastSentXY = null;
+        const target = (groupId === 'all' || !groupId) ? (this.config.targetGroup || '3') : String(groupId);
+        console.log(`[Philips Hue] ☀️ Resetting physical lights to 70% Warm White for Group ${target}...`);
+        const payload = {
+            on: true,
+            bri: 178, // 70% brightness
+            ct: 370,  // 2700K warm white
+            transitiontime: 4 // smooth 400ms transition
+        };
+        await this.sendAction(target, payload, true);
+        if (target !== '0' && Array.isArray(this.rooms)) {
+            for (const room of this.rooms) {
+                if (room.id && (room.id === target || target === 'all')) {
+                    await this.sendAction(room.id, payload, true).catch(() => {});
+                }
+            }
+        }
     }
 
     updateConfig(newConfig) {

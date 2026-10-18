@@ -528,6 +528,12 @@ wss.on('connection', (ws) => {
                     type: 'hue_status',
                     ...hueService.getStatus()
                 });
+            } else if (msg.type === 'hue_reset_white') {
+                await hueService.resetWarmWhite70(msg.groupId);
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
             } else if (msg.type === 'hue_beat') {
                 if (msg.data) {
                     hueService.processAudioBeat(msg.data);

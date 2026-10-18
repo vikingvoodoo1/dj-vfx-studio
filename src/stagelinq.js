@@ -124,6 +124,7 @@ export function setupStageLinqClient({
         setHueConfig: (config) => sendJson({ type: 'hue_set_config', config }),
         turnOffHue: (groupId) => sendJson({ type: 'hue_turn_off', groupId }),
         turnOnHue: (groupId) => sendJson({ type: 'hue_turn_on', groupId }),
+        resetHueWhite: (groupId) => sendJson({ type: 'hue_reset_white', groupId }),
         sendHueBeat: (data) => sendJson({ type: 'hue_beat', data })
     };
 }

@@ -3106,6 +3106,220 @@
             border-radius: 50%;
             background: #00ffcc;
             box-shadow: 0 0 6px #00ffcc;
+        /* Glowing Stage Advisor Button in Performance Deck */
+        .btn-stage-advisor-glowing {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 9px;
+            border-radius: 5px;
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.18), rgba(0, 255, 204, 0.16));
+            border: 1px solid rgba(255, 170, 0, 0.5);
+            color: #ffe082;
+            font-size: 8.5px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(255, 170, 0, 0.25);
+            transition: all 0.22s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-stage-advisor-glowing:hover {
+            background: linear-gradient(135deg, rgba(255, 170, 0, 0.32), rgba(0, 255, 204, 0.3));
+            border-color: #ffaa00;
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 170, 0, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .advisor-glowing-pulse {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #ffaa00;
+            box-shadow: 0 0 8px #ffaa00;
+            animation: advisorPulse 1.6s infinite ease-in-out;
+            flex-shrink: 0;
+        }
+
+        @keyframes advisorPulse {
+            0%, 100% { transform: scale(1); opacity: 0.95; box-shadow: 0 0 6px #ffaa00; }
+            50% { transform: scale(1.4); opacity: 0.35; box-shadow: 0 0 14px #ffaa00; }
+        }
+
+        /* Studio Setup & Stage Readiness Advisor Modal */
+        #studio-advisor-modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(5, 7, 12, 0.88);
+            backdrop-filter: blur(12px);
+            z-index: 99998;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        #studio-advisor-modal-backdrop.active {
+            display: flex;
+        }
+
+        .advisor-modal {
+            background: linear-gradient(180deg, #0d1018 0%, #080a10 100%);
+            border: 1px solid rgba(255, 170, 0, 0.45);
+            box-shadow: 0 24px 70px rgba(0, 0, 0, 0.95), 0 0 40px rgba(255, 170, 0, 0.2);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 860px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            animation: matrixModalFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .advisor-modal-header {
+            padding: 14px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(0, 0, 0, 0.3);
+        }
+
+        .advisor-modal-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            font-weight: 900;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.4px;
+        }
+
+        .advisor-modal-subtitle {
+            font-size: 9.5px;
+            color: #8c909e;
+            margin-top: 3px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .advisor-readiness-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 5px;
+            font-size: 9px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid #00ff88;
+            color: #00ff88;
+            box-shadow: 0 0 10px rgba(0, 255, 136, 0.25);
+            white-space: nowrap;
+        }
+
+        .advisor-modal-body {
+            padding: 16px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            max-height: calc(90vh - 130px);
+        }
+
+        .advisor-card {
+            background: rgba(18, 22, 32, 0.7);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.2s ease;
+        }
+
+        .advisor-card:hover {
+            border-color: rgba(255, 170, 0, 0.35);
+            background: rgba(22, 28, 40, 0.85);
+        }
+
+        .advisor-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .advisor-card-name {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 11px;
+            font-weight: 800;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .advisor-status-badge {
+            font-size: 8px;
+            font-weight: 800;
+            padding: 2px 7px;
+            border-radius: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .advisor-status-badge.ok {
+            background: rgba(0, 255, 136, 0.15);
+            color: #00ff88;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+        }
+
+        .advisor-status-badge.warn {
+            background: rgba(255, 170, 0, 0.15);
+            color: #ffaa00;
+            border: 1px solid rgba(255, 170, 0, 0.4);
+        }
+
+        .advisor-card-current {
+            font-size: 9.5px;
+            color: #00ffcc;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+        }
+
+        .advisor-card-tip {
+            font-size: 9px;
+            color: #b0b8cc;
+            line-height: 1.5;
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 5px;
+            padding: 8px 10px;
+        }
+
+        .advisor-card-tip strong {
+            color: #ffaa00;
+        }
+
+        .advisor-modal-footer {
+            padding: 12px 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            flex-wrap: wrap;
         }
 
         /* Studio Health & Telemetry Diagnostics Modal */
@@ -4406,9 +4620,9 @@
                     <span>🎛️ Live Performance Deck</span>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
-                        <button class="btn-notch-trigger-chip" id="btn-open-notch-from-panel" title="Click to view Top-Center Telemetry Notch [Alt+N] / Diagnostics [Alt+H]">
-                            <span class="notch-chip-pulse"></span>
-                            <span id="panel-notch-summary-text">HUD NOTCH ⚡</span>
+                        <button class="btn-stage-advisor-glowing" id="btn-open-stage-advisor" title="Open Studio Setup &amp; Stage Readiness Advisor [Alt+A]">
+                            <span class="advisor-glowing-pulse"></span>
+                            <span id="panel-advisor-btn-text">💡 STAGE ADVISOR</span>
                         </button>
                     </div>
                 </div>
@@ -4419,7 +4633,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
-                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(0,255,204,0.35); color:#00ffcc; display:inline-block;" title="Telemetry source">SOURCE: STAGELINQ DECK 1</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(255,170,0,0.35); color:#ffaa00; display:inline-block;" title="Telemetry source">SOURCE: STANDBY (DECKS OFFLINE)</span>
                         </div>
                         <div style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace;">DECK 1 METRICS</div>
                     </div>
@@ -6039,11 +6253,12 @@
                         </div>
                     </div>
 
-                    <!-- Master Toggle, Power Off & Setup Button Row -->
-                    <div style="display:flex; gap:6px; margin-bottom:8px;">
-                        <button class="btn-mini" id="btn-hue-toggle" style="flex:1; font-size:10px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚡ SYNC: OFF</button>
-                        <button class="btn-mini" id="btn-hue-power" title="Click to toggle physical room lights ON/OFF" style="font-size:9.5px; font-weight:800; padding:6px 9px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.55); cursor:pointer; border-radius:4px;">💡 LIGHTS: OFF</button>
-                        <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:6px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE</button>
+                    <!-- Master Toggle, Power Off, Reset 70% White & Setup Button Row -->
+                    <div style="display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
+                        <button class="btn-mini" id="btn-hue-toggle" style="flex:1; min-width:70px; font-size:9.5px; font-weight:800; padding:6px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚡ SYNC: OFF</button>
+                        <button class="btn-mini" id="btn-hue-power" title="Click to toggle physical room lights ON/OFF" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.55); cursor:pointer; border-radius:4px;">💡 LIGHTS: OFF</button>
+                        <button class="btn-mini" id="btn-hue-reset-white" title="Reset all Philips Hue lights to clean 70% warm white room ambiance (useful if lights are stuck dim or strange)" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,220,150,0.2);">☀️ 70% WHITE</button>
+                        <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:6px 7px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE</button>
                     </div>
 
                     <!-- Room / Zone Selector -->
@@ -6433,9 +6648,12 @@
 
             <div id="hue-pair-status-msg" style="font-size:11px; margin-top:8px; margin-bottom:12px; color:#ffaa00; font-family:'JetBrains Mono',monospace;"></div>
 
-            <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:16px;">
-                <button class="obs-copy-btn" id="btn-do-pair-hue" style="padding:8px 18px; font-size:12px;">🔗 PAIR BRIDGE NOW</button>
-                <button class="btn-mini" id="btn-close-hue-done" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:6px 16px; font-size:11px; cursor:pointer;">Close</button>
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:16px; flex-wrap:wrap;">
+                <button class="btn-mini" id="btn-modal-hue-reset-white" title="Reset all Philips Hue lights to clean 70% warm white room ambiance" style="padding:8px 14px; font-size:10px; font-weight:800; background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; cursor:pointer; border-radius:4px; box-shadow:0 0 10px rgba(255,220,150,0.25);">☀️ RESET TO 70% WHITE</button>
+                <div style="display:flex; gap:8px;">
+                    <button class="obs-copy-btn" id="btn-do-pair-hue" style="padding:8px 18px; font-size:12px;">🔗 PAIR BRIDGE NOW</button>
+                    <button class="btn-mini" id="btn-close-hue-done" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:6px 16px; font-size:11px; cursor:pointer;">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -6568,6 +6786,111 @@
                     <button class="matrix-btn-reset-all" id="btn-matrix-reset-all" title="Reset all 22 scene profiles to factory default settings">⚠️ Reset All 22 Scenes to Default</button>
                     <button class="matrix-btn-close" id="btn-matrix-close-footer">Close Matrix</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Studio Setup & Stage Readiness Advisor Modal -->
+    <div id="studio-advisor-modal-backdrop">
+        <div class="advisor-modal">
+            <div class="advisor-modal-header">
+                <div>
+                    <div class="advisor-modal-title">
+                        <span>💡 STUDIO SETUP &amp; STAGE READINESS ADVISOR</span>
+                    </div>
+                    <div class="advisor-modal-subtitle">
+                        Intelligent hardware triage, missing subsystem detection, and stage optimization advice.
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="advisor-readiness-pill" id="advisor-readiness-pill">● STAGE READY</span>
+                    <button class="obs-close-btn" id="btn-close-advisor-modal" title="Close Advisor (Esc)">&times;</button>
+                </div>
+            </div>
+
+            <div class="advisor-modal-body" id="advisor-modal-body">
+                <!-- 1. Audio Interface & Feed -->
+                <div class="advisor-card" id="adv-card-audio">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">🎧 1. AUDIO INTERFACE &amp; LINE-IN</span>
+                        <span class="advisor-status-badge ok" id="adv-badge-audio">CONNECTED</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-audio">Focusrite Scarlett 2i2 • 48 kHz</div>
+                    <div class="advisor-card-tip" id="adv-tip-audio">
+                        Active line-in audio feed detected. Real-time FFT spectrum, transient peak detectors, and LUFS loudness metering are operating with low latency.
+                    </div>
+                </div>
+
+                <!-- 2. DJ Hardware Decks (StageLinQ / Pioneer Pro DJ Link) -->
+                <div class="advisor-card" id="adv-card-deck">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">🎛️ 2. DJ DECKS TELEMETRY (STAGELINQ / PIONEER LINK)</span>
+                        <span class="advisor-status-badge warn" id="adv-badge-deck">DECKS OFFLINE</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-deck">Hardware Decks Unplugged • Standby Synthetic Mode Active</div>
+                    <div class="advisor-card-tip" id="adv-tip-deck">
+                        <strong>Missing Hardware:</strong> Denon Prime or Pioneer CDJ network beat packets are not detected on UDP port 8080.<br>
+                        <strong>Stage Advice:</strong> If performing on hardware players, connect an Ethernet cable or Wi-Fi to your local subnet (<code>192.168.1.x</code>).<br>
+                        <strong>Visual Engine Status:</strong> No panic necessary! The studio's <em>Synthetic Audio-Reactive Mode</em> is active: all 22 3D scenes, waveforms, fire baselines, and disco ball rotations are dynamically dancing to your live line-in audio!
+                    </div>
+                </div>
+
+                <!-- 3. Network & Internet Routing -->
+                <div class="advisor-card" id="adv-card-net">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">🔌 3. GIGABIT WIRED NETWORK &amp; ROUTE</span>
+                        <span class="advisor-status-badge ok" id="adv-badge-net">WIRED GBE (en13)</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-net">en13 (USB 10/100/1000 LAN) • 12ms ping</div>
+                    <div class="advisor-card-tip" id="adv-tip-net">
+                        Wired Ethernet connection is active, delivering maximum reliability for OBS streaming and zero-jitter Philips Hue ZigBee bridge polling.
+                    </div>
+                </div>
+
+                <!-- 4. OBS Studio & Video Streaming Headroom -->
+                <div class="advisor-card" id="adv-card-stream">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">🎥 4. OBS STUDIO &amp; LIVE STREAM (TWITCH / MIXCLOUD)</span>
+                        <span class="advisor-status-badge ok" id="adv-badge-stream">STANDBY</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-stream">OBS Standby • Solid Visual Stage</div>
+                    <div class="advisor-card-tip" id="adv-tip-stream">
+                        <strong>Twitch / YouTube Broadcast Standard:</strong> Keep master line-in below <strong>-1.0 dBFS</strong> to avoid harsh AAC distortion. To stream visuals into OBS, click <strong>📡 OBS FEED</strong> in the top toolbar to copy your Browser Source URL.
+                    </div>
+                </div>
+
+                <!-- 5. BUTT Web Radio Transmission -->
+                <div class="advisor-card" id="adv-card-butt">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">📻 5. BUTT &amp; WEB RADIO HEADROOM (ICECAST / MP3)</span>
+                        <span class="advisor-status-badge ok" id="adv-badge-butt">COMPLIANT</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-butt">Target -3.0 dBFS Compliant • Zero Digital Clipping</div>
+                    <div class="advisor-card-tip" id="adv-tip-butt">
+                        Broadcast standard for MP3 web radio (Icecast / Shoutcast via BUTT): ensure audio levels do not exceed <strong>-3.0 dBFS</strong> to prevent inter-sample clipping during MP3 encoding.
+                    </div>
+                </div>
+
+                <!-- 6. Philips Hue Smart Club Lighting -->
+                <div class="advisor-card" id="adv-card-hue">
+                    <div class="advisor-card-top">
+                        <span class="advisor-card-name">💡 6. PHILIPS HUE LIGHTING &amp; DMX</span>
+                        <span class="advisor-status-badge ok" id="adv-badge-hue">CONNECTED</span>
+                    </div>
+                    <div class="advisor-card-current" id="adv-curr-hue">Bridge Active at 192.168.1.33 • Room: Study</div>
+                    <div class="advisor-card-tip" id="adv-tip-hue">
+                        Philips Hue bridge is paired. If your lights are dim, flickering, or in an odd state from strobe testing, click <strong>☀️ RESET TO 70% WHITE</strong> below to immediately restore comfortable room ambiance.
+                    </div>
+                </div>
+            </div>
+
+            <div class="advisor-modal-footer">
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <button class="btn-mini" id="btn-advisor-reset-hue" style="background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; font-weight:800; padding:6px 12px; cursor:pointer; border-radius:4px; box-shadow:0 0 10px rgba(255,220,150,0.25);">☀️ RESET HUE TO 70% WHITE</button>
+                    <button class="btn-mini" id="btn-advisor-rescan" style="background:rgba(0,255,204,0.18); border:1px solid #00ffcc; color:#00ffcc; font-weight:800; padding:6px 12px; cursor:pointer; border-radius:4px;">🔄 RESCAN SYSTEM</button>
+                    <button class="btn-mini" id="btn-advisor-open-diagnostics" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#ffffff; font-weight:700; padding:6px 12px; cursor:pointer; border-radius:4px;">🩺 FULL DIAGNOSTICS [Alt+H]</button>
+                </div>
+                <button class="obs-copy-btn" id="btn-close-advisor-done" style="padding:6px 18px; font-size:11px;">DONE</button>
             </div>
         </div>
     </div>

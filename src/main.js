@@ -5568,6 +5568,44 @@ async function init() {
     window.closeNotchPanel = closeNotchPanel;
     window.toggleNotchPanel = toggleNotchPanel;
 
+    // Studio Setup & Stage Readiness Advisor Elements
+    const studioAdvisorModalBackdrop = document.getElementById('studio-advisor-modal-backdrop');
+    const btnOpenStageAdvisor = document.getElementById('btn-open-stage-advisor');
+    const btnCloseAdvisorModal = document.getElementById('btn-close-advisor-modal');
+    const btnCloseAdvisorDone = document.getElementById('btn-close-advisor-done');
+    const btnAdvisorResetHue = document.getElementById('btn-advisor-reset-hue');
+    const btnAdvisorRescan = document.getElementById('btn-advisor-rescan');
+    const btnAdvisorOpenDiagnostics = document.getElementById('btn-advisor-open-diagnostics');
+    const advisorReadinessPill = document.getElementById('advisor-readiness-pill');
+
+    const advBadgeAudio = document.getElementById('adv-badge-audio');
+    const advCurrAudio = document.getElementById('adv-curr-audio');
+    const advTipAudio = document.getElementById('adv-tip-audio');
+
+    const advBadgeDeck = document.getElementById('adv-badge-deck');
+    const advCurrDeck = document.getElementById('adv-curr-deck');
+    const advTipDeck = document.getElementById('adv-tip-deck');
+
+    const advBadgeNet = document.getElementById('adv-badge-net');
+    const advCurrNet = document.getElementById('adv-curr-net');
+    const advTipNet = document.getElementById('adv-tip-net');
+
+    const advBadgeStream = document.getElementById('adv-badge-stream');
+    const advCurrStream = document.getElementById('adv-curr-stream');
+    const advTipStream = document.getElementById('adv-tip-stream');
+
+    const advBadgeButt = document.getElementById('adv-badge-butt');
+    const advCurrButt = document.getElementById('adv-curr-butt');
+    const advTipButt = document.getElementById('adv-tip-butt');
+
+    const advBadgeHue = document.getElementById('adv-badge-hue');
+    const advCurrHue = document.getElementById('adv-curr-hue');
+    const advTipHue = document.getElementById('adv-tip-hue');
+
+    // Philips Hue 70% White Reset Buttons
+    const btnHueResetWhite = document.getElementById('btn-hue-reset-white');
+    const btnModalHueResetWhite = document.getElementById('btn-modal-hue-reset-white');
+
     // Studio Health & Telemetry Diagnostics Modal Elements
     const studioHealthModalBackdrop = document.getElementById('studio-health-modal-backdrop');
     const btnCloseHealthModal = document.getElementById('btn-close-health-modal');
@@ -6457,6 +6495,203 @@ async function init() {
         }
     });
 
+    // =========================================================================
+    // STUDIO SETUP & STAGE READINESS ADVISOR MODAL
+    // =========================================================================
+    function updateStageAdvisorModalUI() {
+        if (!studioAdvisorModalBackdrop || !studioAdvisorModalBackdrop.classList.contains('active')) return;
+
+        const audioH = getAudioHealthSnapshot();
+        const deckH = getDeckHealthSnapshot();
+        const netH = getNetworkHealthSnapshot();
+        const streamH = getBroadcastHealthSnapshot();
+        const buttH = getButtHealthSnapshot();
+        const hueH = getHueHealthSnapshot();
+
+        // 1. Audio
+        if (advBadgeAudio) {
+            advBadgeAudio.className = 'advisor-status-badge ' + (audioH.status === 'green' ? 'ok' : 'warn');
+            advBadgeAudio.textContent = audioH.status === 'green' ? 'CONNECTED' : 'FALLBACK MIC';
+        }
+        if (advCurrAudio) advCurrAudio.textContent = `${audioH.deviceName} (${audioH.interfaceType}) • ${audioH.sampleRate}`;
+        if (advTipAudio) {
+            advTipAudio.innerHTML = audioH.status === 'green'
+                ? `Active line-in audio feed verified. Low-latency FFT spectrum analysis, BS.1770 LUFS metering, and auto-BPM kick onset detection are operating live.`
+                : `<strong>Recommendation:</strong> Currently using internal microphone fallback. Connect your DJ mixer Booth Out or Master 2 to your USB audio interface for studio fidelity.`;
+        }
+
+        // 2. Decks
+        if (advBadgeDeck) {
+            advBadgeDeck.className = 'advisor-status-badge ' + (deckH.status === 'green' ? 'ok' : 'warn');
+            advBadgeDeck.textContent = deckH.status === 'green' ? 'STREAMING LIVE' : 'DECKS OFFLINE';
+        }
+        if (advCurrDeck) {
+            advCurrDeck.textContent = deckH.status === 'green'
+                ? `${deckH.source} • ${deckH.pktsText} (${deckH.stateText})`
+                : `Hardware Decks Unplugged • Standby Synthetic Audio Mode Active`;
+        }
+        if (advTipDeck) {
+            advTipDeck.innerHTML = deckH.status === 'green'
+                ? `Hardware DJ decks actively streaming track position, platter spin, BPM, and cue points.`
+                : `<strong>Why Decks Are Offline:</strong> Pioneer CDJ or Denon Prime StageLinQ beat packets are not being received on UDP port 8080.<br><strong>Stage Advice:</strong> If performing on hardware players, connect an Ethernet cable or Wi-Fi to your local subnet (<code>192.168.1.x</code>).<br><strong>Visuals Status:</strong> No panic! Synthetic Standby mode is running: all 22 3D scenes, waveforms, fire baselines, and disco ball rotations are dynamically dancing to your live line-in audio!`;
+        }
+
+        // 3. Network
+        if (advBadgeNet) {
+            advBadgeNet.className = 'advisor-status-badge ' + (netH.status === 'green' ? 'ok' : 'warn');
+            advBadgeNet.textContent = netH.medium;
+        }
+        if (advCurrNet) advCurrNet.textContent = `${netH.medium} • ${netH.speedText} (Ping: ${netH.rttText})`;
+        if (advTipNet) {
+            advTipNet.innerHTML = networkHardwareStatus.isWired
+                ? `Gigabit Ethernet (en13) is active, delivering rock-solid reliability for OBS streaming and zero-jitter Philips Hue ZigBee bridge polling.`
+                : `Wi-Fi connection active. For maximum stage stability, plug in a wired Ethernet cable for zero-jitter streaming.`;
+        }
+
+        // 4. OBS Stream
+        if (advBadgeStream) {
+            advBadgeStream.className = 'advisor-status-badge ' + (streamH.status === 'green' ? 'ok' : 'warn');
+            advBadgeStream.textContent = streamH.badgeText;
+        }
+        if (advCurrStream) advCurrStream.textContent = streamH.valText;
+        if (advTipStream) {
+            advTipStream.innerHTML = `<strong>Twitch / YouTube Broadcast Standard:</strong> Keep line-in peaks below <strong>-1.0 dBFS</strong> to prevent AAC compression clipping. Click <strong>📡 OBS FEED</strong> in the top toolbar to copy your Browser Source URL.`;
+        }
+
+        // 5. BUTT Web Radio
+        if (advBadgeButt) {
+            advBadgeButt.className = 'advisor-status-badge ' + (buttH.status === 'green' ? 'ok' : 'warn');
+            advBadgeButt.textContent = buttH.badgeText;
+        }
+        if (advCurrButt) advCurrButt.textContent = buttH.valText;
+        if (advTipButt) {
+            advTipButt.innerHTML = `<strong>Web Radio / BUTT MP3 Standard:</strong> Broadcast safe target is <strong>-3.0 dBFS</strong> to avoid inter-sample distortion during MP3 encoding on Icecast / Shoutcast streams.`;
+        }
+
+        // 6. Hue Smart Lighting
+        if (advBadgeHue) {
+            advBadgeHue.className = 'advisor-status-badge ' + (hueH.status === 'green' ? 'ok' : 'warn');
+            advBadgeHue.textContent = hueH.status === 'green' ? 'ACTIVE' : 'STANDBY';
+        }
+        if (advCurrHue) advCurrHue.textContent = `${hueH.ipText} • Room: Study`;
+        if (advTipHue) {
+            advTipHue.innerHTML = `Philips Hue Bridge is paired. If your lights are dim, flickering, or in an odd state from strobe testing, click <strong>☀️ RESET TO 70% WHITE</strong> below to immediately restore clean room ambiance.`;
+        }
+
+        // Overall Readiness Score
+        if (advisorReadinessPill) {
+            const isDeckOk = deckH.status === 'green';
+            const isAudioOk = audioH.status === 'green';
+            if (isDeckOk && isAudioOk) {
+                advisorReadinessPill.className = 'advisor-readiness-pill';
+                advisorReadinessPill.textContent = '● 100% STAGE READY (HARDWARE DECKS SYNCED)';
+                advisorReadinessPill.style.color = '#00ff88';
+                advisorReadinessPill.style.borderColor = '#00ff88';
+            } else if (isAudioOk) {
+                advisorReadinessPill.className = 'advisor-readiness-pill';
+                advisorReadinessPill.textContent = '● 92% STAGE READY (AUDIO STANDBY REACTIVE)';
+                advisorReadinessPill.style.color = '#00ffcc';
+                advisorReadinessPill.style.borderColor = '#00ffcc';
+            } else {
+                advisorReadinessPill.className = 'advisor-readiness-pill';
+                advisorReadinessPill.textContent = '▲ AUDIO SETUP REQUIRED';
+                advisorReadinessPill.style.color = '#ffaa00';
+                advisorReadinessPill.style.borderColor = '#ffaa00';
+            }
+        }
+    }
+
+    function openStageAdvisorModal() {
+        if (studioAdvisorModalBackdrop) {
+            studioAdvisorModalBackdrop.classList.add('active');
+            updateStageAdvisorModalUI();
+        }
+    }
+
+    function closeStageAdvisorModal() {
+        if (studioAdvisorModalBackdrop) {
+            studioAdvisorModalBackdrop.classList.remove('active');
+        }
+    }
+
+    function toggleStageAdvisorModal() {
+        if (studioAdvisorModalBackdrop) {
+            if (studioAdvisorModalBackdrop.classList.contains('active')) {
+                closeStageAdvisorModal();
+            } else {
+                openStageAdvisorModal();
+            }
+        }
+    }
+
+    window.openStageAdvisorModal = openStageAdvisorModal;
+    window.closeStageAdvisorModal = closeStageAdvisorModal;
+    window.toggleStageAdvisorModal = toggleStageAdvisorModal;
+
+    // Philips Hue 70% Warm White Reset
+    async function resetHueToWarmWhite70() {
+        if (stagelinqClient && typeof stagelinqClient.resetHueWhite === 'function') {
+            stagelinqClient.resetHueWhite(hueTargetGroup || '3');
+        }
+
+        const bridgeIp = (inputHueIp && inputHueIp.value) ? inputHueIp.value.trim() : '192.168.1.33';
+        const username = (inputHueUser && inputHueUser.value) ? inputHueUser.value.trim() : 'qjw0GOAC0sUzuIQS-vjrv7xN7zVPqv-mIZ0qXBxS';
+        const targetGrp = hueTargetGroup || '3';
+
+        if (bridgeIp && username) {
+            const payload = JSON.stringify({
+                on: true,
+                bri: 178, // 70%
+                ct: 370,  // 2700K warm white
+                transitiontime: 4
+            });
+
+            fetch(`http://${bridgeIp}/api/${username}/groups/${targetGrp}/action`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload
+            }).catch(e => console.log('[Hue] Direct group reset notice:', e));
+
+            fetch(`http://${bridgeIp}/api/${username}/groups/0/action`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: payload
+            }).catch(e => console.log('[Hue] Direct all lights reset notice:', e));
+        }
+
+        isHueActive = false;
+        updateHueButtonsAndBadges();
+        showToast('☀️ Philips Hue: Reset to 70% Warm White Ambiance!');
+    }
+
+    if (btnHueResetWhite) btnHueResetWhite.addEventListener('click', resetHueToWarmWhite70);
+    if (btnModalHueResetWhite) btnModalHueResetWhite.addEventListener('click', resetHueToWarmWhite70);
+    if (btnAdvisorResetHue) btnAdvisorResetHue.addEventListener('click', resetHueToWarmWhite70);
+
+    if (btnOpenStageAdvisor) btnOpenStageAdvisor.addEventListener('click', openStageAdvisorModal);
+    if (btnCloseAdvisorModal) btnCloseAdvisorModal.addEventListener('click', closeStageAdvisorModal);
+    if (btnCloseAdvisorDone) btnCloseAdvisorDone.addEventListener('click', closeStageAdvisorModal);
+    if (btnAdvisorRescan) {
+        btnAdvisorRescan.addEventListener('click', () => {
+            if (typeof rescanAudioDevices === 'function') rescanAudioDevices();
+            showToast('🔄 Re-scanning all studio interfaces...');
+            setTimeout(updateStageAdvisorModalUI, 600);
+        });
+    }
+    if (btnAdvisorOpenDiagnostics) {
+        btnAdvisorOpenDiagnostics.addEventListener('click', () => {
+            closeStageAdvisorModal();
+            openHealthDiagnosticsModal();
+        });
+    }
+    if (studioAdvisorModalBackdrop) {
+        studioAdvisorModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === studioAdvisorModalBackdrop) {
+                closeStageAdvisorModal();
+            }
+        });
+    }
+
     if (studioHealthModalBackdrop) {
         studioHealthModalBackdrop.addEventListener('click', (e) => {
             if (e.target === studioHealthModalBackdrop) {
@@ -6774,6 +7009,83 @@ async function init() {
     try {
         activePhraseDisplayMode = localStorage.getItem('dj_vfx_phrase_mode') || '3000';
     } catch (e) {}
+
+    // Live Audio BPM Auto-Detection Engine (Runs when hardware decks are offline)
+    let audioOnsetTimestamps = [];
+    let lastAudioOnsetBpmTime = 0;
+    let detectedAudioBpm = 126.0;
+    let audioBpmDetectedRecently = false;
+    let lastAudioBpmDetectionTime = 0;
+
+    function processLiveAudioBpm(audioData, now) {
+        if (isHardwareDeckStreaming) return; // Hardware deck takes absolute priority
+        if (!audioData) return;
+
+        // Check for strong bass onset or transient kick drum impact
+        const isKickOnset = !!(audioData.isOnset && audioData.bassImpact > 0.55);
+        if (!isKickOnset) return;
+
+        // Debounce onsets: minimum 260ms between kicks (corresponds to max 230 BPM)
+        const delta = now - lastAudioOnsetBpmTime;
+        if (delta < 260) return;
+        lastAudioOnsetBpmTime = now;
+
+        // Buffer up to 16 onset timestamps
+        audioOnsetTimestamps.push(now);
+        if (audioOnsetTimestamps.length > 16) {
+            audioOnsetTimestamps.shift();
+        }
+
+        if (audioOnsetTimestamps.length < 5) return;
+
+        // Calculate intervals between successive onsets
+        const intervals = [];
+        for (let i = 1; i < audioOnsetTimestamps.length; i++) {
+            const intv = audioOnsetTimestamps[i] - audioOnsetTimestamps[i - 1];
+            if (intv >= 280 && intv <= 950) {
+                intervals.push(intv);
+            } else if (intv > 950 && intv <= 1900) {
+                // Half-time beat (e.g. 2 bars or snare dropped) -> split in half
+                intervals.push(intv / 2);
+            }
+        }
+
+        if (intervals.length < 4) return;
+
+        // Calculate median interval to reject syncopation and outliers
+        intervals.sort((a, b) => a - b);
+        const medianIntv = intervals[Math.floor(intervals.length / 2)];
+        const candidateBpm = 60000 / medianIntv;
+
+        // Clamp to realistic electronic music range: 75 to 178 BPM
+        let clampedBpm = candidateBpm;
+        while (clampedBpm < 75) clampedBpm *= 2;
+        while (clampedBpm > 180) clampedBpm /= 2;
+
+        // Consistency check: check how many intervals are within 5% of the median
+        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.05).length;
+        if (consistentCount >= 3) {
+            // Smoothly lerp towards candidate
+            detectedAudioBpm = detectedAudioBpm * 0.75 + clampedBpm * 0.25;
+            const roundedBpm = Math.round(detectedAudioBpm * 10) / 10;
+            audioBpmDetectedRecently = true;
+            lastAudioBpmDetectionTime = now;
+
+            if (bpmVal) {
+                bpmVal.textContent = roundedBpm.toFixed(1);
+            }
+            if (vfx && typeof vfx.setBPM === 'function') {
+                vfx.setBPM(roundedBpm);
+            }
+            if (phraseSyncSource) {
+                phraseSyncSource.style.display = 'inline-block';
+                phraseSyncSource.textContent = 'SOURCE: AUDIO IN (AUTO-DETECT)';
+                phraseSyncSource.style.borderColor = 'rgba(255,170,0,0.45)';
+                phraseSyncSource.style.color = '#ffaa00';
+                phraseSyncSource.title = `Live tempo auto-detected from line-in kick transients: ${roundedBpm.toFixed(1)} BPM`;
+            }
+        }
+    }
 
     function notifyHardwareDeckPacket(source = 'PRO DJ LINK') {
         if (mockDeckDisconnectedForTesting) return;
@@ -7770,6 +8082,13 @@ async function init() {
                 setOBSOutputLive(!isOBSOutputLive, true);
             }
         }
+        // [Alt+A] to toggle Studio Setup & Stage Readiness Advisor
+        else if (e.altKey && (e.key === 'a' || e.key === 'A')) {
+            e.preventDefault();
+            if (typeof toggleStageAdvisorModal === 'function') {
+                toggleStageAdvisorModal();
+            }
+        }
         // [M] to toggle Scene Reactive Matrix & Memory Profiles modal
         else if (e.key === 'm' || e.key === 'M') {
             const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
@@ -7781,6 +8100,9 @@ async function init() {
         }
         // [Escape] to close open modals & panels
         else if (e.key === 'Escape') {
+            if (typeof closeStageAdvisorModal === 'function') {
+                closeStageAdvisorModal();
+            }
             if (typeof closeNotchPanel === 'function') {
                 closeNotchPanel();
             }
@@ -8064,15 +8386,26 @@ async function init() {
             }
         }
 
-        // Only update / sweep phase needle and show CDJ widgets when streaming straight from live decks
+        // Live Deck Telemetry vs Auto-BPM Audio Detection
         if (isHardwareDeckStreaming) {
             if (now - lastHardwarePacketTimestamp > 60000) {
                 // Deck stream timed out / disconnected
                 isHardwareDeckStreaming = false;
                 if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
                 if (phraseModeSelector) phraseModeSelector.style.display = 'none';
-                if (phraseSyncSource) phraseSyncSource.style.display = 'none';
                 if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
+                if (phraseSyncSource) {
+                    phraseSyncSource.style.display = 'inline-block';
+                    if (audioBpmDetectedRecently && (now - lastAudioBpmDetectionTime < 10000)) {
+                        phraseSyncSource.textContent = 'SOURCE: AUDIO IN (AUTO-DETECT)';
+                        phraseSyncSource.style.borderColor = 'rgba(255,170,0,0.45)';
+                        phraseSyncSource.style.color = '#ffaa00';
+                    } else {
+                        phraseSyncSource.textContent = 'SOURCE: STANDBY (DECKS OFFLINE)';
+                        phraseSyncSource.style.borderColor = 'rgba(255,255,255,0.2)';
+                        phraseSyncSource.style.color = '#8c909e';
+                    }
+                }
                 if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
             } else if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
                 const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
@@ -8082,10 +8415,13 @@ async function init() {
                 const totalBarFraction = ((currentBeatInBar - 1) + subBeatFraction) / 4.0;
                 phaseSweepNeedle.style.left = `${(totalBarFraction * 75).toFixed(1)}%`;
             }
+        } else if (data) {
+            // Automatically detect BPM from live line-in kick transients when decks are unplugged
+            processLiveAudioBpm(data, now);
         }
 
-        // Throttle Console Health Mini Status Strip & Diagnostics Telemetry Updates (~4Hz)
-        if (now - lastHealthMiniUpdate >= 250) {
+        // Throttle Console Health & Diagnostics Telemetry Updates (Every 500ms / 2Hz to prevent DOM thrashing)
+        if (now - lastHealthMiniUpdate >= 500) {
             lastHealthMiniUpdate = now;
             if (typeof updateConsoleHealthMiniStrip === 'function') {
                 updateConsoleHealthMiniStrip(data);
@@ -8093,6 +8429,11 @@ async function init() {
             if (studioHealthModalBackdrop && studioHealthModalBackdrop.classList.contains('active')) {
                 if (typeof updateHealthDiagnosticsModalUI === 'function') {
                     updateHealthDiagnosticsModalUI(data);
+                }
+            }
+            if (studioAdvisorModalBackdrop && studioAdvisorModalBackdrop.classList.contains('active')) {
+                if (typeof updateStageAdvisorModalUI === 'function') {
+                    updateStageAdvisorModalUI();
                 }
             }
         }
