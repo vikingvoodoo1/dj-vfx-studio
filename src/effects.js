@@ -17546,23 +17546,30 @@ export function createVFXScene(container) {
             }
 
 
-            // 2. Motorized Disco Spin (Y-axis) with Natural Steady Hanging Sway
-            // Smooth, constant rotation speed that stays calm, elegant, and steady
-            const spinVelocity = 0.15 * (currentBPM / 126.0);
+            // 2. Motorized Disco Spin (Y-axis) with Organic Suspension Wobble & Pendulum Sway
+            // Smooth, graceful rotation speed matching the authentic spinning disco ball
+            const spinVelocity = 0.28 * (currentBPM / 126.0);
             pumpkinPivot.rotation.y += delta * spinVelocity;
 
-            // Steady, organic gyroscopic tilt (~3 degrees) like an authentic hanging disco ball (no beat pulse or twitching)
+            // 🌀 Very subtle organic suspension wobble & pendulum sway on the chain (matching FX 4 spinning disco ball)
+            const wobbleTime = elapsedTime * 0.75;
+            const wobbleX = Math.sin(wobbleTime) * 0.16 + Math.sin(wobbleTime * 1.6 + 0.9) * 0.05;
+            const wobbleZ = Math.cos(wobbleTime * 0.85) * 0.14 + Math.cos(wobbleTime * 1.3 + 1.2) * 0.04;
+            pumpkinPivot.position.x = wobbleX;
+            pumpkinPivot.position.z = wobbleZ;
+            pumpkinPivot.position.y = 0.0;
+
+            // Coupled tilt: pendulum tilt from ceiling suspension point (13.2) + gyroscopic spin tilt + delicate micro-precession wobble
             const rotY = pumpkinPivot.rotation.y;
-            const tiltAmount = 0.052;
-            pumpkinPivot.rotation.z = Math.sin(rotY) * tiltAmount;
-            pumpkinPivot.rotation.x = Math.cos(rotY) * tiltAmount * 0.85;
+            const spinTilt = 0.038;
+            pumpkinPivot.rotation.z = -(wobbleX / 13.2) * 1.1 + Math.sin(rotY) * spinTilt + Math.sin(wobbleTime * 1.8 + 0.4) * 0.018;
+            pumpkinPivot.rotation.x = (wobbleZ / 13.2) * 1.1 + Math.cos(rotY) * spinTilt * 0.85 + Math.cos(wobbleTime * 1.5 + 0.7) * 0.015;
 
             // 3. Steady Physical Pumpkin Geometry (NO pulsing with beat - solid authentic mirror disco ball)
             pumpkinMesh.scale.set(1.0, 1.0, 1.0);
             if (pumpkinStem) {
                 pumpkinStem.scale.set(1.0, 1.0, 1.0);
             }
-            pumpkinPivot.position.y = 0.0;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
             // Calculate exact world position of the stalk top eyelet ring (nestled on 0.76 squashed pumpkin crown)
@@ -17578,18 +17585,18 @@ export function createVFXScene(container) {
                 // Position interpolated from stalk tip (l=0) to ceiling (l=15)
                 const linkPos = new THREE.Vector3().lerpVectors(stalkTipWorld, ceilingAnchor, t0);
                 
-                // Natural catenary suspension sag
-                const sagFactor = Math.sin(t0 * Math.PI) * 0.14;
-                linkPos.x += Math.sin(rotY + t0 * 1.5) * sagFactor;
-                linkPos.z += Math.cos(rotY + t0 * 1.5) * sagFactor;
+                // Natural catenary suspension sag & organic chain sway
+                const sagFactor = Math.sin(t0 * Math.PI) * 0.12;
+                linkPos.x += Math.sin(rotY * 0.25 + t0 * 1.5) * sagFactor;
+                linkPos.z += Math.cos(rotY * 0.25 + t0 * 1.5) * sagFactor;
                 link.position.copy(linkPos);
 
-                // Alternating link angles aligned to the hanging chain direction
-                const baseRotY = (l % 2 === 0) ? (pumpkinPivot.rotation.y * 0.20) : (pumpkinPivot.rotation.y * 0.20 + Math.PI / 2);
+                // Alternating link angles aligned to the hanging chain direction with subtle sway
+                const baseRotY = (l % 2 === 0) ? (pumpkinPivot.rotation.y * 0.18) : (pumpkinPivot.rotation.y * 0.18 + Math.PI / 2);
                 link.rotation.set(
-                    pumpkinPivot.rotation.x * (1.0 - t0),
+                    pumpkinPivot.rotation.x * (1.0 - t0) + Math.sin(wobbleTime + l * 0.15) * 0.012,
                     baseRotY,
-                    pumpkinPivot.rotation.z * (1.0 - t0)
+                    pumpkinPivot.rotation.z * (1.0 - t0) + Math.cos(wobbleTime + l * 0.15) * 0.012
                 );
             }
 
@@ -17599,7 +17606,7 @@ export function createVFXScene(container) {
             const tyL = Math.cos(tL * 0.65) * 1.82;      // spans 0.76 height squashed pumpkin
             const rSqL = (txL * txL) + ((tyL / 0.76) * (tyL / 0.76));
             const tzL = Math.sqrt(Math.max(4.0, 27.0 - rSqL)); // Front surface of pumpkin
-            const targetLeftPos = new THREE.Vector3(txL, tyL, tzL);
+            const targetLeftPos = new THREE.Vector3(txL, tyL, tzL).add(pumpkinPivot.position);
             pLeftTargetObj.position.copy(targetLeftPos);
 
             const tR = elapsedTime * 0.55 + Math.PI * 0.72;
@@ -17607,7 +17614,7 @@ export function createVFXScene(container) {
             const tyR = Math.sin(tR * 0.68) * 1.82;
             const rSqR = (txR * txR) + ((tyR / 0.76) * (tyR / 0.76));
             const tzR = Math.sqrt(Math.max(4.0, 27.0 - rSqR)); // Front surface of pumpkin
-            const targetRightPos = new THREE.Vector3(txR, tyR, tzR);
+            const targetRightPos = new THREE.Vector3(txR, tyR, tzR).add(pumpkinPivot.position);
             pRightTargetObj.position.copy(targetRightPos);
 
             // Update Rotating Moving-Head Fixture Orientations (Motorized Pan / Tilt tracking)
@@ -17651,14 +17658,14 @@ export function createVFXScene(container) {
             const tyMini1 = -2.35 + Math.cos(sweep1 * 0.8) * 0.52;
             const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.76) * (tyMini1 / 0.76));
             const tzMini1 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini1)));
-            const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1);
+            const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1).add(pumpkinPivot.position);
 
             const sweep2 = -pumpkinMiniSweepPhase;
             const txMini2 = Math.sin(sweep2) * 4.4;
             const tyMini2 = -2.35 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.52;
             const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.76) * (tyMini2 / 0.76));
             const tzMini2 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini2)));
-            const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2);
+            const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2).add(pumpkinPivot.position);
 
             // Group B: Center, Far-Left, Far-Right Fixtures (-4.8, 0.0, +4.8) - 3-beam converging fan
             // Center fixture sweeps upward across the middle front
@@ -17667,7 +17674,7 @@ export function createVFXScene(container) {
             const tyCenter = -2.15 + Math.cos(sweepC * 0.7) * 0.55;
             const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.76) * (tyCenter / 0.76));
             const tzCenter = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqCenter)));
-            const targetCenterPos = new THREE.Vector3(txCenter, tyCenter, tzCenter);
+            const targetCenterPos = new THREE.Vector3(txCenter, tyCenter, tzCenter).add(pumpkinPivot.position);
 
             // Far Left fixture sweeps inward towards center
             const sweepFL = pumpkinMiniSweepPhase + Math.PI * 0.5;
@@ -17675,7 +17682,7 @@ export function createVFXScene(container) {
             const tyFarLeft = -2.35 + Math.cos(sweepFL * 0.85) * 0.52;
             const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.76) * (tyFarLeft / 0.76));
             const tzFarLeft = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarLeft)));
-            const targetFarLeftPos = new THREE.Vector3(txFarLeft, tyFarLeft, tzFarLeft);
+            const targetFarLeftPos = new THREE.Vector3(txFarLeft, tyFarLeft, tzFarLeft).add(pumpkinPivot.position);
 
             // Far Right fixture sweeps inward towards center (symmetrically opposite)
             const sweepFR = -pumpkinMiniSweepPhase - Math.PI * 0.5;
@@ -17683,7 +17690,7 @@ export function createVFXScene(container) {
             const tyFarRight = -2.35 + Math.cos(sweepFR * 0.85 + Math.PI) * 0.52;
             const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.76) * (tyFarRight / 0.76));
             const tzFarRight = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarRight)));
-            const targetFarRightPos = new THREE.Vector3(txFarRight, tyFarRight, tzFarRight);
+            const targetFarRightPos = new THREE.Vector3(txFarRight, tyFarRight, tzFarRight).add(pumpkinPivot.position);
 
             // Gradual specular sun-glare geometry:
             // "a gradual intensity like the sun glaring through a window hitting your face temporarily as you move past it"
@@ -17956,7 +17963,8 @@ export function createVFXScene(container) {
                 pumpkinHaloMat.uniforms.uRightIntensity.value = 0.0;
                 pumpkinHaloMat.uniforms.uConvergenceGlow.value = 0.0;
             }
-            pumpkinHaloMesh.position.y = pumpkinPivot.position.y;
+            pumpkinHaloMesh.position.copy(pumpkinPivot.position);
+            pumpkinHaloMesh.rotation.x = pumpkinPivot.rotation.x;
             pumpkinHaloMesh.rotation.z = pumpkinPivot.rotation.z;
 
             // 7. Rotating Floor Fire Pit Hearth Embers (Rotating on floor, subtly glowing like coals in a fire pit)
