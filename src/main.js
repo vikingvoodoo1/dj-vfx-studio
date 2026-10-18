@@ -7570,6 +7570,28 @@ async function init() {
     let detectedAudioBpm = null;
     let audioBpmDetectedRecently = false;
     let lastAudioBpmDetectionTime = 0;
+    let audioBeatCounter = 1;
+    let tempoShiftVotes = 0;
+    let pendingCandidateBpm = null;
+
+    function stepAudioBeat() {
+        audioBeatCounter = (audioBeatCounter % 4) + 1;
+        const pips = [
+            document.getElementById('audio-pip-1'),
+            document.getElementById('audio-pip-2'),
+            document.getElementById('audio-pip-3'),
+            document.getElementById('audio-pip-4')
+        ];
+        pips.forEach((pip, idx) => {
+            if (pip) {
+                pip.classList.toggle('active', idx === (audioBeatCounter - 1));
+            }
+        });
+        const tag = document.getElementById('audio-beat-phase-tag');
+        if (tag) {
+            tag.textContent = `BEAT ${audioBeatCounter} OF 4`;
+        }
+    }
 
     // Real-time Microphone / Line-In Activity Meter inside Tempo Readout Box
     function updateMicListeningMeter(audioData, isBeatHit = false) {
@@ -7638,6 +7660,16 @@ async function init() {
         }
         if (!audioData) return;
 
+        // Update live 4-band audio spectrum bars in audio-meter-view
+        const bBass = document.getElementById('audio-band-bass');
+        const bMid = document.getElementById('audio-band-mid');
+        const bTreble = document.getElementById('audio-band-treble');
+        const bPunch = document.getElementById('audio-band-punch');
+        if (bBass) bBass.style.width = Math.min(100, Math.round((audioData.bass || 0) * 100)) + '%';
+        if (bMid) bMid.style.width = Math.min(100, Math.round((audioData.mid || 0) * 100)) + '%';
+        if (bTreble) bTreble.style.width = Math.min(100, Math.round((audioData.treble || 0) * 100)) + '%';
+        if (bPunch) bPunch.style.width = Math.min(100, Math.round((audioData.transientImpulse || audioData.bassImpact || 0) * 100)) + '%';
+
         // Noise gate: if room is very quiet / silence (< -38 dBFS and overall < 0.05)
         const isRealMusicPresent = (audioData.overall >= 0.05 && (audioData.bass >= 0.07 || audioData.mid >= 0.08)) || 
                                    (audioData.peakDb >= -36.0 && audioData.overall >= 0.04);
@@ -7646,7 +7678,7 @@ async function init() {
             // Room is quiet / ambient silence
             updateMicListeningMeter(audioData, false);
 
-            if (now - lastAudioOnsetBpmTime > 2000) {
+            if (now - lastAudioOnsetBpmTime > 2500) {
                 audioOnsetTimestamps = [];
                 audioBpmDetectedRecently = false;
                 detectedAudioBpm = null;
@@ -7683,61 +7715,127 @@ async function init() {
         if (delta < 240) return;
         lastAudioOnsetBpmTime = now;
 
-        // Buffer up to 16 onset timestamps
+        // Step the audio 1-2-3-4 beat counter on every authentic kick!
+        stepAudioBeat();
+
+        // Buffer onsets over a moving 10-second window (up to 32 timestamps)
         audioOnsetTimestamps.push(now);
-        if (audioOnsetTimestamps.length > 16) {
+        // Clean out timestamps older than 10 seconds to keep sampling fresh and long-term stable
+        audioOnsetTimestamps = audioOnsetTimestamps.filter(t => (now - t) <= 10000);
+        if (audioOnsetTimestamps.length > 32) {
             audioOnsetTimestamps.shift();
         }
 
-        if (audioOnsetTimestamps.length < 3) return;
+        // Need at least 5 onsets (~3-4 bars) before computing pairwise cluster consensus
+        if (audioOnsetTimestamps.length < 5) return;
 
-        // Calculate intervals between successive onsets
-        const intervals = [];
-        for (let i = 1; i < audioOnsetTimestamps.length; i++) {
-            const intv = audioOnsetTimestamps[i] - audioOnsetTimestamps[i - 1];
-            if (intv >= 260 && intv <= 1000) {
-                intervals.push(intv);
-            } else if (intv > 1000 && intv <= 2000) {
-                // Half-time beat (e.g. 2 bars or snare dropped) -> split in half
-                intervals.push(intv / 2);
+        // LONG-TERM INTER-ONSET PAIRWISE CLUSTERING (Histogram / Autocorrelation)
+        // Evaluates all pairs of onsets within 2800ms to eliminate syncopation, offbeat bass & rolls
+        const candidateScores = new Map();
+
+        const n = audioOnsetTimestamps.length;
+        for (let i = 0; i < n; i++) {
+            for (let j = i + 1; j < n; j++) {
+                const diff = audioOnsetTimestamps[j] - audioOnsetTimestamps[i];
+                if (diff < 360 || diff > 2600) continue;
+
+                // Normalize diff to 1-beat period T (in ms)
+                let tPeriod = 0;
+                if (diff >= 360 && diff <= 660) {
+                    tPeriod = diff; // 1 beat (90 - 166 BPM)
+                } else if (diff >= 740 && diff <= 1300) {
+                    tPeriod = diff / 2; // 2 beats
+                } else if (diff >= 1500 && diff <= 2500) {
+                    tPeriod = diff / 4; // 4 beats (1 full bar)
+                }
+
+                if (tPeriod > 0) {
+                    const rawBpm = 60000 / tPeriod;
+                    if (rawBpm >= 90 && rawBpm <= 165) {
+                        // Bin to nearest 0.5 BPM
+                        const bBin = Math.round(rawBpm * 2) / 2;
+                        // Extra weighting for prime dance tempo (120 - 134 BPM)
+                        const weight = (bBin >= 120 && bBin <= 134) ? 1.4 : 1.0;
+                        candidateScores.set(bBin, (candidateScores.get(bBin) || 0) + weight);
+                    }
+                }
             }
         }
 
-        if (intervals.length < 2) return;
+        if (candidateScores.size === 0) return;
 
-        // Calculate median interval to reject syncopation and outliers
-        intervals.sort((a, b) => a - b);
-        const medianIntv = intervals[Math.floor(intervals.length / 2)];
-        const candidateBpm = 60000 / medianIntv;
+        // Find the bin with the highest cluster score (including adjacent ±0.5 BPM bins)
+        let bestBin = null;
+        let highestScore = 0;
+        for (const [bin, score] of candidateScores.entries()) {
+            const clusterScore = score + 
+                (candidateScores.get(bin - 0.5) || 0) * 0.6 + 
+                (candidateScores.get(bin + 0.5) || 0) * 0.6;
 
-        // Clamp to realistic electronic music range: 75 to 178 BPM
-        let clampedBpm = candidateBpm;
-        while (clampedBpm < 75) clampedBpm *= 2;
-        while (clampedBpm > 180) clampedBpm /= 2;
-
-        // Consistency check: check how many intervals are within 9% of the median
-        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.09).length;
-        if (consistentCount >= 2 || intervals.length >= 4) {
-            // Smoothly lerp towards candidate
-            detectedAudioBpm = detectedAudioBpm ? (detectedAudioBpm * 0.65 + clampedBpm * 0.35) : clampedBpm;
-            const roundedBpm = Math.round(detectedAudioBpm * 10) / 10;
-            audioBpmDetectedRecently = true;
-            lastAudioBpmDetectionTime = now;
-
-            if (bpmVal) {
-                bpmVal.textContent = roundedBpm.toFixed(1);
-                bpmVal.style.opacity = '1.0';
+            if (clusterScore > highestScore) {
+                highestScore = clusterScore;
+                bestBin = bin;
             }
-            if (vfx && typeof vfx.setBPM === 'function') {
-                vfx.setBPM(roundedBpm);
+        }
+
+        // Require at least 4.5 weighted points of consensus over the 10-second window
+        if (!bestBin || highestScore < 4.5) return;
+
+        // Precise weighted average within the winning ±1.0 BPM cluster
+        let sumBpm = 0;
+        let sumW = 0;
+        for (const [bin, score] of candidateScores.entries()) {
+            if (Math.abs(bin - bestBin) <= 1.0) {
+                sumBpm += bin * score;
+                sumW += score;
             }
-            if (phraseSyncSource) {
-                phraseSyncSource.style.display = 'inline-block';
-                phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
-                phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
-                phraseSyncSource.style.color = '#00ff88';
-                phraseSyncSource.title = `Live tempo sampled from audio kick transients: ${roundedBpm.toFixed(1)} BPM`;
+        }
+        const clusterBpm = sumW > 0 ? (sumBpm / sumW) : bestBin;
+
+        // Heavy exponential smoothing / stability filter to eliminate wild swinging
+        if (detectedAudioBpm === null) {
+            detectedAudioBpm = clusterBpm;
+            tempoShiftVotes = 0;
+        } else {
+            const bpmDiff = Math.abs(clusterBpm - detectedAudioBpm);
+            if (bpmDiff < 6.0) {
+                // Smooth drift without jumping (90% history, 10% new measurement)
+                detectedAudioBpm = detectedAudioBpm * 0.90 + clusterBpm * 0.10;
+                tempoShiftVotes = 0;
+            } else {
+                // Different tempo detected (DJ transitioned to new track)
+                // Require 4 consecutive consensus windows to avoid jumping on fills/syncopation
+                if (pendingCandidateBpm && Math.abs(clusterBpm - pendingCandidateBpm) < 2.0) {
+                    tempoShiftVotes++;
+                    if (tempoShiftVotes >= 4) {
+                        detectedAudioBpm = clusterBpm;
+                        tempoShiftVotes = 0;
+                        pendingCandidateBpm = null;
+                    }
+                } else {
+                    pendingCandidateBpm = clusterBpm;
+                    tempoShiftVotes = 1;
+                }
             }
+        }
+
+        const roundedBpm = Math.round(detectedAudioBpm * 10) / 10;
+        audioBpmDetectedRecently = true;
+        lastAudioBpmDetectionTime = now;
+
+        if (bpmVal) {
+            bpmVal.textContent = roundedBpm.toFixed(1);
+            bpmVal.style.opacity = '1.0';
+        }
+        if (vfx && typeof vfx.setBPM === 'function') {
+            vfx.setBPM(roundedBpm);
+        }
+        if (phraseSyncSource) {
+            phraseSyncSource.style.display = 'inline-block';
+            phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
+            phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+            phraseSyncSource.style.color = '#00ff88';
+            phraseSyncSource.title = `Live tempo sampled over 10s audio consensus: ${roundedBpm.toFixed(1)} BPM`;
         }
     }
 
@@ -7762,6 +7860,8 @@ async function init() {
         }
         if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
         if (cdj3000View) cdj3000View.style.display = 'block';
+        const audioMeterView = document.getElementById('audio-meter-view');
+        if (audioMeterView) audioMeterView.style.display = 'none';
         if (phraseSyncSource) {
             phraseSyncSource.style.display = 'inline-block';
             phraseSyncSource.textContent = `SOURCE: ${lastHardwareSource} (LIVE HARDWARE)`;
@@ -9060,14 +9160,16 @@ async function init() {
             if (now - lastHardwarePacketTimestamp > 15000) {
                 // Deck stream timed out / disconnected (>15s without hardware packets)
                 isHardwareDeckStreaming = false;
-                if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
+                if (cdj3000View) cdj3000View.style.display = 'none';
+                const audioMeterView = document.getElementById('audio-meter-view');
+                if (audioMeterView) audioMeterView.style.display = 'block';
                 if (phraseModeSelector) phraseModeSelector.style.display = 'none';
                 if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
                 if (phraseSyncSource) {
                     phraseSyncSource.style.display = 'inline-block';
-                    phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
-                    phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
-                    phraseSyncSource.style.color = '#00ff88';
+                    phraseSyncSource.textContent = audioBpmDetectedRecently ? 'SOURCE: AUDIO SAMPLED' : 'SOURCE: AUDIO (STANDBY)';
+                    phraseSyncSource.style.borderColor = audioBpmDetectedRecently ? 'rgba(0, 255, 136, 0.45)' : 'rgba(255, 170, 0, 0.35)';
+                    phraseSyncSource.style.color = audioBpmDetectedRecently ? '#00ff88' : '#ffaa00';
                     phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                 }
                 if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();

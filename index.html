@@ -4797,8 +4797,48 @@
                         </div>
 
                         <!-- Right: Hardware Deck Beat, Loop, and Bar Telemetry Container -->
-                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 9px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);" id="cdj-meter-container" title="StageLinQ Live Deck Telemetry">
-                            <div id="cdj3000-view" class="cdj-meter-view" style="display:block;">
+                        <div style="flex:1; min-width:0; background: #101218; border: 1px solid #262936; border-radius: 5px; padding: 6px 9px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);" id="cdj-meter-container" title="Audio Beat &amp; Deck Telemetry">
+                            
+                            <!-- 1. AUDIO MODE VIEW: Shown when NO hardware deck is streaming (honest live audio beat & spectrum) -->
+                            <div id="audio-meter-view" style="display:block;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <!-- 4-Beat Phase Pips [1] [2] [3] [4] reacting to live audio kicks -->
+                                    <div style="display:flex; align-items:center; gap:3px;" id="audio-phase-pips">
+                                        <div class="dual-phase-box active" id="audio-pip-1">1</div>
+                                        <div class="dual-phase-box" id="audio-pip-2">2</div>
+                                        <div class="dual-phase-box" id="audio-pip-3">3</div>
+                                        <div class="dual-phase-box" id="audio-pip-4">4</div>
+                                    </div>
+                                    <span class="phrase-tag" id="audio-beat-phase-tag" style="background:rgba(0,255,136,0.18); border-color:#00ff88; color:#00ff88; font-size:7.5px; padding:1px 6px;">BEAT 1 OF 4</span>
+                                </div>
+                                <!-- Live 4-Band Audio Spectrum Mini Bars (Bass, Mid, High, Punch) -->
+                                <div style="display:flex; gap:3px; height:6px; margin-bottom:4px; background:rgba(0,0,0,0.45); border-radius:3px; padding:1px; overflow:hidden;">
+                                    <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden;" title="Sub / Bass">
+                                        <div id="audio-band-bass" style="width:20%; height:100%; background:linear-gradient(90deg, #00ff88, #00ffcc); border-radius:2px; transition:width 0.08s ease;"></div>
+                                    </div>
+                                    <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden;" title="Mid Range">
+                                        <div id="audio-band-mid" style="width:15%; height:100%; background:linear-gradient(90deg, #00bbff, #00e5ff); border-radius:2px; transition:width 0.08s ease;"></div>
+                                    </div>
+                                    <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden;" title="Highs / Treble">
+                                        <div id="audio-band-treble" style="width:10%; height:100%; background:linear-gradient(90deg, #ffcc00, #ff8800); border-radius:2px; transition:width 0.08s ease;"></div>
+                                    </div>
+                                    <div style="flex:1; background:rgba(255,255,255,0.06); border-radius:2px; overflow:hidden;" title="Transient Impact">
+                                        <div id="audio-band-punch" style="width:0%; height:100%; background:linear-gradient(90deg, #ff0055, #ff00bb); border-radius:2px; transition:width 0.08s ease;"></div>
+                                    </div>
+                                </div>
+                                <!-- Bottom Status Line -->
+                                <div style="display:flex; justify-content:space-between; align-items:center;">
+                                    <div style="font-size:7.5px; font-family:'JetBrains Mono',monospace; color:#8c909e;" id="audio-mode-hint">
+                                        LIVE AUDIO PCM
+                                    </div>
+                                    <div style="font-size:7.5px; font-weight:800; color:#ffaa00;" id="audio-decks-status-hint">
+                                        HARDWARE DECKS STANDBY
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- 2. HARDWARE DECK VIEW: Shown ONLY when real hardware deck streams (Pioneer / Denon) -->
+                            <div id="cdj3000-view" class="cdj-meter-view" style="display:none;">
                                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
                                     <!-- 4-Beat Phase Pips [1] [2] [3] [4] -->
                                     <div style="display:flex; align-items:center; gap:3px;" id="cdjdual-phase-pips">
@@ -4808,7 +4848,7 @@
                                         <div class="dual-phase-box" id="dual-pip-4">4</div>
                                     </div>
                                     <!-- Current Bar Readout -->
-                                    <span style="font-size:8.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;" id="cdj3000-bar-text">BAR 07</span>
+                                    <span style="font-size:8.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;" id="cdj3000-bar-text">BAR 01</span>
                                     <!-- Loop Badge -->
                                     <span class="phrase-tag" id="cdj3000-phrase-tag" style="background:rgba(255,119,0,0.22); border-color:#ff7700; color:#ff9933; font-size:7.5px; padding:1px 5px;">↶ LOOP 2 (8 BEATS)</span>
                                 </div>
