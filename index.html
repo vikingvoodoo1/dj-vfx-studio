@@ -5007,6 +5007,14 @@
                     <span class="act-dot" id="dot-branding"></span>
                 </button>
 
+                <button class="activity-tab" data-tab="video" title="🎬 Video Loops & Cyber Cinema 10-Banks Manager [Alt+7]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <polygon points="23 7 16 12 23 17 23 7"></polygon>
+                        <rect x="1" y="5" width="15" height="14" rx="2" ry="2"></rect>
+                    </svg>
+                    <span class="act-dot" id="dot-video"></span>
+                </button>
+
                 <button class="activity-tab" data-tab="nowplaying" title="🎵 Now Playing & Track Banner Stream Overlay [Alt+4]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18V5l12-2v13" />
@@ -5395,6 +5403,21 @@
                         <span class="power-btn-label">VIDEO CINEMA [V]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="video-scene-power-status-text">OFF</span></span>
                     </button>
+                </div>
+
+                <!-- Video Cinema Quick Bar (Underneath DJ Logo & Station Branding buttons) -->
+                <div class="video-cinema-quick-bar" id="video-cinema-quick-bar" style="margin-top:8px; padding:6px 8px; background:rgba(0,229,255,0.06); border:1px solid rgba(0,229,255,0.25); border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:6px; min-width:0;">
+                        <span style="font-size:15px;">🎬</span>
+                        <div style="min-width:0;">
+                            <div style="font-size:7.5px; font-weight:800; color:#00e5ff; letter-spacing:0.5px; text-transform:uppercase;">Scene 22: Video Cinema & Loops</div>
+                            <div id="video-quick-title" style="font-size:9.5px; font-weight:700; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">01 JK McLaren Shock</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                        <button class="btn-micro" id="btn-quick-cue-video" style="padding:4px 8px; font-size:8px; font-weight:800; background:rgba(0,255,136,0.2); border:1px solid rgba(0,255,136,0.5); color:#00ff88; border-radius:4px; cursor:pointer;" title="Switch 3D stage directly to Scene 22 Video Playback [V]">▶ ON AIR</button>
+                        <button class="btn-micro" id="btn-open-video-manager" style="padding:4px 8px; font-size:8px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:4px; cursor:pointer;" title="Open 10-Bank Video Loops & Library Console">📁 10 BANKS</button>
+                    </div>
                 </div>
 
                 <!-- Live Quick Macro Faders -->

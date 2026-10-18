@@ -838,7 +838,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['perform', 'fx', 'branding', 'nowplaying', 'setup', 'about'];
+    const tabOrder = ['perform', 'fx', 'branding', 'video', 'nowplaying', 'setup', 'about'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -854,9 +854,19 @@ async function init() {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
+        if (tabId === 'video') {
+            switchLogosSubtab('video');
+            tabId = 'branding';
+        }
 
         activityTabs.forEach(tab => {
-            tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
+            const tId = tab.getAttribute('data-tab');
+            if (tId === 'video') {
+                const isVideoSubtab = (tabId === 'branding') && (document.getElementById('subtab-content-video')?.style.display === 'block');
+                tab.classList.toggle('active', isVideoSubtab);
+            } else {
+                tab.classList.toggle('active', tId === tabId);
+            }
         });
 
         tabPanes.forEach(pane => {
@@ -4402,6 +4412,10 @@ async function init() {
             if (videoActiveTitle) {
                 videoActiveTitle.textContent = targetVid.title;
             }
+            const videoQuickTitle = document.getElementById('video-quick-title');
+            if (videoQuickTitle) {
+                videoQuickTitle.textContent = targetVid.title;
+            }
 
             clipStartTime = performance.now() / 1000;
             updateGridActiveHighlight();
@@ -4477,6 +4491,29 @@ async function init() {
             if (videoScenePowerStatusText) {
                 videoScenePowerStatusText.textContent = isOnAir ? 'ACTIVE ON' : 'OFF';
             }
+
+            const btnQuickCueVideo = document.getElementById('btn-quick-cue-video');
+            if (btnQuickCueVideo) {
+                btnQuickCueVideo.textContent = isOnAir ? '● ON AIR' : '▶ CUE NOW';
+                btnQuickCueVideo.style.color = isOnAir ? '#00ff88' : '#00e5ff';
+                btnQuickCueVideo.style.borderColor = isOnAir ? 'rgba(0,255,136,0.5)' : 'rgba(0,229,255,0.4)';
+                btnQuickCueVideo.style.background = isOnAir ? 'rgba(0,255,136,0.2)' : 'rgba(0,229,255,0.15)';
+            }
+        }
+
+        // Quick Bar listeners
+        const btnQuickCueVideo = document.getElementById('btn-quick-cue-video');
+        if (btnQuickCueVideo) {
+            btnQuickCueVideo.addEventListener('click', () => {
+                selectFX(22);
+            });
+        }
+        const btnOpenVideoManager = document.getElementById('btn-open-video-manager');
+        if (btnOpenVideoManager) {
+            btnOpenVideoManager.addEventListener('click', () => {
+                switchTab('branding');
+                switchLogosSubtab('video');
+            });
         }
 
         // Setup Buttons
@@ -9508,6 +9545,7 @@ async function init() {
             if (e.key === '4') { e.preventDefault(); switchTab('nowplaying'); return; }
             if (e.key === '5') { e.preventDefault(); switchTab('setup'); return; }
             if (e.key === '6') { e.preventDefault(); switchTab('about'); return; }
+            if (e.key === '7') { e.preventDefault(); switchTab('video'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
