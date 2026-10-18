@@ -6603,6 +6603,7 @@ async function init() {
 
     function openStageAdvisorModal() {
         if (studioAdvisorModalBackdrop) {
+            studioAdvisorModalBackdrop.style.display = 'flex';
             studioAdvisorModalBackdrop.classList.add('active');
             updateStageAdvisorModalUI();
         }
@@ -6610,6 +6611,7 @@ async function init() {
 
     function closeStageAdvisorModal() {
         if (studioAdvisorModalBackdrop) {
+            studioAdvisorModalBackdrop.style.display = 'none';
             studioAdvisorModalBackdrop.classList.remove('active');
         }
     }
@@ -7021,8 +7023,22 @@ async function init() {
         if (isHardwareDeckStreaming) return; // Hardware deck takes absolute priority
         if (!audioData) return;
 
-        // Check for strong bass onset or transient kick drum impact
-        const isKickOnset = !!(audioData.isOnset && audioData.bassImpact > 0.55);
+        // Check for kick onset, transient spike, or strong bass impact
+        const isKickOnset = !!(
+            audioData.isOnset ||
+            (audioData.transientImpulse > 0.65 && audioData.bass > 0.16) ||
+            (audioData.bassImpact > 0.35 && audioData.bass > 0.18)
+        );
+
+        if (isKickOnset) {
+            // Pulse the subtle ECG heartbeat line
+            const hbPath = document.getElementById('tempo-heartbeat-path');
+            if (hbPath) {
+                hbPath.classList.add('pulse-hit');
+                setTimeout(() => hbPath.classList.remove('pulse-hit'), 120);
+            }
+        }
+
         if (!isKickOnset) return;
 
         // Debounce onsets: minimum 260ms between kicks (corresponds to max 230 BPM)
@@ -7036,7 +7052,7 @@ async function init() {
             audioOnsetTimestamps.shift();
         }
 
-        if (audioOnsetTimestamps.length < 5) return;
+        if (audioOnsetTimestamps.length < 4) return;
 
         // Calculate intervals between successive onsets
         const intervals = [];
@@ -7050,7 +7066,7 @@ async function init() {
             }
         }
 
-        if (intervals.length < 4) return;
+        if (intervals.length < 3) return;
 
         // Calculate median interval to reject syncopation and outliers
         intervals.sort((a, b) => a - b);
@@ -7062,11 +7078,11 @@ async function init() {
         while (clampedBpm < 75) clampedBpm *= 2;
         while (clampedBpm > 180) clampedBpm /= 2;
 
-        // Consistency check: check how many intervals are within 5% of the median
-        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.05).length;
-        if (consistentCount >= 3) {
+        // Consistency check: check how many intervals are within 7% of the median
+        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.07).length;
+        if (consistentCount >= 2) {
             // Smoothly lerp towards candidate
-            detectedAudioBpm = detectedAudioBpm * 0.75 + clampedBpm * 0.25;
+            detectedAudioBpm = detectedAudioBpm * 0.70 + clampedBpm * 0.30;
             const roundedBpm = Math.round(detectedAudioBpm * 10) / 10;
             audioBpmDetectedRecently = true;
             lastAudioBpmDetectionTime = now;
@@ -7079,10 +7095,14 @@ async function init() {
             }
             if (phraseSyncSource) {
                 phraseSyncSource.style.display = 'inline-block';
-                phraseSyncSource.textContent = 'SOURCE: AUDIO IN (AUTO-DETECT)';
-                phraseSyncSource.style.borderColor = 'rgba(255,170,0,0.45)';
-                phraseSyncSource.style.color = '#ffaa00';
-                phraseSyncSource.title = `Live tempo auto-detected from line-in kick transients: ${roundedBpm.toFixed(1)} BPM`;
+                phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
+                phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+                phraseSyncSource.style.color = '#00ff88';
+                phraseSyncSource.title = `Live tempo sampled from audio kick transients: ${roundedBpm.toFixed(1)} BPM`;
+            }
+            const hbBpmTag = document.getElementById('heartbeat-bpm-tag');
+            if (hbBpmTag) {
+                hbBpmTag.textContent = `SYNC: ${roundedBpm.toFixed(1)} BPM`;
             }
         }
     }
@@ -7110,9 +7130,13 @@ async function init() {
         if (cdj3000View) cdj3000View.style.display = 'block';
         if (phraseSyncSource) {
             phraseSyncSource.style.display = 'inline-block';
-            phraseSyncSource.textContent = `SOURCE: ${source}`;
+            phraseSyncSource.textContent = `SOURCE: ${lastHardwareSource} (LIVE HARDWARE)`;
             phraseSyncSource.style.color = '#00ffcc';
             phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
+        }
+        const hbBpmTag = document.getElementById('heartbeat-bpm-tag');
+        if (hbBpmTag && bpmVal) {
+            hbBpmTag.textContent = `DECK: ${bpmVal.textContent} BPM`;
         }
         // Only update audio device badge if user explicitly selected deck-live as audio source
         if (currentSelectedDeviceId === 'deck-live') {
@@ -7417,6 +7441,12 @@ async function init() {
                 bpmVal.style.transform = 'scale(1.0)';
             }, 90);
 
+            const hbPath = document.getElementById('tempo-heartbeat-path');
+            if (hbPath) {
+                hbPath.classList.add('pulse-hit');
+                setTimeout(() => hbPath.classList.remove('pulse-hit'), 120);
+            }
+
             const dIdx = (parseInt(deck, 10) || 1) - 1;
             const targetDeckCard = deckCards[dIdx];
             if (targetDeckCard && targetDeckCard.card) {
@@ -7645,28 +7675,38 @@ async function init() {
         onStatusChange: (status) => {
             if (status.connected) {
                 if (djHardwareStatusText) {
-                    djHardwareStatusText.textContent = status.device ? status.device.toUpperCase() : 'PIONEER • TRAKTOR • DENON READY';
+                    djHardwareStatusText.textContent = (status.deviceCount > 0 && status.device)
+                        ? status.device.toUpperCase()
+                        : 'BRIDGE READY (SCANNING FOR HARDWARE DECKS)';
                 }
                 if (djHardwareLed) {
-                    djHardwareLed.style.background = '#00ff88';
-                    djHardwareLed.style.boxShadow = '0 0 8px #00ff88';
+                    djHardwareLed.style.background = status.deviceCount > 0 ? '#00ff88' : '#ffaa00';
+                    djHardwareLed.style.boxShadow = status.deviceCount > 0 ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
                 }
                 if (phraseSyncSource) {
-                    phraseSyncSource.textContent = 'PRO DJ LINK';
-                    phraseSyncSource.style.color = '#ffaa00';
-                    phraseSyncSource.style.borderColor = '#ffaa00';
+                    if (isHardwareDeckStreaming && lastHardwareSource) {
+                        phraseSyncSource.textContent = `SOURCE: ${lastHardwareSource} (LIVE HARDWARE)`;
+                        phraseSyncSource.style.color = '#00ffcc';
+                        phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
+                    } else {
+                        phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
+                        phraseSyncSource.style.color = '#00ff88';
+                        phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+                        phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
+                    }
                 }
                 broadcastSync({ type: 'request_state' });
             } else {
                 if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
                 if (djHardwareLed) {
-                    djHardwareLed.style.background = '#ff0055';
-                    djHardwareLed.style.boxShadow = '0 0 6px #ff0055';
+                    djHardwareLed.style.background = '#ffaa00';
+                    djHardwareLed.style.boxShadow = '0 0 6px #ffaa00';
                 }
                 if (phraseSyncSource) {
-                    phraseSyncSource.textContent = 'BEAT CLOCK';
-                    phraseSyncSource.style.color = '#00ffcc';
-                    phraseSyncSource.style.borderColor = 'rgba(0,255,204,0.35)';
+                    phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
+                    phraseSyncSource.style.color = '#00ff88';
+                    phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+                    phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                 }
             }
         },
@@ -8388,23 +8428,18 @@ async function init() {
 
         // Live Deck Telemetry vs Auto-BPM Audio Detection
         if (isHardwareDeckStreaming) {
-            if (now - lastHardwarePacketTimestamp > 60000) {
-                // Deck stream timed out / disconnected
+            if (now - lastHardwarePacketTimestamp > 15000) {
+                // Deck stream timed out / disconnected (>15s without hardware packets)
                 isHardwareDeckStreaming = false;
                 if (cdjMeterContainer) cdjMeterContainer.style.display = 'none';
                 if (phraseModeSelector) phraseModeSelector.style.display = 'none';
                 if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
                 if (phraseSyncSource) {
                     phraseSyncSource.style.display = 'inline-block';
-                    if (audioBpmDetectedRecently && (now - lastAudioBpmDetectionTime < 10000)) {
-                        phraseSyncSource.textContent = 'SOURCE: AUDIO IN (AUTO-DETECT)';
-                        phraseSyncSource.style.borderColor = 'rgba(255,170,0,0.45)';
-                        phraseSyncSource.style.color = '#ffaa00';
-                    } else {
-                        phraseSyncSource.textContent = 'SOURCE: STANDBY (DECKS OFFLINE)';
-                        phraseSyncSource.style.borderColor = 'rgba(255,255,255,0.2)';
-                        phraseSyncSource.style.color = '#8c909e';
-                    }
+                    phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
+                    phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
+                    phraseSyncSource.style.color = '#00ff88';
+                    phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                 }
                 if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
             } else if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {

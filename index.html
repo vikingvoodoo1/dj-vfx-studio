@@ -3106,6 +3106,17 @@
             border-radius: 50%;
             background: #00ffcc;
             box-shadow: 0 0 6px #00ffcc;
+        }
+
+        /* Cyber Defense Shield Icon in Stage Advisor */
+        .advisor-shield-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            filter: drop-shadow(0 0 4px #00ffcc);
+            flex-shrink: 0;
+        }
+
         /* Glowing Stage Advisor Button in Performance Deck */
         .btn-stage-advisor-glowing {
             display: inline-flex;
@@ -3320,6 +3331,92 @@
             gap: 10px;
             background: rgba(0, 0, 0, 0.3);
             flex-wrap: wrap;
+        }
+
+        /* Subtle Green ECG Heartbeat Line in Tempo Section */
+        .tempo-heartbeat-box {
+            margin-top: 6px;
+            padding-top: 5px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .tempo-heartbeat-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 7px;
+            font-family: 'JetBrains Mono', monospace;
+            color: #8c909e;
+            padding: 0 2px;
+        }
+
+        .heartbeat-label {
+            font-weight: 800;
+            letter-spacing: 0.5px;
+            color: rgba(0, 255, 136, 0.75);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .heartbeat-bpm-tag {
+            color: #00ff88;
+            font-weight: 700;
+        }
+
+        .tempo-heartbeat-track {
+            position: relative;
+            width: 100%;
+            height: 18px;
+            background: rgba(0, 20, 10, 0.35);
+            border: 1px solid rgba(0, 255, 136, 0.18);
+            border-radius: 4px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+        }
+
+        .tempo-heartbeat-svg {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        .heartbeat-line {
+            stroke: #00ff88;
+            filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.65));
+            transition: stroke-width 0.12s ease, filter 0.12s ease, stroke 0.12s ease;
+        }
+
+        .heartbeat-line.pulse-hit {
+            stroke: #55ffbb;
+            stroke-width: 2.4;
+            filter: drop-shadow(0 0 8px #00ff88);
+        }
+
+        .heartbeat-glow-dot {
+            position: absolute;
+            top: 50%;
+            left: 0;
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88, 0 0 14px rgba(0, 255, 136, 0.8);
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            opacity: 0.85;
+            animation: ecgSweep 2.4s infinite linear;
+        }
+
+        @keyframes ecgSweep {
+            0% { left: 0%; opacity: 0; }
+            10% { opacity: 0.9; }
+            90% { opacity: 0.9; }
+            100% { left: 100%; opacity: 0; }
         }
 
         /* Studio Health & Telemetry Diagnostics Modal */
@@ -4620,9 +4717,15 @@
                     <span>🎛️ Live Performance Deck</span>
                     <div style="display:flex; align-items:center; gap:6px;">
                         <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
-                        <button class="btn-stage-advisor-glowing" id="btn-open-stage-advisor" title="Open Studio Setup &amp; Stage Readiness Advisor [Alt+A]">
+                        <button class="btn-stage-advisor-glowing" id="btn-open-stage-advisor" title="Open Studio Setup &amp; Stage Readiness Advisor [Alt+A]" onclick="if(window.openStageAdvisorModal)window.openStageAdvisorModal();">
+                            <span class="advisor-shield-icon">
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#00ffcc" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M12 2L3 7v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-9-5z"/>
+                                    <polyline points="9 12 11 14 15 10"/>
+                                </svg>
+                            </span>
                             <span class="advisor-glowing-pulse"></span>
-                            <span id="panel-advisor-btn-text">💡 STAGE ADVISOR</span>
+                            <span id="panel-advisor-btn-text">STAGE ADVISOR</span>
                         </button>
                     </div>
                 </div>
@@ -4633,7 +4736,7 @@
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
                         <div style="display:flex; align-items:center; gap:6px;">
                             <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
-                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(255,170,0,0.35); color:#ffaa00; display:inline-block;" title="Telemetry source">SOURCE: STANDBY (DECKS OFFLINE)</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(0,255,136,0.45); color:#00ff88; display:inline-block;" title="Telemetry source: live audio line-in PCM analyzed">SOURCE: AUDIO SAMPLED</span>
                         </div>
                         <div style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace;">DECK 1 METRICS</div>
                     </div>
@@ -4686,6 +4789,24 @@
                                     </div>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Subtle ECG Beat Heartbeat Pulse Line -->
+                    <div class="tempo-heartbeat-box" id="tempo-heartbeat-box" title="Real-time Audio Beat Heartbeat Pulse">
+                        <div class="tempo-heartbeat-meta">
+                            <span class="heartbeat-label">
+                                <span style="display:inline-block; width:5px; height:5px; border-radius:50%; background:#00ff88; box-shadow:0 0 6px #00ff88;"></span>
+                                PULSE CLOCK
+                            </span>
+                            <span class="heartbeat-bpm-tag" id="heartbeat-bpm-tag">SYNC: 126.0 BPM</span>
+                        </div>
+                        <div class="tempo-heartbeat-track">
+                            <svg class="tempo-heartbeat-svg" viewBox="0 0 320 20" preserveAspectRatio="none">
+                                <line x1="0" y1="10" x2="320" y2="10" stroke="rgba(0, 255, 136, 0.12)" stroke-width="1" stroke-dasharray="2,3"/>
+                                <path class="heartbeat-line" id="tempo-heartbeat-path" d="M 0 10 L 95 10 L 103 8 L 108 12 L 114 10 L 126 10 L 132 2 L 137 18 L 142 6 L 147 12 L 153 10 L 170 10 L 178 7 L 186 10 L 320 10" fill="none" stroke="#00ff88" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            <div class="heartbeat-glow-dot" id="heartbeat-glow-dot"></div>
                         </div>
                     </div>
                 </div>
