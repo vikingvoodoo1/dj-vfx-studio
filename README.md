@@ -208,16 +208,21 @@ npm run preview
 | `L` | Toggle DJ Logo Layer Visibility |
 | `S` | Toggle Station Logo Layer Visibility |
 | `Y` / `Shift + F` | Toggle Event Flyer / Promo Layer Visibility |
+| `M` | Open Scene Reactive Matrix & Hardware Memory Profiles Modal |
 | `N` | Toggle Now Playing Track Stream Overlay |
 | `F` | Toggle Fullscreen (Stage / External HDMI Output) |
 | `C` | Toggle Clean Display Mode (Hide HUD overlays for clean video feed) |
 | `H` | Toggle HUD Console & Toolbar |
 | `O` / `Shift + O` | Open OBS Manager / Toggle OBS Mute |
+| `Esc` | Close Scene Matrix / DJ Connection Guide / Clear Search |
 
 ---
 
 ## 📚 Technical Documentation
 
+- **[Scene Reactive Matrix & Hardware Memory Profiles Guide (SCENE_REACTIVE_MATRIX_AND_PROFILES.md)](SCENE_REACTIVE_MATRIX_AND_PROFILES.md)** — Comprehensive guide to all 22 scenes, hotkeys, reactive engine tags (audio FFT, StageLinQ, BPM sync, transients, physical rig), per-scene parameter memory, and auto-recall architecture.
+- **[Authentic DJ Deck Waveforms & Wire Telemetry Guide (DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)](DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)** — Universal 3-tier waveform architecture covering Denon StageLinQ, Pioneer Pro DJ Link, and live spectral fallbacks.
+- **[Streaming Audio Calibration Guide (AUDIO_CALIBRATION_GUIDE.md)](AUDIO_CALIBRATION_GUIDE.md)** — ITU-R BS.1770 LUFS loudness metering, true-peak gauges, and headroom targets.
 - **[Lighting Architecture & Engineering Guide (LIGHTING_GUIDE.md)](LIGHTING_GUIDE.md)** — Comprehensive architectural blueprint covering all virtual WebGL fixtures (moving heads, volumetric ray shaders, dual-group bottom strobe rigs, caustics) and physical smart lighting (Philips Hue hardware bridge).
 - **[Feature Breakdown (FEATURES.md)](FEATURES.md)** — Detailed specification of all visualizer engines, branding layers, Shazam recognition, and DJ hardware bridges.
 

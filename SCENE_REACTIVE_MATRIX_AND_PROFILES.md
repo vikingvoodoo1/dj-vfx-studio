@@ -1,0 +1,236 @@
+# 📋 Scene Reactive Matrix & Hardware Memory Profiles Guide
+> **Comprehensive Visualizer Reactive Engine Reference & Per-Scene Parameter Memory Architecture**  
+> *Covering Real-Time Audio FFT, Direct Deck StageLinQ Telemetry, BPM Multi-Sync, Kick Transients, Physical Rig Simulation, and Per-Scene State Recall.*
+
+---
+
+## 📌 Executive Summary
+
+**DJ VFX Studio** features 22 high-performance WebGL / Three.js visualizer scenes. Each scene interacts uniquely with incoming live telemetry: some are driven purely by multi-band audio FFT, others tap directly into Denon DJ StageLinQ or Pioneer Pro DJ Link on-the-wire telemetry (deck waveforms, playhead position, platter rotation), and others model motorized club fixtures or retro physics.
+
+To give DJs and VJs complete visibility and creative control during live sets, the studio includes:
+1. **The Scene Reactive Matrix:** A central reference detailing hotkeys, scene names, reactive engines, and technical hardware telemetry used by each scene.
+2. **Per-Scene Parameter Memory:** Each scene independently remembers its last-configured visual parameters (DJ Logo, Station Logo, Event Flyer, Performance Macro Faders, and Philips Hue / DMX lighting) without polluting other scenes.
+3. **Auto-Recall Engine:** Switching scenes automatically restores that scene's customized parameters onto the stage and console sliders.
+4. **Visual Difference Tracking & Reset Controls:** Clear visual indicators (`○ DEFAULT` vs `● CUSTOMIZED (X)`), highlighted diff fields, per-scene `↺ Reset` buttons, and a global reset action.
+
+---
+
+## 🚀 Quick Access & User Interface
+
+| Trigger | Location | Behavior |
+| :--- | :--- | :--- |
+| **`[M] 📋 MATRIX` Button** | Bottom Toolbar (next to Scene Theme Tabs) | Opens the full-screen Scene Reactive Matrix & Memory Profiles modal. |
+| **`📋 MATRIX & PROFILES` Button** | Left FX Console Pane (`#pane-fx` header) | Quick-access button from the shader selection panel. |
+| **Hotkey `M`** | Global Keyboard Shortcut | Toggles the Matrix modal open/closed from anywhere. |
+| **Hotkey `Escape`** | Global Keyboard Shortcut | Closes the Matrix modal. |
+
+### Modal Features & Search
+- **Live Search Bar:** Real-time filtering across scene names, hotkeys, reactive tags, descriptions, and technical keywords.
+- **Category Chips:** Instant filtering by theme (`⚡ All (22)`, `🎛️ Equalizers & Decks`, `⚡ Lasers`, `🪩 Disco`, `🎃 Spooky`, `🕸️ Cyber & Retro`, `🌌 Space & Galaxy`).
+- **Show Customized Only (`X`):** Dedicated checkbox filter to instantly display only scenes that differ from factory defaults.
+- **Collapsible Parameter Memory Panel:** Click `▼ View Details` on any scene card to view all 4 parameter columns (DJ Logo, Station/Flyer, Performance Macros, Lighting) with modified parameters highlighted in gold/amber.
+
+---
+
+## ⚡ The 5 Reactive Engine Types
+
+Every scene in DJ VFX Studio utilizes one or more reactive engine inputs:
+
+```
+                          ┌─────────────────────────────────────┐
+                          │     INCOMING HARDWARE & AUDIO       │
+                          └──────────────────┬──────────────────┘
+                                             │
+      ┌─────────────────┬────────────────────┼────────────────────┬─────────────────┐
+      ▼                 ▼                    ▼                    ▼                 ▼
+┌───────────┐     ┌───────────┐        ┌───────────┐        ┌───────────┐     ┌───────────┐
+│⚡ DIRECT  │     │ 🎧 LIVE   │        │ 🥁 BPM    │        │ 💥 KICK   │     │ 🏗️ RIG    │
+│  DECK     │     │  AUDIO FFT│        │  MULTI-   │        │  TRAN-    │     │  SIMU-    │
+│  TELEMETRY│     │  SPECTRUM │        │  SYNC     │        │  SIENTS   │     │  LATION   │
+├───────────┤     ├───────────┤        ├───────────┤        ├───────────┤     ├───────────┤
+│ StageLinQ │     │ 5 Bands:  │        │ Phase     │        │ Sub-bass  │     │ Motorized │
+│ Wire Pkts │     │ Sub-Bass, │        │ Sweeps,   │        │ transient │     │ Pan/Tilt  │
+│ Playhead, │     │ Bass,     │        │ Beat Pips,│        │ spike     │     │ Truss,    │
+│ Waveforms,│     │ Low-Mid,  │        │ Bar Pips, │        │ detector  │     │ Fog/Haze  │
+│ Pitch/BPM │     │ High-Mid, │        │ Downbeat  │        │ (> 0.70   │     │ Shaders   │
+│ Platter Hz│     │ Treble    │        │ Pulses    │        │ impact)   │     │ Lasers    │
+└───────────┘     └───────────┘        └───────────┘        └───────────┘     └───────────┘
+```
+
+1. **`⚡ Direct Deck StageLinQ` (Direct Hardware Wire Telemetry):**
+   Listens to high-frequency broadcast packets from physical Denon DJ / Engine OS media players and mixers (SC6000, SC5000, Prime 4) or Pioneer Pro DJ Link bridges. Reads exact track position in milliseconds, platter angular velocity, pitch fader percentage, active deck on-air status, and pre-computed track waveforms.
+2. **`🎧 Live Audio FFT` (Multi-Band Spectrum):**
+   Directly transforms incoming audio stream via Web Audio API `AnalyserNode` into 5 discrete frequency bands: Sub-Bass (20–60Hz), Bass (60–250Hz), Low-Mid (250–500Hz), High-Mid (500–2000Hz), and Treble (2000–16000Hz).
+3. **`🥁 BPM Multi-Sync` (Phase & Tempo Locking):**
+   Locks animation cycles, bar counters, camera sweeps, and strobe rhythms to hardware BPM or tapped tempo. Includes Pioneer CDJ-3000 / CDJ-2000 phase meter synchronization (1–4 beat countdown needle).
+4. **`💥 Kick Transients` (Dynamic Impact Detection):**
+   Real-time transient attack detector analyzing instantaneous low-end energy acceleration against running averages. Triggers particle bursts, camera shakes, glitch flashes, and strobe shocks on kick drums.
+5. **`🏗️ Physical Rig Simulation` (3D Stage Fixtures):**
+   Simulates physical stage lighting fixtures: motorized moving-head beamers with pan/tilt interpolation, overhead trussing, volumetric laser projectors with atmospheric fog scattering, and disco mirror reflections.
+
+---
+
+## 🎛️ Complete 22-Scene Reactive Engine Matrix
+
+| ID | Key | Scene Name | Category | Reactive Engines | Hardware / Audio Inputs Used | Visual Engine Behavior |
+| :---: | :---: | :--- | :--- | :--- | :--- | :--- |
+| **0** | `1` | **3D Studio EQ** | Equalizers & Decks | `🎧 Live Audio FFT` | 5-Band FFT spectrum analysis (Sub-Bass, Bass, Low-Mid, High-Mid, Treble), Stereo L/R levels | 3D equalizer bars with dynamic height displacement, studio lighting reflections, and frequency-gradient coloring. |
+| **1** | `2` | **Circular Spectrum** | Equalizers & Decks | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Multi-band FFT, sub-bass transient spikes | Radial spectrum ring that expands on sub-bass pulses, mid-frequencies deform circular arcs, and high-frequency spikes emit outward spark particles. |
+| **2** | `3` | **Fluid Wave Matrix** | Equalizers & Decks | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Time-domain oscilloscope waveforms, low-end bass ripples | High-resolution 3D fluid matrix where vertices ripple and displace in real time according to audio waveform amplitude and bass impacts. |
+| **3** | `4` | **DJ Deck Waveforms** | Equalizers & Decks | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | StageLinQ track waveforms (`.rgb` / `m.db`), sub-ms playhead position, platter rotation, deck pitch faders | Authentic 3-band scrolling waveform renderer driven directly by hardware deck telemetry. Platter rotation and playhead track physical deck motion with sub-millisecond precision. |
+| **4** | `5` | **Spinning Disco Ball** | Disco | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Audio bass pulse, beat tempo, spotlight position | 3D disco ball with thousands of mirrored facets reflecting moving pinspots across a club room. Rotates with BPM sync and pulses specular highlights on bass hits. |
+| **5** | `6` | **Dual-Bank Lasers** | Lasers | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | BPM beat clock, high-frequency transients, audio energy | Dual motorized overhead laser banks projecting scanning beam fans, cones, and sheets with volumetric atmospheric fog scattering. Beats trigger laser color changes and fan sweeps. |
+| **6** | `7` | **Saber Multi-Beams** | Lasers | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Kick transients, mid-range energy, pan/tilt sweeps | Overhead moving-head fixtures firing concentrated light sabers across the stage. Fixtures pan and tilt rhythmically, flaring on kick drum transients. |
+| **7** | `8` | **Strobe Rings** | Lasers | `🥁 BPM Multi-Sync`<br>`💥 Kick Transients` | Kick transients, downbeat clock, high-hat triggers | Concentric strobe rings pulsing down a 3D tunnel. Kick drums trigger blinding strobe flashes and high-hats trigger ring ripples. |
+| **8** | `9` | **Synthwave Grid** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Bass frequency amplitude, track tempo, time-domain wave | Retro-futuristic 80s perspective grid scrolling toward neon mountains. Bass hits deform the grid terrain and send luminous energy pulses down wireframe lines. |
+| **9** | `0` | **Synthwave River & Sun** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Low-end bass, stereo energy, BPM clock | Neon synthwave sun sitting over a liquid digital river. Audio bass drives sun expansion, horizon bloom, and river surface undulation. |
+| **10** | `-` | **Matrix Code Rain** | Cyber & Retro | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio volume, mid/treble frequencies, transient hits | Cascading digital rain with green glyphs falling in 3D perspective. Audio peaks accelerate fall speed and kick transients invert glyph brightness. |
+| **11** | `=` | **Retro Arcade 80s** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Mid-range frequencies, beat counter, audio envelope | 1980s neon arcade corridor with wireframe geometry, floating tokens, and CRT scanlines dancing to the musical rhythm. |
+| **12** | `[` | **Warp Starfield** | Space & Galaxy | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Bass volume, kick transient bursts | 3D starfield hyperspace warp. Stars streak past camera based on low-end intensity; heavy drops trigger lightspeed hyperspace velocity. |
+| **13** | `]` | **Spiral Galaxy Vortex** | Space & Galaxy | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Multi-band FFT, stereo panning, track BPM | Rotating spiral galaxy with millions of stellar particles. Audio energy expands the galaxy arms while treble frequencies add shimmering star clusters. |
+| **14** | `O` | **Hyper Particle Stream** | Space & Galaxy | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | High-frequency transients, sub-bass impacts | High-velocity particle tunnel with hundreds of thousands of light particles streaming past the viewer, reacting dynamically to stereo separation and bass drops. |
+| **15** | `P` | **Time.is Clock** | Space & Galaxy | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | Deck track elapsed/remaining time, hardware BPM, system clock | High-precision digital time and performance clock visualizer displaying local set time, elapsed track time, and synchronized beat intervals. |
+| **16** | `K` | **Sweeping Godrays** | Lasers | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | Audio intensity, low-pass filter, camera movement | Atmospheric volumetric light shafts projecting through dense stage haze. Beams sweep across the scene synchronized to music dynamics. |
+| **17** | `L` | **White Godrays & Fog** | Lasers | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | High-frequency brightness, bass rumble, stage smoke | Pure white stadium-style godrays piercing dense ground fog with realistic volumetric light scattering. |
+| **18** | `;` | **Disco Floor & Godrays** | Disco | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Kick drum hits, beat tempo, mid-range melody | Illuminated Saturday Night Fever retro checkered disco floor pulsing with colorful LED tiles beneath sweeping volumetric godrays. |
+| **19** | `'` | **VHS Glitch Words** | Cyber & Retro | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio peaks, transient attacks, high-frequency noise | Retro VHS tape tracking simulation with analog tape artifacts, chromatic aberration, scanline jitter, and glitch typography flashing on transients. |
+| **20** | `,` | **Pumpkin Disco Ball** | Spooky | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Bass hits, beat tempo, spotlight angle | Jack-o'-lantern carved disco pumpkin rotating with mirrored reflections, glowing amber light beams, and spooky Halloween club vibes. |
+| **21** | `.` | **Haunted Manor** | Spooky | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Audio thunder impacts, bass rumble, mid frequencies | Eerie haunted cemetery and gothic manor silhouette with volumetric fog, flickering lightning on audio transients, and spectral particles. |
+
+---
+
+## 💾 Per-Scene Hardware Parameter Memory Engine
+
+### Parameters Stored per Scene
+
+Each scene maintains an isolated profile containing 5 functional categories:
+
+```json
+{
+  "djLogo": {
+    "enabled": true,
+    "url": "/images/logo/jkmclaren_shock.mp4",
+    "title": "jkmclaren Shock",
+    "isVideo": true,
+    "position": "center",
+    "spin": "off",
+    "spinSpeed": 1.0,
+    "scale": 1.0,
+    "offsetX": 0,
+    "offsetY": 0,
+    "contrast": 1.0,
+    "bright": 1.0,
+    "shield": false
+  },
+  "stationLogo": {
+    "enabled": false,
+    "url": null,
+    "title": "Default Station",
+    "isVideo": false,
+    "position": "top-right",
+    "scale": 1.0,
+    "offsetX": 0,
+    "offsetY": 0
+  },
+  "flyer": {
+    "enabled": false,
+    "url": null,
+    "title": "Event Flyer",
+    "isVideo": false,
+    "position": "bottom-right",
+    "scale": 0.85,
+    "offsetX": 0,
+    "offsetY": 0
+  },
+  "macro": {
+    "gain": 1.0,
+    "sens": 1.0,
+    "bloom": 0.35
+  },
+  "lighting": {
+    "hueSync": false,
+    "hueMode": "scene_sync",
+    "hueIntensity": 100,
+    "hueMinBri": 20,
+    "hueKickStrobe": false,
+    "dmxUniverse": 1,
+    "dmxProfile": "default"
+  }
+}
+```
+
+### Auto-Capture & Auto-Recall Workflow
+
+1. **Auto-Capture (`captureCurrentSceneParam`):**
+   Whenever you adjust any logo toggle, position pill, spin mode, spin speed slider, scale slider, nudge offset slider, performance macro fader (Gain, Sens, Bloom), or Philips Hue / DMX setting, the change is **instantly captured** into the active scene's profile in `localStorage` under `dj_vfx_scene_profiles_v2`.
+2. **Loop Prevention (`isApplyingSceneProfile`):**
+   When switching scenes, an internal flag `isApplyingSceneProfile = true` prevents the restoration process from triggering capture listeners, avoiding circular update loops.
+3. **Auto-Recall (`applySceneProfile`):**
+   When you switch to any scene (via hotkey `1`–`]`, matrix card click, or bottom bar button):
+   - The scene's specific logo media, visibility, positioning, spin mode, and offsets are restored.
+   - The macro faders (Bass Gain, Sensitivity, Bloom) and stage post-processing update to that scene's preferred levels.
+   - Philips Hue / DMX synchronization settings update to that scene's lighting profile.
+   - The Matrix UI automatically updates all card badges and diff counters.
+
+---
+
+## 🎨 Visual Difference Tracking & Reset System
+
+### 1. Status Badges
+- **`○ DEFAULT`**: Displayed when all parameters in that scene match the factory baseline.
+- **`● CUSTOMIZED (X)`**: Displayed with an amber illuminated badge showing the exact number `X` of parameters that have been modified from factory defaults.
+
+### 2. Card Highlighting
+- When a scene is customized, its card receives a subtle gold border accent (`rgba(255, 170, 0, 0.45)`) and dark amber backdrop gradient (`rgba(255, 170, 0, 0.05)`).
+- The parameters header displays `(X MODIFICATIONS SAVED)` in bright amber.
+- Inside the 4-column parameter view, every altered property is highlighted with a gold badge:
+  - Example: `Position: BOTTOM-LEFT` (gold), `Spin: Y (2.5x)` (gold), `Bloom Glow: 0.85x` (gold).
+
+### 3. Reset Actions
+- **Single-Scene Reset (`↺ Reset`):** Click the `↺ Reset` button on any customized card to immediately revert that scene to its factory baseline. If that scene is currently active, live stage visuals and console sliders are instantly updated.
+- **Global Reset (`⚠️ Reset All 22 Scenes to Default`):** Located in the matrix modal footer. Prompts for confirmation and resets all 22 scene profiles to factory defaults in a single click.
+
+---
+
+## 💻 Architecture & Code Reference
+
+### Key Source Files
+
+1. **[`src/scene-profiles.js`](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/scene-profiles.js)**
+   - `SCENE_METADATA`: Array of 22 scene definition objects (IDs 0–21, hotkeys, names, icons, categories, reactive tag lists, summaries, and technical engine descriptions).
+   - `REACTIVE_TAG_DEFINITIONS`: Color, border, background, and icon tokens for the 5 reactive engine types.
+   - `DEFAULT_SCENE_PROFILE`: Baseline object containing factory defaults for `djLogo`, `stationLogo`, `flyer`, `macro`, and `lighting`.
+   - `SceneProfileManager`: Singleton class handling profile loading, saving, deep difference calculation (`getDiff(index)`), per-scene resets, and migration.
+2. **[`src/main.js`](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/main.js)**
+   - `applySceneProfile(sceneIndex)`: Restores logo layers, positions, spin speeds, macro faders, and Philips Hue parameters when switching scenes.
+   - `captureCurrentSceneParam(category, key, value)`: Event hook updating active scene memory when UI controls change.
+   - `openSceneMatrixModal()`, `closeSceneMatrixModal()`, `updateMatrixUI()`: Manages modal rendering, category chip filtering, real-time search, diff highlighting, and interactive switches/resets.
+3. **[`index.html`](file:///Users/jarikuhanen/agy/dj-vfx-studio/index.html)**
+   - Modal container `#scene-matrix-modal-backdrop` and glassmorphic card layout.
+   - Toolbar button `#btn-open-scene-matrix` and FX console button `#btn-open-scene-matrix-pane`.
+   - Complete CSS styling for matrix cards, reactive pills, diff indicators, and responsive scrollbars.
+
+---
+
+## 🧪 Verification & Automated Testing
+
+The Scene Reactive Matrix and Memory Profiles suite is thoroughly verified via automated Chrome DevTools Protocol (CDP) scripts:
+
+```bash
+# Build the production bundle
+npm run build
+
+# Run interactive automated matrix verification suite in headless Chrome
+node scratch/verify_matrix_interactive.js
+```
+
+### Verified Test Cases
+- [x] Modal launches via `#btn-open-scene-matrix`, `#btn-open-scene-matrix-pane`, and hotkey `M`.
+- [x] All 22 scenes render with correct hotkeys, category tags, reactive engine tags, and technical descriptions.
+- [x] Live scene indicator (`🟢 LIVE SCENE`, `✓ Active`) highlights the currently active shader.
+- [x] Parameter modifications update `SceneProfileManager`, transition status to `● CUSTOMIZED (X)`, and highlight altered fields in amber.
+- [x] Switching between scenes auto-recalls saved parameters and restores sliders without cross-scene pollution.
+- [x] `Show Customized Only` filter accurately filters matrix to only customized scenes.
+- [x] `↺ Reset` button reverts scene back to `○ DEFAULT` baseline and updates live stage immediately.
+- [x] Zero JavaScript errors or Temporal Dead Zone (TDZ) exceptions in browser console.
