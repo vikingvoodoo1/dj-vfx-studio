@@ -2405,9 +2405,409 @@
             transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
         }
 
-        .toast-notify.show {
-            transform: translateX(-50%) translateY(0);
-            opacity: 1;
+        /* ========================================================================= */
+        /* SCENE MATRIX & HARDWARE PROFILES MODAL                                   */
+        /* ========================================================================= */
+        #scene-matrix-modal-backdrop {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 10050;
+            background: rgba(4, 6, 12, 0.88);
+            backdrop-filter: blur(14px);
+            align-items: center;
+            justify-content: center;
+        }
+
+        #scene-matrix-modal-backdrop.active {
+            display: flex;
+        }
+
+        .matrix-modal {
+            background: linear-gradient(180deg, #0e111a 0%, #07090e 100%);
+            border: 1px solid rgba(0, 255, 204, 0.4);
+            border-radius: 16px;
+            width: 1100px;
+            max-width: 95vw;
+            height: 90vh;
+            max-height: 90vh;
+            box-shadow: 0 0 60px rgba(0, 255, 204, 0.2), 0 25px 80px rgba(0, 0, 0, 0.95);
+            font-family: 'Inter', -apple-system, sans-serif;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .matrix-modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 24px 14px 24px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(14, 17, 26, 0.95);
+        }
+
+        .matrix-modal-title {
+            font-size: 17px;
+            font-weight: 900;
+            letter-spacing: 0.8px;
+            background: linear-gradient(90deg, #00ffff, #ffaa00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .matrix-modal-subtitle {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.55);
+            margin-top: 4px;
+            line-height: 1.4;
+        }
+
+        .matrix-toolbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 24px;
+            background: rgba(0, 0, 0, 0.35);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            flex-wrap: wrap;
+        }
+
+        .matrix-search-box {
+            display: flex;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 8px;
+            padding: 5px 10px;
+            gap: 8px;
+            flex: 1;
+            min-width: 220px;
+            max-width: 320px;
+        }
+
+        .matrix-search-box svg {
+            color: #00ffcc;
+            flex-shrink: 0;
+        }
+
+        .matrix-search-box input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 11px;
+            outline: none;
+            width: 100%;
+        }
+
+        .matrix-search-clear {
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.4);
+            cursor: pointer;
+            font-size: 11px;
+            padding: 0;
+        }
+
+        .matrix-category-chips {
+            display: flex;
+            gap: 6px;
+            overflow-x: auto;
+            flex-wrap: nowrap;
+        }
+
+        .matrix-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: rgba(255, 255, 255, 0.7);
+            border-radius: 6px;
+            padding: 4px 9px;
+            font-size: 10px;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: all 0.15s;
+        }
+
+        .matrix-chip:hover {
+            border-color: rgba(0, 255, 204, 0.4);
+            color: #00ffcc;
+        }
+
+        .matrix-chip.active {
+            background: rgba(0, 255, 204, 0.16);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        .matrix-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            color: #ffaa00;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 600;
+        }
+
+        .matrix-cards-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .matrix-cards-scroll::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .matrix-cards-scroll::-webkit-scrollbar-thumb {
+            background: rgba(0, 255, 204, 0.3);
+            border-radius: 3px;
+        }
+
+        .matrix-scene-card {
+            background: rgba(16, 20, 30, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 10px;
+            padding: 14px 18px;
+            transition: border-color 0.2s, background 0.2s, box-shadow 0.2s;
+        }
+
+        .matrix-scene-card:hover {
+            border-color: rgba(0, 255, 204, 0.3);
+            background: rgba(20, 25, 38, 0.95);
+        }
+
+        .matrix-scene-card.active {
+            border-color: #00ffcc;
+            background: rgba(10, 32, 40, 0.9);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.18);
+        }
+
+        .matrix-scene-card.customized {
+            border-left: 4px solid #ffaa00;
+        }
+
+        .matrix-scene-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .matrix-scene-identity {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .matrix-hotkey {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            background: #090a0d;
+            border: 1px solid #ffaa00;
+            border-radius: 5px;
+            color: #ffaa00;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            box-shadow: 0 0 8px rgba(255, 170, 0, 0.2);
+            flex-shrink: 0;
+        }
+
+        .matrix-scene-title {
+            font-size: 14px;
+            font-weight: 800;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .matrix-scene-cat {
+            font-size: 9.5px;
+            color: rgba(255, 255, 255, 0.45);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 700;
+        }
+
+        .matrix-scene-actions {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .matrix-live-badge {
+            background: rgba(0, 255, 136, 0.15);
+            border: 1px solid rgba(0, 255, 136, 0.5);
+            color: #00ff88;
+            font-size: 9px;
+            font-weight: 800;
+            padding: 3px 8px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .matrix-status-pill {
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+        }
+
+        .matrix-status-pill.default {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: rgba(255, 255, 255, 0.5);
+        }
+
+        .matrix-status-pill.customized {
+            background: rgba(255, 170, 0, 0.15);
+            border: 1px solid rgba(255, 170, 0, 0.5);
+            color: #ffaa00;
+        }
+
+        .matrix-tags-row {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            margin: 8px 0 6px 0;
+        }
+
+        .matrix-tag-pill {
+            font-size: 9.5px;
+            font-weight: 700;
+            padding: 2px 7px;
+            border-radius: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .matrix-scene-desc {
+            font-size: 11.5px;
+            color: rgba(255, 255, 255, 0.72);
+            line-height: 1.45;
+            margin: 4px 0 10px 0;
+        }
+
+        .matrix-params-panel {
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 6px;
+            padding: 8px 12px;
+            margin-top: 6px;
+        }
+
+        .matrix-params-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .matrix-params-header-title {
+            font-size: 10px;
+            font-weight: 800;
+            color: rgba(255, 255, 255, 0.65);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .matrix-params-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .matrix-param-col-title {
+            font-size: 9px;
+            font-weight: 800;
+            color: #00ffcc;
+            text-transform: uppercase;
+            margin-bottom: 4px;
+        }
+
+        .matrix-param-item {
+            font-size: 10px;
+            color: rgba(255, 255, 255, 0.6);
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+        }
+
+        .matrix-param-item.diff {
+            color: #ffaa00;
+            font-weight: 700;
+        }
+
+        .matrix-modal-footer {
+            padding: 12px 24px;
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(14, 17, 26, 0.95);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .matrix-stats {
+            font-size: 11px;
+            color: rgba(255, 255, 255, 0.6);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .matrix-btn-reset-all {
+            background: rgba(255, 51, 102, 0.15) !important;
+            border: 1px solid rgba(255, 51, 102, 0.4) !important;
+            color: #ff3366 !important;
+            font-weight: 800;
+            font-size: 10px;
+            padding: 6px 12px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+
+        .matrix-btn-reset-all:hover {
+            background: rgba(255, 51, 102, 0.3) !important;
+        }
+
+        .matrix-btn-close {
+            background: rgba(255, 255, 255, 0.08) !important;
+            border: 1px solid rgba(255, 255, 255, 0.2) !important;
+            color: #ffffff !important;
+            font-weight: 800;
+            font-size: 10px;
+            padding: 6px 14px;
+            cursor: pointer;
+            border-radius: 4px;
         }
     </style>
 </head>
@@ -2821,6 +3221,7 @@
             <div class="ide-tab-pane" id="pane-fx">
                 <div class="pane-section-title">
                     <span>✨ Visual FX Bank</span>
+                    <button class="btn-mini" id="btn-open-scene-matrix-pane" style="margin-left:auto; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, rgba(0,255,204,0.15), rgba(187,136,255,0.15)); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-size:10px; font-weight:700; padding:3px 8px; border-radius:4px; cursor:pointer;" title="Open Scene Reactive Matrix &amp; Memory Profiles">📋 MATRIX &amp; PROFILES</button>
                     <span class="hud-badge" id="fx-pane-active-badge">ACTIVE: 3D STUDIO EQ</span>
                 </div>
 
@@ -4351,6 +4752,7 @@
                 <button class="cat-tab" data-category="space">🌌 Space & Galaxy</button>
             </div>
             <div class="vj-actions">
+                <button class="matrix-btn" id="btn-open-scene-matrix" title="Open Scene Reactive Matrix &amp; Memory Profiles" style="background:linear-gradient(135deg, rgba(0,255,204,0.18), rgba(255,170,0,0.18)); border:1px solid rgba(0,255,204,0.5); color:#00ffcc; font-size:11px; font-weight:800; padding:4px 10px; border-radius:5px; cursor:pointer; display:inline-flex; align-items:center; gap:6px;"><span class="fx-key" style="background:#000; color:#ffaa00; border:1px solid #ffaa00; font-size:9px; padding:1px 4px; border-radius:3px; font-weight:800;">M</span> 📋 MATRIX</button>
                 <button class="auto-btn" id="btn-auto-vj" title="Toggle Auto VJ Mode (Cycles FX automatically)"><span class="fx-key">A</span> AUTO VJ</button>
                 <button class="flash-btn" id="btn-flash">⚡ STROBE</button>
             </div>
@@ -4557,6 +4959,66 @@
 
             <div style="display:flex; justify-content:flex-end; gap:8px;">
                 <button class="btn-mini" id="btn-close-dj-guide-done" style="background:rgba(0,255,204,0.2); border:1px solid #00ffcc; color:#00ffcc; padding:6px 16px; font-size:11px; font-weight:800; cursor:pointer;">Got It</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scene Reactive Matrix & Memory Profiles Modal -->
+    <div id="scene-matrix-modal-backdrop">
+        <div class="matrix-modal">
+            <div class="matrix-modal-header">
+                <div>
+                    <div class="matrix-modal-title">
+                        <span>📋 SCENE REACTIVE MATRIX &amp; HARDWARE MEMORY PROFILES</span>
+                    </div>
+                    <div class="matrix-modal-subtitle">
+                        Comprehensive reactive telemetry reference &amp; per-scene parameter memory (DJ/Station logos, spin, offsets, macro faders, Philips Hue &amp; DMX lighting).
+                    </div>
+                </div>
+                <button class="obs-close-btn" id="btn-close-scene-matrix" title="Close Matrix (Esc)">&times;</button>
+            </div>
+
+            <!-- Matrix Toolbar: Live Search, Category Filter Chips, Show Customized Only -->
+            <div class="matrix-toolbar">
+                <div class="matrix-search-box">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="matrix-search-input" placeholder="Search scenes, reactive engines, or keywords..." autocomplete="off" spellcheck="false">
+                    <button class="matrix-search-clear" id="matrix-search-clear" title="Clear">✕</button>
+                </div>
+
+                <div class="matrix-category-chips" id="matrix-category-chips">
+                    <button class="matrix-chip active" data-cat="all">⚡ All (22)</button>
+                    <button class="matrix-chip" data-cat="eq">📊 Equalizers &amp; Decks</button>
+                    <button class="matrix-chip" data-cat="laser">⚡ Lasers</button>
+                    <button class="matrix-chip" data-cat="disco">🪩 Disco</button>
+                    <button class="matrix-chip" data-cat="spooky">🎃 Spooky</button>
+                    <button class="matrix-chip" data-cat="wire">🕸️ Cyber &amp; Retro</button>
+                    <button class="matrix-chip" data-cat="space">🌌 Space &amp; Galaxy</button>
+                </div>
+
+                <label class="matrix-checkbox-label">
+                    <input type="checkbox" id="matrix-filter-customized">
+                    <span>Show Customized Only (<span id="matrix-custom-count">0</span>)</span>
+                </label>
+            </div>
+
+            <!-- Scrollable Cards Container (Dynamic Render via JS) -->
+            <div class="matrix-cards-scroll" id="matrix-cards-container">
+                <!-- Dynamically generated scene cards with live indicators, reactive engine pills, descriptions, parameters, and reset buttons -->
+            </div>
+
+            <!-- Footer Stats & Global Actions -->
+            <div class="matrix-modal-footer">
+                <div class="matrix-stats" id="matrix-stats-text">
+                    22 Scenes • 0 Customized • Auto-Recall Active
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button class="matrix-btn-reset-all" id="btn-matrix-reset-all" title="Reset all 22 scene profiles to factory default settings">⚠️ Reset All 22 Scenes to Default</button>
+                    <button class="matrix-btn-close" id="btn-matrix-close-footer">Close Matrix</button>
+                </div>
             </div>
         </div>
     </div>

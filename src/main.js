@@ -1,6 +1,7 @@
 import { setupAudio } from './audio.js';
 import { createVFXScene } from './effects.js';
 import { setupStageLinqClient } from './stagelinq.js';
+import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS } from './scene-profiles.js';
 
 // DJ VFX Studio Build Metadata
 const BUILD_VERSION = 'v2.8.5';
@@ -72,6 +73,8 @@ async function init() {
     const djGuideModalBackdrop = document.getElementById('dj-guide-modal-backdrop');
     const btnCloseDjGuide = document.getElementById('btn-close-dj-guide');
     const btnCloseDjGuideDone = document.getElementById('btn-close-dj-guide-done');
+
+    let isHardwareDeckStreaming = false;
 
     const deckCards = [
         { card: document.getElementById('deck-card-1'), bpm: document.getElementById('deck-bpm-1'), state: document.getElementById('deck-state-1') },
@@ -426,6 +429,37 @@ async function init() {
     const gainVal = document.getElementById('gain-val');
     const sensVal = document.getElementById('sens-val');
     const bloomVal = document.getElementById('bloom-val');
+
+    // Scene Reactive Profiles & Parameter Memory State
+    let isApplyingSceneProfile = false;
+    let sceneMatrixModalBackdrop = document.getElementById('scene-matrix-modal-backdrop');
+    let btnOpenSceneMatrix = document.getElementById('btn-open-scene-matrix');
+    let btnOpenSceneMatrixPane = document.getElementById('btn-open-scene-matrix-pane');
+    let btnCloseSceneMatrix = document.getElementById('btn-close-scene-matrix');
+    let btnMatrixCloseFooter = document.getElementById('btn-matrix-close-footer');
+    let matrixSearchInput = document.getElementById('matrix-search-input');
+    let matrixSearchClear = document.getElementById('matrix-search-clear');
+    let matrixCategoryChips = document.querySelectorAll('#matrix-category-chips .matrix-chip[data-cat]');
+    let matrixFilterCustomized = document.getElementById('matrix-filter-customized');
+    let matrixCustomCount = document.getElementById('matrix-custom-count');
+    let matrixCardsContainer = document.getElementById('matrix-cards-container');
+    let matrixStatsText = document.getElementById('matrix-stats-text');
+    let btnMatrixResetAll = document.getElementById('btn-matrix-reset-all');
+
+    let matrixSearchQuery = '';
+    let matrixSelectedCategory = 'all';
+    let matrixShowCustomizedOnly = false;
+    let expandedParamsSceneId = null;
+
+    function captureCurrentSceneParam(category, key, value) {
+        if (isApplyingSceneProfile) return;
+        if (!vfx || typeof vfx.getCurrentFX !== 'function') return;
+        const currentFx = vfx.getCurrentFX();
+        SceneProfileManager.updateParam(currentFx, category, key, value);
+        if (typeof updateMatrixUI === 'function') {
+            updateMatrixUI();
+        }
+    }
 
     // =========================================================================
     // IndexedDB Media Storage Manager (Persistent Storage for Uploaded Media)
@@ -2503,6 +2537,7 @@ async function init() {
         if (broadcast) {
             broadcastSync({ type: 'set_logo_vis', vis: isLogoActive ? 'on' : 'off' });
         }
+        captureCurrentSceneParam('djLogo', 'enabled', isLogoActive);
     }
 
     function toggleLogo() {
@@ -2585,6 +2620,10 @@ async function init() {
                 isVideo: isCurrentDjVideo
             });
         }
+
+        captureCurrentSceneParam('djLogo', 'url', url);
+        captureCurrentSceneParam('djLogo', 'title', currentDjLogoTitle);
+        captureCurrentSceneParam('djLogo', 'isVideo', isCurrentDjVideo);
     }
 
     function wireDjCardClick(card) {
@@ -2736,6 +2775,7 @@ async function init() {
             vfx.setLogoPosition(pos);
             try { localStorage.setItem('dj_vfx_logo_pos', pos); } catch (e) {}
             broadcastSync({ type: 'set_logo_pos', pos });
+            captureCurrentSceneParam('djLogo', 'position', pos);
         });
     });
 
@@ -2745,6 +2785,7 @@ async function init() {
             logoContrastVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoContrast(val);
             broadcastSync({ type: 'set_logo_contrast', val });
+            captureCurrentSceneParam('djLogo', 'contrast', val);
         });
     }
 
@@ -2754,6 +2795,7 @@ async function init() {
             logoBrightVal.textContent = `${val.toFixed(2)}x`;
             vfx.setLogoBrightness(val);
             broadcastSync({ type: 'set_logo_bright', val });
+            captureCurrentSceneParam('djLogo', 'bright', val);
         });
     }
 
@@ -2763,6 +2805,7 @@ async function init() {
             logoScaleVal.textContent = `${val.toFixed(1)}x`;
             vfx.setLogoScale(val);
             broadcastSync({ type: 'set_logo_scale', val });
+            captureCurrentSceneParam('djLogo', 'scale', val);
         });
     }
 
@@ -2772,6 +2815,7 @@ async function init() {
             if (logoEdgeMarginVal) logoEdgeMarginVal.textContent = `${val}%`;
             vfx.setLogoEdgeMargin(val / 100);
             broadcastSync({ type: 'set_logo_edge_margin', val });
+            captureCurrentSceneParam('djLogo', 'edgeMargin', val);
         });
     }
 
@@ -2781,6 +2825,7 @@ async function init() {
             logoOffsetYVal.textContent = `${val}%`;
             vfx.setLogoOffsetY(val / 100);
             broadcastSync({ type: 'set_logo_offset_y', val });
+            captureCurrentSceneParam('djLogo', 'offsetY', val);
         });
     }
 
@@ -2790,6 +2835,7 @@ async function init() {
             logoOffsetXVal.textContent = `${val}%`;
             vfx.setLogoOffsetX(val / 100);
             broadcastSync({ type: 'set_logo_offset_x', val });
+            captureCurrentSceneParam('djLogo', 'offsetX', val);
         });
     }
 
@@ -2799,6 +2845,7 @@ async function init() {
             logoPulseVal.textContent = `${val}%`;
             vfx.setLogoBassPulse(val / 100);
             broadcastSync({ type: 'set_logo_pulse', val });
+            captureCurrentSceneParam('djLogo', 'pulse', val);
         });
     }
 
@@ -2810,6 +2857,7 @@ async function init() {
             vfx.setLogoSpinMode(spin);
             try { localStorage.setItem('dj_vfx_logo_spin', spin); } catch (e) {}
             broadcastSync({ type: 'set_logo_spin', spin });
+            captureCurrentSceneParam('djLogo', 'spin', spin);
         });
     });
 
@@ -2820,6 +2868,7 @@ async function init() {
             vfx.setLogoSpinSpeed(val);
             try { localStorage.setItem('dj_vfx_logo_spin_speed', String(val)); } catch (e) {}
             broadcastSync({ type: 'set_logo_spin_speed', speed: val });
+            captureCurrentSceneParam('djLogo', 'spinSpeed', val);
         });
     }
 
@@ -2842,6 +2891,7 @@ async function init() {
         checkLogoShield.addEventListener('change', (e) => {
             vfx.setLogoShieldVisible(e.target.checked);
             broadcastSync({ type: 'set_logo_shield', active: e.target.checked });
+            captureCurrentSceneParam('djLogo', 'shield', e.target.checked);
         });
     }
 
@@ -2865,6 +2915,7 @@ async function init() {
         if (broadcast) {
             broadcastSync({ type: 'set_station_logo_vis', vis: isStationLogoActive });
         }
+        captureCurrentSceneParam('stationLogo', 'enabled', isStationLogoActive);
     }
 
     if (btnToggleStationLogoTop) {
@@ -2925,6 +2976,10 @@ async function init() {
                 isVideo: isCurrentStationVideo
             });
         }
+
+        captureCurrentSceneParam('stationLogo', 'url', url);
+        captureCurrentSceneParam('stationLogo', 'title', currentStationLogoTitle);
+        captureCurrentSceneParam('stationLogo', 'isVideo', isCurrentStationVideo);
     }
 
     function wireStationCardClick(card) {
@@ -2984,6 +3039,7 @@ async function init() {
             vfx.setStationLogoPosition(pos);
             try { localStorage.setItem('dj_vfx_station_pos', pos); } catch (e) {}
             broadcastSync({ type: 'set_station_logo_pos', pos });
+            captureCurrentSceneParam('stationLogo', 'position', pos);
         });
     });
 
@@ -3016,6 +3072,7 @@ async function init() {
             if (stationScaleVal) stationScaleVal.textContent = `${val.toFixed(2)}x`;
             vfx.setStationLogoScale(val);
             broadcastSync({ type: 'set_station_logo_scale', val });
+            captureCurrentSceneParam('stationLogo', 'scale', val);
         });
     }
 
@@ -3034,6 +3091,7 @@ async function init() {
             if (stationOffsetYVal) stationOffsetYVal.textContent = `${val}%`;
             vfx.setStationLogoOffsetY(val / 100);
             broadcastSync({ type: 'set_station_offset_y', val });
+            captureCurrentSceneParam('stationLogo', 'offsetY', val);
         });
     }
 
@@ -3043,6 +3101,7 @@ async function init() {
             if (stationOffsetXVal) stationOffsetXVal.textContent = `${val}%`;
             vfx.setStationLogoOffsetX(val / 100);
             broadcastSync({ type: 'set_station_offset_x', val });
+            captureCurrentSceneParam('stationLogo', 'offsetX', val);
         });
     }
 
@@ -3203,6 +3262,7 @@ async function init() {
         if (broadcast) {
             broadcastSync({ type: 'set_flyer_vis', vis: isFlyerActive });
         }
+        captureCurrentSceneParam('flyer', 'enabled', isFlyerActive);
     }
 
     function toggleFlyer() {
@@ -3259,6 +3319,10 @@ async function init() {
                 isVideo: isCurrentFlyerVideo
             });
         }
+
+        captureCurrentSceneParam('flyer', 'url', url);
+        captureCurrentSceneParam('flyer', 'title', currentFlyerTitle);
+        captureCurrentSceneParam('flyer', 'isVideo', isCurrentFlyerVideo);
     }
 
     function wireFlyerCardClick(card) {
@@ -3318,6 +3382,7 @@ async function init() {
             vfx.setFlyerPosition(pos);
             try { localStorage.setItem('dj_vfx_flyer_pos', pos); } catch (e) {}
             broadcastSync({ type: 'set_flyer_pos', pos });
+            captureCurrentSceneParam('flyer', 'position', pos);
         });
     });
 
@@ -3350,6 +3415,7 @@ async function init() {
             if (flyerScaleVal) flyerScaleVal.textContent = `${val.toFixed(2)}x`;
             vfx.setFlyerScale(val);
             broadcastSync({ type: 'set_flyer_scale', val });
+            captureCurrentSceneParam('flyer', 'scale', val);
         });
     }
 
@@ -3368,6 +3434,7 @@ async function init() {
             if (flyerOffsetYVal) flyerOffsetYVal.textContent = `${val}%`;
             vfx.setFlyerOffsetY(val / 100);
             broadcastSync({ type: 'set_flyer_offset_y', val });
+            captureCurrentSceneParam('flyer', 'offsetY', val);
         });
     }
 
@@ -3377,6 +3444,7 @@ async function init() {
             if (flyerOffsetXVal) flyerOffsetXVal.textContent = `${val}%`;
             vfx.setFlyerOffsetX(val / 100);
             broadcastSync({ type: 'set_flyer_offset_x', val });
+            captureCurrentSceneParam('flyer', 'offsetX', val);
         });
     }
 
@@ -4103,6 +4171,11 @@ async function init() {
             localStorage.setItem('dj_vfx_current_fx', String(targetIndex));
         } catch (e) {}
 
+        // Auto-recall scene profile parameters (Logos, Positioning, Spin, Macro Faders, Lighting)
+        if (typeof applySceneProfile === 'function') {
+            applySceneProfile(targetIndex);
+        }
+
         // Update bottom bar buttons (if present)
         fxButtons.forEach((btn) => {
             const btnIdx = parseInt(btn.getAttribute('data-fx'), 10);
@@ -4152,9 +4225,17 @@ async function init() {
             const parsed = parseInt(savedFX, 10);
             if (!isNaN(parsed) && parsed >= 0 && parsed < TOTAL_FX) {
                 selectFX(parsed, false);
+            } else if (typeof applySceneProfile === 'function') {
+                applySceneProfile(0);
             }
+        } else if (typeof applySceneProfile === 'function') {
+            applySceneProfile(0);
         }
-    } catch (e) {}
+    } catch (e) {
+        if (typeof applySceneProfile === 'function') {
+            applySceneProfile(0);
+        }
+    }
 
     // FX Pane Elements & Filtering
     const fxSearchInput = document.getElementById('fx-search-input');
@@ -4344,6 +4425,7 @@ async function init() {
             gainVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setGain(val);
             broadcastSync({ type: 'set_gain', val });
+            captureCurrentSceneParam('macro', 'gain', val);
         });
     }
 
@@ -4353,6 +4435,7 @@ async function init() {
             sensVal.textContent = `${val.toFixed(1)}x`;
             if (audioProcessor) audioProcessor.setBassSensitivity(val);
             broadcastSync({ type: 'set_sens', val });
+            captureCurrentSceneParam('macro', 'sens', val);
         });
     }
 
@@ -4362,6 +4445,7 @@ async function init() {
             bloomVal.textContent = `${val.toFixed(2)}x`;
             vfx.setBloomMultiplier(val);
             broadcastSync({ type: 'set_bloom', val });
+            captureCurrentSceneParam('macro', 'bloom', val);
         });
     }
 
@@ -4403,6 +4487,582 @@ async function init() {
     if (djGuideModalBackdrop) {
         djGuideModalBackdrop.addEventListener('click', (e) => {
             if (e.target === djGuideModalBackdrop) djGuideModalBackdrop.style.display = 'none';
+        });
+    }
+
+    // =========================================================================
+    // 6a-2. SCENE REACTIVE MATRIX & MEMORY PROFILES MODAL CONTROLLER
+    // =========================================================================
+    if (!sceneMatrixModalBackdrop) sceneMatrixModalBackdrop = document.getElementById('scene-matrix-modal-backdrop');
+    if (!btnOpenSceneMatrix) btnOpenSceneMatrix = document.getElementById('btn-open-scene-matrix');
+    if (!btnOpenSceneMatrixPane) btnOpenSceneMatrixPane = document.getElementById('btn-open-scene-matrix-pane');
+    if (!btnCloseSceneMatrix) btnCloseSceneMatrix = document.getElementById('btn-close-scene-matrix');
+    if (!btnMatrixCloseFooter) btnMatrixCloseFooter = document.getElementById('btn-matrix-close-footer');
+    if (!matrixSearchInput) matrixSearchInput = document.getElementById('matrix-search-input');
+    if (!matrixSearchClear) matrixSearchClear = document.getElementById('matrix-search-clear');
+    if (!matrixCategoryChips || matrixCategoryChips.length === 0) matrixCategoryChips = document.querySelectorAll('#matrix-category-chips .matrix-chip[data-cat]');
+    if (!matrixFilterCustomized) matrixFilterCustomized = document.getElementById('matrix-filter-customized');
+    if (!matrixCustomCount) matrixCustomCount = document.getElementById('matrix-custom-count');
+    if (!matrixCardsContainer) matrixCardsContainer = document.getElementById('matrix-cards-container');
+    if (!matrixStatsText) matrixStatsText = document.getElementById('matrix-stats-text');
+    if (!btnMatrixResetAll) btnMatrixResetAll = document.getElementById('btn-matrix-reset-all');
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    function openSceneMatrixModal() {
+        if (sceneMatrixModalBackdrop) {
+            sceneMatrixModalBackdrop.classList.add('active');
+            updateMatrixUI();
+        }
+    }
+
+    function closeSceneMatrixModal() {
+        if (sceneMatrixModalBackdrop) {
+            sceneMatrixModalBackdrop.classList.remove('active');
+        }
+    }
+
+    function toggleSceneMatrixModal() {
+        if (sceneMatrixModalBackdrop) {
+            if (sceneMatrixModalBackdrop.classList.contains('active')) {
+                closeSceneMatrixModal();
+            } else {
+                openSceneMatrixModal();
+            }
+        }
+    }
+
+    window.openSceneMatrixModal = openSceneMatrixModal;
+    window.closeSceneMatrixModal = closeSceneMatrixModal;
+    window.toggleSceneMatrixModal = toggleSceneMatrixModal;
+    window.SceneProfileManager = SceneProfileManager;
+
+    if (btnOpenSceneMatrix) btnOpenSceneMatrix.addEventListener('click', openSceneMatrixModal);
+    if (btnOpenSceneMatrixPane) btnOpenSceneMatrixPane.addEventListener('click', openSceneMatrixModal);
+    if (btnCloseSceneMatrix) btnCloseSceneMatrix.addEventListener('click', closeSceneMatrixModal);
+    if (btnMatrixCloseFooter) btnMatrixCloseFooter.addEventListener('click', closeSceneMatrixModal);
+
+    if (sceneMatrixModalBackdrop) {
+        sceneMatrixModalBackdrop.addEventListener('click', (e) => {
+            if (e.target === sceneMatrixModalBackdrop) {
+                closeSceneMatrixModal();
+            }
+        });
+    }
+
+    if (matrixSearchInput) {
+        matrixSearchInput.addEventListener('input', (e) => {
+            matrixSearchQuery = e.target.value.trim().toLowerCase();
+            updateMatrixUI();
+        });
+    }
+    if (matrixSearchClear) {
+        matrixSearchClear.addEventListener('click', () => {
+            if (matrixSearchInput) matrixSearchInput.value = '';
+            matrixSearchQuery = '';
+            updateMatrixUI();
+        });
+    }
+
+    if (matrixCategoryChips) {
+        matrixCategoryChips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                matrixCategoryChips.forEach(c => c.classList.remove('active'));
+                chip.classList.add('active');
+                matrixSelectedCategory = chip.getAttribute('data-cat') || 'all';
+                updateMatrixUI();
+            });
+        });
+    }
+
+    if (matrixFilterCustomized) {
+        matrixFilterCustomized.addEventListener('change', (e) => {
+            matrixShowCustomizedOnly = e.target.checked;
+            updateMatrixUI();
+        });
+    }
+
+    if (btnMatrixResetAll) {
+        btnMatrixResetAll.addEventListener('click', () => {
+            if (confirm('Are you sure you want to reset all 22 scene profiles to factory default settings?')) {
+                SceneProfileManager.resetAll();
+                applySceneProfile(vfx.getCurrentFX());
+                updateMatrixUI();
+                showToast('↺ All 22 scene profiles reset to factory defaults');
+            }
+        });
+    }
+
+    function applySceneProfile(sceneIndex) {
+        if (sceneIndex < 0 || sceneIndex >= TOTAL_FX) return;
+        const profile = SceneProfileManager.getProfile(sceneIndex);
+        if (!profile) return;
+
+        isApplyingSceneProfile = true;
+
+        try {
+            // 1. DJ Logo
+            if (profile.djLogo) {
+                updateLogoVisibility(profile.djLogo.enabled, false);
+                if (profile.djLogo.url) {
+                    selectDjLogo(profile.djLogo.url, profile.djLogo.title, profile.djLogo.isVideo, false);
+                }
+                if (profile.djLogo.position) {
+                    posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === profile.djLogo.position));
+                    vfx.setLogoPosition(profile.djLogo.position);
+                }
+                if (profile.djLogo.spin) {
+                    spinPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-spin') === profile.djLogo.spin));
+                    vfx.setLogoSpinMode(profile.djLogo.spin);
+                }
+                if (profile.djLogo.spinSpeed !== undefined) {
+                    if (sliderLogoSpinSpeed) sliderLogoSpinSpeed.value = String(profile.djLogo.spinSpeed);
+                    if (logoSpinSpeedVal) logoSpinSpeedVal.textContent = `${profile.djLogo.spinSpeed.toFixed(1)}x`;
+                    vfx.setLogoSpinSpeed(profile.djLogo.spinSpeed);
+                }
+                if (profile.djLogo.scale !== undefined) {
+                    if (sliderLogoScale) sliderLogoScale.value = String(profile.djLogo.scale);
+                    if (logoScaleVal) logoScaleVal.textContent = `${profile.djLogo.scale.toFixed(1)}x`;
+                    vfx.setLogoScale(profile.djLogo.scale);
+                }
+                if (profile.djLogo.offsetX !== undefined) {
+                    if (sliderLogoOffsetX) sliderLogoOffsetX.value = String(profile.djLogo.offsetX);
+                    if (logoOffsetXVal) logoOffsetXVal.textContent = `${profile.djLogo.offsetX}%`;
+                    vfx.setLogoOffsetX(profile.djLogo.offsetX / 100);
+                }
+                if (profile.djLogo.offsetY !== undefined) {
+                    if (sliderLogoOffsetY) sliderLogoOffsetY.value = String(profile.djLogo.offsetY);
+                    if (logoOffsetYVal) logoOffsetYVal.textContent = `${profile.djLogo.offsetY}%`;
+                    vfx.setLogoOffsetY(profile.djLogo.offsetY / 100);
+                }
+                if (profile.djLogo.contrast !== undefined) {
+                    if (sliderLogoContrast) sliderLogoContrast.value = String(profile.djLogo.contrast);
+                    if (logoContrastVal) logoContrastVal.textContent = `${profile.djLogo.contrast.toFixed(2)}x`;
+                    vfx.setLogoContrast(profile.djLogo.contrast);
+                }
+                if (profile.djLogo.bright !== undefined) {
+                    if (sliderLogoBright) sliderLogoBright.value = String(profile.djLogo.bright);
+                    if (logoBrightVal) logoBrightVal.textContent = `${profile.djLogo.bright.toFixed(2)}x`;
+                    vfx.setLogoBrightness(profile.djLogo.bright);
+                }
+                if (profile.djLogo.shield !== undefined) {
+                    if (checkLogoShield) checkLogoShield.checked = profile.djLogo.shield;
+                    vfx.setLogoShieldVisible(profile.djLogo.shield);
+                }
+            }
+
+            // 2. Station Logo
+            if (profile.stationLogo) {
+                updateStationLogoVisibility(profile.stationLogo.enabled, false);
+                if (profile.stationLogo.url) {
+                    selectStationLogo(profile.stationLogo.url, profile.stationLogo.title, profile.stationLogo.isVideo, false);
+                }
+                if (profile.stationLogo.position) {
+                    stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === profile.stationLogo.position));
+                    vfx.setStationLogoPosition(profile.stationLogo.position);
+                }
+                if (profile.stationLogo.scale !== undefined) {
+                    if (sliderStationScale) sliderStationScale.value = String(profile.stationLogo.scale);
+                    if (stationScaleVal) stationScaleVal.textContent = `${profile.stationLogo.scale.toFixed(2)}x`;
+                    vfx.setStationLogoScale(profile.stationLogo.scale);
+                }
+                if (profile.stationLogo.offsetX !== undefined) {
+                    if (sliderStationOffsetX) sliderStationOffsetX.value = String(profile.stationLogo.offsetX);
+                    if (stationOffsetXVal) stationOffsetXVal.textContent = `${profile.stationLogo.offsetX}%`;
+                    vfx.setStationLogoOffsetX(profile.stationLogo.offsetX / 100);
+                }
+                if (profile.stationLogo.offsetY !== undefined) {
+                    if (sliderStationOffsetY) sliderStationOffsetY.value = String(profile.stationLogo.offsetY);
+                    if (stationOffsetYVal) stationOffsetYVal.textContent = `${profile.stationLogo.offsetY}%`;
+                    vfx.setStationLogoOffsetY(profile.stationLogo.offsetY / 100);
+                }
+            }
+
+            // 3. Event Flyer
+            if (profile.flyer) {
+                updateFlyerVisibility(profile.flyer.enabled, false);
+                if (profile.flyer.url) {
+                    selectFlyer(profile.flyer.url, profile.flyer.title, profile.flyer.isVideo, false);
+                }
+                if (profile.flyer.position) {
+                    flyerPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-pos') === profile.flyer.position));
+                    vfx.setFlyerPosition(profile.flyer.position);
+                }
+                if (profile.flyer.scale !== undefined) {
+                    if (sliderFlyerScale) sliderFlyerScale.value = String(profile.flyer.scale);
+                    if (flyerScaleVal) flyerScaleVal.textContent = `${profile.flyer.scale.toFixed(2)}x`;
+                    vfx.setFlyerScale(profile.flyer.scale);
+                }
+                if (profile.flyer.offsetX !== undefined) {
+                    if (sliderFlyerOffsetX) sliderFlyerOffsetX.value = String(profile.flyer.offsetX);
+                    if (flyerOffsetXVal) flyerOffsetXVal.textContent = `${profile.flyer.offsetX}%`;
+                    vfx.setFlyerOffsetX(profile.flyer.offsetX / 100);
+                }
+                if (profile.flyer.offsetY !== undefined) {
+                    if (sliderFlyerOffsetY) sliderFlyerOffsetY.value = String(profile.flyer.offsetY);
+                    if (flyerOffsetYVal) flyerOffsetYVal.textContent = `${profile.flyer.offsetY}%`;
+                    vfx.setFlyerOffsetY(profile.flyer.offsetY / 100);
+                }
+            }
+
+            // 4. Performance Macro Faders
+            if (profile.macro) {
+                if (profile.macro.gain !== undefined && sliderGain) {
+                    sliderGain.value = String(profile.macro.gain);
+                    if (gainVal) gainVal.textContent = `${profile.macro.gain.toFixed(1)}x`;
+                    if (audioProcessor) audioProcessor.setGain(profile.macro.gain);
+                }
+                if (profile.macro.sens !== undefined && sliderSens) {
+                    sliderSens.value = String(profile.macro.sens);
+                    if (sensVal) sensVal.textContent = `${profile.macro.sens.toFixed(1)}x`;
+                    if (audioProcessor) audioProcessor.setBassSensitivity(profile.macro.sens);
+                }
+                if (profile.macro.bloom !== undefined && sliderBloom) {
+                    sliderBloom.value = String(profile.macro.bloom);
+                    if (bloomVal) bloomVal.textContent = `${profile.macro.bloom.toFixed(2)}x`;
+                    vfx.setBloomMultiplier(profile.macro.bloom);
+                }
+            }
+
+            // 5. Lighting (Hue / DMX)
+            if (profile.lighting) {
+                isHueActive = !!profile.lighting.hueSync;
+                if (btnHueToggle) {
+                    btnHueToggle.classList.toggle('active', isHueActive);
+                    btnHueToggle.textContent = isHueActive ? '💡 HUE: ON' : '💡 HUE: OFF';
+                }
+                if (profile.lighting.hueMode && hueModePills) {
+                    hueCurrentMode = profile.lighting.hueMode;
+                    hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === profile.lighting.hueMode));
+                }
+                if (profile.lighting.hueIntensity !== undefined && sliderHueIntensity) {
+                    sliderHueIntensity.value = String(profile.lighting.hueIntensity);
+                    if (hueIntensityVal) hueIntensityVal.textContent = `${profile.lighting.hueIntensity}%`;
+                    hueCurrentIntensity = profile.lighting.hueIntensity / 100;
+                }
+                if (profile.lighting.hueMinBri !== undefined && sliderHueMinBri) {
+                    sliderHueMinBri.value = String(profile.lighting.hueMinBri);
+                    if (hueMinBriVal) hueMinBriVal.textContent = `${profile.lighting.hueMinBri}%`;
+                    hueCurrentMinBri = profile.lighting.hueMinBri / 100;
+                }
+                if (profile.lighting.hueKickStrobe !== undefined) {
+                    isHueKickStrobeActive = !!profile.lighting.hueKickStrobe;
+                    if (btnHueKickStrobe) btnHueKickStrobe.classList.toggle('active', isHueKickStrobeActive);
+                }
+                if (stagelinqClient && stagelinqClient.setHueConfig) {
+                    stagelinqClient.setHueConfig({
+                        enabled: isHueActive,
+                        mode: hueCurrentMode,
+                        intensity: hueCurrentIntensity,
+                        minBrightness: hueCurrentMinBri,
+                        kickStrobe: isHueKickStrobeActive
+                    });
+                }
+            }
+        } catch (err) {
+            console.warn('[SceneProfileManager] Error applying profile:', err);
+        } finally {
+            isApplyingSceneProfile = false;
+        }
+
+        updateMatrixUI();
+    }
+
+    function updateMatrixUI() {
+        if (!matrixCardsContainer) {
+            matrixCardsContainer = document.getElementById('matrix-cards-container');
+        }
+        if (!matrixCardsContainer) return;
+
+        const currentActiveFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0;
+        let totalCustomizedCount = 0;
+
+        for (let i = 0; i < TOTAL_FX; i++) {
+            if (SceneProfileManager.isCustomized(i)) {
+                totalCustomizedCount++;
+            }
+        }
+
+        if (matrixCustomCount) {
+            matrixCustomCount.textContent = String(totalCustomizedCount);
+        }
+        if (matrixStatsText) {
+            matrixStatsText.textContent = `${TOTAL_FX} Scenes • ${totalCustomizedCount} Customized • Auto-Recall Active`;
+        }
+
+        const filteredScenes = SCENE_METADATA.filter(scene => {
+            if (matrixSelectedCategory !== 'all' && scene.category !== matrixSelectedCategory) {
+                return false;
+            }
+
+            const diffInfo = SceneProfileManager.getDiff(scene.id);
+            if (matrixShowCustomizedOnly && !diffInfo.isCustom) {
+                return false;
+            }
+
+            if (matrixSearchQuery) {
+                const q = matrixSearchQuery;
+                const matchName = scene.name.toLowerCase().includes(q);
+                const matchHotkey = scene.hotkey.toLowerCase().includes(q);
+                const matchCat = scene.categoryLabel.toLowerCase().includes(q);
+                const matchSummary = scene.summary.toLowerCase().includes(q);
+                const matchDesc = scene.description.toLowerCase().includes(q);
+                const matchTags = scene.reactiveTags.some(t => {
+                    const tagDef = REACTIVE_TAG_DEFINITIONS[t];
+                    return (tagDef && tagDef.label.toLowerCase().includes(q)) || t.toLowerCase().includes(q);
+                });
+                if (!matchName && !matchHotkey && !matchCat && !matchSummary && !matchDesc && !matchTags) {
+                    return false;
+                }
+            }
+
+            return true;
+        });
+
+        if (filteredScenes.length === 0) {
+            matrixCardsContainer.innerHTML = `
+                <div style="text-align:center; padding:40px 20px; color:rgba(255,255,255,0.4);">
+                    <div style="font-size:28px; margin-bottom:8px;">🔍</div>
+                    <div style="font-size:13px; font-weight:700;">No matching scenes found</div>
+                    <div style="font-size:11px; margin-top:4px;">Try clearing search keywords or selecting "All" category.</div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+        filteredScenes.forEach(scene => {
+            const isActive = scene.id === currentActiveFx;
+            const diffInfo = SceneProfileManager.getDiff(scene.id);
+            const isCustom = diffInfo.isCustom;
+            const profile = SceneProfileManager.getProfile(scene.id);
+            const isExpanded = expandedParamsSceneId === scene.id;
+
+            let tagsHtml = '';
+            scene.reactiveTags.forEach(tagId => {
+                const tagDef = REACTIVE_TAG_DEFINITIONS[tagId];
+                if (tagDef) {
+                    tagsHtml += `<span class="matrix-tag-pill" style="color:${tagDef.color}; background:${tagDef.bg}; border:1px solid ${tagDef.border};">${tagDef.icon} ${escapeHtml(tagDef.label)}</span>`;
+                }
+            });
+
+            const djPowerDiff = profile.djLogo.enabled !== true;
+            const djMediaDiff = profile.djLogo.title !== 'jkmclaren Shock';
+            const djPosDiff = profile.djLogo.position !== 'center';
+            const djSpinDiff = profile.djLogo.spin !== 'off';
+            const djSpeedDiff = Math.abs(profile.djLogo.spinSpeed - 1.0) > 0.05;
+            const djScaleDiff = Math.abs(profile.djLogo.scale - 1.0) > 0.04;
+            const djNudgeDiff = profile.djLogo.offsetX !== 0 || profile.djLogo.offsetY !== 0;
+
+            const stPowerDiff = profile.stationLogo.enabled !== false;
+            const stPosDiff = profile.stationLogo.position !== 'top-right';
+            const flPowerDiff = profile.flyer.enabled !== false;
+            const flPosDiff = profile.flyer.position !== 'bottom-right';
+
+            const macroGainDiff = Math.abs(profile.macro.gain - 1.0) > 0.05;
+            const macroSensDiff = Math.abs(profile.macro.sens - 1.0) > 0.05;
+            const macroBloomDiff = Math.abs(profile.macro.bloom - 0.35) > 0.04;
+
+            const hueSyncDiff = profile.lighting.hueSync !== false;
+            const hueModeDiff = profile.lighting.hueMode !== 'scene_sync';
+
+            html += `
+                <div class="matrix-scene-card ${isActive ? 'active' : ''} ${isCustom ? 'customized' : ''}" data-matrix-scene="${scene.id}">
+                    <div class="matrix-scene-top">
+                        <div class="matrix-scene-identity">
+                            <span class="matrix-hotkey">${scene.hotkey}</span>
+                            <div>
+                                <div class="matrix-scene-title" style="cursor:pointer;" data-switch-scene="${scene.id}">
+                                    <span>${scene.icon}</span>
+                                    <span>${escapeHtml(scene.name)}</span>
+                                </div>
+                                <div class="matrix-scene-cat">${escapeHtml(scene.categoryLabel)} • FX #${scene.id + 1}</div>
+                            </div>
+                        </div>
+
+                        <div class="matrix-scene-actions">
+                            ${isActive ? '<span class="matrix-live-badge">🟢 LIVE SCENE</span>' : ''}
+                            <span class="matrix-status-pill ${isCustom ? 'customized' : 'default'}">
+                                ${isCustom ? `● CUSTOMIZED (${diffInfo.diffCount})` : '○ DEFAULT'}
+                            </span>
+                            ${isCustom ? `<button class="matrix-btn-reset-scene" data-reset-scene="${scene.id}" style="background:rgba(255,170,0,0.15); border:1px solid rgba(255,170,0,0.5); color:#ffaa00; font-size:10px; font-weight:800; padding:3px 9px; border-radius:4px; cursor:pointer;" title="Reset this scene back to factory defaults">↺ Reset</button>` : ''}
+                            <button class="matrix-btn-switch-scene" data-switch-scene="${scene.id}" style="background:${isActive ? 'rgba(0,255,136,0.2)' : 'rgba(0,255,204,0.12)'}; border:1px solid ${isActive ? '#00ff88' : 'rgba(0,255,204,0.4)'}; color:${isActive ? '#00ff88' : '#00ffcc'}; font-size:10px; font-weight:800; padding:3px 10px; border-radius:4px; cursor:pointer;" title="Switch live stage visuals to this scene">
+                                ${isActive ? '✓ Active' : 'Switch'}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="matrix-tags-row">
+                        ${tagsHtml}
+                    </div>
+
+                    <div class="matrix-scene-desc">${escapeHtml(scene.description)}</div>
+
+                    <div class="matrix-params-panel">
+                        <div class="matrix-params-header" data-toggle-params="${scene.id}">
+                            <div class="matrix-params-header-title">
+                                <span>⚙️ Scene Parameters Memory</span>
+                                ${isCustom ? `<span style="color:#ffaa00; font-size:9.5px; font-weight:800; margin-left:6px;">(${diffInfo.diffCount} modifications saved)</span>` : '<span style="color:rgba(255,255,255,0.4); font-size:9.5px; font-weight:600; margin-left:6px;">(Factory Baseline)</span>'}
+                            </div>
+                            <span style="font-size:10px; color:rgba(255,255,255,0.5); cursor:pointer;">${isExpanded ? '▲ Collapse' : '▼ View Details'}</span>
+                        </div>
+
+                        <div class="matrix-params-content" style="display:${isExpanded ? 'grid' : 'none'};">
+                            <!-- Col 1: DJ Logo -->
+                            <div>
+                                <div class="matrix-param-col-title">🎧 DJ Logo Layer</div>
+                                <div class="matrix-param-item ${djPowerDiff ? 'diff' : ''}">
+                                    <span>Power:</span>
+                                    <span>${profile.djLogo.enabled ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <div class="matrix-param-item ${djMediaDiff ? 'diff' : ''}">
+                                    <span>Media:</span>
+                                    <span style="max-width:110px; text-overflow:ellipsis; overflow:hidden; white-space:nowrap;" title="${escapeHtml(profile.djLogo.title)}">${escapeHtml(profile.djLogo.title)}</span>
+                                </div>
+                                <div class="matrix-param-item ${djPosDiff ? 'diff' : ''}">
+                                    <span>Position:</span>
+                                    <span>${escapeHtml(profile.djLogo.position.toUpperCase())}</span>
+                                </div>
+                                <div class="matrix-param-item ${djSpinDiff || djSpeedDiff ? 'diff' : ''}">
+                                    <span>Spin:</span>
+                                    <span>${escapeHtml(profile.djLogo.spin.toUpperCase())} (${profile.djLogo.spinSpeed.toFixed(1)}x)</span>
+                                </div>
+                                <div class="matrix-param-item ${djScaleDiff ? 'diff' : ''}">
+                                    <span>Scale:</span>
+                                    <span>${profile.djLogo.scale.toFixed(2)}x</span>
+                                </div>
+                                <div class="matrix-param-item ${djNudgeDiff ? 'diff' : ''}">
+                                    <span>Nudge Offsets:</span>
+                                    <span>X:${profile.djLogo.offsetX}% Y:${profile.djLogo.offsetY}%</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 2: Station & Event Flyer -->
+                            <div>
+                                <div class="matrix-param-col-title">📻 Station &amp; Flyer</div>
+                                <div class="matrix-param-item ${stPowerDiff ? 'diff' : ''}">
+                                    <span>Station Power:</span>
+                                    <span>${profile.stationLogo.enabled ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <div class="matrix-param-item ${stPosDiff ? 'diff' : ''}">
+                                    <span>Station Pos:</span>
+                                    <span>${escapeHtml(profile.stationLogo.position.toUpperCase())}</span>
+                                </div>
+                                <div class="matrix-param-item">
+                                    <span>Station Scale:</span>
+                                    <span>${profile.stationLogo.scale.toFixed(2)}x</span>
+                                </div>
+                                <div class="matrix-param-item ${flPowerDiff ? 'diff' : ''}">
+                                    <span>Flyer Power:</span>
+                                    <span>${profile.flyer.enabled ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <div class="matrix-param-item ${flPosDiff ? 'diff' : ''}">
+                                    <span>Flyer Pos:</span>
+                                    <span>${escapeHtml(profile.flyer.position.toUpperCase())}</span>
+                                </div>
+                                <div class="matrix-param-item">
+                                    <span>Flyer Scale:</span>
+                                    <span>${profile.flyer.scale.toFixed(2)}x</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 3: Audio & Performance Macros -->
+                            <div>
+                                <div class="matrix-param-col-title">🎛️ Performance Macros</div>
+                                <div class="matrix-param-item ${macroGainDiff ? 'diff' : ''}">
+                                    <span>Bass Gain:</span>
+                                    <span>${profile.macro.gain.toFixed(1)}x</span>
+                                </div>
+                                <div class="matrix-param-item ${macroSensDiff ? 'diff' : ''}">
+                                    <span>Sensitivity:</span>
+                                    <span>${profile.macro.sens.toFixed(1)}x</span>
+                                </div>
+                                <div class="matrix-param-item ${macroBloomDiff ? 'diff' : ''}">
+                                    <span>Bloom Glow:</span>
+                                    <span>${profile.macro.bloom.toFixed(2)}x</span>
+                                </div>
+                            </div>
+
+                            <!-- Col 4: Lighting (Hue & DMX) -->
+                            <div>
+                                <div class="matrix-param-col-title">💡 Lighting &amp; DMX</div>
+                                <div class="matrix-param-item ${hueSyncDiff ? 'diff' : ''}">
+                                    <span>Hue Sync:</span>
+                                    <span>${profile.lighting.hueSync ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <div class="matrix-param-item ${hueModeDiff ? 'diff' : ''}">
+                                    <span>Hue Mode:</span>
+                                    <span>${escapeHtml(profile.lighting.hueMode)}</span>
+                                </div>
+                                <div class="matrix-param-item">
+                                    <span>Intensity:</span>
+                                    <span>${profile.lighting.hueIntensity}%</span>
+                                </div>
+                                <div class="matrix-param-item">
+                                    <span>Kick Strobe:</span>
+                                    <span>${profile.lighting.hueKickStrobe ? 'ON' : 'OFF'}</span>
+                                </div>
+                                <div class="matrix-param-item">
+                                    <span>DMX Profile:</span>
+                                    <span>${escapeHtml(profile.lighting.dmxProfile)} (U${profile.lighting.dmxUniverse})</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        matrixCardsContainer.innerHTML = html;
+
+        const resetBtns = matrixCardsContainer.querySelectorAll('.matrix-btn-reset-scene');
+        resetBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sceneId = parseInt(btn.getAttribute('data-reset-scene'), 10);
+                if (!isNaN(sceneId)) {
+                    SceneProfileManager.resetScene(sceneId);
+                    if (sceneId === vfx.getCurrentFX()) {
+                        applySceneProfile(sceneId);
+                    }
+                    updateMatrixUI();
+                    const sceneName = SCENE_METADATA[sceneId]?.name || `Scene ${sceneId + 1}`;
+                    showToast(`↺ Reset ${sceneName} to default parameters`);
+                }
+            });
+        });
+
+        const switchBtns = matrixCardsContainer.querySelectorAll('[data-switch-scene]');
+        switchBtns.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const sceneId = parseInt(btn.getAttribute('data-switch-scene'), 10);
+                if (!isNaN(sceneId)) {
+                    selectFX(sceneId);
+                    updateMatrixUI();
+                }
+            });
+        });
+
+        const toggleParamBtns = matrixCardsContainer.querySelectorAll('[data-toggle-params]');
+        toggleParamBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const sceneId = parseInt(btn.getAttribute('data-toggle-params'), 10);
+                if (expandedParamsSceneId === sceneId) {
+                    expandedParamsSceneId = null;
+                } else {
+                    expandedParamsSceneId = sceneId;
+                }
+                updateMatrixUI();
+            });
         });
     }
 
@@ -4472,7 +5132,7 @@ async function init() {
     let currentBarInPhrase = 3;
     let currentBeatInBar = 1;
     let lastBeatTimestamp = performance.now();
-    let isHardwareDeckStreaming = false;
+    isHardwareDeckStreaming = false;
     let lastHardwarePacketTimestamp = 0;
     let activePhraseDisplayMode = '3000';
     try {
@@ -5179,6 +5839,7 @@ async function init() {
                 showToast('⚪ Philips Hue: Disabled & Lights Turned OFF');
             }
             broadcastSync({ type: 'set_hue_enabled', enabled: isHueActive });
+            captureCurrentSceneParam('lighting', 'hueSync', isHueActive);
         });
     }
 
@@ -5194,6 +5855,7 @@ async function init() {
                 showToast('🌑 Philips Hue: Room Lights Turned OFF');
             }
             broadcastSync({ type: 'set_hue_enabled', enabled: isHueActive });
+            captureCurrentSceneParam('lighting', 'hueSync', isHueActive);
         });
     }
 
@@ -5250,6 +5912,7 @@ async function init() {
             stagelinqClient.setHueConfig({ mode });
             showToast(`💡 Hue Mode: ${pill.textContent}`);
             broadcastSync({ type: 'set_hue_mode', mode });
+            captureCurrentSceneParam('lighting', 'hueMode', mode);
         });
     });
 
@@ -5260,6 +5923,7 @@ async function init() {
             if (hueIntensityVal) hueIntensityVal.textContent = `${e.target.value}%`;
             stagelinqClient.setHueConfig({ intensity: val });
             broadcastSync({ type: 'set_hue_intensity', val });
+            captureCurrentSceneParam('lighting', 'hueIntensity', parseInt(e.target.value, 10));
         });
     }
 
@@ -5270,6 +5934,7 @@ async function init() {
             if (hueMinBriVal) hueMinBriVal.textContent = `${e.target.value}%`;
             stagelinqClient.setHueConfig({ minBrightness: val });
             broadcastSync({ type: 'set_hue_min_bri', val });
+            captureCurrentSceneParam('lighting', 'hueMinBri', parseInt(e.target.value, 10));
         });
     }
 
@@ -5297,6 +5962,7 @@ async function init() {
             stagelinqClient.setHueConfig({ kickStrobeEnabled: isHueKickStrobeActive });
             showToast(isHueKickStrobeActive ? '⚡ Bass Kick White Strobe: ON' : '⚪ Bass Kick White Strobe: OFF');
             broadcastSync({ type: 'set_hue_kick_strobe', active: isHueKickStrobeActive });
+            captureCurrentSceneParam('lighting', 'hueKickStrobe', isHueKickStrobeActive);
         });
     }
 
@@ -5418,6 +6084,24 @@ async function init() {
             } else if (obsModalBackdrop) {
                 updateObsUrlBox();
                 obsModalBackdrop.classList.toggle('active');
+            }
+        }
+        // [M] to toggle Scene Reactive Matrix & Memory Profiles modal
+        else if (e.key === 'm' || e.key === 'M') {
+            const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+            if (tag !== 'input' && tag !== 'textarea') {
+                if (typeof toggleSceneMatrixModal === 'function') {
+                    toggleSceneMatrixModal();
+                }
+            }
+        }
+        // [Escape] to close open modals
+        else if (e.key === 'Escape') {
+            if (typeof closeSceneMatrixModal === 'function') {
+                closeSceneMatrixModal();
+            }
+            if (obsModalBackdrop && obsModalBackdrop.classList.contains('active')) {
+                obsModalBackdrop.classList.remove('active');
             }
         }
     });
