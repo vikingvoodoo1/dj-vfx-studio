@@ -268,7 +268,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '⏱️',
         reactiveTags: ['direct_deck'],
-        requirements: { audio: false, deck: true, internet: true, strictDeck: false },
+        requirements: { audio: false, deck: false, optionalDeck: true, internet: true, strictDeck: false },
         summary: 'Precision studio clock & live track bar counters',
         description: 'Displays precision local time & UTC clock, integrated with direct StageLinQ track time elapsed, time remaining, current deck BPM, and breakdown bar countdowns.'
     },

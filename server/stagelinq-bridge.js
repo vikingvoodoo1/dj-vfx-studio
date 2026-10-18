@@ -174,6 +174,7 @@ nowPlayingService.init();
 
 import fs from 'fs';
 import path from 'path';
+import { execSync } from 'child_process';
 import { recognizeAudio } from './shazam-service.js';
 import { searchAlbumArt } from './artwork-service.js';
 
@@ -324,6 +325,74 @@ const server = http.createServer((req, res) => {
             dj_logos: Array.from(djMap.values()),
             station_logos: Array.from(stationMap.values()),
             flyers: Array.from(flyerMap.values())
+        }));
+        return;
+    }
+
+    // Handle Live macOS Network Routing & Telemetry Endpoint
+    if (reqUrl.pathname === '/api/network-status') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+
+        let isWired = false;
+        let activeInterface = 'en13';
+        let hardwarePort = 'Wired Ethernet';
+        let activeIp = '';
+        let gateway = '';
+        let wifiSsid = '';
+        let wifiIp = '';
+
+        try {
+            const routeOut = execSync('route -n get default 2>/dev/null || true').toString();
+            const ifaceMatch = routeOut.match(/interface:\s*([^\s]+)/);
+            const gwMatch = routeOut.match(/gateway:\s*([^\s]+)/);
+            if (ifaceMatch) activeInterface = ifaceMatch[1].trim();
+            if (gwMatch) gateway = gwMatch[1].trim();
+
+            const portsOut = execSync('networksetup -listallhardwareports 2>/dev/null || true').toString();
+            const portBlocks = portsOut.split('Hardware Port: ');
+            for (const block of portBlocks) {
+                if (block.includes(`Device: ${activeInterface}`)) {
+                    hardwarePort = block.split('\n')[0].trim();
+                    break;
+                }
+            }
+
+            const lowerPort = hardwarePort.toLowerCase();
+            isWired = activeInterface.startsWith('en') && !lowerPort.includes('wi-fi') && !lowerPort.includes('wireless') && !lowerPort.includes('bluetooth');
+            if (activeInterface) {
+                activeIp = execSync(`ipconfig getifaddr ${activeInterface} 2>/dev/null || true`).toString().trim();
+            }
+
+            // Wi-Fi SSID and IP from en0
+            const wifiSummary = execSync('ipconfig getsummary en0 2>/dev/null || true').toString();
+            const ssidMatch = wifiSummary.match(/^\s*SSID\s*:\s*(.+)$/m);
+            if (ssidMatch) wifiSsid = ssidMatch[1].trim();
+            wifiIp = execSync('ipconfig getifaddr en0 2>/dev/null || true').toString().trim();
+        } catch (e) {
+            console.warn('[Network Telemetry Error]', e.message);
+        }
+
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify({
+            success: true,
+            isWired,
+            activeInterface,
+            hardwarePort,
+            activeIp,
+            gateway,
+            wifiSsid,
+            wifiIp
         }));
         return;
     }
