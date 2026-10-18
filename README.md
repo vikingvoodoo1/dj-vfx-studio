@@ -214,7 +214,7 @@ npm run preview
 | `Space` | Manual Beat Strobe / Xenon Flash Burst |
 | `0` – `9`, `-`, `=`, `Q` – `P`, `[`, `]`, `V` | Instant Scene Switch (All 23 Presets) |
 | `V` | Toggle Scene 22: Cyber Cinema Video Playback |
-| `Alt + 1` – `Alt + 6` | Switch Master Consoles (Perform, FX Bank, Branding, Now Playing, Setup, About) |
+| `Alt + 1` – `Alt + 7` | Switch Master Consoles (Perform, FX Bank, Branding, Video, Now Playing, Setup, About) |
 | `Alt + A` | Toggle Show All Panes (Multi-Pane Scroll View) |
 | `Arrow Left` / `Arrow Right` | Previous / Next Visual Effect Preset |
 | `A` | Toggle Auto-VJ Mode |
@@ -247,11 +247,12 @@ npm run preview
 
 ---
 
-### 🎬 Scene 22: Cyber Cinema 3D & 10-Bank Video Loops Manager
+### 🎬 Dedicated Video Console (`Alt + 7`) & Scene 22: Cyber Cinema 3D
+- **Dedicated Master Console Tab**: First-class navigation tab separate from Branding, dedicated purely to video loops and playback management.
+- **10 Clean Video Banks (User-Driven)**: 10 dedicated video banks that start completely clean without any hardcoded studio demo assets. Users connect their own video folders via the HTML5 folder picker.
+- **Top Quick Bar**: Bank selector chips (`B1` to `B10`), folder loader, active clip display, and one-click `[▶ GO LIVE (FX 22)]` switcher.
 - **3D Curved Cinema Screen**: Renders local video files onto a curved WebGL cinema display with ambient backglow, specular floor reflections, and beat-reactive spotlights.
 - **Dual-Channel A/B Seamless Video Engine**: Real-time crossfade, glitch wipe, zoom dissolve, and strobe cut transitions with adjustable duration (0.2s – 3.0s).
-- **10 Saved Folder Locations / Banks**: Instant switching between 10 saved directories with persistent browser memory.
-- **HTML5 Directory Scanner**: Scans local video folders (`.mp4`, `.webm`, `.mov`) with instant object URL streaming.
 - **Interactive VJ Grid**: 16:9 hover-to-play preview cards, duration badges, direct `[▶ CUE]` triggering, and individual `[✓ Mix]` playlist inclusion checkboxes.
 - **Playback & Progression Controls**: Sequential vs Shuffle order, Playlist vs Single loop, variable speed (0.5x – 2.0x or dynamic BPM Sync), and progression triggers (Natural, 15s, 30s, 60s, 16 beats, 32 beats).
 

@@ -15439,7 +15439,7 @@ export function createVFXScene(container) {
     videoChannelA.muted = true;
     videoChannelA.playsInline = true;
     videoChannelA.autoplay = true;
-    videoChannelA.src = '/images/videos/01_jkmclaren_shock.mp4';
+    videoChannelA.src = '';
 
     const videoChannelB = document.createElement('video');
     videoChannelB.crossOrigin = 'anonymous';
@@ -15447,7 +15447,7 @@ export function createVFXScene(container) {
     videoChannelB.muted = true;
     videoChannelB.playsInline = true;
     videoChannelB.autoplay = true;
-    videoChannelB.src = '/images/videos/02_vintage_filament.webm';
+    videoChannelB.src = '';
 
     const videoTexA = new THREE.VideoTexture(videoChannelA);
     videoTexA.minFilter = THREE.LinearFilter;
@@ -15464,8 +15464,8 @@ export function createVFXScene(container) {
     let videoTransitionStartTime = 0.0;
     let videoTransitionDuration = 1.0;
     let videoTransitionType = 0; // 0: Crossfade, 1: Glitch, 2: Zoom, 3: Strobe, 4: Cut
-    let videoCurrentTitle = '01 jkmclaren shock';
-    let videoCurrentUrl = '/images/videos/01_jkmclaren_shock.mp4';
+    let videoCurrentTitle = 'No Video Selected';
+    let videoCurrentUrl = '';
     let videoSpeedSetting = 1.0;
     let videoMutedSetting = true;
     let videoLoopSetting = 'playlist'; // 'single' or 'playlist'
@@ -15542,6 +15542,14 @@ export function createVFXScene(container) {
                 } else {
                     // 4: Instant Cut
                     outCol = uMix < 0.5 ? colA : colB;
+                }
+
+                // Standby cyber pattern when no video is loaded
+                if (outCol.a < 0.05 || (colA.r == 0.0 && colA.g == 0.0 && colA.b == 0.0 && colA.a == 0.0)) {
+                    vec2 gridUv = fract(vUv * vec2(32.0, 18.0));
+                    float grid = step(0.96, gridUv.x) + step(0.96, gridUv.y);
+                    vec3 cyberBg = mix(vec3(0.015, 0.02, 0.04), vec3(0.0, 0.9, 0.7), grid * 0.35 + sin(uTime * 2.0) * 0.05);
+                    outCol = vec4(cyberBg, 1.0);
                 }
 
                 // Audio reactive edge pulse

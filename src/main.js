@@ -854,19 +854,8 @@ async function init() {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
-        if (tabId === 'video') {
-            switchLogosSubtab('video');
-            tabId = 'branding';
-        }
-
         activityTabs.forEach(tab => {
-            const tId = tab.getAttribute('data-tab');
-            if (tId === 'video') {
-                const isVideoSubtab = (tabId === 'branding') && (document.getElementById('subtab-content-video')?.style.display === 'block');
-                tab.classList.toggle('active', isVideoSubtab);
-            } else {
-                tab.classList.toggle('active', tId === tabId);
-            }
+            tab.classList.toggle('active', tab.getAttribute('data-tab') === tabId);
         });
 
         tabPanes.forEach(pane => {
@@ -2754,12 +2743,11 @@ async function init() {
     if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
     if (btnToggleDjLogoTop) btnToggleDjLogoTop.addEventListener('click', toggleLogo);
 
-    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo vs Event Flyer vs Video Loops)
+    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo vs Event Flyer)
     function switchLogosSubtab(subtabId) {
         if (subtabBtnDj) subtabBtnDj.classList.toggle('active', subtabId === 'dj');
         if (subtabBtnStation) subtabBtnStation.classList.toggle('active', subtabId === 'station');
         if (subtabBtnFlyer) subtabBtnFlyer.classList.toggle('active', subtabId === 'flyer');
-        if (subtabBtnVideo) subtabBtnVideo.classList.toggle('active', subtabId === 'video');
         if (subtabContentDj) {
             subtabContentDj.classList.toggle('active', subtabId === 'dj');
             subtabContentDj.style.display = subtabId === 'dj' ? 'block' : 'none';
@@ -2772,17 +2760,12 @@ async function init() {
             subtabContentFlyer.classList.toggle('active', subtabId === 'flyer');
             subtabContentFlyer.style.display = subtabId === 'flyer' ? 'block' : 'none';
         }
-        if (subtabContentVideo) {
-            subtabContentVideo.classList.toggle('active', subtabId === 'video');
-            subtabContentVideo.style.display = subtabId === 'video' ? 'block' : 'none';
-        }
         syncMediaFolders().catch(() => {});
     }
 
     if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
     if (subtabBtnStation) subtabBtnStation.addEventListener('click', () => switchLogosSubtab('station'));
     if (subtabBtnFlyer) subtabBtnFlyer.addEventListener('click', () => switchLogosSubtab('flyer'));
-    if (subtabBtnVideo) subtabBtnVideo.addEventListener('click', () => switchLogosSubtab('video'));
 
     // DJ Media Selector & Live Preview Monitor
     function selectDjLogo(url, title, isVideo = true, broadcast = true) {
@@ -4091,7 +4074,6 @@ async function init() {
         const btnExecScanPath = document.getElementById('btn-exec-scan-path');
         const videoSetupFlowCard = document.getElementById('video-setup-flow-card');
         const btnSetupChooseFolder = document.getElementById('btn-setup-choose-folder');
-        const btnSetupLoadDemo = document.getElementById('btn-setup-load-demo');
         const videoLibraryGridBox = document.getElementById('video-library-grid-box');
         const videoGridContainer = document.getElementById('video-grid-container');
         const videoGridCountLabel = document.getElementById('video-grid-count-label');
@@ -4121,41 +4103,15 @@ async function init() {
         const videoTransDurVal = document.getElementById('video-trans-dur-val');
         const btnToggleVideoSceneTop = document.getElementById('btn-toggle-video-scene-top');
 
-        const STORAGE_KEY = 'dj_video_banks_v1';
-        const SETTINGS_KEY = 'dj_video_settings_v1';
+        const STORAGE_KEY = 'dj_video_banks_v2';
+        const SETTINGS_KEY = 'dj_video_settings_v2';
 
-        const DEFAULT_BANKS = [
-            {
-                id: 0,
-                name: 'Bank 1: ✨ Demo VJ Pack',
-                folderPath: '/images/videos',
-                videos: [
-                    {
-                        name: '01_jkmclaren_shock.mp4',
-                        title: '01 JK McLaren Shock',
-                        url: '/images/videos/01_jkmclaren_shock.mp4',
-                        duration: 8.5,
-                        included: true
-                    },
-                    {
-                        name: 'jkmclaren_shock.mp4',
-                        title: 'JK McLaren Shock Alternate',
-                        url: '/images/logo/jkmclaren_shock.mp4',
-                        duration: 8.5,
-                        included: true
-                    }
-                ]
-            },
-            { id: 1, name: 'Bank 2: Cyber Visuals', folderPath: '', videos: [] },
-            { id: 2, name: 'Bank 3: Retro Synthwave', folderPath: '', videos: [] },
-            { id: 3, name: 'Bank 4: Laser Loops', folderPath: '', videos: [] },
-            { id: 4, name: 'Bank 5: Space Nebulas', folderPath: '', videos: [] },
-            { id: 5, name: 'Bank 6: Festival Drops', folderPath: '', videos: [] },
-            { id: 6, name: 'Bank 7: Dark Techno', folderPath: '', videos: [] },
-            { id: 7, name: 'Bank 8: Liquid Visuals', folderPath: '', videos: [] },
-            { id: 8, name: 'Bank 9: Abstract 3D', folderPath: '', videos: [] },
-            { id: 9, name: 'Bank 10: Promo & Commercials', folderPath: '', videos: [] }
-        ];
+        const DEFAULT_BANKS = Array.from({ length: 10 }, (_, i) => ({
+            id: i,
+            name: `Bank ${i + 1}: (Empty)`,
+            folderPath: '',
+            videos: []
+        }));
 
         let banks = DEFAULT_BANKS;
         try {
@@ -4164,11 +4120,15 @@ async function init() {
                 const parsed = JSON.parse(saved);
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     for (let i = 0; i < 10; i++) {
-                        if (!parsed[i]) {
-                            parsed[i] = { id: i, name: `Bank ${i + 1}: Folder ${i + 1}`, folderPath: '', videos: [] };
-                        }
+                        const item = parsed[i];
+                        const cleanVids = (item?.videos || []).filter(v => v.url && !v.url.startsWith('/images/'));
+                        banks[i] = {
+                            id: i,
+                            name: (item && cleanVids.length > 0) ? (item.name || `Bank ${i + 1}`) : `Bank ${i + 1}: (Empty)`,
+                            folderPath: (cleanVids.length > 0) ? (item?.folderPath || '') : '',
+                            videos: cleanVids
+                        };
                     }
-                    banks = parsed;
                 }
             }
         } catch (e) {}
@@ -4282,6 +4242,11 @@ async function init() {
             if (vids.length === 0) {
                 if (videoSetupFlowCard) videoSetupFlowCard.style.display = 'block';
                 if (videoLibraryGridBox) videoLibraryGridBox.style.display = 'none';
+                if (videoActiveTitle) videoActiveTitle.textContent = 'No Video Selected - Open Folder';
+                if (videoActivePreviewVid) videoActivePreviewVid.src = '';
+                const videoQuickTitle = document.getElementById('video-quick-title');
+                if (videoQuickTitle) videoQuickTitle.textContent = 'No Videos - Open Bank';
+                syncBadges();
                 return;
             } else {
                 if (videoSetupFlowCard) videoSetupFlowCard.style.display = 'none';
@@ -4492,6 +4457,21 @@ async function init() {
                 videoScenePowerStatusText.textContent = isOnAir ? 'ACTIVE ON' : 'OFF';
             }
 
+            const videoConsoleStatusBadge = document.getElementById('video-console-status-badge');
+            if (videoConsoleStatusBadge) {
+                videoConsoleStatusBadge.textContent = isOnAir ? 'FX 22: ON AIR' : 'FX 22: STANDBY';
+                videoConsoleStatusBadge.style.color = isOnAir ? '#00ff88' : '#00e5ff';
+                videoConsoleStatusBadge.style.borderColor = isOnAir ? 'rgba(0,255,136,0.5)' : 'rgba(0,229,255,0.3)';
+            }
+
+            const btnVideoGoLiveTop = document.getElementById('btn-video-go-live-top');
+            if (btnVideoGoLiveTop) {
+                btnVideoGoLiveTop.textContent = isOnAir ? '● VIDEO ON AIR' : '▶ GO LIVE [FX 22]';
+                btnVideoGoLiveTop.style.color = isOnAir ? '#00ff88' : '#00e5ff';
+                btnVideoGoLiveTop.style.borderColor = isOnAir ? 'rgba(0,255,136,0.6)' : 'rgba(0,229,255,0.4)';
+                btnVideoGoLiveTop.style.background = isOnAir ? 'rgba(0,255,136,0.2)' : 'rgba(0,229,255,0.12)';
+            }
+
             const btnQuickCueVideo = document.getElementById('btn-quick-cue-video');
             if (btnQuickCueVideo) {
                 btnQuickCueVideo.textContent = isOnAir ? '● ON AIR' : '▶ CUE NOW';
@@ -4508,11 +4488,16 @@ async function init() {
                 selectFX(22);
             });
         }
+        const btnVideoGoLiveTop = document.getElementById('btn-video-go-live-top');
+        if (btnVideoGoLiveTop) {
+            btnVideoGoLiveTop.addEventListener('click', () => {
+                selectFX(22);
+            });
+        }
         const btnOpenVideoManager = document.getElementById('btn-open-video-manager');
         if (btnOpenVideoManager) {
             btnOpenVideoManager.addEventListener('click', () => {
-                switchTab('branding');
-                switchLogosSubtab('video');
+                switchTab('video');
             });
         }
 
@@ -4566,36 +4551,6 @@ async function init() {
             });
         }
 
-        if (btnSetupLoadDemo) {
-            btnSetupLoadDemo.addEventListener('click', () => {
-                banks[activeBankIndex] = {
-                    id: activeBankIndex,
-                    name: `Bank ${activeBankIndex + 1}: ✨ Demo VJ Pack`,
-                    folderPath: '/images/videos',
-                    videos: [
-                        {
-                            name: '01_jkmclaren_shock.mp4',
-                            title: '01 JK McLaren Shock',
-                            url: '/images/videos/01_jkmclaren_shock.mp4',
-                            duration: 8.5,
-                            included: true
-                        },
-                        {
-                            name: 'jkmclaren_shock.mp4',
-                            title: 'JK McLaren Shock Alternate',
-                            url: '/images/logo/jkmclaren_shock.mp4',
-                            duration: 8.5,
-                            included: true
-                        }
-                    ]
-                };
-                saveBanks();
-                renderBankSelector();
-                renderVideoGrid();
-                showToast(`✨ Preloaded Demo VJ Pack into Bank ${activeBankIndex + 1}!`);
-                playVideoItem(0, false);
-            });
-        }
 
         if (btnScanMacPath && videoPathInputBar) {
             btnScanMacPath.addEventListener('click', () => {

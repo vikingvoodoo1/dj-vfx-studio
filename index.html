@@ -5844,10 +5844,6 @@
                         <span class="tab-led"></span>
                         <span>🖼️ EVENT FLYER</span>
                     </button>
-                    <button class="logos-nav-tab" id="subtab-btn-video" data-subtab="video" title="Switch to Video Loops & Cinema Playback Layer">
-                        <span class="tab-led"></span>
-                        <span>🎬 VIDEO LOOPS</span>
-                    </button>
                 </div>
 
                 <!-- SUB-SECTION 1: DJ LOGO CONTROLS -->
@@ -6539,172 +6535,181 @@
                         </label>
                     </div>
                 </div>
+            </div>
 
-                <!-- SUB-SECTION 4: VIDEO LOOPS & 3D CINEMA PLAYBACK CONTROLS -->
-                <div id="subtab-content-video" class="subtab-content" style="display:none;">
-                    <!-- Active Video Monitor Card -->
-                    <div class="media-preview-card" style="padding:10px 12px; margin-bottom:10px;">
-                        <div class="media-preview-thumb-box" style="width:72px; height:45px; min-width:72px; background:#000; border-radius:4px; overflow:hidden;">
-                            <video id="video-active-preview-vid" src="/images/videos/01_jkmclaren_shock.mp4" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+            <!-- ========================================================================= -->
+            <!-- PANE: VIDEO LOOPS & 10-BANK CYBER CINEMA PLAYBACK (FX 22 ENGINE)          -->
+            <!-- ========================================================================= -->
+            <div class="ide-tab-pane" id="pane-video">
+                <div class="pane-section-title">
+                    <span>🎬 Video Loops & Library Console</span>
+                    <div style="display:flex; gap:5px; align-items:center;">
+                        <span id="video-console-status-badge" class="hud-badge" style="color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22</span>
+                        <button class="btn-micro" id="btn-video-go-live-top" style="font-size:8px; padding:2px 6px; background:rgba(0,255,136,0.15); border:1px solid rgba(0,255,136,0.4); color:#00ff88; border-radius:3px; cursor:pointer;" title="Switch 3D Scene to Video Cinema [V]">▶ ON AIR</button>
+                    </div>
+                </div>
+
+                <!-- Active Video Monitor Card -->
+                <div class="media-preview-card" style="padding:10px 12px; margin-bottom:10px;">
+                    <div class="media-preview-thumb-box" style="width:72px; height:45px; min-width:72px; background:#000; border-radius:4px; overflow:hidden;">
+                        <video id="video-active-preview-vid" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    </div>
+                    <div class="media-preview-meta" style="flex:1;">
+                        <span class="media-preview-name" id="video-active-title" style="color:#00ffcc; font-weight:800;">No Video Loaded</span>
+                        <div class="media-preview-badges" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
+                            <span class="media-badge-tag" id="video-badge-on-air" style="background:rgba(255,255,255,0.06); color:#8c98b2; border-color:rgba(255,255,255,0.15);">OFF AIR</span>
+                            <span class="media-badge-tag" id="video-badge-loop" style="background:rgba(0,255,204,0.12); color:#00ffcc; border-color:rgba(0,255,204,0.3);">🔁 PLAYLIST</span>
+                            <span class="media-badge-tag" id="video-badge-speed" style="background:rgba(255,170,0,0.12); color:#ffaa00; border-color:rgba(255,170,0,0.3);">1.0x SPEED</span>
+                            <span class="media-badge-tag" id="video-badge-mute" style="background:rgba(255,51,102,0.12); color:#ff3366; border-color:rgba(255,51,102,0.3);">🔇 MUTED</span>
                         </div>
-                        <div class="media-preview-meta" style="flex:1;">
-                            <span class="media-preview-name" id="video-active-title" style="color:#00ffcc; font-weight:800;">01 jkmclaren shock</span>
-                            <div class="media-preview-badges" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
-                                <span class="media-badge-tag" id="video-badge-on-air" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:rgba(0,255,136,0.35);">● SCENE 22 ACTIVE</span>
-                                <span class="media-badge-tag" id="video-badge-loop" style="background:rgba(0,255,204,0.12); color:#00ffcc; border-color:rgba(0,255,204,0.3);">🔁 PLAYLIST</span>
-                                <span class="media-badge-tag" id="video-badge-speed" style="background:rgba(255,170,0,0.12); color:#ffaa00; border-color:rgba(255,170,0,0.3);">1.0x SPEED</span>
-                                <span class="media-badge-tag" id="video-badge-mute" style="background:rgba(255,51,102,0.12); color:#ff3366; border-color:rgba(255,51,102,0.3);">🔇 MUTED</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:4px;">
+                        <button class="btn-mini" id="btn-video-activate-scene22" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:linear-gradient(135deg, rgba(0,255,204,0.25), rgba(0,170,255,0.25)); border:1px solid #00ffcc; color:#00ffcc;" title="Switch 3D Scene directly to Video Playback [Hot key: V]">🎬 GO ON-AIR</button>
+                        <div style="display:flex; gap:4px;">
+                            <button class="btn-mini" id="btn-video-play-pause" style="flex:1; font-size:9px; padding:3px 6px;" title="Pause / Resume Video Playback">⏸ Pause</button>
+                            <button class="btn-mini" id="btn-video-next-clip" style="flex:1; font-size:9px; padding:3px 6px;" title="Advance to Next Video with active Transition">⏭ Next</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Video Bank Selector & Folder Controls (10 Saved Locations) -->
+                <div class="video-bank-bar">
+                    <div class="video-banks-dropdown-wrap">
+                        <span class="hud-label" style="font-size:8.5px; white-space:nowrap;">📁 BANK:</span>
+                        <select id="select-video-bank" class="video-bank-select">
+                            <!-- Populated with 10 user banks -->
+                        </select>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:4px;">
+                        <button class="btn-mini" id="btn-choose-video-folder" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
+                        <button class="btn-mini" id="btn-scan-mac-path" style="font-size:9px; padding:4px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec;" title="Enter direct Mac folder path">🔍 PATH</button>
+                        <input type="file" id="file-video-folder" webkitdirectory directory multiple style="display:none;">
+                    </div>
+                </div>
+
+                <!-- 10 Bank Quick-Switch Chips Bar -->
+                <div class="video-bank-chips-bar" id="video-bank-chips-bar">
+                    <!-- Populated dynamically via VideoPlaybackManager -->
+                </div>
+
+                <!-- Direct Mac Path Entry Bar (Collapsible via 🔍 PATH button) -->
+                <div id="video-path-input-bar" style="display:none; background:#0a0c12; border:1px solid #1f2738; border-radius:5px; padding:6px 8px; margin-bottom:8px; align-items:center; gap:6px;">
+                    <span style="font-size:8.5px; color:#8c98b2; font-family:'JetBrains Mono',monospace;">PATH:</span>
+                    <input type="text" id="input-mac-video-path" placeholder="/Users/username/Movies/VJ_Loops" style="flex:1; background:#05070a; border:1px solid #28334a; color:#ffffff; font-family:'JetBrains Mono',monospace; font-size:9.5px; padding:4px 6px; border-radius:3px;">
+                    <button class="btn-mini" id="btn-exec-scan-path" style="font-size:9px; font-weight:800; background:#00ffcc; color:#050810; padding:4px 8px; border:none; border-radius:3px;">LOAD</button>
+                </div>
+
+                <!-- Setup Flow Card (Displayed when active bank is empty) -->
+                <div class="video-setup-flow-card" id="video-setup-flow-card" style="display:block;">
+                    <div class="video-setup-icon">📁</div>
+                    <div class="video-setup-title">NO VIDEOS IN ACTIVE BANK</div>
+                    <div class="video-setup-desc">
+                        Select a folder on your Mac containing your video files (<code style="color:#00ffcc;">.mp4, .webm, .mov</code>). Details of your last 10 folder locations will be remembered for 1-click selection across banks!
+                    </div>
+                    <div class="video-setup-actions" style="justify-content:center;">
+                        <button class="video-btn-primary" id="btn-setup-choose-folder" style="font-size:11px; padding:10px 18px;">📁 SELECT VIDEO FOLDER</button>
+                    </div>
+                </div>
+
+                <!-- Interactive Video Library Grid -->
+                <div id="video-library-grid-box" style="display:none;">
+                    <div class="hud-row" style="margin-bottom:6px; align-items:center; justify-content:space-between;">
+                        <span class="hud-label" id="video-grid-count-label">VIDEOS (0 CLIPS)</span>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <button class="btn-micro" id="btn-select-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Select All</button>
+                            <button class="btn-micro" id="btn-deselect-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Deselect All</button>
+                        </div>
+                    </div>
+
+                    <div class="video-library-grid" id="video-grid-container">
+                        <!-- Populated dynamically with interactive thumbnail cards with hover-to-play -->
+                    </div>
+                </div>
+
+                <!-- VIDEO PLAYBACK & TRANSITION AUTOMATION DECK -->
+                <div class="pane-section-title" style="margin-top:6px; padding-top:6px; border-top:1px solid #232a3a; display:flex; justify-content:space-between; align-items:center;">
+                    <span>⚙️ Playback & Transition Options</span>
+                    <span class="hud-badge" style="font-size:7.5px; color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22 ENGINE</span>
+                </div>
+
+                <div class="video-options-deck">
+                    <!-- Row 1: Looping & Play Order Mode Pills -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">LOOP MODE</div>
+                            <div class="mode-pills" id="video-loop-pills">
+                                <button class="mode-pill active" data-loop="playlist" title="Automatically advances through all enabled videos in rotation">Loop Playlist</button>
+                                <button class="mode-pill" data-loop="single" title="Continuously loops only the current video">Loop Clip</button>
                             </div>
                         </div>
-                        <div style="display:flex; flex-direction:column; gap:4px;">
-                            <button class="btn-mini" id="btn-video-activate-scene22" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:linear-gradient(135deg, rgba(0,255,204,0.25), rgba(0,170,255,0.25)); border:1px solid #00ffcc; color:#00ffcc;" title="Switch 3D Scene directly to Video Playback [Hot key: V]">🎬 GO ON-AIR</button>
-                            <div style="display:flex; gap:4px;">
-                                <button class="btn-mini" id="btn-video-play-pause" style="flex:1; font-size:9px; padding:3px 6px;" title="Pause / Resume Video Playback">⏸ Pause</button>
-                                <button class="btn-mini" id="btn-video-next-clip" style="flex:1; font-size:9px; padding:3px 6px;" title="Advance to Next Video with active Transition">⏭ Next</button>
+                        <div>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">PLAY ORDER</div>
+                            <div class="mode-pills" id="video-order-pills">
+                                <button class="mode-pill active" data-order="sequential" title="Plays videos in sequential order 1, 2, 3...">Sequential</button>
+                                <button class="mode-pill" data-order="random" title="Picks random enabled video from the bank">Shuffle / Random</button>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Video Bank Selector & Folder Controls (10 Saved Locations) -->
-                    <div class="video-bank-bar">
-                        <div class="video-banks-dropdown-wrap">
-                            <span class="hud-label" style="font-size:8.5px; white-space:nowrap;">📁 BANK:</span>
-                            <select id="select-video-bank" class="video-bank-select">
-                                <option value="0">Bank 1: ✨ Demo VJ Pack</option>
+                    <!-- Row 2: Playback Speed -->
+                    <div>
+                        <div class="hud-row" style="margin-bottom:3px; align-items:center; justify-content:space-between;">
+                            <span class="hud-label" style="font-size:8px;">PLAYBACK SPEED</span>
+                            <span class="hud-badge" id="video-speed-val" style="font-size:8px; color:#ffaa00;">1.0x</span>
+                        </div>
+                        <div class="mode-pills" id="video-speed-pills">
+                            <button class="mode-pill" data-speed="0.5">0.5x</button>
+                            <button class="mode-pill" data-speed="0.75">0.75x</button>
+                            <button class="mode-pill active" data-speed="1.0">1.0x</button>
+                            <button class="mode-pill" data-speed="1.25">1.25x</button>
+                            <button class="mode-pill" data-speed="1.5">1.5x</button>
+                            <button class="mode-pill" data-speed="2.0">2.0x</button>
+                            <button class="mode-pill" data-speed="bpm" title="Automatically synchronizes playback rate with incoming track BPM">BPM Sync</button>
+                        </div>
+                    </div>
+
+                    <!-- Row 3: Clip duration / switch timing -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:3px;">CLIP DURATION / SWITCH TIMING</div>
+                            <select id="select-video-duration" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                <option value="natural">Natural Full Playthrough</option>
+                                <option value="15s">15 Seconds</option>
+                                <option value="30s">30 Seconds</option>
+                                <option value="60s">60 Seconds</option>
+                                <option value="16beats">16 Beats (4 Bars)</option>
+                                <option value="32beats">32 Beats (8 Bars)</option>
                             </select>
                         </div>
-                        <div style="display:flex; align-items:center; gap:4px;">
-                            <button class="btn-mini" id="btn-choose-video-folder" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
-                            <button class="btn-mini" id="btn-scan-mac-path" style="font-size:9px; padding:4px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec;" title="Enter direct Mac folder path via Bridge scanner">🔍 PATH</button>
-                            <input type="file" id="file-video-folder" webkitdirectory directory multiple style="display:none;">
-                        </div>
-                    </div>
-
-                    <!-- 10 Bank Quick-Switch Chips Bar -->
-                    <div class="video-bank-chips-bar" id="video-bank-chips-bar">
-                        <!-- Populated dynamically via VideoPlaybackManager -->
-                    </div>
-
-                    <!-- Direct Mac Path Entry Bar (Collapsible via 🔍 PATH button) -->
-                    <div id="video-path-input-bar" style="display:none; background:#0a0c12; border:1px solid #1f2738; border-radius:5px; padding:6px 8px; margin-bottom:8px; align-items:center; gap:6px;">
-                        <span style="font-size:8.5px; color:#8c98b2; font-family:'JetBrains Mono',monospace;">PATH:</span>
-                        <input type="text" id="input-mac-video-path" placeholder="/Users/jarikuhanen/Movies" style="flex:1; background:#05070a; border:1px solid #28334a; color:#ffffff; font-family:'JetBrains Mono',monospace; font-size:9.5px; padding:4px 6px; border-radius:3px;">
-                        <button class="btn-mini" id="btn-exec-scan-path" style="font-size:9px; font-weight:800; background:#00ffcc; color:#050810; padding:4px 8px; border:none; border-radius:3px;">SCAN</button>
-                    </div>
-
-                    <!-- Setup Flow Card (Displayed when active bank is empty) -->
-                    <div class="video-setup-flow-card" id="video-setup-flow-card" style="display:none;">
-                        <div class="video-setup-icon">📁</div>
-                        <div class="video-setup-title">NO VIDEOS IN ACTIVE BANK</div>
-                        <div class="video-setup-desc">
-                            Select any folder on your Mac containing video files (<code style="color:#00ffcc;">.mp4, .webm, .mov</code>) or instantly load the pre-installed Demo VJ Pack. Details of your last 10 folder locations will be saved for 1-click selection!
-                        </div>
-                        <div class="video-setup-actions">
-                            <button class="video-btn-primary" id="btn-setup-choose-folder">📁 SELECT VIDEO FOLDER</button>
-                            <button class="video-btn-secondary" id="btn-setup-load-demo">✨ LOAD DEMO VJ PACK</button>
-                        </div>
-                    </div>
-
-                    <!-- Interactive Video Library Grid -->
-                    <div id="video-library-grid-box">
-                        <div class="hud-row" style="margin-bottom:6px; align-items:center; justify-content:space-between;">
-                            <span class="hud-label" id="video-grid-count-label">VIDEOS (2 CLIPS)</span>
-                            <div style="display:flex; align-items:center; gap:6px;">
-                                <button class="btn-micro" id="btn-select-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Select All</button>
-                                <button class="btn-micro" id="btn-deselect-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Deselect All</button>
-                            </div>
-                        </div>
-
-                        <div class="video-library-grid" id="video-grid-container">
-                            <!-- Populated dynamically with interactive thumbnail cards with hover-to-play -->
-                        </div>
-                    </div>
-
-                    <!-- VIDEO PLAYBACK & TRANSITION AUTOMATION DECK -->
-                    <div class="pane-section-title" style="margin-top:4px; padding-top:6px; border-top:1px solid #232a3a; display:flex; justify-content:space-between; align-items:center;">
-                        <span>⚙️ Playback & Transition Options</span>
-                        <span class="hud-badge" style="font-size:7.5px; color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22 ENGINE</span>
-                    </div>
-
-                    <div class="video-options-deck">
-                        <!-- Row 1: Looping & Play Order Mode Pills -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                            <div>
-                                <div class="hud-label" style="font-size:8px; margin-bottom:4px;">LOOP MODE</div>
-                                <div class="mode-pills" id="video-loop-pills">
-                                    <button class="mode-pill active" data-loop-mode="playlist" title="Automatically advances through all enabled videos in rotation">Loop Playlist</button>
-                                    <button class="mode-pill" data-loop-mode="single" title="Continuously loops only the current video">Loop Clip</button>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="hud-label" style="font-size:8px; margin-bottom:4px;">PLAY ORDER</div>
-                                <div class="mode-pills" id="video-order-pills">
-                                    <button class="mode-pill active" data-order-mode="sequential" title="Plays videos in sequential order 1, 2, 3...">Sequential</button>
-                                    <button class="mode-pill" data-order-mode="random" title="Picks random enabled video from the bank">Shuffle / Random</button>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Row 2: Playback Speed -->
                         <div>
-                            <div class="hud-row" style="margin-bottom:3px; align-items:center; justify-content:space-between;">
-                                <span class="hud-label" style="font-size:8px;">PLAYBACK SPEED</span>
-                                <span class="hud-badge" id="video-speed-val" style="font-size:8px; color:#ffaa00;">1.0x</span>
-                            </div>
-                            <div class="mode-pills" id="video-speed-pills">
-                                <button class="mode-pill" data-speed="0.5">0.5x</button>
-                                <button class="mode-pill" data-speed="0.75">0.75x</button>
-                                <button class="mode-pill active" data-speed="1.0">1.0x</button>
-                                <button class="mode-pill" data-speed="1.25">1.25x</button>
-                                <button class="mode-pill" data-speed="1.5">1.5x</button>
-                                <button class="mode-pill" data-speed="2.0">2.0x</button>
-                                <button class="mode-pill" data-speed="bpm" title="Automatically synchronizes playback rate with incoming track BPM">BPM Sync</button>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:3px;">AUDIO PASSTHROUGH</div>
+                            <div style="display:flex; align-items:center; height:28px; background:#090a0d; border:1px solid #28334a; border-radius:4px; padding:0 8px;">
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:9.5px; color:#ffaa00; font-family:'JetBrains Mono',monospace;">
+                                    <input type="checkbox" id="check-video-mute" checked style="accent-color:#ffaa00; cursor:pointer;">
+                                    <span>Mute Audio (Default)</span>
+                                </label>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Row 3: How long to keep it going / iterations (Duration) -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                            <div>
-                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">CLIP DURATION / SWITCH TIMING</div>
-                                <select id="select-video-duration" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
-                                    <option value="natural">Natural Full Playthrough</option>
-                                    <option value="15s">15 Seconds</option>
-                                    <option value="30s">30 Seconds</option>
-                                    <option value="60s">60 Seconds</option>
-                                    <option value="16beats">16 Beats (4 Bars)</option>
-                                    <option value="32beats">32 Beats (8 Bars)</option>
-                                </select>
-                            </div>
-                            <div>
-                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">AUDIO PASSTHROUGH</div>
-                                <div style="display:flex; align-items:center; height:28px; background:#090a0d; border:1px solid #28334a; border-radius:4px; padding:0 8px;">
-                                    <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:9.5px; color:#ffaa00; font-family:'JetBrains Mono',monospace;">
-                                        <input type="checkbox" id="check-video-mute" checked style="accent-color:#ffaa00; cursor:pointer;">
-                                        <span>Mute Audio (Default)</span>
-                                    </label>
-                                </div>
-                            </div>
+                    <!-- Row 4: Seamless Video Transitions -->
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:3px;">TRANSITION STYLE</div>
+                            <select id="select-video-transition" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                <option value="crossfade">Crossfade Dissolve</option>
+                                <option value="glitch">Glitch Wipe (Cyber)</option>
+                                <option value="zoom">Zoom Dissolve</option>
+                                <option value="strobe">Strobe Flash Cut</option>
+                                <option value="cut">Instant Cut</option>
+                            </select>
                         </div>
-
-                        <!-- Row 4: Seamless Video Transitions -->
-                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
-                            <div>
-                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">TRANSITION STYLE</div>
-                                <select id="select-video-transition" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
-                                    <option value="crossfade">Crossfade Dissolve</option>
-                                    <option value="glitch">Glitch Wipe (Cyber)</option>
-                                    <option value="zoom">Zoom Dissolve</option>
-                                    <option value="strobe">Strobe Flash Cut</option>
-                                    <option value="cut">Instant Cut</option>
-                                </select>
+                        <div>
+                            <div class="slider-header" style="font-size:8px; margin-bottom:3px;">
+                                <span>TRANSITION SPEED</span>
+                                <span class="val" id="video-trans-dur-val" style="font-size:8px; color:#00ffcc;">1.0s</span>
                             </div>
-                            <div>
-                                <div class="slider-header" style="font-size:8px; margin-bottom:3px;">
-                                    <span>TRANSITION SPEED</span>
-                                    <span class="val" id="video-trans-dur-val" style="font-size:8px; color:#00ffcc;">1.0s</span>
-                                </div>
-                                <input type="range" id="slider-video-trans-dur" min="0.2" max="3.0" step="0.1" value="1.0" style="width:100%;">
-                            </div>
+                            <input type="range" id="slider-video-trans-dur" min="0.2" max="3.0" step="0.1" value="1.0" style="width:100%;">
                         </div>
                     </div>
                 </div>
