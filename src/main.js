@@ -4183,7 +4183,10 @@ async function init() {
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     for (let i = 0; i < 10; i++) {
                         const item = parsed[i];
-                        const cleanVids = (item?.videos || []).filter(v => v.url && !v.url.startsWith('/images/'));
+                        const cleanVids = (item?.videos || []).filter(v => v.url && !v.url.startsWith('/images/')).map((v, vIdx) => ({
+                            ...v,
+                            thumbnailUrl: v.thumbnailUrl || createProceduralPoster(v.title || v.name, vIdx)
+                        }));
                         banks[i] = {
                             id: i,
                             name: (item && cleanVids.length > 0) ? (item.name || `Bank ${i + 1}`) : `Bank ${i + 1}: (Empty)`,
@@ -4299,6 +4302,97 @@ async function init() {
             });
         }
 
+        function createProceduralPoster(title, themeIdx = 0) {
+            const themes = [
+                { c1: '#ff0055', c2: '#7a00ff', icon: '🔥', label: 'VJ CLIP' },
+                { c1: '#00e5ff', c2: '#002bff', icon: '⚡', label: 'CYBER LOOP' },
+                { c1: '#00ff88', c2: '#00a86b', icon: '🌌', label: 'BASS FX' },
+                { c1: '#ff9900', c2: '#ff007f', icon: '🚀', label: 'NEON WAVE' },
+                { c1: '#9d4edd', c2: '#3c096c', icon: '🔮', label: 'COSMIC FX' },
+                { c1: '#06d6a0', c2: '#118ab2', icon: '💫', label: 'PULSE FX' }
+            ];
+            const theme = themes[Math.abs(themeIdx) % themes.length];
+            const cleanTitle = (title || 'VIDEO CLIP').substring(0, 22).replace(/[<>&"]/g, '').toUpperCase();
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+                <defs>
+                    <linearGradient id="bgGrad${themeIdx}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="${theme.c1}" stop-opacity="0.85"/>
+                        <stop offset="100%" stop-color="${theme.c2}" stop-opacity="0.95"/>
+                    </linearGradient>
+                    <radialGradient id="glow${themeIdx}" cx="50%" cy="50%" r="50%">
+                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
+                        <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+                    </radialGradient>
+                </defs>
+                <rect width="320" height="180" fill="#070a12"/>
+                <rect width="320" height="180" fill="url(#bgGrad${themeIdx})"/>
+                <circle cx="160" cy="78" r="80" fill="url(#glow${themeIdx})"/>
+                <circle cx="160" cy="72" r="28" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
+                <text x="160" y="80" font-family="-apple-system, system-ui, sans-serif" font-size="22" text-anchor="middle" fill="#ffffff">${theme.icon}</text>
+                <rect x="16" y="124" width="288" height="42" rx="4" fill="rgba(6,9,16,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
+                <text x="28" y="139" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#00ffcc" letter-spacing="1">${theme.label} [CH ${String(themeIdx + 1).padStart(2, '0')}]</text>
+                <text x="28" y="153" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#ffffff">${cleanTitle}</text>
+            </svg>`;
+            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+        }
+
+        function captureVideoFrame(videoUrl, seekTime = 1.0) {
+            return new Promise((resolve) => {
+                if (!videoUrl) return resolve(null);
+                const v = document.createElement('video');
+                v.preload = 'metadata';
+                v.muted = true;
+                v.playsInline = true;
+                if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')) {
+                    v.crossOrigin = 'anonymous';
+                }
+                v.src = videoUrl;
+
+                let done = false;
+                const finish = (result) => {
+                    if (!done) {
+                        done = true;
+                        clearTimeout(timer);
+                        v.removeAttribute('src');
+                        v.load();
+                        v.remove();
+                        resolve(result);
+                    }
+                };
+
+                const timer = setTimeout(() => finish(null), 3500);
+
+                v.addEventListener('loadedmetadata', () => {
+                    const dur = v.duration || 5;
+                    const target = Math.min(seekTime, Math.max(0.2, dur * 0.15));
+                    try {
+                        v.currentTime = target;
+                    } catch (e) {
+                        finish(null);
+                    }
+                });
+
+                v.addEventListener('seeked', () => {
+                    try {
+                        if (v.videoWidth > 0 && v.videoHeight > 0) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = Math.min(360, v.videoWidth);
+                            canvas.height = Math.round(canvas.width * (v.videoHeight / v.videoWidth)) || 202;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+                            const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                            if (dataUrl && dataUrl.length > 500) {
+                                return finish(dataUrl);
+                            }
+                        }
+                    } catch (err) {}
+                    finish(null);
+                });
+
+                v.addEventListener('error', () => finish(null));
+            });
+        }
+
         function renderVideoGrid() {
             const currentBank = banks[activeBankIndex];
             const vids = (currentBank && currentBank.videos) || [];
@@ -4331,11 +4425,13 @@ async function init() {
                 card.dataset.index = idx;
 
                 const durLabel = vid.duration ? `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}` : '0:00';
+                const initialPoster = vid.thumbnailUrl || createProceduralPoster(vid.title, idx);
+                const vidMediaSrc = vid.url.includes('#') ? vid.url : `${vid.url}#t=0.5`;
 
                 card.innerHTML = `
                     <div class="video-thumb-preview-box" title="Click to Cue Video / Hover to Preview">
-                        <img class="video-card-poster" src="${vid.thumbnailUrl || ''}" alt="${vid.title}" style="${vid.thumbnailUrl ? 'display:block;' : 'display:none;'}">
-                        <video class="video-card-video" src="${vid.url}" preload="auto" muted playsinline></video>
+                        <img class="video-card-poster" src="${initialPoster}" alt="${vid.title}">
+                        <video class="video-card-video" src="${vidMediaSrc}" preload="metadata" muted playsinline></video>
                         <div class="video-thumb-overlay-hint">▶ HOVER</div>
                         <div class="video-thumb-dur-badge">${durLabel}</div>
                         <div class="video-thumb-playing-tag">● ON AIR</div>
@@ -4355,36 +4451,17 @@ async function init() {
                 const thumbVid = card.querySelector('.video-card-video');
                 const posterImg = card.querySelector('.video-card-poster');
 
-                const captureFrame = () => {
-                    if (!vid.thumbnailUrl && thumbVid && thumbVid.videoWidth > 0 && thumbVid.videoHeight > 0) {
-                        try {
-                            const canvas = document.createElement('canvas');
-                            canvas.width = Math.min(320, thumbVid.videoWidth);
-                            canvas.height = Math.round(canvas.width * (thumbVid.videoHeight / thumbVid.videoWidth)) || 180;
-                            const ctx = canvas.getContext('2d');
-                            ctx.drawImage(thumbVid, 0, 0, canvas.width, canvas.height);
-                            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-                            if (dataUrl && dataUrl.length > 200) {
-                                vid.thumbnailUrl = dataUrl;
-                                if (posterImg) {
-                                    posterImg.src = dataUrl;
-                                    posterImg.style.display = 'block';
-                                    posterImg.style.opacity = '1';
-                                }
+                // If real video screenshot isn't captured yet, extract it asynchronously
+                if (!vid.thumbnailUrl || vid.thumbnailUrl.startsWith('data:image/svg')) {
+                    captureVideoFrame(vid.url, 1.0).then((frameData) => {
+                        if (frameData) {
+                            vid.thumbnailUrl = frameData;
+                            if (posterImg) {
+                                posterImg.src = frameData;
                             }
-                        } catch (e) {
-                            // Cross-origin tainted canvas fallback: thumbVid itself shows the frame
                         }
-                    }
-                };
-
-                const seekToFirstFrame = () => {
-                    try {
-                        if (thumbVid && (thumbVid.currentTime === 0 || isNaN(thumbVid.currentTime))) {
-                            thumbVid.currentTime = 0.05;
-                        }
-                    } catch (e) {}
-                };
+                    });
+                }
 
                 // Hover to preview
                 card.addEventListener('mouseenter', () => {
@@ -4397,14 +4474,14 @@ async function init() {
                 card.addEventListener('mouseleave', () => {
                     if (thumbVid) {
                         if (!thumbVid.paused) thumbVid.pause();
-                        thumbVid.currentTime = 0.05;
+                        thumbVid.currentTime = 0.5;
                     }
-                    if (posterImg && vid.thumbnailUrl) {
+                    if (posterImg) {
                         posterImg.style.opacity = '1';
                     }
                 });
 
-                // Update duration & seek to first frame once metadata loads
+                // Update duration once metadata loads
                 if (thumbVid) {
                     thumbVid.addEventListener('loadedmetadata', () => {
                         if (thumbVid.duration && !isNaN(thumbVid.duration)) {
@@ -4414,18 +4491,7 @@ async function init() {
                                 durBadge.textContent = `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}`;
                             }
                         }
-                        seekToFirstFrame();
                     });
-
-                    thumbVid.addEventListener('loadeddata', seekToFirstFrame);
-                    thumbVid.addEventListener('canplay', seekToFirstFrame);
-                    thumbVid.addEventListener('seeked', () => {
-                        captureFrame();
-                    });
-
-                    if (thumbVid.readyState >= 1) {
-                        seekToFirstFrame();
-                    }
                 }
 
                 // Checkbox toggle
@@ -4480,29 +4546,26 @@ async function init() {
                     const thumbVid = card.querySelector('.video-card-video');
                     const posterImg = card.querySelector('.video-card-poster');
 
-                    if (vid.thumbnailUrl && posterImg) {
-                        if (posterImg.src !== vid.thumbnailUrl) {
-                            posterImg.src = vid.thumbnailUrl;
+                    if (posterImg) {
+                        const targetSrc = vid.thumbnailUrl || createProceduralPoster(vid.title, idx);
+                        if (!posterImg.src || posterImg.src === '' || posterImg.src.endsWith('/')) {
+                            posterImg.src = targetSrc;
                         }
-                        posterImg.style.display = 'block';
                         posterImg.style.opacity = '1';
                     }
 
                     if (thumbVid) {
                         if (thumbVid.paused) {
                             if (thumbVid.currentTime === 0 || isNaN(thumbVid.currentTime)) {
-                                thumbVid.currentTime = 0.05;
+                                thumbVid.currentTime = 0.5;
                             }
-                        }
-                        if (thumbVid.readyState === 0) {
-                            thumbVid.load();
                         }
                     }
                 });
 
                 if (videoActivePreviewVid) {
                     if (videoActivePreviewVid.paused && (videoActivePreviewVid.currentTime === 0 || isNaN(videoActivePreviewVid.currentTime))) {
-                        videoActivePreviewVid.currentTime = 0.05;
+                        videoActivePreviewVid.currentTime = 0.5;
                     }
                 }
             });
@@ -4701,28 +4764,32 @@ async function init() {
                 title: 'Cyber Blaze FX',
                 url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
                 duration: 15,
-                included: true
+                included: true,
+                thumbnailUrl: createProceduralPoster('Cyber Blaze FX', 0)
             },
             {
                 name: 'Glitch Dimension.mp4',
                 title: 'Glitch Dimension',
                 url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
                 duration: 653,
-                included: true
+                included: true,
+                thumbnailUrl: createProceduralPoster('Glitch Dimension', 1)
             },
             {
                 name: 'Bass Odyssey.mp4',
                 title: 'Bass Odyssey',
                 url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
                 duration: 596,
-                included: true
+                included: true,
+                thumbnailUrl: createProceduralPoster('Bass Odyssey', 2)
             },
             {
                 name: 'Neon Velocity.mp4',
                 title: 'Neon Velocity',
                 url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
                 duration: 15,
-                included: true
+                included: true,
+                thumbnailUrl: createProceduralPoster('Neon Velocity', 3)
             }
         ];
 
@@ -4737,7 +4804,7 @@ async function init() {
                 return;
             }
 
-            const videoItems = videoFiles.map(f => {
+            const videoItems = videoFiles.map((f, fIdx) => {
                 const objUrl = URL.createObjectURL(f);
                 const cleanTitle = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
                 return {
@@ -4745,7 +4812,8 @@ async function init() {
                     title: cleanTitle,
                     url: objUrl,
                     duration: 10,
-                    included: true
+                    included: true,
+                    thumbnailUrl: createProceduralPoster(cleanTitle, fIdx)
                 };
             });
 
@@ -4837,7 +4905,10 @@ async function init() {
                         const folderName = folderPath.split('/').filter(Boolean).pop() || 'Mac Folder';
                         banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: 📁 ${folderName}`;
                         banks[activeBankIndex].folderPath = folderPath;
-                        banks[activeBankIndex].videos = data.videos;
+                        banks[activeBankIndex].videos = data.videos.map((v, vIdx) => ({
+                            ...v,
+                            thumbnailUrl: v.thumbnailUrl || createProceduralPoster(v.title || v.name, vIdx)
+                        }));
                         saveBanks();
                         renderBankSelector();
                         renderVideoGrid();
