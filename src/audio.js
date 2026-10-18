@@ -433,9 +433,11 @@ export async function setupAudio(onDeviceListChange) {
                 historyIndex = (historyIndex + 1) % historyLength;
 
                 let isOnset = false;
-                const minTimeBetweenHitsMs = 180; // Natural minimum spacing between bass hits
-                const dynamicFloor = Math.max(0.10, avgEnergy * 0.35);
-                if (rawBass > dynamicFloor && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
+                const minTimeBetweenHitsMs = 200; // Minimum 200ms spacing between kick hits (up to 300 BPM)
+                const dynamicFloor = Math.max(0.06, avgEnergy * 0.25);
+                // Detect kick drum hit: raw bass rises above energy floor and surges above average or smoothed level
+                const isEnergySurge = rawBass > (avgEnergy * 1.10) || ((rawBass - smoothedBass) > 0.025);
+                if (rawBass > dynamicFloor && isEnergySurge && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;
                     lastHitTime = now;

@@ -7493,6 +7493,16 @@ async function init() {
     const cdjMeterContainer = document.getElementById('cdj-meter-container');
     const bpmSubbeatDots = document.getElementById('bpm-subbeat-dots');
 
+    if (phraseSyncSource) {
+        phraseSyncSource.textContent = 'SOURCE: AUDIO (STANDBY)';
+        phraseSyncSource.style.borderColor = 'rgba(255, 170, 0, 0.35)';
+        phraseSyncSource.style.color = '#ffaa00';
+    }
+    if (bpmVal) {
+        bpmVal.textContent = '---.-';
+        bpmVal.style.opacity = '0.45';
+    }
+
     const cdj3000PhraseTag = document.getElementById('cdj3000-phrase-tag');
     const cdj3000BarText = document.getElementById('cdj3000-bar-text');
     const cdj3000CountdownText = document.getElementById('cdj3000-countdown-text');
@@ -7557,7 +7567,7 @@ async function init() {
     // Live Audio BPM Auto-Detection Engine (Runs when hardware decks are offline)
     let audioOnsetTimestamps = [];
     let lastAudioOnsetBpmTime = 0;
-    let detectedAudioBpm = 126.0;
+    let detectedAudioBpm = null;
     let audioBpmDetectedRecently = false;
     let lastAudioBpmDetectionTime = 0;
 
@@ -7585,11 +7595,11 @@ async function init() {
         // Level 1: Microphone Signal Detected (Quiet room noise floor: > 0.04)
         const l1 = overall > 0.04 || bass > 0.05;
         // Level 2: Real Music Playing / Voice (> 0.08)
-        const l2 = overall > 0.08 || bass > 0.11;
-        // Level 3: Rhythmic Bass Punch / Drum Transient (> 0.17)
-        const l3 = isBeatHit || overall > 0.17 || bass > 0.20;
-        // Level 4: Deep Kick Peak Drop (> 0.28)
-        const l4 = isBeatHit && (bass > 0.26 || (audioData.bassImpact || 0) > 0.35);
+        const l2 = overall > 0.08 || bass > 0.09;
+        // Level 3: Rhythmic Bass Punch / Drum Transient (> 0.16)
+        const l3 = isBeatHit || overall > 0.16 || bass > 0.16;
+        // Level 4: Deep Kick Peak Drop (> 0.25)
+        const l4 = isBeatHit && (bass > 0.22 || (audioData.bassImpact || 0) > 0.30);
 
         if (led1) led1.className = 'mic-led-bar' + (l1 ? ' active-green' : '');
         if (led2) led2.className = 'mic-led-bar' + (l2 ? ' active-cyan' : '');
@@ -7628,18 +7638,18 @@ async function init() {
         }
         if (!audioData) return;
 
-        // STRICT NOISE GATE: Ambient room noise, fans, or quiet breathing (< -34 dBFS or overall < 0.065 or bass < 0.10)
-        // must NEVER trigger beat detection or fake BPM calculations!
-        const isRealMusicPresent = (audioData.overall >= 0.065 && audioData.bass >= 0.10) || 
-                                   (audioData.peakDb >= -32.0 && audioData.bass >= 0.08);
+        // Noise gate: if room is very quiet / silence (< -38 dBFS and overall < 0.05)
+        const isRealMusicPresent = (audioData.overall >= 0.05 && (audioData.bass >= 0.07 || audioData.mid >= 0.08)) || 
+                                   (audioData.peakDb >= -36.0 && audioData.overall >= 0.04);
 
         if (!isRealMusicPresent) {
             // Room is quiet / ambient silence
             updateMicListeningMeter(audioData, false);
 
-            if (now - lastAudioOnsetBpmTime > 2200) {
+            if (now - lastAudioOnsetBpmTime > 2000) {
                 audioOnsetTimestamps = [];
                 audioBpmDetectedRecently = false;
+                detectedAudioBpm = null;
                 if (phraseSyncSource) {
                     phraseSyncSource.style.display = 'inline-block';
                     phraseSyncSource.textContent = 'SOURCE: AUDIO (STANDBY)';
@@ -7655,11 +7665,12 @@ async function init() {
             return;
         }
 
-        // Check for authentic kick onset with significant energy
+        // Kick onset detection: triggered by audio engine onset, transient surge, or spectral flux
         const isKickOnset = !!(
-            (audioData.isOnset && audioData.bass > 0.12) ||
-            (audioData.transientImpulse > 0.70 && audioData.bass > 0.18) ||
-            (audioData.bassImpact > 0.40 && audioData.bass > 0.20)
+            audioData.isOnset ||
+            (audioData.transientImpulse > 0.40) ||
+            ((audioData.bass - (audioData.smoothedBass || 0.4)) > 0.018 && audioData.bass > 0.10) ||
+            (audioData.bassImpact > 0.32 && audioData.bass > 0.14)
         );
 
         // Update real-time mic meter LED bars with live audio activity
@@ -7667,9 +7678,9 @@ async function init() {
 
         if (!isKickOnset) return;
 
-        // Debounce onsets: minimum 260ms between kicks (corresponds to max 230 BPM)
+        // Debounce onsets: minimum 240ms between kicks (corresponds to max 250 BPM)
         const delta = now - lastAudioOnsetBpmTime;
-        if (delta < 260) return;
+        if (delta < 240) return;
         lastAudioOnsetBpmTime = now;
 
         // Buffer up to 16 onset timestamps
@@ -7678,21 +7689,21 @@ async function init() {
             audioOnsetTimestamps.shift();
         }
 
-        if (audioOnsetTimestamps.length < 4) return;
+        if (audioOnsetTimestamps.length < 3) return;
 
         // Calculate intervals between successive onsets
         const intervals = [];
         for (let i = 1; i < audioOnsetTimestamps.length; i++) {
             const intv = audioOnsetTimestamps[i] - audioOnsetTimestamps[i - 1];
-            if (intv >= 280 && intv <= 950) {
+            if (intv >= 260 && intv <= 1000) {
                 intervals.push(intv);
-            } else if (intv > 950 && intv <= 1900) {
+            } else if (intv > 1000 && intv <= 2000) {
                 // Half-time beat (e.g. 2 bars or snare dropped) -> split in half
                 intervals.push(intv / 2);
             }
         }
 
-        if (intervals.length < 3) return;
+        if (intervals.length < 2) return;
 
         // Calculate median interval to reject syncopation and outliers
         intervals.sort((a, b) => a - b);
@@ -7704,11 +7715,11 @@ async function init() {
         while (clampedBpm < 75) clampedBpm *= 2;
         while (clampedBpm > 180) clampedBpm /= 2;
 
-        // Consistency check: check how many intervals are within 6% of the median
-        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.06).length;
-        if (consistentCount >= 2) {
+        // Consistency check: check how many intervals are within 9% of the median
+        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.09).length;
+        if (consistentCount >= 2 || intervals.length >= 4) {
             // Smoothly lerp towards candidate
-            detectedAudioBpm = detectedAudioBpm * 0.70 + clampedBpm * 0.30;
+            detectedAudioBpm = detectedAudioBpm ? (detectedAudioBpm * 0.65 + clampedBpm * 0.35) : clampedBpm;
             const roundedBpm = Math.round(detectedAudioBpm * 10) / 10;
             audioBpmDetectedRecently = true;
             lastAudioBpmDetectionTime = now;
