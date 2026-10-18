@@ -5378,28 +5378,26 @@ async function init() {
     fxCategoryBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
             const cat = btn.getAttribute('data-fxcat') || 'all';
-            // When user clicks the Video category tab in the Visual FX Studio, immediately navigate to the Video Scene page!
-            if (cat === 'video') {
-                switchToVideoScene();
-                return;
-            }
             currentFxCategory = cat;
             fxCategoryBtns.forEach(b => b.classList.toggle('active', (b.getAttribute('data-fxcat') || 'all') === cat));
             filterFxCards();
+
+            // When user filters by Video in the FX scene menu, activate Scene 22 on the 3D stage while keeping the placeholder visible!
+            if (cat === 'video') {
+                selectFX(22);
+            }
         });
     });
 
     // FX Pane Card Click Listeners
     fxPaneCards.forEach((card) => {
-        card.addEventListener('click', () => {
+        card.addEventListener('click', (e) => {
+            if (e.target && (e.target.id === 'btn-card22-open-console' || e.target.closest('#btn-card22-open-console'))) {
+                return;
+            }
             const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
             if (!isNaN(fxIdx)) {
-                // If clicking Scene 22 Video Cinema card, take the user directly into the Video loops console!
-                if (fxIdx === 22) {
-                    switchToVideoScene();
-                } else {
-                    selectFX(fxIdx);
-                }
+                selectFX(fxIdx);
             }
         });
     });
@@ -5413,7 +5411,8 @@ async function init() {
     if (btnCard22GoLive) {
         btnCard22GoLive.addEventListener('click', (e) => {
             e.stopPropagation();
-            switchToVideoScene();
+            selectFX(22);
+            showToast('🎬 Scene 22: Cyber Cinema 3D Active on Stage');
         });
     }
     if (btnCard22OpenConsole) {
@@ -5424,7 +5423,8 @@ async function init() {
     }
     if (btnFxBannerGoLive) {
         btnFxBannerGoLive.addEventListener('click', () => {
-            switchToVideoScene();
+            selectFX(22);
+            showToast('🎬 Scene 22: Cyber Cinema 3D Active on Stage');
         });
     }
     if (btnFxBannerOpenConsole) {
