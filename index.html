@@ -5502,9 +5502,13 @@
 
                 <!-- Category Filter Segmented Tabs (Browser-Style Multi-Row) -->
                 <div class="fx-category-bar" id="fx-pane-cat-pills">
-                    <button class="fx-category-btn active" data-fxcat="all" title="View all 22 visual scenes">
+                    <button class="fx-category-btn active" data-fxcat="all" title="View all 23 visual scenes">
                         <span class="tab-led"></span>
-                        <span>⚡ ALL (22)</span>
+                        <span>⚡ ALL (23)</span>
+                    </button>
+                    <button class="fx-category-btn" data-fxcat="video" title="🎬 Video Loops & Cyber Cinema 3D">
+                        <span class="tab-led"></span>
+                        <span>🎬 VIDEO (1)</span>
                     </button>
                     <button class="fx-category-btn" data-fxcat="eq" title="Equalizers & Audio Decks">
                         <span class="tab-led"></span>
@@ -6546,6 +6550,22 @@
                     <div style="display:flex; gap:5px; align-items:center;">
                         <span id="video-console-status-badge" class="hud-badge" style="color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22</span>
                         <button class="btn-micro" id="btn-video-go-live-top" style="font-size:8px; padding:2px 6px; background:rgba(0,255,136,0.15); border:1px solid rgba(0,255,136,0.4); color:#00ff88; border-radius:3px; cursor:pointer;" title="Switch 3D Scene to Video Cinema [V]">▶ ON AIR</button>
+                    </div>
+                </div>
+
+                <!-- 3D STAGE SCENE STATUS & DIRECT SWITCHER BANNER -->
+                <div class="video-stage-scene-banner" id="video-stage-scene-banner" style="background:linear-gradient(135deg, rgba(0,255,204,0.08), rgba(122,51,255,0.08)); border:1px solid rgba(0,255,204,0.3); border-radius:6px; padding:9px 12px; margin-bottom:10px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                    <div>
+                        <div style="font-size:7.5px; color:#8c98b2; text-transform:uppercase; letter-spacing:0.8px; font-weight:700;">3D STAGE VISUALIZER SCENE</div>
+                        <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                            <span style="font-size:12px; font-weight:800; color:#ffffff;">🎬 Scene 22: Cyber Cinema 3D</span>
+                            <span id="video-scene-live-pill" style="font-size:8px; font-weight:800; padding:2px 7px; border-radius:10px; background:rgba(255,51,102,0.15); border:1px solid rgba(255,51,102,0.4); color:#ff3366;">OFF-AIR (VIEWING FX 1)</span>
+                        </div>
+                    </div>
+                    <div>
+                        <button id="btn-switch-to-video-scene" class="video-btn-primary" style="font-size:10px; padding:6px 12px; font-weight:800; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, #00ffcc, #00b4d8); color:#050810; border:none; border-radius:4px; cursor:pointer;" title="Switch 3D Stage directly to Scene 22 Cyber Cinema [Press V]">
+                            ▶ SWITCH 3D STAGE TO SCENE 22 [V]
+                        </button>
                     </div>
                 </div>
 

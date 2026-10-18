@@ -15490,7 +15490,8 @@ export function createVFXScene(container) {
             uMix: { value: 0.0 },
             uTransitionType: { value: 0 },
             uTime: { value: 0.0 },
-            uBass: { value: 0.0 }
+            uBass: { value: 0.0 },
+            uHasVideo: { value: 0.0 }
         },
         vertexShader: `
             varying vec2 vUv;
@@ -15506,54 +15507,83 @@ export function createVFXScene(container) {
             uniform int uTransitionType;
             uniform float uTime;
             uniform float uBass;
+            uniform float uHasVideo;
             varying vec2 vUv;
 
             void main() {
-                vec2 uvA = vUv;
-                vec2 uvB = vUv;
-                vec4 colA = texture2D(uTextureA, uvA);
-                vec4 colB = texture2D(uTextureB, uvB);
                 vec4 outCol;
 
-                if (uTransitionType == 0) {
-                    // 0: Crossfade Dissolve
-                    outCol = mix(colA, colB, uMix);
-                } else if (uTransitionType == 1) {
-                    // 1: Glitch Wipe (Cyberpunk Chromatic Offset)
-                    float sliceJitter = sin(vUv.y * 45.0 + uTime * 25.0) * 0.08 * sin(uMix * 3.14159);
-                    float slice = step(vUv.x + sliceJitter, uMix);
-                    vec2 gUvA = vUv + vec2(sin(uTime * 30.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
-                    vec2 gUvB = vUv - vec2(cos(uTime * 25.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
-                    vec4 ca = texture2D(uTextureA, gUvA);
-                    vec4 cb = texture2D(uTextureB, gUvB);
-                    outCol = mix(ca, cb, slice);
-                } else if (uTransitionType == 2) {
-                    // 2: Zoom Dissolve
-                    float zA = 1.0 + uMix * 0.35;
-                    float zB = 1.35 - uMix * 0.35;
-                    vec2 zuvA = clamp((vUv - 0.5) / zA + 0.5, 0.0, 1.0);
-                    vec2 zuvB = clamp((vUv - 0.5) / zB + 0.5, 0.0, 1.0);
-                    outCol = mix(texture2D(uTextureA, zuvA), texture2D(uTextureB, zuvB), smoothstep(0.0, 1.0, uMix));
-                } else if (uTransitionType == 3) {
-                    // 3: Strobe Flash Cut
-                    float flash = sin(uMix * 3.14159);
-                    vec4 base = uMix < 0.5 ? colA : colB;
-                    outCol = mix(base, vec4(1.0, 1.0, 1.0, 1.0), flash * 0.88);
-                } else {
-                    // 4: Instant Cut
-                    outCol = uMix < 0.5 ? colA : colB;
-                }
+                if (uHasVideo > 0.5) {
+                    vec2 uvA = vUv;
+                    vec2 uvB = vUv;
+                    vec4 colA = texture2D(uTextureA, uvA);
+                    vec4 colB = texture2D(uTextureB, uvB);
 
-                // Standby cyber pattern when no video is loaded
-                if (outCol.a < 0.05 || (colA.r == 0.0 && colA.g == 0.0 && colA.b == 0.0 && colA.a == 0.0)) {
+                    if (uTransitionType == 0) {
+                        // 0: Crossfade Dissolve
+                        outCol = mix(colA, colB, uMix);
+                    } else if (uTransitionType == 1) {
+                        // 1: Glitch Wipe (Cyberpunk Chromatic Offset)
+                        float sliceJitter = sin(vUv.y * 45.0 + uTime * 25.0) * 0.08 * sin(uMix * 3.14159);
+                        float slice = step(vUv.x + sliceJitter, uMix);
+                        vec2 gUvA = vUv + vec2(sin(uTime * 30.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
+                        vec2 gUvB = vUv - vec2(cos(uTime * 25.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
+                        vec4 ca = texture2D(uTextureA, gUvA);
+                        vec4 cb = texture2D(uTextureB, gUvB);
+                        outCol = mix(ca, cb, slice);
+                    } else if (uTransitionType == 2) {
+                        // 2: Zoom Dissolve
+                        float zA = 1.0 + uMix * 0.35;
+                        float zB = 1.35 - uMix * 0.35;
+                        vec2 zuvA = clamp((vUv - 0.5) / zA + 0.5, 0.0, 1.0);
+                        vec2 zuvB = clamp((vUv - 0.5) / zB + 0.5, 0.0, 1.0);
+                        outCol = mix(texture2D(uTextureA, zuvA), texture2D(uTextureB, zuvB), smoothstep(0.0, 1.0, uMix));
+                    } else if (uTransitionType == 3) {
+                        // 3: Strobe Flash Cut
+                        float flash = sin(uMix * 3.14159);
+                        vec4 base = uMix < 0.5 ? colA : colB;
+                        outCol = mix(base, vec4(1.0, 1.0, 1.0, 1.0), flash * 0.88);
+                    } else {
+                        // 4: Instant Cut
+                        outCol = uMix < 0.5 ? colA : colB;
+                    }
+                } else {
+                    // STANDBY CYBER CINEMA DISPLAY (when no video is loaded yet)
                     vec2 gridUv = fract(vUv * vec2(32.0, 18.0));
                     float grid = step(0.96, gridUv.x) + step(0.96, gridUv.y);
-                    vec3 cyberBg = mix(vec3(0.015, 0.02, 0.04), vec3(0.0, 0.9, 0.7), grid * 0.35 + sin(uTime * 2.0) * 0.05);
-                    outCol = vec4(cyberBg, 1.0);
+                    
+                    // Central crosshair & VJ Cinema circle
+                    vec2 centeredUv = vUv - vec2(0.5, 0.5);
+                    centeredUv.x *= 1.777; // 16:9 aspect ratio correction
+                    float dist = length(centeredUv);
+                    float ring1 = smoothstep(0.008, 0.0, abs(dist - 0.35));
+                    float ring2 = smoothstep(0.006, 0.0, abs(dist - 0.40));
+                    float centerReticle = smoothstep(0.005, 0.0, min(abs(centeredUv.x), abs(centeredUv.y))) * step(dist, 0.45);
+                    
+                    // Waveform line across middle
+                    float wave = sin(vUv.x * 20.0 + uTime * 4.0) * (0.05 + uBass * 0.12);
+                    float waveLine = smoothstep(0.012, 0.0, abs(vUv.y - 0.5 - wave));
+
+                    // Cyberpunk color palette
+                    vec3 darkBg = vec3(0.012, 0.02, 0.038);
+                    vec3 neonCyan = vec3(0.0, 0.95, 0.85);
+                    vec3 neonPink = vec3(1.0, 0.05, 0.55);
+                    vec3 neonAmber = vec3(1.0, 0.7, 0.1);
+
+                    vec3 col = darkBg;
+                    col = mix(col, neonCyan, grid * 0.28);
+                    col = mix(col, neonCyan, (ring1 + ring2 * 0.6) * (0.75 + sin(uTime * 3.0) * 0.25));
+                    col = mix(col, neonPink, centerReticle * 0.6);
+                    col = mix(col, neonAmber, waveLine * (0.8 + uBass * 0.8));
+
+                    // Vignette edge darkening
+                    float vig = 1.0 - smoothstep(0.4, 0.9, length(vUv - 0.5) * 1.3);
+                    col *= vig;
+                    outCol = vec4(col, 1.0);
                 }
 
                 // Audio reactive edge pulse
-                outCol.rgb += uBass * 0.05;
+                outCol.rgb += uBass * 0.06;
                 gl_FragColor = outCol;
             }
         `,
@@ -19574,7 +19604,12 @@ export function createVFXScene(container) {
         },
         // Scene 22: Cyber Cinema Video Playback Control Methods
         playVideoInScene: (url, title, options = {}) => {
-            if (!url) return;
+            if (!url) {
+                if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
+                    cinemaScreenShaderMat.uniforms.uHasVideo.value = 0.0;
+                }
+                return;
+            }
             videoCurrentUrl = url;
             videoCurrentTitle = title || url.split('/').pop().replace(/[-_]/g, ' ');
             const targetVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
@@ -19583,10 +19618,18 @@ export function createVFXScene(container) {
             targetVid.muted = videoMutedSetting;
             targetVid.play().catch(() => {});
             cinemaScreenShaderMat.uniforms.uMix.value = (videoActiveChannel === 'A') ? 0.0 : 1.0;
+            if (cinemaScreenShaderMat.uniforms.uHasVideo) {
+                cinemaScreenShaderMat.uniforms.uHasVideo.value = 1.0;
+            }
             videoTransitionActive = false;
         },
         transitionToVideo: (url, title, transType = 0, durSec = 1.0) => {
-            if (!url) return;
+            if (!url) {
+                if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
+                    cinemaScreenShaderMat.uniforms.uHasVideo.value = 0.0;
+                }
+                return;
+            }
             const nextChannel = (videoActiveChannel === 'A') ? 'B' : 'A';
             const incomingVid = (nextChannel === 'B') ? videoChannelB : videoChannelA;
 
@@ -19603,9 +19646,27 @@ export function createVFXScene(container) {
             const transMap = { crossfade: 0, glitch: 1, zoom: 2, strobe: 3, cut: 4 };
             videoTransitionType = typeof transType === 'number' ? transType : (transMap[transType] ?? 0);
             cinemaScreenShaderMat.uniforms.uTransitionType.value = videoTransitionType;
+            cinemaScreenShaderMat.uniforms.uMix.value = (nextChannel === 'B') ? 0.0 : 1.0;
+            if (cinemaScreenShaderMat.uniforms.uHasVideo) {
+                cinemaScreenShaderMat.uniforms.uHasVideo.value = 1.0;
+            }
             videoTransitionDuration = Math.max(0.1, Number(durSec) || 1.0);
             videoTransitionStartTime = clock.getElapsedTime();
             videoTransitionActive = true;
+        },
+        clearVideoFromScene: () => {
+            videoCurrentUrl = '';
+            videoCurrentTitle = 'No Video Selected';
+            if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
+                cinemaScreenShaderMat.uniforms.uHasVideo.value = 0.0;
+            }
+            videoChannelA.pause();
+            videoChannelB.pause();
+        },
+        setVideoHasSource: (hasVideo) => {
+            if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
+                cinemaScreenShaderMat.uniforms.uHasVideo.value = hasVideo ? 1.0 : 0.0;
+            }
         },
         setVideoSpeed: (speed) => {
             videoSpeedSetting = Math.max(0.2, Math.min(3.0, Number(speed) || 1.0));

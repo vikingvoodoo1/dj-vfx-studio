@@ -865,6 +865,13 @@ async function init() {
         if (tabId === 'branding') {
             syncMediaFolders().catch(() => {});
         }
+        if (tabId === 'video') {
+            if (typeof selectFX === 'function' && vfx && typeof vfx.getCurrentFX === 'function') {
+                if (vfx.getCurrentFX() !== 22) {
+                    selectFX(22);
+                }
+            }
+        }
     }
 
     // Activity Bar Tab Click Listeners
@@ -4464,6 +4471,36 @@ async function init() {
                 videoConsoleStatusBadge.style.borderColor = isOnAir ? 'rgba(0,255,136,0.5)' : 'rgba(0,229,255,0.3)';
             }
 
+            const videoSceneLivePill = document.getElementById('video-scene-live-pill');
+            const btnSwitchToVideoScene = document.getElementById('btn-switch-to-video-scene');
+            if (videoSceneLivePill) {
+                if (isOnAir) {
+                    videoSceneLivePill.textContent = '● ACTIVE ON 3D STAGE (LIVE)';
+                    videoSceneLivePill.style.background = 'rgba(0,255,136,0.2)';
+                    videoSceneLivePill.style.borderColor = 'rgba(0,255,136,0.5)';
+                    videoSceneLivePill.style.color = '#00ff88';
+                } else {
+                    const curName = (typeof FX_NAMES !== 'undefined' && FX_NAMES[currentFX]) || `Scene ${currentFX + 1}`;
+                    videoSceneLivePill.textContent = `OFF-AIR (STAGE IS SHOWING: ${curName.toUpperCase()})`;
+                    videoSceneLivePill.style.background = 'rgba(255,170,0,0.12)';
+                    videoSceneLivePill.style.borderColor = 'rgba(255,170,0,0.35)';
+                    videoSceneLivePill.style.color = '#ffaa00';
+                }
+            }
+            if (btnSwitchToVideoScene) {
+                if (isOnAir) {
+                    btnSwitchToVideoScene.textContent = '● SCENE 22 IS LIVE ON STAGE';
+                    btnSwitchToVideoScene.style.background = 'rgba(0,255,136,0.2)';
+                    btnSwitchToVideoScene.style.color = '#00ff88';
+                    btnSwitchToVideoScene.style.border = '1px solid #00ff88';
+                } else {
+                    btnSwitchToVideoScene.textContent = '▶ SWITCH 3D STAGE TO SCENE 22 [V]';
+                    btnSwitchToVideoScene.style.background = 'linear-gradient(135deg, #00ffcc, #00b4d8)';
+                    btnSwitchToVideoScene.style.color = '#050810';
+                    btnSwitchToVideoScene.style.border = 'none';
+                }
+            }
+
             const btnVideoGoLiveTop = document.getElementById('btn-video-go-live-top');
             if (btnVideoGoLiveTop) {
                 btnVideoGoLiveTop.textContent = isOnAir ? '● VIDEO ON AIR' : '▶ GO LIVE [FX 22]';
@@ -4597,6 +4634,12 @@ async function init() {
 
         if (btnVideoActivateScene22) {
             btnVideoActivateScene22.addEventListener('click', () => {
+                selectFX(22);
+            });
+        }
+        const btnSwitchToVideoScene = document.getElementById('btn-switch-to-video-scene');
+        if (btnSwitchToVideoScene) {
+            btnSwitchToVideoScene.addEventListener('click', () => {
                 selectFX(22);
             });
         }
@@ -5151,6 +5194,37 @@ async function init() {
             videoBadgeOnAir.style.color = targetIndex === 22 ? '#00ff88' : '#8c98b2';
             videoBadgeOnAir.style.borderColor = targetIndex === 22 ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.15)';
         }
+
+        const videoSceneLivePill = document.getElementById('video-scene-live-pill');
+        const btnSwitchToVideoSceneEl = document.getElementById('btn-switch-to-video-scene');
+        if (videoSceneLivePill) {
+            if (targetIndex === 22) {
+                videoSceneLivePill.textContent = '● ACTIVE ON 3D STAGE (LIVE)';
+                videoSceneLivePill.style.background = 'rgba(0,255,136,0.2)';
+                videoSceneLivePill.style.borderColor = 'rgba(0,255,136,0.5)';
+                videoSceneLivePill.style.color = '#00ff88';
+            } else {
+                const curName = FX_NAMES[targetIndex] || `Scene ${targetIndex + 1}`;
+                videoSceneLivePill.textContent = `OFF-AIR (STAGE IS SHOWING: ${curName.toUpperCase()})`;
+                videoSceneLivePill.style.background = 'rgba(255,170,0,0.12)';
+                videoSceneLivePill.style.borderColor = 'rgba(255,170,0,0.35)';
+                videoSceneLivePill.style.color = '#ffaa00';
+            }
+        }
+        if (btnSwitchToVideoSceneEl) {
+            if (targetIndex === 22) {
+                btnSwitchToVideoSceneEl.textContent = '● SCENE 22 IS LIVE ON STAGE';
+                btnSwitchToVideoSceneEl.style.background = 'rgba(0,255,136,0.2)';
+                btnSwitchToVideoSceneEl.style.color = '#00ff88';
+                btnSwitchToVideoSceneEl.style.border = '1px solid #00ff88';
+            } else {
+                btnSwitchToVideoSceneEl.textContent = '▶ SWITCH 3D STAGE TO SCENE 22 [V]';
+                btnSwitchToVideoSceneEl.style.background = 'linear-gradient(135deg, #00ffcc, #00b4d8)';
+                btnSwitchToVideoSceneEl.style.color = '#050810';
+                btnSwitchToVideoSceneEl.style.border = 'none';
+            }
+        }
+
         if (targetIndex === 22 && window.videoPlaybackManager && typeof window.videoPlaybackManager.onSceneActivated === 'function') {
             window.videoPlaybackManager.onSceneActivated();
         }
