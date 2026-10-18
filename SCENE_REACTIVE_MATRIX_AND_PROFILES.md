@@ -22,10 +22,11 @@ To give DJs and VJs complete visibility and creative control during live sets, t
 
 | Trigger | Location | Behavior |
 | :--- | :--- | :--- |
-| **`[M] 📋 MATRIX` Button** | Bottom Toolbar (next to Scene Theme Tabs) | Opens the full-screen Scene Reactive Matrix & Memory Profiles modal. |
-| **`📋 MATRIX & PROFILES` Button** | Left FX Console Pane (`#pane-fx` header) | Quick-access button from the shader selection panel. |
-| **Hotkey `M`** | Global Keyboard Shortcut | Toggles the Matrix modal open/closed from anywhere. |
-| **Hotkey `Escape`** | Global Keyboard Shortcut | Closes the Matrix modal. |
+| **`📋 SCENE CONFIGURATION & MATRIX` Banner** | Left FX Console Pane (`#pane-fx` directly below title) | Prominent full-width button opening the Scene Configuration, Parameter Memory & Reactive Matrix modal. Includes dedicated **Requirements Key / Legend Strip**. |
+| **`[M] ⚙️ SCENE CONFIG` Button** | Bottom Toolbar (next to Scene Theme Tabs) | Bottom toolbar launcher with hotkey indicator. |
+| **Hotkey `M`** | Global Keyboard Shortcut | Toggles the Scene Configuration modal open/closed from anywhere. |
+| **Hotkey `Escape`** | Global Keyboard Shortcut | Closes open modals (Scene Configuration, Diagnostics Center, OBS Manager). |
+| **`🩺 DIAGNOSTICS` Button / `Alt+H`** | Console Health Mini Strip (`#pane-perform`) | Launches the full **Studio Health & Telemetry Diagnostics Center** modal. |
 
 ### Modal Features & Search
 - **Live Search Bar:** Real-time filtering across scene names, hotkeys, reactive tags, descriptions, and technical keywords.
@@ -116,27 +117,99 @@ DJ VFX Studio visualizer scenes have distinct technical prerequisites to perform
 
 ---
 
-### 2. Strict Hardware Disconnect Protection & Grayed-Out Scenes
+### 2. Strict Hardware Disconnect Protection & Softened Warning State
 
 Certain scenes are designed specifically around high-resolution physical deck telemetry:
 - **FX 3: DJ Deck Waveforms** requires direct playhead position, platter angular velocity, and RGB waveform data streamed from physical media players.
 
 When the required hardware is unplugged or offline:
-1. **Visual Graying-Out (`.scene-unmet-strict`):**
-   - The scene card in the Left FX Pane is dimmed to **40% opacity** and heavily desaturated (`grayscale(0.85) brightness(0.68)`).
-   - Card border adopts a distinctive dashed red alert edge (`rgba(255, 68, 68, 0.4)`).
-   - In the bottom toolbar preset row, button `[4]` is grayed out and dashed.
-   - In the Scene Reactive Matrix modal, the card displays an illuminated red banner: `⚠️ DECK UNPLUGGED`.
-2. **Hover & Tooltip Alerts:**
-   - Hovering over a grayed-out card displays a clear tooltip: `⚠️ Physical DJ Deck Required (Disconnected)`.
+1. **Softened Warning Appearance (`.scene-unmet-strict`):**
+   - The scene card in the Left FX Pane is gently softened to **84% opacity** (`opacity: 0.84`, `grayscale(0.20) brightness(0.92)`). Rather than heavily graying out to 40% (which makes it appear broken or permanently disabled), it preserves clear visual identity while signaling that a prerequisite is missing.
+   - Card border adopts a distinctive amber warning accent (`rgba(255, 140, 0, 0.5)`).
+   - A dedicated missing-hardware badge is displayed directly on the card: **`⚠️ DECK REQUIRED`** (`.fx-card-unmet-alert`).
+   - In the bottom toolbar preset row, button `[4]` adopts an amber dashed border.
+   - In the Scene Configuration / Matrix modal, the card displays an amber banner: `⚠️ DECK UNPLUGGED`.
+2. **Interactive Hover & Full Restoral:**
+   - Hovering over an unmet card instantly restores **100% full opacity and full color** (`opacity: 0.98`, `grayscale(0.0)`), allowing the DJ to inspect or select the scene at any time.
+   - Tooltip clearly states: `Hot key: 4 • ⚠️ Physical DJ Deck Required (Disconnected)`.
 3. **Fail-Safe Fallback Execution:**
-   - If an operator clicks or presses the hotkey (`4`) for a grayed-out scene while the deck is disconnected, **the visualizer does NOT crash or black out**.
-   - The studio immediately displays a non-intrusive warning notification toast:
+   - If an operator clicks or presses the hotkey (`4`) while the deck is disconnected, **the visualizer runs safely with zero crashes or blackouts**.
+   - The studio immediately displays an informative toast notification:
      > `⚠️ Note: DJ Deck Waveforms requires physical deck telemetry. Running live audio fallback.`
-   - The engine automatically engages an internal audio spectrum fallback so the screen continues rendering safely.
+   - The engine automatically engages an internal audio spectrum fallback so stage visuals remain dynamic and responsive.
 4. **Instant Plug-and-Play Reconnection:**
    - As soon as the DJ deck reconnects and begins streaming packets, the `notifyHardwareDeckPacket` listener triggers `updateSceneRequirementsUI()`.
-   - The grayed-out state is instantly lifted, restoring full vibrant saturation, and the deck requirement chip turns to green `✓ 🎛️ DECK`.
+   - The warning state is instantly lifted, restoring full saturation, and the deck requirement chip turns to green `✓ 🎛️ DECKS`.
+
+---
+
+### 3. Requirements Key / Legend Strip
+
+To ensure operators immediately understand what every requirement icon means during high-pressure live shows, a dedicated horizontal **Requirements Key** is placed directly below the Scene Configuration button in the FX Pane, as well as in the Scene Configuration modal header:
+
+```
+KEY: [✓ 🎤 AUDIO] Live Audio Active   [✓ 🎛️ DECKS] Decks Telemetry   [✓ 🌐 NET] Internet Sync   [✗] = UNPLUGGED
+```
+
+---
+
+## 🩺 Live Performance Console Health & Studio Diagnostics Center
+
+Located directly at the top of the **Live Performance Deck** (`#pane-perform`), the studio features a real-time **Console Health Mini Status Strip** paired with a full-screen **Studio Health & Telemetry Diagnostics Center** modal (`[Alt+H]`).
+
+### 1. Console Health Mini Status Strip (`#console-health-mini-strip`)
+
+A compact, subtle status bar designed for immediate peripheral glance without visual distraction:
+
+| Subsystem | Indicator States & Thresholds | Details & Behavior |
+| :--- | :--- | :--- |
+| **🎧 Audio In** | • **Green (`status-green`)**: `AUDIO: LINE-IN` / `AUDIO: [INTERFACE NAME]`<br>• **Amber (`status-amber`)**: `AUDIO: MACBOOK MIC`<br>• **Red (`status-red`)**: `AUDIO: OFFLINE` | Automatically detects device label. USB / Thunderbolt soundcards (Focusrite, Pioneer, Denon, RME, MOTU) trigger Green. Built-in laptop microphones trigger Amber (acoustic room capture). Muted or disconnected audio triggers Red. |
+| **🎛️ DJ Decks** | • **Green (`status-green`)**: `DECKS: DENON STAGELINQ` / `DECKS: PRO DJ LINK`<br>• **Red (`status-red`)**: `DECKS: OFFLINE` | Shows on-the-wire protocol name when packets are live. Automatically enters Red when no packets received for >60s. |
+| **📶 Network** | • **Green (`status-green`)**: `NET: [X]ms` (<70ms RTT)<br>• **Amber (`status-amber`)**: `NET: [X]ms` (70–220ms RTT)<br>• **Red (`status-red`)**: `NET: HIGH` / `NET: OFFLINE` | Automatically detects medium: Wired Ethernet (`🔌`), Wi-Fi (`📶`), or Cellular (`📱`). Measures real round-trip ping every 15s via lightweight non-intrusive HEAD requests. |
+| **⚡ Engine / Hardware** | • **Green (`status-green`)**: `60 FPS • 42MB`<br>• **Amber (`status-amber`)**: `<48 FPS`<br>• **Red (`status-red`)**: `<30 FPS` | Real-time smoothed render loop frame rate and JS heap allocated memory. |
+| **📡 Broadcast / Stream** | • **Green (`status-green`)**: `OBS: READY` / `OBS: LIVE FEED`<br>• **Amber (`status-amber`)**: `BUTT: CLIPPING! ⚠️` | Monitors OBS browser source feed and BUTT safe headroom. Instantly alerts if audio exceeds 0 dBFS to prevent web radio distortion. |
+| **🩺 Diagnostics Button** | `🩺 DIAGNOSTICS` [Alt+H] | Launches the full Studio Diagnostics Center modal. Clicking any individual mini badge also directly opens diagnostics. |
+
+---
+
+### 2. Studio Health & Telemetry Diagnostics Center Modal (`#studio-health-modal-backdrop`)
+
+Accessible via the `🩺 DIAGNOSTICS` button, clicking any status badge, or pressing `Alt+H`, this modal provides in-depth telemetry for triaging all 6 studio subsystems:
+
+1. **🎧 Audio In Subsystem Card:**
+   - Active device label, interface category (USB / Thunderbolt Interface vs Internal Mic vs Synthetic).
+   - AudioContext sample rate (e.g. `48,000 Hz`) and estimated driver latency.
+   - Real-time Peak dBFS and LUFS loudness telemetry with live logarithmic VU meter bar.
+2. **🎛️ DJ Decks Telemetry Card:**
+   - Active WebSocket bridge URL (`ws://localhost:8080`) and connection state.
+   - On-the-wire protocol source (Denon DJ StageLinQ, Pioneer Pro DJ Link, Native Instruments Traktor).
+   - Packet throughput rate (e.g. `42 pkts/sec`) and cumulative packet counter.
+   - Active on-air deck number, track BPM, and playhead status.
+3. **🌐 Network & Time.is Sync Card:**
+   - Physical connection medium (Wired Gigabit Ethernet vs 802.11ax Wi-Fi).
+   - Round-trip ping latency with qualitative classification (Excellent, Moderate, High Latency).
+   - Downlink bandwidth estimate and NIST atomic clock synchronization offset (±0.002s).
+4. **⚡ Engine & Hardware Performance Card:**
+   - Smoothed frame rate and frame delta (e.g. `59.9 FPS • 16.7ms frame`).
+   - Browser JS heap memory usage vs total allocated memory.
+   - Active Three.js scene index and title.
+   - Hardware accelerated WebGL pipeline renderer (Metal ANGLE / WebGL 2.0).
+5. **💡 Philips Hue & DMX Lighting Card:**
+   - Bridge IP address (e.g. `192.168.1.185 (Hue Bridge v2)`) and pairing status.
+   - Sync mode (Scene Palette Sync + Kick Strobe vs Standby).
+   - Bound entertainment lights count and 10Hz rate-limited packet queue.
+6. **📡 Broadcast, OBS & BUTT Streaming Card:**
+   - OBS browser source resolution and presentation mode (Solid Visual Stage vs Transparent Alpha Overlay).
+   - Popout Stage window / secondary screen status.
+   - BUTT safe headroom compliance indicator (-3.0 dBFS target).
+   - Real-time `nowplaying.txt` text export sync status.
+
+### 3. Interactive Diagnostics Actions
+- **`🧪 Run Full Self-Test` (`#btn-run-selftest`):**
+  Sequentially verifies network ping, audio processor state, WebGL shader compilation, and inter-window broadcast channels, providing immediate visual confirmation:
+  > `✓ Diagnostic Self-Test Complete: 6 of 6 Subsystems Verified & Operational!`
+- **`📋 Copy Diagnostic Report` (`#btn-copy-health-report`):**
+  Generates a clean markdown diagnostic report with timestamps and all subsystem metrics, copying directly to the system clipboard for rapid troubleshooting or technical support.
 
 ---
 

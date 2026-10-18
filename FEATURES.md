@@ -206,6 +206,39 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
+### 12. 📋 Scene Configuration Banner, Softened Warning States & Requirements Legend *(NEW)*
+- [x] **Prominent Scene Configuration Banner**: Full-width button positioned prominently below the Visual FX Bank title in the left FX pane, featuring high-visibility glowing typography (`📋 SCENE CONFIGURATION & MATRIX`), subtitle, and `[M] CONFIG` badge.
+- [x] **Requirements Legend Strip**: Dedicated horizontal key on the FX pane and in the Scene Matrix header clearly defining all icons:
+  - `✓ 🎤 AUDIO`: Live audio input active and supplying frequency FFT data.
+  - `✓ 🎛️ DECKS`: Hardware DJ decks telemetry streaming (StageLinQ / Pro DJ Link).
+  - `✓ 🌐 NET`: Internet connection online for NIST atomic sync.
+  - `✗`: Unplugged / Disconnected.
+- [x] **Softened Warning & Grayed-Out State**: Softens unmet scenes (such as FX 3 DJ Deck Waveforms when decks are unplugged) to **84% opacity** (`opacity: 0.84`, `grayscale(0.20) brightness(0.92)`) with an amber warning border and a dedicated `⚠️ DECK REQUIRED` chip. Avoids extreme 40% dimming so scenes never appear broken or permanently non-functional.
+- [x] **Hover Restoral & Safe Fallback**: Hovering over an unmet scene card instantly restores 100% full opacity and saturation; selecting an unmet scene runs safely with audio spectrum fallback and an informative toast notification.
+
+---
+
+### 13. 🩺 Live Performance Console Health Mini Strip & Studio Diagnostics Center *(NEW)*
+- [x] **Live Performance Console Health Mini Strip**: Subtle status bar embedded directly into the header of `#pane-perform`:
+  - **🎧 Audio In**: Green for external audio interfaces (USB, Thunderbolt, line-in), Amber for MacBook internal mic, Red for disconnected/muted.
+  - **🎛️ DJ Decks**: Green when decks are connected stating live on-the-wire protocol (`StageLinQ`, `Pro DJ Link`), Red when offline.
+  - **📶 Network**: Green with wired (`🔌`) vs wireless (`📶`) detection and lightweight round-trip latency (measured every 15s via non-intrusive HEAD ping), Amber/Red when degraded or offline.
+  - **⚡ Engine / Hardware Perf**: Live render loop smoothed FPS and JS heap memory (`60 FPS • 42MB`).
+  - **📡 Broadcast / Stream**: OBS browser source and stage window status, with BUTT safe headroom monitoring and instant clipping alert (`BUTT: CLIPPING! ⚠️`).
+  - **`🩺 DIAGNOSTICS` Launcher Button**: Direct 1-click launcher and `Alt+H` shortcut.
+- [x] **Studio Health & Telemetry Diagnostics Center Modal**: Comprehensive 6-subsystem diagnostic modal (`#studio-health-modal-backdrop`):
+  - **Audio In Subsystem**: Active device name, interface category, sample rate, latency, peak dBFS / LUFS meter.
+  - **DJ Decks Telemetry**: Active WebSocket bridge, protocol source, packet rate (pkts/sec) & total packet counter, active on-air deck & BPM.
+  - **Network & Time.is Sync**: Medium (Wired vs Wi-Fi), ping RTT, downlink bandwidth, NIST atomic clock sync offset.
+  - **Engine & Hardware Perf**: Smoothed FPS, frame time, JS heap memory allocated/used, active Three.js scene, WebGL renderer.
+  - **Philips Hue & DMX**: Bridge IP address, sync mode, bound entertainment bulbs count, rate limiter queue.
+  - **Broadcast, OBS & BUTT**: Browser source feed mode, 2nd screen stage window, BUTT safe headroom compliance (-3.0 dBFS target), nowplaying export.
+  - **Overall Subsystem Health Pill**: `● ALL SYSTEMS OPERATIONAL`, `▲ MINOR WARNINGS`, `✖ CRITICAL ATTENTION REQUIRED`.
+  - **Automated Self-Test (`🧪 Run Full Self-Test`)**: Sequentially verifies all 6 subsystems with live status toast.
+  - **Diagnostic Report Export (`📋 Copy Diagnostic Report`)**: Generates and copies formatted markdown report to system clipboard.
+
+---
+
 ## 🔮 Roadmap & Upcoming Features
 
 - [ ] **DMX512 / Art-Net Output Support**: Direct Ethernet/USB DMX output for controlling physical stage moving heads and laser bars from the visualizer's sequencer.

@@ -372,6 +372,7 @@ export async function setupAudio(onDeviceListChange) {
 
     return {
         isConnected: () => isConnected,
+        getAudioContext: () => audioCtx,
         getCurrentDevice: () => ({ id: currentDeviceId, label: currentDeviceLabel }),
         getDevices: getAudioDevices,
         switchDevice: connectDevice,
