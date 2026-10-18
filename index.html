@@ -5506,7 +5506,7 @@
                         <span class="tab-led"></span>
                         <span>⚡ ALL (23)</span>
                     </button>
-                    <button class="fx-category-btn" data-fxcat="video" title="🎬 Video Loops & Cyber Cinema 3D">
+                    <button class="fx-category-btn" id="btn-fxcat-video" data-fxcat="video" onclick="window.switchToVideoScene &amp;&amp; window.switchToVideoScene();" title="🎬 Video Loops &amp; Cyber Cinema 3D Scene [Open Video Selection Console]">
                         <span class="tab-led"></span>
                         <span>🎬 VIDEO (1)</span>
                     </button>
@@ -5718,7 +5718,7 @@
                     </div>
 
                     <!-- 🎬 Video & Cinema -->
-                    <div class="fx-pane-card" data-fx="22" data-fxcat="video" title="Hot key: V • Scene 22">
+                    <div class="fx-pane-card" data-fx="22" data-fxcat="video" onclick="window.switchToVideoScene &amp;&amp; window.switchToVideoScene();" title="Hot key: V • Scene 22: Cyber Cinema 3D [Click to open Video Selection Console]">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="22"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
@@ -5729,8 +5729,7 @@
                         </div>
                         <div class="fx-pane-card-title">🎬 Scene 22: Cyber Cinema 3D</div>
                         <div style="margin-top:4px; display:flex; gap:3px;">
-                            <button class="btn-micro" id="btn-card22-go-live" style="flex:1; font-size:7.5px; padding:2px 4px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; border-radius:2px; font-weight:700; cursor:pointer;" title="Switch 3D Stage directly to Scene 22">▶ GO LIVE</button>
-                            <button class="btn-micro" id="btn-card22-open-console" style="flex:1; font-size:7.5px; padding:2px 4px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:#d8dbe2; border-radius:2px; cursor:pointer;" title="Open Video Loops &amp; Library Console [Alt+7]">📂 CONSOLE</button>
+                            <button class="btn-micro" id="btn-card22-go-live" style="flex:1; font-size:7.5px; padding:3px 5px; background:rgba(0,255,204,0.22); border:1px solid #00ffcc; color:#00ffcc; border-radius:2px; font-weight:800; cursor:pointer;" onclick="event.stopPropagation(); window.switchToVideoScene &amp;&amp; window.switchToVideoScene();" title="Switch 3D Stage directly to Scene 22 and select videos">▶ GO TO VIDEO SCENE</button>
                         </div>
                     </div>
 
@@ -6563,8 +6562,19 @@
             <!-- PANE: VIDEO LOOPS & 10-BANK CYBER CINEMA PLAYBACK (FX 22 ENGINE)          -->
             <!-- ========================================================================= -->
             <div class="ide-tab-pane" id="pane-video">
+                <!-- Back to FX Bank Breadcrumb Navigation -->
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; background:linear-gradient(135deg, rgba(0,255,204,0.12), rgba(122,51,255,0.12)); border:1px solid rgba(0,255,204,0.35); border-radius:6px; padding:6px 10px;">
+                    <button id="btn-video-back-to-fx" class="btn-mini" style="font-size:9.5px; font-weight:800; padding:5px 10px; background:rgba(0,0,0,0.5); border:1px solid rgba(255,255,255,0.2); color:#ffffff; border-radius:4px; cursor:pointer; display:inline-flex; align-items:center; gap:5px;" title="Return to Visual FX Bank [Alt+2]">
+                        ◀ BACK TO FX BANK [Alt+2]
+                    </button>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span style="font-size:10px; font-weight:800; color:#00ffcc;">🎬 SCENE 22 • CYBER CINEMA VIDEO STUDIO</span>
+                        <span class="hud-badge" style="color:#00ff88; border-color:#00ff88; font-size:7.5px;">ON STAGE</span>
+                    </div>
+                </div>
+
                 <div class="pane-section-title">
-                    <span>🎬 Video Loops & Library Console</span>
+                    <span>🎬 Video Loops &amp; Library Console</span>
                     <div style="display:flex; gap:5px; align-items:center;">
                         <span id="video-console-status-badge" class="hud-badge" style="color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22</span>
                         <button class="btn-micro" id="btn-video-go-live-top" style="font-size:8px; padding:2px 6px; background:rgba(0,255,136,0.15); border:1px solid rgba(0,255,136,0.4); color:#00ff88; border-radius:3px; cursor:pointer;" title="Switch 3D Scene to Video Cinema [V]">▶ ON AIR</button>

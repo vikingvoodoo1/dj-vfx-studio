@@ -874,6 +874,27 @@ async function init() {
         }
     }
 
+    function switchToVideoScene() {
+        if (typeof selectFX === 'function') {
+            selectFX(22);
+        } else if (vfx && typeof vfx.switchFX === 'function') {
+            vfx.switchFX(22);
+        }
+        switchTab('video');
+        if (typeof showToast === 'function') {
+            showToast('🎬 Scene 22: Cyber Cinema 3D • Video Loops & Library Console Loaded');
+        }
+    }
+    window.switchToVideoScene = switchToVideoScene;
+    window.switchTab = switchTab;
+
+    const btnVideoBackToFx = document.getElementById('btn-video-back-to-fx');
+    if (btnVideoBackToFx) {
+        btnVideoBackToFx.addEventListener('click', () => {
+            switchTab('fx');
+        });
+    }
+
     // Activity Bar Tab Click Listeners
     activityTabs.forEach(tab => {
         tab.addEventListener('click', () => {
@@ -5357,14 +5378,14 @@ async function init() {
     fxCategoryBtns.forEach((btn) => {
         btn.addEventListener('click', () => {
             const cat = btn.getAttribute('data-fxcat') || 'all';
+            // When user clicks the Video category tab in the Visual FX Studio, immediately navigate to the Video Scene page!
+            if (cat === 'video') {
+                switchToVideoScene();
+                return;
+            }
             currentFxCategory = cat;
             fxCategoryBtns.forEach(b => b.classList.toggle('active', (b.getAttribute('data-fxcat') || 'all') === cat));
             filterFxCards();
-
-            // When user clicks the Video category tab in the Visual FX Studio, immediately activate Scene 22!
-            if (cat === 'video') {
-                selectFX(22);
-            }
         });
     });
 
@@ -5373,7 +5394,12 @@ async function init() {
         card.addEventListener('click', () => {
             const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
             if (!isNaN(fxIdx)) {
-                selectFX(fxIdx);
+                // If clicking Scene 22 Video Cinema card, take the user directly into the Video loops console!
+                if (fxIdx === 22) {
+                    switchToVideoScene();
+                } else {
+                    selectFX(fxIdx);
+                }
             }
         });
     });
@@ -5387,23 +5413,23 @@ async function init() {
     if (btnCard22GoLive) {
         btnCard22GoLive.addEventListener('click', (e) => {
             e.stopPropagation();
-            selectFX(22);
+            switchToVideoScene();
         });
     }
     if (btnCard22OpenConsole) {
         btnCard22OpenConsole.addEventListener('click', (e) => {
             e.stopPropagation();
-            switchTab('video');
+            switchToVideoScene();
         });
     }
     if (btnFxBannerGoLive) {
         btnFxBannerGoLive.addEventListener('click', () => {
-            selectFX(22);
+            switchToVideoScene();
         });
     }
     if (btnFxBannerOpenConsole) {
         btnFxBannerOpenConsole.addEventListener('click', () => {
-            switchTab('video');
+            switchToVideoScene();
         });
     }
 
@@ -6669,6 +6695,7 @@ async function init() {
                                 ${isCustom ? `● CUSTOMIZED (${diffInfo.diffCount})` : '○ DEFAULT'}
                             </span>
                             ${isCustom ? `<button class="matrix-btn-reset-scene" data-reset-scene="${scene.id}" style="background:rgba(255,170,0,0.15); border:1px solid rgba(255,170,0,0.5); color:#ffaa00; font-size:10px; font-weight:800; padding:3px 9px; border-radius:4px; cursor:pointer;" title="Reset this scene back to factory defaults">↺ Reset</button>` : ''}
+                            ${scene.id === 22 ? `<button class="matrix-btn-video-console" onclick="window.closeSceneMatrixModal &amp;&amp; window.closeSceneMatrixModal(); window.switchToVideoScene &amp;&amp; window.switchToVideoScene();" style="background:linear-gradient(135deg, rgba(0,255,204,0.25), rgba(122,51,255,0.25)); border:1px solid #00ffcc; color:#00ffcc; font-size:10px; font-weight:800; padding:3px 10px; border-radius:4px; cursor:pointer;" title="Open Video Loops &amp; Library Console">🎬 Select Videos</button>` : ''}
                             <button class="matrix-btn-switch-scene" data-switch-scene="${scene.id}" style="background:${isActive ? 'rgba(0,255,136,0.2)' : 'rgba(0,255,204,0.12)'}; border:1px solid ${isActive ? '#00ff88' : 'rgba(0,255,204,0.4)'}; color:${isActive ? '#00ff88' : '#00ffcc'}; font-size:10px; font-weight:800; padding:3px 10px; border-radius:4px; cursor:pointer;" title="Switch live stage visuals to this scene">
                                 ${isActive ? '✓ Active' : 'Switch'}
                             </button>
