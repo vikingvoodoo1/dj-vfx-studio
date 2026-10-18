@@ -2130,62 +2130,71 @@
             outline: none;
         }
 
-        /* Micro Pulse Clock inside Tempo Box */
-        .bpm-micro-pulse-wrap {
-            position: relative;
-            width: 100%;
-            height: 10px;
-            margin-top: 3px;
-            background: rgba(0, 20, 10, 0.4);
-            border: 1px solid rgba(0, 255, 136, 0.2);
-            border-radius: 3px;
-            overflow: hidden;
+        /* Mic / Line-In Activity Indicator inside Tempo Box */
+        .mic-listening-meter {
             display: flex;
             align-items: center;
+            justify-content: center;
+            gap: 4px;
+            margin-top: 4px;
+            padding: 2px 5px;
+            background: rgba(10, 12, 18, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 3px;
         }
 
-        .bpm-micro-pulse-svg {
-            width: 100%;
-            height: 100%;
-            display: block;
+        .mic-meter-icon {
+            font-size: 8px;
+            opacity: 0.5;
+            transition: opacity 0.15s ease, transform 0.1s ease;
         }
 
-        .bpm-micro-pulse-line {
-            stroke: #00ff88;
-            filter: drop-shadow(0 0 2px #00ff88);
-            transition: stroke 0.15s ease, stroke-width 0.15s ease;
+        .mic-meter-bars {
+            display: flex;
+            align-items: flex-end;
+            gap: 2px;
+            height: 7px;
         }
 
-        .bpm-micro-pulse-line.silent {
-            stroke: rgba(0, 255, 136, 0.25);
-            filter: none;
+        .mic-led-bar {
+            width: 3px;
+            border-radius: 1px;
+            background: rgba(255, 255, 255, 0.12);
+            transition: background 0.08s ease, box-shadow 0.08s ease;
         }
 
-        .bpm-micro-pulse-line.pulse-hit {
-            stroke: #ffffff;
-            stroke-width: 1.8;
-            filter: drop-shadow(0 0 5px #00ff88);
-        }
+        .mic-led-bar:nth-child(1) { height: 3px; }
+        .mic-led-bar:nth-child(2) { height: 4.5px; }
+        .mic-led-bar:nth-child(3) { height: 6px; }
+        .mic-led-bar:nth-child(4) { height: 7px; }
 
-        .bpm-micro-dot {
-            position: absolute;
-            top: 50%;
-            left: 0%;
-            width: 3.5px;
-            height: 3.5px;
-            border-radius: 50%;
+        .mic-led-bar.active-green {
             background: #00ff88;
-            box-shadow: 0 0 6px #00ff88;
-            transform: translate(-50%, -50%);
-            animation: microEcgSweep 2.0s infinite linear;
-            pointer-events: none;
+            box-shadow: 0 0 4px #00ff88;
         }
 
-        @keyframes microEcgSweep {
-            0% { left: 0%; opacity: 0; }
-            15% { opacity: 0.9; }
-            85% { opacity: 0.9; }
-            100% { left: 100%; opacity: 0; }
+        .mic-led-bar.active-cyan {
+            background: #00e5ff;
+            box-shadow: 0 0 4px #00e5ff;
+        }
+
+        .mic-led-bar.active-yellow {
+            background: #ffcc00;
+            box-shadow: 0 0 4px #ffcc00;
+        }
+
+        .mic-led-bar.active-red {
+            background: #ff0055;
+            box-shadow: 0 0 5px #ff0055;
+        }
+
+        .mic-meter-text {
+            font-size: 6.5px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.3px;
+            color: #6a6f80;
+            text-transform: uppercase;
         }
 
         /* FX Bank Channel Strip Cards & Grid (Scrollable with Sleek Cyber Scrollbar) */
@@ -3441,91 +3450,7 @@
             flex-wrap: wrap;
         }
 
-        /* Subtle Green ECG Heartbeat Line in Tempo Section */
-        .tempo-heartbeat-box {
-            margin-top: 6px;
-            padding-top: 5px;
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
 
-        .tempo-heartbeat-meta {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 7px;
-            font-family: 'JetBrains Mono', monospace;
-            color: #8c909e;
-            padding: 0 2px;
-        }
-
-        .heartbeat-label {
-            font-weight: 800;
-            letter-spacing: 0.5px;
-            color: rgba(0, 255, 136, 0.75);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .heartbeat-bpm-tag {
-            color: #00ff88;
-            font-weight: 700;
-        }
-
-        .tempo-heartbeat-track {
-            position: relative;
-            width: 100%;
-            height: 18px;
-            background: rgba(0, 20, 10, 0.35);
-            border: 1px solid rgba(0, 255, 136, 0.18);
-            border-radius: 4px;
-            overflow: hidden;
-            display: flex;
-            align-items: center;
-        }
-
-        .tempo-heartbeat-svg {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-
-        .heartbeat-line {
-            stroke: #00ff88;
-            filter: drop-shadow(0 0 3px rgba(0, 255, 136, 0.65));
-            transition: stroke-width 0.12s ease, filter 0.12s ease, stroke 0.12s ease;
-        }
-
-        .heartbeat-line.pulse-hit {
-            stroke: #55ffbb;
-            stroke-width: 2.4;
-            filter: drop-shadow(0 0 8px #00ff88);
-        }
-
-        .heartbeat-glow-dot {
-            position: absolute;
-            top: 50%;
-            left: 0;
-            width: 5px;
-            height: 5px;
-            border-radius: 50%;
-            background: #00ff88;
-            box-shadow: 0 0 8px #00ff88, 0 0 14px rgba(0, 255, 136, 0.8);
-            transform: translate(-50%, -50%);
-            pointer-events: none;
-            opacity: 0.85;
-            animation: ecgSweep 2.4s infinite linear;
-        }
-
-        @keyframes ecgSweep {
-            0% { left: 0%; opacity: 0; }
-            10% { opacity: 0.9; }
-            90% { opacity: 0.9; }
-            100% { left: 100%; opacity: 0; }
-        }
 
         /* Studio Health & Telemetry Diagnostics Modal */
         #studio-health-modal-backdrop {
@@ -4855,15 +4780,19 @@
                         <div style="flex-shrink:0; background: #13151c; border: 1px solid #282c3c; border-radius: 5px; padding: 6px 10px; text-align:center; min-width:86px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8);">
                             <div style="font-size: 7px; color: #8c909e; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 1px;">TEMPO</div>
                             <div style="display:flex; align-items:baseline; justify-content:center; gap:2px;">
-                                <span class="bpm-display" id="bpm-val" style="font-size: 21px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">126.0</span>
+                                <span class="bpm-display" id="bpm-val" style="font-size: 21px; font-weight: 900; color: #ffffff; text-shadow: 0 0 10px rgba(0,255,204,0.5);">---.-</span>
                                 <span class="bpm-unit" style="font-size: 8.5px; color: #00ffcc; font-weight: 800;">BPM</span>
                             </div>
-                            <!-- Micro Pulse Clock inside Tempo Box indicating active audio listening -->
-                            <div class="bpm-micro-pulse-wrap" id="bpm-micro-pulse-wrap" title="Micro pulse clock: actively listening to audio input">
-                                <svg class="bpm-micro-pulse-svg" viewBox="0 0 64 8" preserveAspectRatio="none">
-                                    <path class="bpm-micro-pulse-line" id="bpm-micro-pulse-line" d="M 0 4 L 18 4 L 21 2 L 25 6 L 28 4 L 31 1 L 34 7 L 37 2 L 40 5 L 43 4 L 64 4" fill="none" stroke="#00ff88" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                                </svg>
-                                <div class="bpm-micro-dot" id="bpm-micro-dot"></div>
+                            <!-- Live Mic / Audio Input Activity Indicator inside Tempo Box -->
+                            <div class="mic-listening-meter" id="mic-listening-meter" title="Live audio input activity: illuminates with room audio &amp; beats">
+                                <span class="mic-meter-icon" id="mic-meter-icon">🎙️</span>
+                                <div class="mic-meter-bars" id="mic-meter-bars">
+                                    <span class="mic-led-bar" id="mic-led-1"></span>
+                                    <span class="mic-led-bar" id="mic-led-2"></span>
+                                    <span class="mic-led-bar" id="mic-led-3"></span>
+                                    <span class="mic-led-bar" id="mic-led-4"></span>
+                                </div>
+                                <span class="mic-meter-text" id="mic-meter-text">IDLE</span>
                             </div>
                         </div>
 
@@ -4904,24 +4833,6 @@
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <!-- Subtle ECG Beat Heartbeat Pulse Line -->
-                    <div class="tempo-heartbeat-box" id="tempo-heartbeat-box" title="Real-time Audio Beat Heartbeat Pulse">
-                        <div class="tempo-heartbeat-meta">
-                            <span class="heartbeat-label">
-                                <span style="display:inline-block; width:5px; height:5px; border-radius:50%; background:#00ff88; box-shadow:0 0 6px #00ff88;"></span>
-                                PULSE CLOCK
-                            </span>
-                            <span class="heartbeat-bpm-tag" id="heartbeat-bpm-tag">SYNC: 126.0 BPM</span>
-                        </div>
-                        <div class="tempo-heartbeat-track">
-                            <svg class="tempo-heartbeat-svg" viewBox="0 0 320 20" preserveAspectRatio="none">
-                                <line x1="0" y1="10" x2="320" y2="10" stroke="rgba(0, 255, 136, 0.12)" stroke-width="1" stroke-dasharray="2,3"/>
-                                <path class="heartbeat-line" id="tempo-heartbeat-path" d="M 0 10 L 95 10 L 103 8 L 108 12 L 114 10 L 126 10 L 132 2 L 137 18 L 142 6 L 147 12 L 153 10 L 170 10 L 178 7 L 186 10 L 320 10" fill="none" stroke="#00ff88" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
-                            </svg>
-                            <div class="heartbeat-glow-dot" id="heartbeat-glow-dot"></div>
                         </div>
                     </div>
                 </div>

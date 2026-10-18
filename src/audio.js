@@ -434,7 +434,7 @@ export async function setupAudio(onDeviceListChange) {
 
                 let isOnset = false;
                 const minTimeBetweenHitsMs = 180; // Natural minimum spacing between bass hits
-                const dynamicFloor = Math.max(0.04, avgEnergy * 0.35);
+                const dynamicFloor = Math.max(0.10, avgEnergy * 0.35);
                 if (rawBass > dynamicFloor && rawBass > (avgEnergy * beatThreshold) && (now - lastHitTime) > minTimeBetweenHitsMs) {
                     isOnset = true;
                     transientImpulse = 1.0;

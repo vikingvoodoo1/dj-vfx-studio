@@ -7561,78 +7561,109 @@ async function init() {
     let audioBpmDetectedRecently = false;
     let lastAudioBpmDetectionTime = 0;
 
+    // Real-time Microphone / Line-In Activity Meter inside Tempo Readout Box
+    function updateMicListeningMeter(audioData, isBeatHit = false) {
+        const icon = document.getElementById('mic-meter-icon');
+        const led1 = document.getElementById('mic-led-1');
+        const led2 = document.getElementById('mic-led-2');
+        const led3 = document.getElementById('mic-led-3');
+        const led4 = document.getElementById('mic-led-4');
+        const statusText = document.getElementById('mic-meter-text');
+
+        if (!audioData) {
+            if (statusText) {
+                statusText.textContent = isHardwareDeckStreaming ? 'DECKS' : 'IDLE';
+                statusText.style.color = isHardwareDeckStreaming ? '#00ffcc' : '#6a6f80';
+            }
+            if (icon) icon.style.opacity = '0.5';
+            return;
+        }
+
+        const overall = audioData.overall || 0;
+        const bass = audioData.bass || 0;
+
+        // Level 1: Microphone Signal Detected (Quiet room noise floor: > 0.04)
+        const l1 = overall > 0.04 || bass > 0.05;
+        // Level 2: Real Music Playing / Voice (> 0.08)
+        const l2 = overall > 0.08 || bass > 0.11;
+        // Level 3: Rhythmic Bass Punch / Drum Transient (> 0.17)
+        const l3 = isBeatHit || overall > 0.17 || bass > 0.20;
+        // Level 4: Deep Kick Peak Drop (> 0.28)
+        const l4 = isBeatHit && (bass > 0.26 || (audioData.bassImpact || 0) > 0.35);
+
+        if (led1) led1.className = 'mic-led-bar' + (l1 ? ' active-green' : '');
+        if (led2) led2.className = 'mic-led-bar' + (l2 ? ' active-cyan' : '');
+        if (led3) led3.className = 'mic-led-bar' + (l3 ? ' active-yellow' : '');
+        if (led4) led4.className = 'mic-led-bar' + (l4 ? ' active-red' : '');
+
+        if (icon) {
+            icon.style.opacity = l2 ? '1.0' : (l1 ? '0.7' : '0.4');
+            icon.style.transform = isBeatHit ? 'scale(1.25)' : 'scale(1.0)';
+        }
+
+        if (statusText) {
+            if (isHardwareDeckStreaming) {
+                statusText.textContent = 'DECKS';
+                statusText.style.color = '#00ffcc';
+            } else if (isBeatHit) {
+                statusText.textContent = 'BEAT';
+                statusText.style.color = '#00ff88';
+            } else if (audioBpmDetectedRecently) {
+                statusText.textContent = 'LOCKED';
+                statusText.style.color = '#00ffcc';
+            } else if (l2) {
+                statusText.textContent = 'SAMPLING';
+                statusText.style.color = '#ffaa00';
+            } else {
+                statusText.textContent = 'IDLE';
+                statusText.style.color = '#6a6f80';
+            }
+        }
+    }
+
     function processLiveAudioBpm(audioData, now) {
-        if (isHardwareDeckStreaming) return; // Hardware deck takes absolute priority
+        if (isHardwareDeckStreaming) {
+            updateMicListeningMeter(audioData, false);
+            return; // Hardware deck takes absolute priority
+        }
         if (!audioData) return;
 
-        // Check if audio input is silent / music stopped (e.g. MacBook mic hearing quiet room)
-        const isQuietOrSilent = (audioData.overall < 0.032) || (lastAudioOnsetBpmTime > 0 && now - lastAudioOnsetBpmTime > 3200);
+        // STRICT NOISE GATE: Ambient room noise, fans, or quiet breathing (< -34 dBFS or overall < 0.065 or bass < 0.10)
+        // must NEVER trigger beat detection or fake BPM calculations!
+        const isRealMusicPresent = (audioData.overall >= 0.065 && audioData.bass >= 0.10) || 
+                                   (audioData.peakDb >= -32.0 && audioData.bass >= 0.08);
 
-        if (isQuietOrSilent && !isHardwareDeckStreaming) {
-            if (now - lastAudioOnsetBpmTime > 3200 || audioData.overall < 0.02) {
+        if (!isRealMusicPresent) {
+            // Room is quiet / ambient silence
+            updateMicListeningMeter(audioData, false);
+
+            if (now - lastAudioOnsetBpmTime > 2200) {
+                audioOnsetTimestamps = [];
                 audioBpmDetectedRecently = false;
                 if (phraseSyncSource) {
                     phraseSyncSource.style.display = 'inline-block';
-                    phraseSyncSource.textContent = 'SOURCE: AUDIO (STANDBY / SILENT)';
+                    phraseSyncSource.textContent = 'SOURCE: AUDIO (STANDBY)';
                     phraseSyncSource.style.borderColor = 'rgba(255, 170, 0, 0.35)';
                     phraseSyncSource.style.color = '#ffaa00';
-                    phraseSyncSource.title = 'Audio input is quiet or music paused. Actively listening for kick transients...';
-                }
-                const hbBpmTag = document.getElementById('heartbeat-bpm-tag');
-                if (hbBpmTag) {
-                    hbBpmTag.textContent = 'STANDBY (WAITING FOR AUDIO)';
+                    phraseSyncSource.title = 'Ambient room audio. Play music with a beat to detect tempo.';
                 }
                 if (bpmVal) {
-                    bpmVal.style.opacity = '0.5';
-                }
-                // Flatten ECG lines to indicate silence/waiting
-                const hbPath = document.getElementById('tempo-heartbeat-path');
-                if (hbPath) {
-                    hbPath.setAttribute('d', 'M 0 10 L 320 10');
-                    hbPath.classList.add('silent');
-                }
-                const microHbPath = document.getElementById('bpm-micro-pulse-line');
-                if (microHbPath) {
-                    microHbPath.setAttribute('d', 'M 0 4 L 64 4');
-                    microHbPath.classList.add('silent');
+                    bpmVal.textContent = '---.-';
+                    bpmVal.style.opacity = '0.45';
                 }
             }
-        } else {
-            if (bpmVal) {
-                bpmVal.style.opacity = '1.0';
-            }
-            const hbPath = document.getElementById('tempo-heartbeat-path');
-            if (hbPath && hbPath.classList.contains('silent')) {
-                hbPath.setAttribute('d', 'M 0 10 L 95 10 L 103 8 L 108 12 L 114 10 L 126 10 L 132 2 L 137 18 L 142 6 L 147 12 L 153 10 L 170 10 L 178 7 L 186 10 L 320 10');
-                hbPath.classList.remove('silent');
-            }
-            const microHbPath = document.getElementById('bpm-micro-pulse-line');
-            if (microHbPath && microHbPath.classList.contains('silent')) {
-                microHbPath.setAttribute('d', 'M 0 4 L 18 4 L 21 2 L 25 6 L 28 4 L 31 1 L 34 7 L 37 2 L 40 5 L 43 4 L 64 4');
-                microHbPath.classList.remove('silent');
-            }
+            return;
         }
 
-        // Check for kick onset, transient spike, or strong bass impact
+        // Check for authentic kick onset with significant energy
         const isKickOnset = !!(
-            audioData.isOnset ||
-            (audioData.transientImpulse > 0.65 && audioData.bass > 0.16) ||
-            (audioData.bassImpact > 0.35 && audioData.bass > 0.18)
+            (audioData.isOnset && audioData.bass > 0.12) ||
+            (audioData.transientImpulse > 0.70 && audioData.bass > 0.18) ||
+            (audioData.bassImpact > 0.40 && audioData.bass > 0.20)
         );
 
-        if (isKickOnset) {
-            // Pulse the subtle ECG heartbeat line and micro pulse line
-            const hbPath = document.getElementById('tempo-heartbeat-path');
-            if (hbPath) {
-                hbPath.classList.add('pulse-hit');
-                setTimeout(() => hbPath.classList.remove('pulse-hit'), 120);
-            }
-            const microHbPath = document.getElementById('bpm-micro-pulse-line');
-            if (microHbPath) {
-                microHbPath.classList.add('pulse-hit');
-                setTimeout(() => microHbPath.classList.remove('pulse-hit'), 120);
-            }
-        }
+        // Update real-time mic meter LED bars with live audio activity
+        updateMicListeningMeter(audioData, isKickOnset);
 
         if (!isKickOnset) return;
 
@@ -7673,8 +7704,8 @@ async function init() {
         while (clampedBpm < 75) clampedBpm *= 2;
         while (clampedBpm > 180) clampedBpm /= 2;
 
-        // Consistency check: check how many intervals are within 7% of the median
-        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.07).length;
+        // Consistency check: check how many intervals are within 6% of the median
+        const consistentCount = intervals.filter(iv => Math.abs(iv - medianIntv) / medianIntv < 0.06).length;
         if (consistentCount >= 2) {
             // Smoothly lerp towards candidate
             detectedAudioBpm = detectedAudioBpm * 0.70 + clampedBpm * 0.30;
@@ -7684,6 +7715,7 @@ async function init() {
 
             if (bpmVal) {
                 bpmVal.textContent = roundedBpm.toFixed(1);
+                bpmVal.style.opacity = '1.0';
             }
             if (vfx && typeof vfx.setBPM === 'function') {
                 vfx.setBPM(roundedBpm);
@@ -7694,10 +7726,6 @@ async function init() {
                 phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
                 phraseSyncSource.style.color = '#00ff88';
                 phraseSyncSource.title = `Live tempo sampled from audio kick transients: ${roundedBpm.toFixed(1)} BPM`;
-            }
-            const hbBpmTag = document.getElementById('heartbeat-bpm-tag');
-            if (hbBpmTag) {
-                hbBpmTag.textContent = `SYNC: ${roundedBpm.toFixed(1)} BPM`;
             }
         }
     }
@@ -7728,10 +7756,6 @@ async function init() {
             phraseSyncSource.textContent = `SOURCE: ${lastHardwareSource} (LIVE HARDWARE)`;
             phraseSyncSource.style.color = '#00ffcc';
             phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
-        }
-        const hbBpmTag = document.getElementById('heartbeat-bpm-tag');
-        if (hbBpmTag && bpmVal) {
-            hbBpmTag.textContent = `DECK: ${bpmVal.textContent} BPM`;
         }
         // Only update audio device badge if user explicitly selected deck-live as audio source
         if (currentSelectedDeviceId === 'deck-live') {
@@ -8036,16 +8060,10 @@ async function init() {
                 bpmVal.style.transform = 'scale(1.0)';
             }, 90);
 
-            const hbPath = document.getElementById('tempo-heartbeat-path');
-            if (hbPath) {
-                hbPath.classList.add('pulse-hit');
-                setTimeout(() => hbPath.classList.remove('pulse-hit'), 120);
-            }
-            const microHbPath = document.getElementById('bpm-micro-pulse-line');
-            if (microHbPath) {
-                microHbPath.classList.add('pulse-hit');
-                setTimeout(() => microHbPath.classList.remove('pulse-hit'), 120);
-            }
+            updateMicListeningMeter({ overall: 0.5, bass: 0.8, bassImpact: 0.9 }, true);
+            setTimeout(() => {
+                updateMicListeningMeter(null, false);
+            }, 120);
 
             const dIdx = (parseInt(deck, 10) || 1) - 1;
             const targetDeckCard = deckCards[dIdx];
