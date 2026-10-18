@@ -5118,7 +5118,7 @@ async function init() {
         'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
         'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
         'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
-        'Pumpkin Disco Ball', 'Haunted Manor', 'Cyber Cinema Video'
+        'Pumpkin Disco Ball', 'Haunted Manor', 'Scene 22: Cyber Cinema 3D'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -5280,9 +5280,14 @@ async function init() {
             const title = (card.querySelector('.fx-pane-card-title')?.textContent || '').toLowerCase();
             const key = (card.querySelector('.fx-pane-key')?.textContent || '').toLowerCase();
             const catTag = (card.querySelector('.fx-pane-cat-tag')?.textContent || '').toLowerCase();
+            const fxIdAttr = card.getAttribute('data-fx') || '';
+            const fxNum = parseInt(fxIdAttr, 10);
 
             const matchesCategory = (currentFxCategory === 'all' || cardCats.includes(currentFxCategory) || cardCat === currentFxCategory);
-            const matchesSearch = !q || title.includes(q) || key.includes(q) || catTag.includes(q);
+            const matchesSearch = !q || title.includes(q) || key.includes(q) || catTag.includes(q) ||
+                fxIdAttr === q || String(fxNum + 1) === q ||
+                `scene ${fxIdAttr}`.includes(q) || `scene ${fxNum + 1}`.includes(q) ||
+                `fx ${fxIdAttr}`.includes(q) || `fx ${fxNum + 1}`.includes(q);
 
             if (matchesCategory && matchesSearch) {
                 card.style.display = 'flex';

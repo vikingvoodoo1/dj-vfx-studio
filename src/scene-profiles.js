@@ -346,7 +346,7 @@ export const SCENE_METADATA = [
     },
     {
         id: 22,
-        name: 'Cyber Cinema Video',
+        name: 'Scene 22: Cyber Cinema 3D',
         hotkey: 'V',
         category: 'video',
         categoryLabel: 'Video Loops & Cinema',
