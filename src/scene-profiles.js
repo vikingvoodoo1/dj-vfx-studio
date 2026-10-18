@@ -46,6 +46,39 @@ export const REACTIVE_TAG_DEFINITIONS = {
     }
 };
 
+export const REQUIREMENT_DEFINITIONS = {
+    audio: {
+        id: 'audio',
+        label: 'Audio Input',
+        shortLabel: 'AUDIO',
+        icon: '🎤',
+        metText: '✓ 🎤 AUDIO',
+        unmetText: '✗ 🎤 AUDIO',
+        metTooltip: 'Audio Input: Connected & Active',
+        unmetTooltip: 'Audio Input: Disconnected / Muted'
+    },
+    deck: {
+        id: 'deck',
+        label: 'Hardware Deck',
+        shortLabel: 'DECK',
+        icon: '🎛️',
+        metText: '✓ 🎛️ DECK',
+        unmetText: '✗ 🎛️ DECK',
+        metTooltip: 'Hardware DJ Deck: Streaming Live Telemetry (StageLinQ / Pro DJ Link)',
+        unmetTooltip: 'Hardware DJ Deck: Disconnected / Unplugged'
+    },
+    internet: {
+        id: 'internet',
+        label: 'Internet Connection',
+        shortLabel: 'NET',
+        icon: '🌐',
+        metText: '✓ 🌐 NET',
+        unmetText: '✗ 🌐 NET',
+        metTooltip: 'Internet: Online & Connected',
+        unmetTooltip: 'Internet: Offline / Disconnected'
+    }
+};
+
 export const SCENE_METADATA = [
     {
         id: 0,
@@ -55,6 +88,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Equalizers & Decks',
         icon: '📊',
         reactiveTags: ['audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Multi-band studio frequency equalizer bars',
         description: 'Directly driven by the live audio FFT spectrum engine. Separates incoming sound into 5 discrete frequency bands (Sub-Bass, Bass, Low-Mid, High-Mid, Treble) and stereo levels to modulate 3D bar height and color gradients.'
     },
@@ -66,6 +100,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Equalizers & Decks',
         icon: '🎯',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Radial circular audio spectrum analyzer',
         description: 'Reacts to live multi-band audio frequencies: sub-bass pulses expand the core radial ring, mid frequencies deform orbital arcs, and treble spikes trigger outward particle bursts.'
     },
@@ -77,6 +112,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Equalizers & Decks',
         icon: '🌊',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Interactive 3D fluid surface grid',
         description: 'Time-domain audio oscilloscope waveforms and low-end bass ripples displace vertices across a high-resolution 3D fluid matrix with smooth wave propagation.'
     },
@@ -88,6 +124,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Equalizers & Decks',
         icon: '🎚️',
         reactiveTags: ['direct_deck', 'audio_fft', 'transients', 'bpm_sync'],
+        requirements: { audio: false, deck: true, internet: false, strictDeck: true },
         summary: 'Direct player telemetry, fire waveform & smoke dissolution',
         description: 'Full dual-deck hybrid engine: Reads direct Denon StageLinQ telemetry (track position, platter motion, BPM, fader weights, cue points). Decks realign dynamically on crossfades. Inactive/stopped decks cool to charcoal and phase out in smoke. Central baseline roars into flame with 520 tumbling embers and flickering candlelight on kick drums.'
     },
@@ -99,6 +136,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Disco & Stage Lights',
         icon: '🪩',
         reactiveTags: ['physical_rig'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Authentic nightclub mirror ball with suspension sway',
         description: 'Deliberately decoupled from audio twitching to deliver an authentic, high-end nightclub centerpiece: features continuous motorized rotation, realistic catenary chain sag, and subtle multi-frequency suspension pendulum wobble with crystal pinspots.'
     },
@@ -110,6 +148,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Lasers & Beams',
         icon: '⚡',
         reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Concert motorized dual-bank laser array',
         description: 'Motorized pan/tilt mirrors track the musical grid (1/2, 1, 2, or 4 beats), while laser intensities, fan spreads, and flash strobes pulse to audio transient peaks and sub-bass impact.'
     },
@@ -121,6 +160,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Lasers & Beams',
         icon: '💥',
         reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Rotating aerial saber fan and color chasers',
         description: 'Rotating saber fan, beam angles, and color swaps synchronized with musical beat triggers and mid/treble transients with volumetric haze scattering.'
     },
@@ -132,6 +172,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Lasers & Beams',
         icon: '💫',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'High-intensity concentric xenon strobe bursts',
         description: 'Concentric expanding rings fire intensely on kick drum drops, high transient spikes, and manual strobe triggers, creating a dramatic arena drop effect.'
     },
@@ -143,6 +184,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '🌅',
         reactiveTags: ['audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Infinite 80s neon perspective wireframe terrain',
         description: 'Infinite neon wireframe perspective grid whose undulating terrain hills deform to bass frequencies, with forward flight speed reactive to overall audio loudness.'
     },
@@ -154,6 +196,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '🌄',
         reactiveTags: ['audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Neon digital sunset canyon and undulating river',
         description: 'Glowing digital sunset scanlines and undulating canyon river valleys deforming dynamically to track bass and mid-range rhythms.'
     },
@@ -165,6 +208,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '💻',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Falling digital green glyph rain with glitch spikes',
         description: 'Falling digital green glyph cascades accelerate and flare in brightness on high-frequency hi-hats and snares, with full CRT glitch degaussing on heavy drops.'
     },
@@ -176,6 +220,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '👾',
         reactiveTags: ['audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Pixelated arcade vectors and nostalgic geometry',
         description: 'Geometric arcade vectors and 80s wireframe shapes pulsing and bouncing to low-end audio impulses.'
     },
@@ -187,6 +232,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Space & Galaxy',
         icon: '🚀',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Hyperdrive warp-speed star streaks',
         description: 'Sub-bass impact and kick transients drive warp-drive acceleration, stretching thousands of stars into relativistic streaks during high-energy segments.'
     },
@@ -198,6 +244,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Space & Galaxy',
         icon: '🌌',
         reactiveTags: ['audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Celestial spiral galaxy with multi-band suction',
         description: 'Multi-band audio frequency mapping: core black hole suction reacts to sub-bass, galactic arms expand with mid frequencies, and peripheral cosmic dust sparkles on treble.'
     },
@@ -209,6 +256,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Space & Galaxy',
         icon: '✨',
         reactiveTags: ['audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Continuous multi-strand spline particle stream',
         description: 'Smooth Bass/Mid/Treble continuous multi-strand spline curves and orbiting pulsar flares flowing gracefully without abrupt jumps or twitching.'
     },
@@ -220,6 +268,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '⏱️',
         reactiveTags: ['direct_deck'],
+        requirements: { audio: false, deck: true, internet: true, strictDeck: false },
         summary: 'Precision studio clock & live track bar counters',
         description: 'Displays precision local time & UTC clock, integrated with direct StageLinQ track time elapsed, time remaining, current deck BPM, and breakdown bar countdowns.'
     },
@@ -231,6 +280,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Disco & Stage Lights',
         icon: '🔦',
         reactiveTags: ['bpm_sync', 'audio_fft', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Moving-head concert beams with musical bar chase',
         description: 'Moving-head godray fixtures sweep across the arena on synchronized musical bar divisions (4-beat and 8-beat chase patterns), with beam core intensity pulsing to bass and beat timing.'
     },
@@ -242,6 +292,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Disco & Stage Lights',
         icon: '☁️',
         reactiveTags: ['bpm_sync', 'audio_fft'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Cathedral volumetric white beams and rolling fog',
         description: 'Volumetric stadium white godrays and heavy ground fog wisps, sweeping in sync with bar divisions and surging on beat drops.'
     },
@@ -253,6 +304,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Disco & Stage Lights',
         icon: '🪩',
         reactiveTags: ['audio_fft', 'bpm_sync'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Illuminated 70s dance floor tiles & overhead beams',
         description: 'Illuminated retro disco dance floor tiles light up with audio spectrum and beat waves, combined with sweeping overhead volumetric pinspots.'
     },
@@ -264,6 +316,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Cyber, Retro & Matrix',
         icon: '📼',
         reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Retro CRT tape glitch, 16-beat text & godrays',
         description: 'Text phrases alternate every 16 beats based on current deck BPM; CRT magnetic tape tracking lines, chromatic aberration, and degauss glitch shaders spike on heavy kick hits.'
     },
@@ -275,6 +328,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Halloween Spooky',
         icon: '🎃',
         reactiveTags: ['audio_fft', 'bpm_sync', 'transients', 'physical_rig'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: '10-lobe squashed pumpkin mirror ball & lens beams',
         description: 'Motorized 10-lobe squashed pumpkin mirror ball with natural chain wobble and steady disco spin. Two moving heads and 5 bottom fixtures shoot volumetric beams originating bang from the center of their lenses, tracking front facets in musical figures while mirror facet sparkles and hearth embers respond to treble and sub-bass.'
     },
@@ -286,6 +340,7 @@ export const SCENE_METADATA = [
         categoryLabel: 'Halloween Spooky',
         icon: '🏚️',
         reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Gothic Victorian manor, rave windows & lightning',
         description: 'Gothic Victorian manor with upstairs windows pulsing like rave mini-lights to musical beats; bass drops trigger volumetric lightning flashes illuminating rain, cemetery headstones, and dead trees.'
     }

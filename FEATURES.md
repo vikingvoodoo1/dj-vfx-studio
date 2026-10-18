@@ -108,7 +108,7 @@ This document tracks all features, architectural components, lighting integratio
 - **FX 0: 3D Studio Particle Spectrum Equalizer** — 36-band curved studio equalizer towers with frequency-mapped spectral gradients (Cyan to Magenta), peak-hold needle physics, studio grid reference lines, and live floating spectrum particles bursting from energetic peaks (matching the hardware console EQ engine).
 - **FX 1: Cylindrical Spectrum Tunnel** — 360-degree holographic frequency ring tunnel with relativistic speed progression.
 - **FX 2: Geometric Disco Spectrum** — Concentric faceted polygon rings undulating with transient beat impacts.
-- **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with deck telemetry.
+- **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style 3-band RGB spectral waveforms with live deck telemetry. Strictly requires physical DJ deck connection; automatically grayed out (`.scene-unmet-strict`) when unplugged, with live audio fallback.
 
 #### ⚡ Category 2: Lasers (FX 5–7)
 - **FX 5: Dual-Bank Moving Lasers** — Dual upper and lower scanning laser banks with responsive color fans.
@@ -137,6 +137,23 @@ This document tracks all features, architectural components, lighting integratio
 - **FX 13: Spiral Galaxy Vortex** — Logarithmic multi-arm galactic core with dense stellar clouds.
 - **FX 14: Hyper Particle Stream** — GPU curl noise particle simulation following 3D Bézier splines with chromatic velocity grading.
 - **FX 15: Time.is Atomic DJ Stage Clock** — High-resolution millisecond synchronized clock with rotating 3D gyro gimbal rings and circular frequency analyzer.
+
+#### 🚦 Live Telemetry Requirement Indicators & Disconnect Protection
+- [x] **Dynamic Per-Scene Status Badges**: Real-time status chips rendered inside each FX card, bottom preset button, and Scene Matrix card:
+  - `🎤 AUDIO`: Displays green `✓ 🎤` when Web Audio API input is active, or red `✗ 🎤` when disconnected / silent.
+  - `🎛️ DECK`: Displays green `✓ 🎛️` when physical hardware (Denon DJ StageLinQ / Pioneer Pro DJ Link) is streaming live telemetry, or red `✗ 🎛️` when unplugged / offline (>60s timeout).
+  - `🌐 NET`: Displays green `✓ 🌐` when browser network is online, or red `✗ 🌐` when offline.
+- [x] **Strict Hardware Disconnect Protection & Graying-Out**:
+  - Automatically grays out (`.scene-unmet-strict`) hardware-dependent visualizers (specifically FX 3 DJ Deck Waveforms) when physical decks are disconnected.
+  - Visual indicators include dimmed opacity (40%), heavy desaturation, dashed red alert borders, and `⚠️ DECK UNPLUGGED` warning banners.
+  - Non-blocking fail-safe: Selecting an unplugged scene triggers a notification toast (`⚠️ Note: DJ Deck Waveforms requires physical deck telemetry. Running live audio fallback.`) and automatically engages synthetic audio waveform fallback without crashing or freezing.
+  - Instant auto-restoration as soon as hardware packets are detected on the companion bridge.
+
+#### 📋 Scene Reactive Matrix & Per-Scene Parameter Memory
+- [x] **Interactive Reactive Matrix Modal (`M` / `[M] 📋 MATRIX`)**: Searchable, filterable modal detailing hotkeys, reactive engines (Audio FFT, StageLinQ, BPM Sync, Kick Transients, Physical Rig), and hardware telemetry for all 22 scenes.
+- [x] **Independent Parameter Memory Profiles**: Remembers DJ Logo, Station Logo, Event Flyer, Performance Macros (Gain, Sens, Bloom), and Philips Hue / DMX lighting per scene in `localStorage`.
+- [x] **Auto-Capture & Auto-Recall**: Adjusting controls instantly saves to active scene memory; switching scenes restores all parameters without cross-scene contamination.
+- [x] **Difference Tracking & Instant Reset**: Amber difference badges (`● CUSTOMIZED (X)` vs `○ DEFAULT`), highlighted diff fields, single-scene `↺ Reset`, and global reset.
 
 ---
 

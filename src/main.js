@@ -1,7 +1,7 @@
 import { setupAudio } from './audio.js';
 import { createVFXScene } from './effects.js';
 import { setupStageLinqClient } from './stagelinq.js';
-import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS } from './scene-profiles.js';
+import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS, REQUIREMENT_DEFINITIONS } from './scene-profiles.js';
 
 // DJ VFX Studio Build Metadata
 const BUILD_VERSION = 'v2.8.5';
@@ -2459,6 +2459,10 @@ async function init() {
             if (audioDeviceBadge) audioDeviceBadge.textContent = 'SIM';
             hudStatus.textContent = 'SIM ACTIVE';
         }
+
+        if (typeof updateSceneRequirementsUI === 'function') {
+            updateSceneRequirementsUI();
+        }
     }
 
     // Connect Audio on startup with saved device
@@ -4164,6 +4168,13 @@ async function init() {
 
     function selectFX(index, broadcast = true) {
         const targetIndex = ((index % TOTAL_FX) + TOTAL_FX) % TOTAL_FX;
+        const meta = SCENE_METADATA.find(s => s.id === targetIndex);
+        if (meta && meta.requirements?.strictDeck && typeof getTelemetryRequirementStatus === 'function') {
+            const reqStatus = getTelemetryRequirementStatus();
+            if (!reqStatus.deck) {
+                showToast(`⚠️ ${meta.name} requires physical DJ deck telemetry. Running live audio fallback.`);
+            }
+        }
         vfx.switchFX(targetIndex);
         window.selectFX = selectFX;
 
@@ -4601,6 +4612,95 @@ async function init() {
         });
     }
 
+    function getTelemetryRequirementStatus() {
+        const now = performance.now();
+        const isDeckStreaming = isHardwareDeckStreaming && (now - lastHardwarePacketTimestamp < 60000);
+        const isAudioConnected = !!(audioProcessor && typeof audioProcessor.isConnected === 'function' && audioProcessor.isConnected());
+        const isInternetConnected = typeof navigator !== 'undefined' ? !!navigator.onLine : true;
+
+        return {
+            deck: isDeckStreaming,
+            audio: isAudioConnected,
+            internet: isInternetConnected
+        };
+    }
+
+    function updateSceneRequirementsUI() {
+        const status = getTelemetryRequirementStatus();
+
+        // 1. Update FX Pane Cards (#fx-pane-grid .fx-pane-card)
+        const fxCards = document.querySelectorAll('.fx-pane-card');
+        fxCards.forEach(card => {
+            const fxId = parseInt(card.getAttribute('data-fx'), 10);
+            if (isNaN(fxId)) return;
+            const meta = SCENE_METADATA.find(s => s.id === fxId);
+            if (!meta || !meta.requirements) return;
+
+            const isStrictDeckMissing = meta.requirements.strictDeck && !status.deck;
+            card.classList.toggle('scene-unmet-strict', isStrictDeckMissing);
+            if (isStrictDeckMissing) {
+                card.setAttribute('title', `Hot key: ${meta.hotkey} • ⚠️ Physical DJ Deck Required (Disconnected)`);
+            } else {
+                card.setAttribute('title', `Hot key: ${meta.hotkey}`);
+            }
+
+            let reqsEl = card.querySelector('.fx-card-reqs');
+            if (!reqsEl) {
+                reqsEl = document.createElement('div');
+                reqsEl.className = 'fx-card-reqs';
+                card.appendChild(reqsEl);
+            }
+
+            let chipsHtml = '';
+            if (meta.requirements.audio) {
+                const isMet = status.audio;
+                chipsHtml += `<span class="req-chip ${isMet ? 'met' : 'unmet'}" title="${isMet ? 'Audio Input: Connected & Active' : 'Audio Input: Disconnected / Muted'}">${isMet ? '✓' : '✗'} 🎤</span>`;
+            }
+            if (meta.requirements.deck) {
+                const isMet = status.deck;
+                chipsHtml += `<span class="req-chip ${isMet ? 'met' : 'unmet'}" title="${isMet ? 'DJ Deck: Streaming Telemetry' : 'DJ Deck: Unplugged / Offline'}">${isMet ? '✓' : '✗'} 🎛️</span>`;
+            }
+            if (meta.requirements.internet) {
+                const isMet = status.internet;
+                chipsHtml += `<span class="req-chip ${isMet ? 'met' : 'unmet'}" title="${isMet ? 'Internet: Online' : 'Internet: Offline'}">${isMet ? '✓' : '✗'} 🌐</span>`;
+            }
+            reqsEl.innerHTML = chipsHtml;
+        });
+
+        // 2. Update Bottom Presets Row Buttons (#fx-presets-row .fx-btn)
+        const fxButtons = document.querySelectorAll('.fx-btn');
+        fxButtons.forEach(btn => {
+            const fxId = parseInt(btn.getAttribute('data-fx'), 10);
+            if (isNaN(fxId)) return;
+            const meta = SCENE_METADATA.find(s => s.id === fxId);
+            if (!meta || !meta.requirements) return;
+
+            const isStrictDeckMissing = meta.requirements.strictDeck && !status.deck;
+            btn.classList.toggle('scene-unmet-strict', isStrictDeckMissing);
+            if (isStrictDeckMissing) {
+                btn.setAttribute('title', `⚠️ Requires Hardware DJ Deck (Disconnected)`);
+            } else {
+                btn.removeAttribute('title');
+            }
+        });
+
+        // 3. Update Scene Reactive Matrix Modal Cards (if open)
+        if (sceneMatrixModalBackdrop && sceneMatrixModalBackdrop.classList.contains('active')) {
+            updateMatrixUI();
+        }
+    }
+
+    let mockDeckDisconnectedForTesting = false;
+
+    window.getTelemetryRequirementStatus = getTelemetryRequirementStatus;
+    window.updateSceneRequirementsUI = updateSceneRequirementsUI;
+    window.setHardwareDeckStreaming = (val) => {
+        mockDeckDisconnectedForTesting = !val;
+        isHardwareDeckStreaming = !!val;
+        lastHardwarePacketTimestamp = val ? performance.now() : 0;
+        updateSceneRequirementsUI();
+    };
+
     function applySceneProfile(sceneIndex) {
         if (sceneIndex < 0 || sceneIndex >= TOTAL_FX) return;
         const profile = SceneProfileManager.getProfile(sceneIndex);
@@ -4874,8 +4974,24 @@ async function init() {
             const hueSyncDiff = profile.lighting.hueSync !== false;
             const hueModeDiff = profile.lighting.hueMode !== 'scene_sync';
 
+            const reqStatus = getTelemetryRequirementStatus();
+            const isStrictDeckMissing = scene.requirements?.strictDeck && !reqStatus.deck;
+
+            let reqsChipsHtml = '';
+            if (scene.requirements) {
+                if (scene.requirements.audio) {
+                    reqsChipsHtml += `<span class="matrix-req-chip ${reqStatus.audio ? 'met' : 'unmet'}" title="${reqStatus.audio ? 'Audio Input: Connected & Active' : 'Audio Input: Disconnected / Muted'}">${reqStatus.audio ? '✓' : '✗'} 🎤 AUDIO</span>`;
+                }
+                if (scene.requirements.deck) {
+                    reqsChipsHtml += `<span class="matrix-req-chip ${reqStatus.deck ? 'met' : 'unmet'}" title="${reqStatus.deck ? 'DJ Deck: Streaming Telemetry' : 'DJ Deck: Unplugged / Offline'}">${reqStatus.deck ? '✓' : '✗'} 🎛️ DECK</span>`;
+                }
+                if (scene.requirements.internet) {
+                    reqsChipsHtml += `<span class="matrix-req-chip ${reqStatus.internet ? 'met' : 'unmet'}" title="${reqStatus.internet ? 'Internet: Online' : 'Internet: Offline'}">${reqStatus.internet ? '✓' : '✗'} 🌐 NET</span>`;
+                }
+            }
+
             html += `
-                <div class="matrix-scene-card ${isActive ? 'active' : ''} ${isCustom ? 'customized' : ''}" data-matrix-scene="${scene.id}">
+                <div class="matrix-scene-card ${isActive ? 'active' : ''} ${isCustom ? 'customized' : ''} ${isStrictDeckMissing ? 'scene-unmet-strict' : ''}" data-matrix-scene="${scene.id}">
                     <div class="matrix-scene-top">
                         <div class="matrix-scene-identity">
                             <span class="matrix-hotkey">${scene.hotkey}</span>
@@ -4889,6 +5005,7 @@ async function init() {
                         </div>
 
                         <div class="matrix-scene-actions">
+                            ${isStrictDeckMissing ? '<span class="matrix-unplugged-warning" title="Physical DJ Deck Required (Disconnected)">⚠️ DECK UNPLUGGED</span>' : ''}
                             ${isActive ? '<span class="matrix-live-badge">🟢 LIVE SCENE</span>' : ''}
                             <span class="matrix-status-pill ${isCustom ? 'customized' : 'default'}">
                                 ${isCustom ? `● CUSTOMIZED (${diffInfo.diffCount})` : '○ DEFAULT'}
@@ -4902,6 +5019,10 @@ async function init() {
 
                     <div class="matrix-tags-row">
                         ${tagsHtml}
+                    </div>
+
+                    <div class="matrix-reqs-strip">
+                        ${reqsChipsHtml}
                     </div>
 
                     <div class="matrix-scene-desc">${escapeHtml(scene.description)}</div>
@@ -5140,8 +5261,12 @@ async function init() {
     } catch (e) {}
 
     function notifyHardwareDeckPacket(source = 'PRO DJ LINK') {
+        if (mockDeckDisconnectedForTesting) return;
         isHardwareDeckStreaming = true;
         lastHardwarePacketTimestamp = performance.now();
+        if (typeof updateSceneRequirementsUI === 'function') {
+            updateSceneRequirementsUI();
+        }
         if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
         if (cdj3000View) cdj3000View.style.display = 'block';
         if (phraseSyncSource) {
@@ -6372,6 +6497,7 @@ async function init() {
                 if (phraseModeSelector) phraseModeSelector.style.display = 'none';
                 if (phraseSyncSource) phraseSyncSource.style.display = 'none';
                 if (bpmSubbeatDots) bpmSubbeatDots.style.display = 'none';
+                if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
             } else if (phaseSweepNeedle && activePhraseDisplayMode !== '3000') {
                 const liveBpm = (bpmVal ? parseFloat(bpmVal.textContent) : 126.0) || 126.0;
                 const beatPeriodMs = 60000 / liveBpm;
@@ -6384,6 +6510,20 @@ async function init() {
 
         return data;
     });
+
+    // Initialize scene requirement indicators and listeners
+    if (typeof updateSceneRequirementsUI === 'function') {
+        updateSceneRequirementsUI();
+    }
+    window.addEventListener('online', () => {
+        if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
+    });
+    window.addEventListener('offline', () => {
+        if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
+    });
+    setInterval(() => {
+        if (typeof updateSceneRequirementsUI === 'function') updateSceneRequirementsUI();
+    }, 3000);
 }
 
 init();

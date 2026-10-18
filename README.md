@@ -10,7 +10,9 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ## 🌟 Key Highlights
 
-- **21 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, spinning pumpkin disco balls with volumetric blue godrays, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **22 GPU-Accelerated 3D VFX Scenes**: Spanning volumetric laser arrays, authentic moving-head godray fixtures, illuminated disco dance floors, Protean volumetric clouds, VHS glitch typography, spinning pumpkin disco balls with volumetric blue godrays, disco mirror balls, synthwave landscapes, cosmic galaxies, and live deck waveform visualizers.
+- **🚦 Real-Time Telemetry Requirement Indicators & Hardware Protection**: Dynamic status badges (`🎤 AUDIO`, `🎛️ DECK`, `🌐 NET`) displaying green checkmarks (`✓`) when active and red crosses (`✗`) when missing/unplugged. Hardware-dependent scenes (e.g. FX 3 DJ Deck Waveforms) automatically gray out (`.scene-unmet-strict`) when decks are disconnected, complete with warning banners and safe live audio fallback.
+- **📋 Scene Reactive Matrix & Memory Profiles (`M`)**: Full interactive modal detailing hotkeys, reactive engines (Audio FFT, StageLinQ, BPM Sync, Kick Transients, Physical Rig), and hardware telemetry for all 22 scenes, complete with per-scene parameter memory (Logos, Macros, Philips Hue lighting), auto-recall, diff tracking, and instant reset. See the [📋 Scene Reactive Matrix & Hardware Memory Profiles Guide](file:///Users/jarikuhanen/agy/dj-vfx-studio/SCENE_REACTIVE_MATRIX_AND_PROFILES.md).
 - **🖼️ 3-Layer 3D Branding & Promo System**: Independent hardware-accelerated layers for **DJ Logo / Media (MP4/PNG)**, **Station / Broadcast Logo**, and **Event Flyer / Promo Graphics** with 9-way directional grid positioning, 3D spin/orbit/freeroam physics, custom display modes, and dark contrast shields.
 - **⏱️ Multi-Layer Automation & Pop-Up Scheduler**: Interval scheduling for branding layers with customizable frequency (`30s` to `30m`), display duration (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
 - **🎬 10 Cinematic Transition Effects**: Smooth Exponential Fade, Scale Zoom & Spring Pop, Slide In/Down/Up, Neon Strobe Multi-Burst, Cyber Hologram Glitch, 3D Spin Vortex, 3D Perspective Flip Card, and Instant Cut.
@@ -23,12 +25,13 @@ A high-performance, GPU-accelerated 3D visual engine, reactive lighting controll
 
 ---
 
-## 🗂️ VFX Scene Bank (21 Distinct Modes)
+## 🗂️ VFX Scene Bank (22 Distinct Modes)
 
 ### 📊 Category 1: Equalizers & Decks (FX 0–3)
 - **FX 0: Full-Screen Particle Spectrum Visualizer** — Pure, borderless edge-to-edge 36-band visualizer with frequency-mapped spectral gradients (Cyan to Magenta), peak-hold needle physics, and glowing spectrum particles floating seamlessly from active bar crests all the way to the top of the screen.
 - **FX 1: Cylindrical Spectrum Tunnel** — 360-degree holographic frequency ring tunnel with relativistic speed progression.
-- **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style authentic 3-band RGB spectral waveforms with deck telemetry. Supports native Pioneer Rekordbox ANLZ wire packets and Denon Engine OS `m.db` pre-analyzed waveforms with live FFT fallback. See the [🌊 Authentic DJ Deck Waveforms & On-the-Wire Telemetry Guide](file:///Users/jarikuhanen/agy/dj-vfx-studio/DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md).
+- **FX 2: Fluid Wave Matrix** — Interactive 3D fluid surface grid responding dynamically to time-domain audio oscilloscope waveforms and low-end bass ripples.
+- **FX 3: DJ Deck Scrolling Waveform & HUD** — Denon/Pioneer style authentic 3-band RGB spectral waveforms with deck telemetry. Supports native Pioneer Rekordbox ANLZ wire packets and Denon Engine OS `m.db` pre-analyzed waveforms with live FFT fallback. Strictly requires physical deck telemetry; automatically grayed out (`.scene-unmet-strict`) when unplugged. See the [🌊 Authentic DJ Deck Waveforms & On-the-Wire Telemetry Guide](file:///Users/jarikuhanen/agy/dj-vfx-studio/DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md).
 
 ### ⚡ Category 2: Lasers (FX 5–7)
 - **FX 5: Dual-Bank Moving Lasers** — Dual upper and lower scanning laser banks with responsive color fans.

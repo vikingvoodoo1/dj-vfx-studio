@@ -10,9 +10,11 @@
 
 To give DJs and VJs complete visibility and creative control during live sets, the studio includes:
 1. **The Scene Reactive Matrix:** A central reference detailing hotkeys, scene names, reactive engines, and technical hardware telemetry used by each scene.
-2. **Per-Scene Parameter Memory:** Each scene independently remembers its last-configured visual parameters (DJ Logo, Station Logo, Event Flyer, Performance Macro Faders, and Philips Hue / DMX lighting) without polluting other scenes.
-3. **Auto-Recall Engine:** Switching scenes automatically restores that scene's customized parameters onto the stage and console sliders.
-4. **Visual Difference Tracking & Reset Controls:** Clear visual indicators (`○ DEFAULT` vs `● CUSTOMIZED (X)`), highlighted diff fields, per-scene `↺ Reset` buttons, and a global reset action.
+2. **Real-Time Telemetry & Hardware Requirement Indicators:** Dynamic indicator chips inside each scene graphic box (`🎤 AUDIO`, `🎛️ DECK`, `🌐 NET`) displaying green checkmarks (`✓`) when active and red crosses (`✗`) when missing or unplugged.
+3. **Hardware Disconnect Protection & Grayed-Out Scenes:** Automatic dimming and graying-out (`.scene-unmet-strict`) of scenes requiring physical hardware (such as FX 3 DJ Deck Waveforms) when the DJ deck is unplugged, complete with warning badges and safe audio fallback.
+4. **Per-Scene Parameter Memory:** Each scene independently remembers its last-configured visual parameters (DJ Logo, Station Logo, Event Flyer, Performance Macro Faders, and Philips Hue / DMX lighting) without polluting other scenes.
+5. **Auto-Recall Engine:** Switching scenes automatically restores that scene's customized parameters onto the stage and console sliders.
+6. **Visual Difference Tracking & Reset Controls:** Clear visual indicators (`○ DEFAULT` vs `● CUSTOMIZED (X)`), highlighted diff fields, per-scene `↺ Reset` buttons, and a global reset action.
 
 ---
 
@@ -73,30 +75,68 @@ Every scene in DJ VFX Studio utilizes one or more reactive engine inputs:
 
 ## 🎛️ Complete 22-Scene Reactive Engine Matrix
 
-| ID | Key | Scene Name | Category | Reactive Engines | Hardware / Audio Inputs Used | Visual Engine Behavior |
-| :---: | :---: | :--- | :--- | :--- | :--- | :--- |
-| **0** | `1` | **3D Studio EQ** | Equalizers & Decks | `🎧 Live Audio FFT` | 5-Band FFT spectrum analysis (Sub-Bass, Bass, Low-Mid, High-Mid, Treble), Stereo L/R levels | 3D equalizer bars with dynamic height displacement, studio lighting reflections, and frequency-gradient coloring. |
-| **1** | `2` | **Circular Spectrum** | Equalizers & Decks | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Multi-band FFT, sub-bass transient spikes | Radial spectrum ring that expands on sub-bass pulses, mid-frequencies deform circular arcs, and high-frequency spikes emit outward spark particles. |
-| **2** | `3` | **Fluid Wave Matrix** | Equalizers & Decks | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Time-domain oscilloscope waveforms, low-end bass ripples | High-resolution 3D fluid matrix where vertices ripple and displace in real time according to audio waveform amplitude and bass impacts. |
-| **3** | `4` | **DJ Deck Waveforms** | Equalizers & Decks | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | StageLinQ track waveforms (`.rgb` / `m.db`), sub-ms playhead position, platter rotation, deck pitch faders | Authentic 3-band scrolling waveform renderer driven directly by hardware deck telemetry. Platter rotation and playhead track physical deck motion with sub-millisecond precision. |
-| **4** | `5` | **Spinning Disco Ball** | Disco | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Audio bass pulse, beat tempo, spotlight position | 3D disco ball with thousands of mirrored facets reflecting moving pinspots across a club room. Rotates with BPM sync and pulses specular highlights on bass hits. |
-| **5** | `6` | **Dual-Bank Lasers** | Lasers | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | BPM beat clock, high-frequency transients, audio energy | Dual motorized overhead laser banks projecting scanning beam fans, cones, and sheets with volumetric atmospheric fog scattering. Beats trigger laser color changes and fan sweeps. |
-| **6** | `7` | **Saber Multi-Beams** | Lasers | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Kick transients, mid-range energy, pan/tilt sweeps | Overhead moving-head fixtures firing concentrated light sabers across the stage. Fixtures pan and tilt rhythmically, flaring on kick drum transients. |
-| **7** | `8` | **Strobe Rings** | Lasers | `🥁 BPM Multi-Sync`<br>`💥 Kick Transients` | Kick transients, downbeat clock, high-hat triggers | Concentric strobe rings pulsing down a 3D tunnel. Kick drums trigger blinding strobe flashes and high-hats trigger ring ripples. |
-| **8** | `9` | **Synthwave Grid** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Bass frequency amplitude, track tempo, time-domain wave | Retro-futuristic 80s perspective grid scrolling toward neon mountains. Bass hits deform the grid terrain and send luminous energy pulses down wireframe lines. |
-| **9** | `0` | **Synthwave River & Sun** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Low-end bass, stereo energy, BPM clock | Neon synthwave sun sitting over a liquid digital river. Audio bass drives sun expansion, horizon bloom, and river surface undulation. |
-| **10** | `-` | **Matrix Code Rain** | Cyber & Retro | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio volume, mid/treble frequencies, transient hits | Cascading digital rain with green glyphs falling in 3D perspective. Audio peaks accelerate fall speed and kick transients invert glyph brightness. |
-| **11** | `=` | **Retro Arcade 80s** | Cyber & Retro | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Mid-range frequencies, beat counter, audio envelope | 1980s neon arcade corridor with wireframe geometry, floating tokens, and CRT scanlines dancing to the musical rhythm. |
-| **12** | `[` | **Warp Starfield** | Space & Galaxy | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Bass volume, kick transient bursts | 3D starfield hyperspace warp. Stars streak past camera based on low-end intensity; heavy drops trigger lightspeed hyperspace velocity. |
-| **13** | `]` | **Spiral Galaxy Vortex** | Space & Galaxy | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Multi-band FFT, stereo panning, track BPM | Rotating spiral galaxy with millions of stellar particles. Audio energy expands the galaxy arms while treble frequencies add shimmering star clusters. |
-| **14** | `O` | **Hyper Particle Stream** | Space & Galaxy | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | High-frequency transients, sub-bass impacts | High-velocity particle tunnel with hundreds of thousands of light particles streaming past the viewer, reacting dynamically to stereo separation and bass drops. |
-| **15** | `P` | **Time.is Clock** | Space & Galaxy | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | Deck track elapsed/remaining time, hardware BPM, system clock | High-precision digital time and performance clock visualizer displaying local set time, elapsed track time, and synchronized beat intervals. |
-| **16** | `K` | **Sweeping Godrays** | Lasers | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | Audio intensity, low-pass filter, camera movement | Atmospheric volumetric light shafts projecting through dense stage haze. Beams sweep across the scene synchronized to music dynamics. |
-| **17** | `L` | **White Godrays & Fog** | Lasers | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | High-frequency brightness, bass rumble, stage smoke | Pure white stadium-style godrays piercing dense ground fog with realistic volumetric light scattering. |
-| **18** | `;` | **Disco Floor & Godrays** | Disco | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Kick drum hits, beat tempo, mid-range melody | Illuminated Saturday Night Fever retro checkered disco floor pulsing with colorful LED tiles beneath sweeping volumetric godrays. |
-| **19** | `'` | **VHS Glitch Words** | Cyber & Retro | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio peaks, transient attacks, high-frequency noise | Retro VHS tape tracking simulation with analog tape artifacts, chromatic aberration, scanline jitter, and glitch typography flashing on transients. |
-| **20** | `,` | **Pumpkin Disco Ball** | Spooky | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Bass hits, beat tempo, spotlight angle | Jack-o'-lantern carved disco pumpkin rotating with mirrored reflections, glowing amber light beams, and spooky Halloween club vibes. |
-| **21** | `.` | **Haunted Manor** | Spooky | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Audio thunder impacts, bass rumble, mid frequencies | Eerie haunted cemetery and gothic manor silhouette with volumetric fog, flickering lightning on audio transients, and spectral particles. |
+| ID | Key | Scene Name | Category | Requirements | Reactive Engines | Hardware / Audio Inputs Used | Visual Engine Behavior |
+| :---: | :---: | :--- | :--- | :---: | :--- | :--- | :--- |
+| **0** | `1` | **3D Studio EQ** | Equalizers & Decks | `🎤 Audio` | `🎧 Live Audio FFT` | 5-Band FFT spectrum analysis (Sub-Bass, Bass, Low-Mid, High-Mid, Treble), Stereo L/R levels | 3D equalizer bars with dynamic height displacement, studio lighting reflections, and frequency-gradient coloring. |
+| **1** | `2` | **Circular Spectrum** | Equalizers & Decks | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Multi-band FFT, sub-bass transient spikes | Radial spectrum ring that expands on sub-bass pulses, mid-frequencies deform circular arcs, and high-frequency spikes emit outward spark particles. |
+| **2** | `3` | **Fluid Wave Matrix** | Equalizers & Decks | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Time-domain oscilloscope waveforms, low-end bass ripples | High-resolution 3D fluid matrix where vertices ripple and displace in real time according to audio waveform amplitude and bass impacts. |
+| **3** | `4` | **DJ Deck Waveforms** | Equalizers & Decks | `🎛️ Deck` *(Strict)* | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | StageLinQ track waveforms (`.rgb` / `m.db`), sub-ms playhead position, platter rotation, deck pitch faders | Authentic 3-band scrolling waveform renderer driven directly by hardware deck telemetry. Grayed out (`.scene-unmet-strict`) when deck is unplugged. |
+| **4** | `5` | **Spinning Disco Ball** | Disco | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Audio bass pulse, beat tempo, spotlight position | 3D disco ball with thousands of mirrored facets reflecting moving pinspots across a club room. Rotates with BPM sync and pulses specular highlights on bass hits. |
+| **5** | `6` | **Dual-Bank Lasers** | Lasers | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | BPM beat clock, high-frequency transients, audio energy | Dual motorized overhead laser banks projecting scanning beam fans, cones, and sheets with volumetric atmospheric fog scattering. Beats trigger laser color changes and fan sweeps. |
+| **6** | `7` | **Saber Multi-Beams** | Lasers | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Kick transients, mid-range energy, pan/tilt sweeps | Overhead moving-head fixtures firing concentrated light sabers across the stage. Fixtures pan and tilt rhythmically, flaring on kick drum transients. |
+| **7** | `8` | **Strobe Rings** | Lasers | `🎤 Audio` | `🥁 BPM Multi-Sync`<br>`💥 Kick Transients` | Kick transients, downbeat clock, high-hat triggers | Concentric strobe rings pulsing down a 3D tunnel. Kick drums trigger blinding strobe flashes and high-hats trigger ring ripples. |
+| **8** | `9` | **Synthwave Grid** | Cyber & Retro | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Bass frequency amplitude, track tempo, time-domain wave | Retro-futuristic 80s perspective grid scrolling toward neon mountains. Bass hits deform the grid terrain and send luminous energy pulses down wireframe lines. |
+| **9** | `0` | **Synthwave River & Sun** | Cyber & Retro | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Low-end bass, stereo energy, BPM clock | Neon synthwave sun sitting over a liquid digital river. Audio bass drives sun expansion, horizon bloom, and river surface undulation. |
+| **10** | `-` | **Matrix Code Rain** | Cyber & Retro | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio volume, mid/treble frequencies, transient hits | Cascading digital rain with green glyphs falling in 3D perspective. Audio peaks accelerate fall speed and kick transients invert glyph brightness. |
+| **11** | `=` | **Retro Arcade 80s** | Cyber & Retro | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Mid-range frequencies, beat counter, audio envelope | 1980s neon arcade corridor with wireframe geometry, floating tokens, and CRT scanlines dancing to the musical rhythm. |
+| **12** | `[` | **Warp Starfield** | Space & Galaxy | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Bass volume, kick transient bursts | 3D starfield hyperspace warp. Stars streak past camera based on low-end intensity; heavy drops trigger lightspeed hyperspace velocity. |
+| **13** | `]` | **Spiral Galaxy Vortex** | Space & Galaxy | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync` | Multi-band FFT, stereo panning, track BPM | Rotating spiral galaxy with millions of stellar particles. Audio energy expands the galaxy arms while treble frequencies add shimmering star clusters. |
+| **14** | `O` | **Hyper Particle Stream** | Space & Galaxy | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | High-frequency transients, sub-bass impacts | High-velocity particle tunnel with hundreds of thousands of light particles streaming past the viewer, reacting dynamically to stereo separation and bass drops. |
+| **15** | `P` | **Time.is Clock** | Space & Galaxy | `🎛️ Deck`<br>`🌐 Net` | `⚡ Direct Deck StageLinQ`<br>`🥁 BPM Multi-Sync` | Deck track elapsed/remaining time, hardware BPM, system clock | High-precision digital time and performance clock visualizer displaying local set time, elapsed track time, and synchronized beat intervals. |
+| **16** | `K` | **Sweeping Godrays** | Lasers | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | Audio intensity, low-pass filter, camera movement | Atmospheric volumetric light shafts projecting through dense stage haze. Beams sweep across the scene synchronized to music dynamics. |
+| **17** | `L` | **White Godrays & Fog** | Lasers | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🏗️ Physical Rig Simulation` | High-frequency brightness, bass rumble, stage smoke | Pure white stadium-style godrays piercing dense ground fog with realistic volumetric light scattering. |
+| **18** | `;` | **Disco Floor & Godrays** | Disco | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Kick drum hits, beat tempo, mid-range melody | Illuminated Saturday Night Fever retro checkered disco floor pulsing with colorful LED tiles beneath sweeping volumetric godrays. |
+| **19** | `'` | **VHS Glitch Words** | Cyber & Retro | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients` | Audio peaks, transient attacks, high-frequency noise | Retro VHS tape tracking simulation with analog tape artifacts, chromatic aberration, scanline jitter, and glitch typography flashing on transients. |
+| **20** | `,` | **Pumpkin Disco Ball** | Spooky | `🎤 Audio` | `🎧 Live Audio FFT`<br>`🥁 BPM Multi-Sync`<br>`🏗️ Physical Rig Simulation` | Bass hits, beat tempo, spotlight angle | Jack-o'-lantern carved disco pumpkin rotating with mirrored reflections, glowing amber light beams, and spooky Halloween club vibes. |
+| **21** | `.` | **Haunted Manor** | Spooky | `🎤 Audio` | `🎧 Live Audio FFT`<br>`💥 Kick Transients`<br>`🏗️ Physical Rig Simulation` | Audio thunder impacts, bass rumble, mid frequencies | Eerie haunted cemetery and gothic manor silhouette with volumetric fog, flickering lightning on audio transients, and spectral particles. |
+
+---
+
+## 🚦 Live Telemetry & Hardware Requirement Indicators
+
+DJ VFX Studio visualizer scenes have distinct technical prerequisites to perform at their fullest potential. To eliminate guesswork during live performances, every scene graphic box (across the Left FX Pane, the Bottom Preset buttons, and the Scene Reactive Matrix modal) features dynamic **Telemetry Requirement Indicator Chips**.
+
+### 1. The 3 Requirement Types
+
+| Requirement | Indicator Label | Hardware / Engine Dependency | Active / Met State (`✓` Green) | Missing / Unmet State (`✗` Red) |
+| :--- | :---: | :--- | :--- | :--- |
+| **Audio Input** | `🎤 AUDIO` | Web Audio API `AnalyserNode` connected to line-in, microphone, or tab/system capture. | **`✓ 🎤 AUDIO`** (Neon Green)<br>Live audio stream connected and actively supplying frequency FFT data. | **`✗ 🎤 AUDIO`** (Vibrant Red)<br>Audio feed not connected, permission denied, or input muted. |
+| **Hardware Deck** | `🎛️ DECK` | Direct on-the-wire telemetry from Denon DJ StageLinQ or Pioneer Pro DJ Link companion bridge (`ws://localhost:8080`). | **`✓ 🎛️ DECK`** (Neon Green)<br>Physical players streaming real-time playhead, platter Hz, BPM, and waveform packets. | **`✗ 🎛️ DECK`** (Vibrant Red)<br>Deck bridge offline, network cable disconnected, or no packets received in >60s. |
+| **Internet Connection** | `🌐 NET` | Browser network connectivity via `navigator.onLine` (e.g. for Time.is NIST atomic clock synchronization). | **`✓ 🌐 NET`** (Neon Green)<br>Browser online and able to synchronize external network data. | **`✗ 🌐 NET`** (Vibrant Red)<br>Browser offline; local system clock fallback used. |
+
+---
+
+### 2. Strict Hardware Disconnect Protection & Grayed-Out Scenes
+
+Certain scenes are designed specifically around high-resolution physical deck telemetry:
+- **FX 3: DJ Deck Waveforms** requires direct playhead position, platter angular velocity, and RGB waveform data streamed from physical media players.
+
+When the required hardware is unplugged or offline:
+1. **Visual Graying-Out (`.scene-unmet-strict`):**
+   - The scene card in the Left FX Pane is dimmed to **40% opacity** and heavily desaturated (`grayscale(0.85) brightness(0.68)`).
+   - Card border adopts a distinctive dashed red alert edge (`rgba(255, 68, 68, 0.4)`).
+   - In the bottom toolbar preset row, button `[4]` is grayed out and dashed.
+   - In the Scene Reactive Matrix modal, the card displays an illuminated red banner: `⚠️ DECK UNPLUGGED`.
+2. **Hover & Tooltip Alerts:**
+   - Hovering over a grayed-out card displays a clear tooltip: `⚠️ Physical DJ Deck Required (Disconnected)`.
+3. **Fail-Safe Fallback Execution:**
+   - If an operator clicks or presses the hotkey (`4`) for a grayed-out scene while the deck is disconnected, **the visualizer does NOT crash or black out**.
+   - The studio immediately displays a non-intrusive warning notification toast:
+     > `⚠️ Note: DJ Deck Waveforms requires physical deck telemetry. Running live audio fallback.`
+   - The engine automatically engages an internal audio spectrum fallback so the screen continues rendering safely.
+4. **Instant Plug-and-Play Reconnection:**
+   - As soon as the DJ deck reconnects and begins streaming packets, the `notifyHardwareDeckPacket` listener triggers `updateSceneRequirementsUI()`.
+   - The grayed-out state is instantly lifted, restoring full vibrant saturation, and the deck requirement chip turns to green `✓ 🎛️ DECK`.
 
 ---
 
