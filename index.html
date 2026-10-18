@@ -2310,6 +2310,27 @@
             box-shadow: 0 0 6px rgba(0,255,204,0.4);
         }
 
+        .fx-pane-scene-badge {
+            background: rgba(0, 255, 204, 0.12);
+            border: 1px solid rgba(0, 255, 204, 0.38);
+            border-radius: 3px;
+            padding: 1px 4px;
+            font-size: 8px;
+            font-weight: 800;
+            color: #00ffcc;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.3px;
+            line-height: 1.1;
+        }
+
+        .fx-pane-card.active .fx-pane-scene-badge {
+            background: #00ffcc;
+            color: #060911;
+            font-weight: 900;
+            border-color: #00ffcc;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.6);
+        }
+
         .fx-pane-cat-tag {
             font-size: 7.5px;
             font-weight: 800;
@@ -5410,12 +5431,12 @@
                     <div style="display:flex; align-items:center; gap:6px; min-width:0;">
                         <span style="font-size:15px;">🎬</span>
                         <div style="min-width:0;">
-                            <div style="font-size:7.5px; font-weight:800; color:#00e5ff; letter-spacing:0.5px; text-transform:uppercase;">Scene 22: Video Cinema & Loops</div>
+                            <div style="font-size:7.5px; font-weight:800; color:#00e5ff; letter-spacing:0.5px; text-transform:uppercase;">Scene 23: Video Cinema & Loops</div>
                             <div id="video-quick-title" style="font-size:9.5px; font-weight:700; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">01 JK McLaren Shock</div>
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
-                        <button class="btn-micro" id="btn-quick-cue-video" style="padding:4px 8px; font-size:8px; font-weight:800; background:rgba(0,255,136,0.2); border:1px solid rgba(0,255,136,0.5); color:#00ff88; border-radius:4px; cursor:pointer;" title="Switch 3D stage directly to Scene 22 Video Playback [V]">▶ ON AIR</button>
+                        <button class="btn-micro" id="btn-quick-cue-video" style="padding:4px 8px; font-size:8px; font-weight:800; background:rgba(0,255,136,0.2); border:1px solid rgba(0,255,136,0.5); color:#00ff88; border-radius:4px; cursor:pointer;" title="Switch 3D stage directly to Scene 23 Video Playback [V]">▶ ON AIR</button>
                         <button class="btn-micro" id="btn-open-video-manager" style="padding:4px 8px; font-size:8px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:4px; cursor:pointer;" title="Open 10-Bank Video Loops & Library Console">📁 10 BANKS</button>
                     </div>
                 </div>
@@ -5554,288 +5575,357 @@
                     <div style="display:flex; align-items:center; gap:8px;">
                         <span style="font-size:16px;">🎬</span>
                         <div>
-                            <div style="font-size:11px; font-weight:800; color:#ffffff;">Scene 22: Cyber Cinema 3D Visualizer</div>
+                            <div style="font-size:11px; font-weight:800; color:#ffffff;">Scene 23: Cyber Cinema 3D Visualizer</div>
                             <div style="font-size:8.5px; color:#8c98b2;">Curved IMAX 3D display with live audio-reactive oscilloscope &amp; video loops</div>
                         </div>
                     </div>
                     <div style="display:flex; gap:6px;">
-                        <button id="btn-fx-banner-go-live" style="background:#00ffcc; color:#050810; border:none; border-radius:3px; font-size:9px; font-weight:800; padding:4px 10px; cursor:pointer;" title="Switch 3D visualizer to Scene 22 [V]">▶ SWITCH 3D STAGE [V]</button>
+                        <button id="btn-fx-banner-go-live" style="background:#00ffcc; color:#050810; border:none; border-radius:3px; font-size:9px; font-weight:800; padding:4px 10px; cursor:pointer;" title="Switch 3D visualizer to Scene 23 [V]">▶ SWITCH 3D STAGE [V]</button>
                         <button id="btn-fx-banner-open-console" style="background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; border-radius:3px; font-size:9px; font-weight:700; padding:4px 10px; cursor:pointer;" title="Open full 10-Bank Video Loops Library Console [Alt+7]">📂 OPEN VIDEO CONSOLE</button>
                     </div>
                 </div>
 
-                <!-- FX Cards Grid (22 Shaders with Live Animated Thumbnails) -->
+                <!-- FX Cards Grid (23 Shaders with Live Animated Thumbnails & Scene Numbers) -->
                 <div class="fx-pane-grid" id="fx-pane-grid">
                     <!-- 📊 Equalizers & Decks -->
-                    <div class="fx-pane-card active" data-fx="0" data-fxcat="eq" title="Hot key: 1">
+                    <div class="fx-pane-card active" data-fx="0" data-fxcat="eq" title="Hot key: 1 • Scene 01: 3D Studio EQ">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="0"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">1</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 01</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">1</span>
+                            </div>
                             <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
-                        <div class="fx-pane-card-title">📊 3D Studio EQ</div>
+                        <div class="fx-pane-card-title">📊 01: 3D Studio EQ</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="1" data-fxcat="eq" title="Hot key: 2">
+                    <div class="fx-pane-card" data-fx="1" data-fxcat="eq" title="Hot key: 2 • Scene 02: Circular Spectrum">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="1"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">2</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 02</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">2</span>
+                            </div>
                             <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
-                        <div class="fx-pane-card-title">🎯 Circular Spectrum</div>
+                        <div class="fx-pane-card-title">🎯 02: Circular Spectrum</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="2" data-fxcat="eq" title="Hot key: 3">
+                    <div class="fx-pane-card" data-fx="2" data-fxcat="eq" title="Hot key: 3 • Scene 03: Fluid Wave Matrix">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="2"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">3</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 03</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">3</span>
+                            </div>
                             <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
-                        <div class="fx-pane-card-title">🌊 Fluid Wave Matrix</div>
+                        <div class="fx-pane-card-title">🌊 03: Fluid Wave Matrix</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="3" data-fxcat="eq" title="Hot key: 4">
+                    <div class="fx-pane-card" data-fx="3" data-fxcat="eq" title="Hot key: 4 • Scene 04: DJ Deck Waveforms">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="3"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">4</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 04</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">4</span>
+                            </div>
                             <span class="fx-pane-cat-tag">EQ &amp; Decks</span>
                         </div>
-                        <div class="fx-pane-card-title">🎚️ DJ Deck Waveforms</div>
+                        <div class="fx-pane-card-title">🎚️ 04: DJ Deck Waveforms</div>
                     </div>
 
                     <!-- ⚡ Lasers -->
-                    <div class="fx-pane-card" data-fx="5" data-fxcat="laser" title="Hot key: 6">
+                    <div class="fx-pane-card" data-fx="5" data-fxcat="laser" title="Hot key: 6 • Scene 06: Dual-Bank Lasers">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="5"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">6</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 06</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">6</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Lasers</span>
                         </div>
-                        <div class="fx-pane-card-title">⚡ Dual Lasers</div>
+                        <div class="fx-pane-card-title">⚡ 06: Dual Lasers</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="6" data-fxcat="laser" title="Hot key: 7">
+                    <div class="fx-pane-card" data-fx="6" data-fxcat="laser" title="Hot key: 7 • Scene 07: Saber Multi-Beams">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="6"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">7</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 07</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">7</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Lasers</span>
                         </div>
-                        <div class="fx-pane-card-title">💥 Multi-Beams</div>
+                        <div class="fx-pane-card-title">💥 07: Multi-Beams</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="7" data-fxcat="laser" title="Hot key: 8">
+                    <div class="fx-pane-card" data-fx="7" data-fxcat="laser" title="Hot key: 8 • Scene 08: Strobe Rings">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="7"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">8</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 08</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">8</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Lasers</span>
                         </div>
-                        <div class="fx-pane-card-title">💫 Strobe Rings</div>
+                        <div class="fx-pane-card-title">💫 08: Strobe Rings</div>
                     </div>
 
                     <!-- 🪩 Disco & Stage Lights -->
-                    <div class="fx-pane-card" data-fx="4" data-fxcat="disco" title="Hot key: 5">
+                    <div class="fx-pane-card" data-fx="4" data-fxcat="disco" title="Hot key: 5 • Scene 05: Spinning Disco Ball">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="4"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">5</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 05</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">5</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">🪩 Disco Ball</div>
+                        <div class="fx-pane-card-title">🪩 05: Disco Ball</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="16" data-fxcat="disco" title="Hot key: U">
+                    <div class="fx-pane-card" data-fx="16" data-fxcat="disco" title="Hot key: U • Scene 17: Sweeping Godrays">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="16"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">U</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 17</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">U</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">🔦 Sweeping Godrays</div>
+                        <div class="fx-pane-card-title">🔦 17: Sweeping Godrays</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="17" data-fxcat="disco" title="Hot key: I">
+                    <div class="fx-pane-card" data-fx="17" data-fxcat="disco" title="Hot key: I • Scene 18: White Godrays &amp; Fog">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="17"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">I</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 18</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">I</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">☁️ White Godrays &amp; Fog</div>
+                        <div class="fx-pane-card-title">☁️ 18: White Godrays &amp; Fog</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="18" data-fxcat="disco" title="Hot key: O">
+                    <div class="fx-pane-card" data-fx="18" data-fxcat="disco" title="Hot key: O • Scene 19: Disco Floor &amp; Godrays">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="18"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">O</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 19</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">O</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Disco &amp; Stage</span>
                         </div>
-                        <div class="fx-pane-card-title">🪩 Disco Floor &amp; Godrays</div>
+                        <div class="fx-pane-card-title">🪩 19: Disco Floor &amp; Godrays</div>
                     </div>
 
                     <!-- 🎃 Halloween & Spooky Special -->
-                    <div class="fx-pane-card" data-fx="20" data-fxcat="spooky" title="Hot key: [">
+                    <div class="fx-pane-card" data-fx="20" data-fxcat="spooky" title="Hot key: [ • Scene 21: Pumpkin Disco">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="20"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">[</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 21</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">[</span>
+                            </div>
                             <span class="fx-pane-cat-tag">🎃 Spooky Special</span>
                         </div>
-                        <div class="fx-pane-card-title">🎃 Pumpkin Disco Ball</div>
+                        <div class="fx-pane-card-title">🎃 21: Pumpkin Disco Ball</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="21" data-fxcat="spooky" title="Hot key: ]">
+                    <div class="fx-pane-card" data-fx="21" data-fxcat="spooky" title="Hot key: ] • Scene 22: Haunted Manor">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="21"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">]</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 22</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">]</span>
+                            </div>
                             <span class="fx-pane-cat-tag">🎃 Spooky Special</span>
                         </div>
-                        <div class="fx-pane-card-title">🏚️ Haunted Manor</div>
+                        <div class="fx-pane-card-title">🏚️ 22: Haunted Manor</div>
                     </div>
 
                     <!-- 🎬 Video & Cinema Placeholder Card -->
-                    <div class="fx-pane-card" data-fx="22" data-fxcat="video" title="Hot key: V • Scene 22: Cyber Cinema 3D Video Arena">
+                    <div class="fx-pane-card" data-fx="22" data-fxcat="video" title="Hot key: V • Scene 23: Cyber Cinema 3D Video Arena">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="22"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">V</span>
-                            <span class="fx-pane-cat-tag">🎬 Scene 22 • Video</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 23</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">V</span>
+                            </div>
+                            <span class="fx-pane-cat-tag">🎬 Video &amp; Cinema</span>
                         </div>
-                        <div class="fx-pane-card-title">🎬 Scene 22: Cyber Cinema 3D</div>
+                        <div class="fx-pane-card-title">🎬 23: Cyber Cinema 3D</div>
                         <div style="font-size:7.5px; color:#8c98b2; margin-top:2px; line-height:1.2;">Curved 3D IMAX Video Screen</div>
                         <div style="margin-top:4px; display:flex; gap:3px;">
-                            <button class="btn-micro" id="btn-card22-go-live" style="flex:1; font-size:7.5px; padding:3px 4px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; border-radius:2px; font-weight:700; cursor:pointer;" title="Switch 3D Stage directly to Scene 22">▶ GO LIVE</button>
+                            <button class="btn-micro" id="btn-card22-go-live" style="flex:1; font-size:7.5px; padding:3px 4px; background:rgba(0,255,204,0.18); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; border-radius:2px; font-weight:700; cursor:pointer;" title="Switch 3D Stage directly to Scene 23">▶ GO LIVE</button>
                             <button class="btn-micro" id="btn-card22-open-console" style="flex:1.2; font-size:7.5px; padding:3px 4px; background:linear-gradient(135deg, rgba(122,51,255,0.25), rgba(0,255,204,0.25)); border:1px solid #00ffcc; color:#ffffff; border-radius:2px; font-weight:800; cursor:pointer;" title="Open full 10-Bank Video Loops &amp; Library Console [Alt+7]">📂 SELECT VIDEOS</button>
                         </div>
                     </div>
 
                     <!-- 🕸️ Cyber & Retro -->
-                    <div class="fx-pane-card" data-fx="8" data-fxcat="wire" title="Hot key: 9">
+                    <div class="fx-pane-card" data-fx="8" data-fxcat="wire" title="Hot key: 9 • Scene 09: Synthwave Grid">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="8"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">9</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 09</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">9</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">🌅 Synthwave Grid</div>
+                        <div class="fx-pane-card-title">🌅 09: Synthwave Grid</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="9" data-fxcat="wire" title="Hot key: 0">
+                    <div class="fx-pane-card" data-fx="9" data-fxcat="wire" title="Hot key: 0 • Scene 10: Synthwave River &amp; Sun">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="9"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">0</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 10</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">0</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">🌄 River &amp; Sun</div>
+                        <div class="fx-pane-card-title">🌄 10: River &amp; Sun</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="10" data-fxcat="wire" title="Hot key: Q">
+                    <div class="fx-pane-card" data-fx="10" data-fxcat="wire" title="Hot key: Q • Scene 11: Matrix Code Rain">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="10"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">Q</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 11</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">Q</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">💻 Matrix Rain</div>
+                        <div class="fx-pane-card-title">💻 11: Matrix Rain</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="11" data-fxcat="wire" title="Hot key: W">
+                    <div class="fx-pane-card" data-fx="11" data-fxcat="wire" title="Hot key: W • Scene 12: Retro Arcade 80s">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="11"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">W</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 12</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">W</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">👾 Arcade 80s</div>
+                        <div class="fx-pane-card-title">👾 12: Arcade 80s</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="15" data-fxcat="wire" title="Hot key: Y">
+                    <div class="fx-pane-card" data-fx="15" data-fxcat="wire" title="Hot key: Y • Scene 16: Time.is Clock">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="15"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">Y</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 16</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">Y</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">⏱️ Time.is Clock</div>
+                        <div class="fx-pane-card-title">⏱️ 16: Time.is Clock</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="19" data-fxcat="wire" title="Hot key: P">
+                    <div class="fx-pane-card" data-fx="19" data-fxcat="wire" title="Hot key: P • Scene 20: VHS Dreamlover">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="19"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">P</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 20</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">P</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Cyber &amp; Retro</span>
                         </div>
-                        <div class="fx-pane-card-title">📼 VHS Dreamlover</div>
+                        <div class="fx-pane-card-title">📼 20: VHS Dreamlover</div>
                     </div>
 
                     <!-- 🌌 Space & Galaxy -->
-                    <div class="fx-pane-card" data-fx="12" data-fxcat="space" title="Hot key: E">
+                    <div class="fx-pane-card" data-fx="12" data-fxcat="space" title="Hot key: E • Scene 13: Warp Starfield">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="12"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">E</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 13</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">E</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
-                        <div class="fx-pane-card-title">🚀 Warp Starfield</div>
+                        <div class="fx-pane-card-title">🚀 13: Warp Starfield</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="13" data-fxcat="space" title="Hot key: R">
+                    <div class="fx-pane-card" data-fx="13" data-fxcat="space" title="Hot key: R • Scene 14: Spiral Galaxy Vortex">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="13"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">R</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 14</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">R</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
-                        <div class="fx-pane-card-title">🌌 Spiral Galaxy</div>
+                        <div class="fx-pane-card-title">🌌 14: Spiral Galaxy</div>
                     </div>
-                    <div class="fx-pane-card" data-fx="14" data-fxcat="space" title="Hot key: T">
+                    <div class="fx-pane-card" data-fx="14" data-fxcat="space" title="Hot key: T • Scene 15: Hyper Particle Stream">
                         <div class="fx-card-thumb-wrap">
                             <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="14"></canvas>
                             <div class="fx-card-thumb-overlay"></div>
                         </div>
                         <div class="fx-pane-card-top">
-                            <span class="fx-pane-key">T</span>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <span class="fx-pane-scene-badge">SCENE 15</span>
+                                <span class="fx-pane-key" title="Keyboard Shortcut">T</span>
+                            </div>
                             <span class="fx-pane-cat-tag">Space &amp; Galaxy</span>
                         </div>
-                        <div class="fx-pane-card-title">✨ Particle Stream</div>
+                        <div class="fx-pane-card-title">✨ 15: Particle Stream</div>
                     </div>
                 </div>
             </div>
@@ -6570,7 +6660,7 @@
                         ◀ BACK TO FX BANK [Alt+2]
                     </button>
                     <div style="display:flex; align-items:center; gap:6px;">
-                        <span style="font-size:10px; font-weight:800; color:#00ffcc;">🎬 SCENE 22 • CYBER CINEMA VIDEO STUDIO</span>
+                        <span style="font-size:10px; font-weight:800; color:#00ffcc;">🎬 SCENE 23 • CYBER CINEMA VIDEO STUDIO</span>
                         <span class="hud-badge" style="color:#00ff88; border-color:#00ff88; font-size:7.5px;">ON STAGE</span>
                     </div>
                 </div>
@@ -6578,7 +6668,7 @@
                 <div class="pane-section-title">
                     <span>🎬 Video Loops &amp; Library Console</span>
                     <div style="display:flex; gap:5px; align-items:center;">
-                        <span id="video-console-status-badge" class="hud-badge" style="color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22</span>
+                        <span id="video-console-status-badge" class="hud-badge" style="color:#00ffcc; border-color:rgba(0,255,204,0.3);">SCENE 23</span>
                         <button class="btn-micro" id="btn-video-go-live-top" style="font-size:8px; padding:2px 6px; background:rgba(0,255,136,0.15); border:1px solid rgba(0,255,136,0.4); color:#00ff88; border-radius:3px; cursor:pointer;" title="Switch 3D Scene to Video Cinema [V]">▶ ON AIR</button>
                     </div>
                 </div>
@@ -6588,13 +6678,13 @@
                     <div>
                         <div style="font-size:7.5px; color:#8c98b2; text-transform:uppercase; letter-spacing:0.8px; font-weight:700;">3D STAGE VISUALIZER SCENE</div>
                         <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
-                            <span style="font-size:12px; font-weight:800; color:#ffffff;">🎬 Scene 22: Cyber Cinema 3D</span>
-                            <span id="video-scene-live-pill" style="font-size:8px; font-weight:800; padding:2px 7px; border-radius:10px; background:rgba(255,51,102,0.15); border:1px solid rgba(255,51,102,0.4); color:#ff3366;">OFF-AIR (VIEWING FX 1)</span>
+                            <span style="font-size:12px; font-weight:800; color:#ffffff;">🎬 Scene 23: Cyber Cinema 3D</span>
+                            <span id="video-scene-live-pill" style="font-size:8px; font-weight:800; padding:2px 7px; border-radius:10px; background:rgba(255,51,102,0.15); border:1px solid rgba(255,51,102,0.4); color:#ff3366;">OFF-AIR (VIEWING SCENE 01)</span>
                         </div>
                     </div>
                     <div>
-                        <button id="btn-switch-to-video-scene" class="video-btn-primary" style="font-size:10px; padding:6px 12px; font-weight:800; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, #00ffcc, #00b4d8); color:#050810; border:none; border-radius:4px; cursor:pointer;" title="Switch 3D Stage directly to Scene 22 Cyber Cinema [Press V]">
-                            ▶ SWITCH 3D STAGE TO SCENE 22 [V]
+                        <button id="btn-switch-to-video-scene" class="video-btn-primary" style="font-size:10px; padding:6px 12px; font-weight:800; display:inline-flex; align-items:center; gap:5px; background:linear-gradient(135deg, #00ffcc, #00b4d8); color:#050810; border:none; border-radius:4px; cursor:pointer;" title="Switch 3D Stage directly to Scene 23 Cyber Cinema [Press V]">
+                            ▶ SWITCH 3D STAGE TO SCENE 23 [V]
                         </button>
                     </div>
                 </div>
@@ -7386,41 +7476,41 @@
         <!-- FX Preset Buttons Row (23 Presets - 2-Row Hardware Rack) -->
         <div class="fx-presets-row all-mode" id="fx-presets-row">
             <!-- 📊 Equalizers & Decks -->
-            <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
-            <button class="fx-btn" data-fx="1" data-cat="eq"><span class="fx-key">2</span> 🎯 Circular Spectrum</button>
-            <button class="fx-btn" data-fx="2" data-cat="eq"><span class="fx-key">3</span> 🌊 Fluid Wave Matrix</button>
-            <button class="fx-btn" data-fx="3" data-cat="eq"><span class="fx-key">4</span> 🎚️ DJ Deck Waveforms</button>
+            <button class="fx-btn active" data-fx="0" data-cat="eq" title="Scene 01: 3D Studio EQ [1]"><span class="fx-key">1</span> 📊 01: Studio EQ</button>
+            <button class="fx-btn" data-fx="1" data-cat="eq" title="Scene 02: Circular Spectrum [2]"><span class="fx-key">2</span> 🎯 02: Circular Spectrum</button>
+            <button class="fx-btn" data-fx="2" data-cat="eq" title="Scene 03: Fluid Wave Matrix [3]"><span class="fx-key">3</span> 🌊 03: Fluid Wave</button>
+            <button class="fx-btn" data-fx="3" data-cat="eq" title="Scene 04: DJ Deck Waveforms [4]"><span class="fx-key">4</span> 🎚️ 04: Deck Waveforms</button>
 
             <!-- ⚡ Lasers -->
-            <button class="fx-btn" data-fx="5" data-cat="laser"><span class="fx-key">6</span> ⚡ Dual-Bank Lasers</button>
-            <button class="fx-btn" data-fx="6" data-cat="laser"><span class="fx-key">7</span> 💥 Saber Multi-Beams</button>
-            <button class="fx-btn" data-fx="7" data-cat="laser"><span class="fx-key">8</span> 💫 Strobe Rings</button>
+            <button class="fx-btn" data-fx="5" data-cat="laser" title="Scene 06: Dual-Bank Lasers [6]"><span class="fx-key">6</span> ⚡ 06: Dual Lasers</button>
+            <button class="fx-btn" data-fx="6" data-cat="laser" title="Scene 07: Saber Multi-Beams [7]"><span class="fx-key">7</span> 💥 07: Saber Beams</button>
+            <button class="fx-btn" data-fx="7" data-cat="laser" title="Scene 08: Strobe Rings [8]"><span class="fx-key">8</span> 💫 08: Strobe Rings</button>
 
             <!-- 🪩 Disco & Stage Lights -->
-            <button class="fx-btn" data-fx="4" data-cat="disco"><span class="fx-key">5</span> 🪩 Spinning Disco Ball</button>
-            <button class="fx-btn" data-fx="16" data-cat="disco"><span class="fx-key">U</span> 🔦 Sweeping Godrays</button>
-            <button class="fx-btn" data-fx="17" data-cat="disco"><span class="fx-key">I</span> ☁️ White Godrays & Fog</button>
-            <button class="fx-btn" data-fx="18" data-cat="disco"><span class="fx-key">O</span> 🪩 Disco Floor & Godrays</button>
+            <button class="fx-btn" data-fx="4" data-cat="disco" title="Scene 05: Spinning Disco Ball [5]"><span class="fx-key">5</span> 🪩 05: Disco Ball</button>
+            <button class="fx-btn" data-fx="16" data-cat="disco" title="Scene 17: Sweeping Godrays [U]"><span class="fx-key">U</span> 🔦 17: Sweeping Godrays</button>
+            <button class="fx-btn" data-fx="17" data-cat="disco" title="Scene 18: White Godrays & Fog [I]"><span class="fx-key">I</span> ☁️ 18: White Godrays</button>
+            <button class="fx-btn" data-fx="18" data-cat="disco" title="Scene 19: Disco Floor & Godrays [O]"><span class="fx-key">O</span> 🪩 19: Disco Floor</button>
 
             <!-- 🎃 Halloween Spooky Special -->
-            <button class="fx-btn" data-fx="20" data-cat="spooky"><span class="fx-key">[</span> 🎃 Pumpkin Disco</button>
-            <button class="fx-btn" data-fx="21" data-cat="spooky"><span class="fx-key">]</span> 🏚️ Haunted Manor</button>
+            <button class="fx-btn" data-fx="20" data-cat="spooky" title="Scene 21: Pumpkin Disco [[]"><span class="fx-key">[</span> 🎃 21: Pumpkin Disco</button>
+            <button class="fx-btn" data-fx="21" data-cat="spooky" title="Scene 22: Haunted Manor []]"><span class="fx-key">]</span> 🏚️ 22: Haunted Manor</button>
 
             <!-- 🎬 Video & Cinema Playback -->
-            <button class="fx-btn" data-fx="22" data-cat="video" title="Scene 22: Cyber Cinema 3D Video Arena [Hotkey: V]"><span class="fx-key">V</span> 🎬 22: Cyber Cinema</button>
+            <button class="fx-btn" data-fx="22" data-cat="video" title="Scene 23: Cyber Cinema 3D Video Arena [Hotkey: V]"><span class="fx-key">V</span> 🎬 23: Cyber Cinema</button>
 
             <!-- 🕸️ Cyber & Retro -->
-            <button class="fx-btn" data-fx="8" data-cat="wire"><span class="fx-key">9</span> 🌅 Synthwave Grid</button>
-            <button class="fx-btn" data-fx="9" data-cat="wire"><span class="fx-key">0</span> 🌄 Synthwave River & Sun</button>
-            <button class="fx-btn" data-fx="10" data-cat="wire"><span class="fx-key">Q</span> 💻 Matrix Code Rain</button>
-            <button class="fx-btn" data-fx="11" data-cat="wire"><span class="fx-key">W</span> 👾 Retro Arcade 80s</button>
-            <button class="fx-btn" data-fx="15" data-cat="wire"><span class="fx-key">Y</span> ⏱️ Time.is Clock</button>
-            <button class="fx-btn" data-fx="19" data-cat="wire"><span class="fx-key">P</span> 📼 VHS Dreamlover</button>
+            <button class="fx-btn" data-fx="8" data-cat="wire" title="Scene 09: Synthwave Grid [9]"><span class="fx-key">9</span> 🌅 09: Synthwave Grid</button>
+            <button class="fx-btn" data-fx="9" data-cat="wire" title="Scene 10: Synthwave River & Sun [0]"><span class="fx-key">0</span> 🌄 10: Synthwave River</button>
+            <button class="fx-btn" data-fx="10" data-cat="wire" title="Scene 11: Matrix Code Rain [Q]"><span class="fx-key">Q</span> 💻 11: Matrix Rain</button>
+            <button class="fx-btn" data-fx="11" data-cat="wire" title="Scene 12: Retro Arcade 80s [W]"><span class="fx-key">W</span> 👾 12: Retro Arcade</button>
+            <button class="fx-btn" data-fx="15" data-cat="wire" title="Scene 16: Time.is Clock [Y]"><span class="fx-key">Y</span> ⏱️ 16: Time.is Clock</button>
+            <button class="fx-btn" data-fx="19" data-cat="wire" title="Scene 20: VHS Dreamlover [P]"><span class="fx-key">P</span> 📼 20: VHS Dreamlover</button>
 
             <!-- 🌌 Space & Galaxy -->
-            <button class="fx-btn" data-fx="12" data-cat="space"><span class="fx-key">E</span> 🚀 Warp Starfield</button>
-            <button class="fx-btn" data-fx="13" data-cat="space"><span class="fx-key">R</span> 🌌 Spiral Galaxy Vortex</button>
-            <button class="fx-btn" data-fx="14" data-cat="space"><span class="fx-key">T</span> ✨ Hyper Particle Stream</button>
+            <button class="fx-btn" data-fx="12" data-cat="space" title="Scene 13: Warp Starfield [E]"><span class="fx-key">E</span> 🚀 13: Warp Starfield</button>
+            <button class="fx-btn" data-fx="13" data-cat="space" title="Scene 14: Spiral Galaxy Vortex [R]"><span class="fx-key">R</span> 🌌 14: Spiral Galaxy</button>
+            <button class="fx-btn" data-fx="14" data-cat="space" title="Scene 15: Hyper Particle Stream [T]"><span class="fx-key">T</span> ✨ 15: Hyper Particles</button>
         </div></div>
     </div>
 

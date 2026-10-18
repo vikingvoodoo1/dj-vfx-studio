@@ -24,12 +24,12 @@ window.__DJ_VFX_BUILD__ = {
 };
 
 const FX_NAMES = [
-    '3D Studio EQ', 'Circular Spectrum', 'Fluid Wave Matrix', 'DJ Deck Waveforms',
-    'Spinning Disco Ball', 'Dual-Bank Lasers', 'Saber Multi-Beams', 'Strobe Rings',
-    'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
-    'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
-    'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
-    'Pumpkin Disco Ball', 'Haunted Manor', 'Scene 22: Cyber Cinema 3D'
+    'Scene 01: 3D Studio EQ', 'Scene 02: Circular Spectrum', 'Scene 03: Fluid Wave Matrix', 'Scene 04: DJ Deck Waveforms',
+    'Scene 05: Spinning Disco Ball', 'Scene 06: Dual-Bank Lasers', 'Scene 07: Saber Multi-Beams', 'Scene 08: Strobe Rings',
+    'Scene 09: Synthwave Grid', 'Scene 10: Synthwave River & Sun', 'Scene 11: Matrix Code Rain', 'Scene 12: Retro Arcade 80s',
+    'Scene 13: Warp Starfield', 'Scene 14: Spiral Galaxy Vortex', 'Scene 15: Hyper Particle Stream', 'Scene 16: Time.is Clock',
+    'Scene 17: Sweeping Godrays', 'Scene 18: White Godrays & Fog', 'Scene 19: Disco Floor & Godrays', 'Scene 20: VHS Dreamlover',
+    'Scene 21: Pumpkin Disco', 'Scene 22: Haunted Manor', 'Scene 23: Cyber Cinema 3D'
 ];
 window.FX_NAMES = FX_NAMES;
 
@@ -905,7 +905,7 @@ async function init() {
         }
         switchTab('video');
         if (typeof showToast === 'function') {
-            showToast('🎬 Scene 22: Cyber Cinema 3D • Video Loops & Library Console Loaded');
+            showToast('🎬 Scene 23: Cyber Cinema 3D • Video Loops & Library Console Loaded');
         }
     }
     window.switchToVideoScene = switchToVideoScene;
@@ -4477,7 +4477,7 @@ async function init() {
             const isOnAir = currentFX === 22;
 
             if (videoBadgeOnAir) {
-                videoBadgeOnAir.textContent = isOnAir ? '● SCENE 22 ON-AIR' : `OFF AIR (SCENE ${currentFX + 1})`;
+                videoBadgeOnAir.textContent = isOnAir ? '● SCENE 23 ON-AIR' : `OFF AIR (SCENE ${String(currentFX + 1).padStart(2, '0')})`;
                 videoBadgeOnAir.style.background = isOnAir ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.06)';
                 videoBadgeOnAir.style.color = isOnAir ? '#00ff88' : '#8c98b2';
                 videoBadgeOnAir.style.borderColor = isOnAir ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.15)';
@@ -4510,7 +4510,7 @@ async function init() {
 
             const videoConsoleStatusBadge = document.getElementById('video-console-status-badge');
             if (videoConsoleStatusBadge) {
-                videoConsoleStatusBadge.textContent = isOnAir ? 'FX 22: ON AIR' : 'FX 22: STANDBY';
+                videoConsoleStatusBadge.textContent = isOnAir ? 'SCENE 23: ON AIR' : 'SCENE 23: STANDBY';
                 videoConsoleStatusBadge.style.color = isOnAir ? '#00ff88' : '#00e5ff';
                 videoConsoleStatusBadge.style.borderColor = isOnAir ? 'rgba(0,255,136,0.5)' : 'rgba(0,229,255,0.3)';
             }
@@ -4533,12 +4533,12 @@ async function init() {
             }
             if (btnSwitchToVideoScene) {
                 if (isOnAir) {
-                    btnSwitchToVideoScene.textContent = '● SCENE 22 IS LIVE ON STAGE';
+                    btnSwitchToVideoScene.textContent = '● SCENE 23 IS LIVE ON STAGE';
                     btnSwitchToVideoScene.style.background = 'rgba(0,255,136,0.2)';
                     btnSwitchToVideoScene.style.color = '#00ff88';
                     btnSwitchToVideoScene.style.border = '1px solid #00ff88';
                 } else {
-                    btnSwitchToVideoScene.textContent = '▶ SWITCH 3D STAGE TO SCENE 22 [V]';
+                    btnSwitchToVideoScene.textContent = '▶ SWITCH 3D STAGE TO SCENE 23 [V]';
                     btnSwitchToVideoScene.style.background = 'linear-gradient(135deg, #00ffcc, #00b4d8)';
                     btnSwitchToVideoScene.style.color = '#050810';
                     btnSwitchToVideoScene.style.border = 'none';
@@ -4547,7 +4547,7 @@ async function init() {
 
             const btnVideoGoLiveTop = document.getElementById('btn-video-go-live-top');
             if (btnVideoGoLiveTop) {
-                btnVideoGoLiveTop.textContent = isOnAir ? '● VIDEO ON AIR' : '▶ GO LIVE [FX 22]';
+                btnVideoGoLiveTop.textContent = isOnAir ? '● VIDEO ON AIR' : '▶ GO LIVE [SCENE 23]';
                 btnVideoGoLiveTop.style.color = isOnAir ? '#00ff88' : '#00e5ff';
                 btnVideoGoLiveTop.style.borderColor = isOnAir ? 'rgba(0,255,136,0.6)' : 'rgba(0,229,255,0.4)';
                 btnVideoGoLiveTop.style.background = isOnAir ? 'rgba(0,255,136,0.2)' : 'rgba(0,229,255,0.12)';
@@ -5224,7 +5224,7 @@ async function init() {
             videoScenePowerStatusText.textContent = targetIndex === 22 ? 'ACTIVE ON' : 'OFF';
         }
         if (videoBadgeOnAir) {
-            videoBadgeOnAir.textContent = targetIndex === 22 ? '● SCENE 22 ON-AIR' : 'OFF AIR (SCENE ' + (targetIndex + 1) + ')';
+            videoBadgeOnAir.textContent = targetIndex === 22 ? '● SCENE 23 ON-AIR' : 'OFF AIR (SCENE ' + String(targetIndex + 1).padStart(2, '0') + ')';
             videoBadgeOnAir.style.background = targetIndex === 22 ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.06)';
             videoBadgeOnAir.style.color = targetIndex === 22 ? '#00ff88' : '#8c98b2';
             videoBadgeOnAir.style.borderColor = targetIndex === 22 ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.15)';
@@ -5248,12 +5248,12 @@ async function init() {
         }
         if (btnSwitchToVideoSceneEl) {
             if (targetIndex === 22) {
-                btnSwitchToVideoSceneEl.textContent = '● SCENE 22 IS LIVE ON STAGE';
+                btnSwitchToVideoSceneEl.textContent = '● SCENE 23 IS LIVE ON STAGE';
                 btnSwitchToVideoSceneEl.style.background = 'rgba(0,255,136,0.2)';
                 btnSwitchToVideoSceneEl.style.color = '#00ff88';
                 btnSwitchToVideoSceneEl.style.border = '1px solid #00ff88';
             } else {
-                btnSwitchToVideoSceneEl.textContent = '▶ SWITCH 3D STAGE TO SCENE 22 [V]';
+                btnSwitchToVideoSceneEl.textContent = '▶ SWITCH 3D STAGE TO SCENE 23 [V]';
                 btnSwitchToVideoSceneEl.style.background = 'linear-gradient(135deg, #00ffcc, #00b4d8)';
                 btnSwitchToVideoSceneEl.style.color = '#050810';
                 btnSwitchToVideoSceneEl.style.border = 'none';
@@ -5426,7 +5426,7 @@ async function init() {
         btnCard22GoLive.addEventListener('click', (e) => {
             e.stopPropagation();
             selectFX(22);
-            showToast('🎬 Scene 22: Cyber Cinema 3D Active on Stage');
+            showToast('🎬 Scene 23: Cyber Cinema 3D Active on Stage');
         });
     }
     if (btnCard22OpenConsole) {
@@ -5438,7 +5438,7 @@ async function init() {
     if (btnFxBannerGoLive) {
         btnFxBannerGoLive.addEventListener('click', () => {
             selectFX(22);
-            showToast('🎬 Scene 22: Cyber Cinema 3D Active on Stage');
+            showToast('🎬 Scene 23: Cyber Cinema 3D Active on Stage');
         });
     }
     if (btnFxBannerOpenConsole) {
@@ -6696,9 +6696,9 @@ async function init() {
                             <div>
                                 <div class="matrix-scene-title" style="cursor:pointer;" data-switch-scene="${scene.id}">
                                     <span>${scene.icon}</span>
-                                    <span>${escapeHtml(scene.name)}</span>
+                                    <span>Scene ${String(scene.id + 1).padStart(2, '0')}: ${escapeHtml(scene.name)}</span>
                                 </div>
-                                <div class="matrix-scene-cat">${escapeHtml(scene.categoryLabel)} • FX #${scene.id + 1}</div>
+                                <div class="matrix-scene-cat">${escapeHtml(scene.categoryLabel)} • Scene #${String(scene.id + 1).padStart(2, '0')}</div>
                             </div>
                         </div>
 
