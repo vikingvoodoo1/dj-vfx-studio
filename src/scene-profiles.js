@@ -346,15 +346,15 @@ export const SCENE_METADATA = [
     },
     {
         id: 22,
-        name: 'Cyber Cinema 3D',
+        name: 'Direct Video Player',
         hotkey: 'V',
         category: 'video',
-        categoryLabel: 'Video Loops & Cinema',
+        categoryLabel: 'Video Loops & Media',
         icon: '🎬',
-        reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        reactiveTags: ['bpm_sync'],
         requirements: { audio: false, deck: false, internet: false, strictDeck: false },
-        summary: '3D curved cyber cinema screen with seamless video transitions',
-        description: 'Renders local video loops onto a 3D curved cyber cinema display with audio-reactive ambient backglow, floor reflections, and seamless real-time transitions (Crossfade, Glitch Wipe, Zoom Dissolve, Strobe Cut).'
+        summary: 'Direct full-screen video playback with seamless clip transitions',
+        description: 'Clean, full-screen direct video playback for music videos and visual loops with seamless real-time transitions (Crossfade, Cut, Glitch, Zoom, Strobe).'
     }
 ];
 

@@ -15468,18 +15468,8 @@ export function createVFXScene(container) {
     let videoMutedSetting = true;
     let videoLoopSetting = 'playlist'; // 'single' or 'playlist'
 
-    // 1. Curved IMAX Cinema Screen Mesh (16:9 widescreen curved display)
-    const cinemaW = 28.0;
-    const cinemaH = 15.75;
-    const cinemaGeo = new THREE.PlaneGeometry(cinemaW, cinemaH, 36, 18);
-    const cPosAttr = cinemaGeo.attributes.position;
-    for (let i = 0; i < cPosAttr.count; i++) {
-        const x = cPosAttr.getX(i);
-        const normX = x / (cinemaW * 0.5);
-        const curveZ = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.6;
-        cPosAttr.setZ(i, curveZ);
-    }
-    cinemaGeo.computeVertexNormals();
+    // 1. Direct Flat Video Screen Mesh (Fills viewport cleanly with aspect-ratio preservation)
+    const cinemaGeo = new THREE.PlaneGeometry(1.0, 1.0);
 
     const cinemaScreenShaderMat = new THREE.ShaderMaterial({
         uniforms: {
@@ -15521,7 +15511,7 @@ export function createVFXScene(container) {
                         // 0: Crossfade Dissolve
                         outCol = mix(colA, colB, uMix);
                     } else if (uTransitionType == 1) {
-                        // 1: Glitch Wipe (Cyberpunk Chromatic Offset)
+                        // 1: Glitch Wipe (Chromatic Offset)
                         float sliceJitter = sin(vUv.y * 45.0 + uTime * 25.0) * 0.08 * sin(uMix * 3.14159);
                         float slice = step(vUv.x + sliceJitter, uMix);
                         vec2 gUvA = vUv + vec2(sin(uTime * 30.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
@@ -15546,42 +15536,24 @@ export function createVFXScene(container) {
                         outCol = uMix < 0.5 ? colA : colB;
                     }
                 } else {
-                    // STANDBY CYBER CINEMA DISPLAY (when no video is loaded yet)
-                    vec2 gridUv = fract(vUv * vec2(32.0, 18.0));
-                    float grid = step(0.96, gridUv.x) + step(0.96, gridUv.y);
-                    
-                    // Central crosshair & VJ Cinema circle
-                    vec2 centeredUv = vUv - vec2(0.5, 0.5);
-                    centeredUv.x *= 1.777; // 16:9 aspect ratio correction
-                    float dist = length(centeredUv);
-                    float ring1 = smoothstep(0.008, 0.0, abs(dist - 0.35));
-                    float ring2 = smoothstep(0.006, 0.0, abs(dist - 0.40));
-                    float centerReticle = smoothstep(0.005, 0.0, min(abs(centeredUv.x), abs(centeredUv.y))) * step(dist, 0.45);
-                    
-                    // Waveform line across middle
-                    float wave = sin(vUv.x * 20.0 + uTime * 4.0) * (0.05 + uBass * 0.12);
-                    float waveLine = smoothstep(0.012, 0.0, abs(vUv.y - 0.5 - wave));
+                    // STANDBY SCREEN (Clean minimalist media standby)
+                    vec2 cUv = (vUv - 0.5) * 2.0;
+                    float dist = length(cUv);
+                    vec3 bg = mix(vec3(0.025, 0.032, 0.048), vec3(0.008, 0.010, 0.016), dist * 0.8);
 
-                    // Cyberpunk color palette
-                    vec3 darkBg = vec3(0.012, 0.02, 0.038);
-                    vec3 neonCyan = vec3(0.0, 0.95, 0.85);
-                    vec3 neonPink = vec3(1.0, 0.05, 0.55);
-                    vec3 neonAmber = vec3(1.0, 0.7, 0.1);
+                    // Subtle elegant play triangle in center
+                    vec2 p = cUv * 3.5;
+                    p.x += 0.2;
+                    float d1 = p.x - 0.8;
+                    float d2 = -p.x * 0.5 + p.y * 0.866 - 0.4;
+                    float d3 = -p.x * 0.5 - p.y * 0.866 - 0.4;
+                    float tri = max(d1, max(d2, d3));
+                    float icon = smoothstep(0.06, 0.0, abs(tri));
 
-                    vec3 col = darkBg;
-                    col = mix(col, neonCyan, grid * 0.28);
-                    col = mix(col, neonCyan, (ring1 + ring2 * 0.6) * (0.75 + sin(uTime * 3.0) * 0.25));
-                    col = mix(col, neonPink, centerReticle * 0.6);
-                    col = mix(col, neonAmber, waveLine * (0.8 + uBass * 0.8));
-
-                    // Vignette edge darkening
-                    float vig = 1.0 - smoothstep(0.4, 0.9, length(vUv - 0.5) * 1.3);
-                    col *= vig;
-                    outCol = vec4(col, 1.0);
+                    vec3 iconCol = vec3(0.0, 0.85, 0.75);
+                    outCol = vec4(mix(bg, iconCol, icon * 0.45), 1.0);
                 }
 
-                // Audio reactive edge pulse
-                outCol.rgb += uBass * 0.06;
                 gl_FragColor = outCol;
             }
         `,
@@ -15589,143 +15561,45 @@ export function createVFXScene(container) {
     });
 
     const cinemaScreenMesh = new THREE.Mesh(cinemaGeo, cinemaScreenShaderMat);
-    cinemaScreenMesh.position.set(0.0, 0.5, -2.0);
+    cinemaScreenMesh.position.set(0.0, 0.0, 0.0);
     gVideoPlayback.add(cinemaScreenMesh);
 
-    // 2. Beveled Cyber Frame & Glowing Neon Bezel
-    const cinemaFrameGeo = new THREE.PlaneGeometry(cinemaW + 1.2, cinemaH + 1.2, 36, 18);
-    const fPosAttr = cinemaFrameGeo.attributes.position;
-    for (let i = 0; i < fPosAttr.count; i++) {
-        const x = fPosAttr.getX(i);
-        const normX = x / ((cinemaW + 1.2) * 0.5);
-        const curveZ = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.58;
-        fPosAttr.setZ(i, curveZ);
-    }
-    cinemaFrameGeo.computeVertexNormals();
+    function updateVideoScreenScale() {
+        const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+        let vidAspect = 16.0 / 9.0;
+        if (curVid && curVid.videoWidth > 0 && curVid.videoHeight > 0) {
+            vidAspect = curVid.videoWidth / curVid.videoHeight;
+        }
 
-    const cinemaFrameMat = new THREE.MeshBasicMaterial({
-        color: 0x08090d,
-        side: THREE.BackSide
+        const vFovRad = (camera.fov * Math.PI) / 180;
+        const dist = Math.abs(camera.position.z - 0.0);
+        const visibleHalfHeight = Math.tan(vFovRad / 2) * dist;
+        const visibleHalfWidth = visibleHalfHeight * camera.aspect;
+
+        const viewportW = visibleHalfWidth * 2.0;
+        const viewportH = visibleHalfHeight * 2.0;
+        const screenAspect = viewportW / (viewportH || 1.0);
+
+        let planeW, planeH;
+        if (vidAspect >= screenAspect) {
+            planeW = viewportW;
+            planeH = viewportW / vidAspect;
+        } else {
+            planeH = viewportH;
+            planeW = viewportH * vidAspect;
+        }
+
+        cinemaScreenMesh.scale.set(planeW, planeH, 1.0);
+        cinemaScreenMesh.position.set(0.0, 0.0, 0.0);
+    }
+
+    videoChannelA.addEventListener('loadedmetadata', () => {
+        updateVideoScreenScale();
     });
-    const cinemaFrameMesh = new THREE.Mesh(cinemaFrameGeo, cinemaFrameMat);
-    cinemaFrameMesh.position.set(0.0, 0.5, -2.05);
-    gVideoPlayback.add(cinemaFrameMesh);
-
-    // Glowing Neon Rim around Screen
-    const cinemaRimGeo = new THREE.BufferGeometry();
-    const rimPoints = [];
-    const rW = (cinemaW * 0.5) + 0.15;
-    const rH = (cinemaH * 0.5) + 0.15;
-    for (let x = -rW; x <= rW; x += 1.0) {
-        const normX = x / rW;
-        const z = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.62;
-        rimPoints.push(new THREE.Vector3(x, rH, z));
-    }
-    for (let y = rH; y >= -rH; y -= 1.0) {
-        const z = -Math.cos(Math.PI * 0.5) * 1.6 + 1.62;
-        rimPoints.push(new THREE.Vector3(rW, y, z));
-    }
-    for (let x = rW; x >= -rW; x -= 1.0) {
-        const normX = x / rW;
-        const z = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.62;
-        rimPoints.push(new THREE.Vector3(x, -rH, z));
-    }
-    for (let y = -rH; y <= rH; y += 1.0) {
-        const z = -Math.cos(Math.PI * 0.5) * 1.6 + 1.62;
-        rimPoints.push(new THREE.Vector3(-rW, y, z));
-    }
-    cinemaRimGeo.setFromPoints(rimPoints);
-    const cinemaRimMat = new THREE.LineBasicMaterial({
-        color: 0x00ffcc,
-        linewidth: 2,
-        transparent: true,
-        opacity: 0.85
+    videoChannelB.addEventListener('loadedmetadata', () => {
+        updateVideoScreenScale();
     });
-    const cinemaRimLine = new THREE.Line(cinemaRimGeo, cinemaRimMat);
-    cinemaRimLine.position.set(0.0, 0.5, -1.98);
-    gVideoPlayback.add(cinemaRimLine);
-
-    // 3. Ambient Arena Back-Wall Diffuser (Pulsing backglow)
-    const cinemaBackdropGeo = new THREE.PlaneGeometry(80.0, 45.0);
-    const cinemaBackdropMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 },
-            uGlowCol: { value: new THREE.Color(0x003366) }
-        },
-        vertexShader: `
-            varying vec2 vUv;
-            void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform float uTime;
-            uniform float uBass;
-            uniform vec3 uGlowCol;
-            varying vec2 vUv;
-            void main() {
-                vec2 center = vUv - 0.5;
-                float dist = length(center);
-                float halo = exp(-dist * 2.8) * (0.45 + uBass * 0.55);
-                vec3 col = mix(vec3(0.02, 0.02, 0.04), uGlowCol, halo);
-                gl_FragColor = vec4(col, 1.0);
-            }
-        `,
-        depthWrite: false
-    });
-    const cinemaBackdropMesh = new THREE.Mesh(cinemaBackdropGeo, cinemaBackdropMat);
-    cinemaBackdropMesh.position.set(0.0, 0.0, -8.0);
-    gVideoPlayback.add(cinemaBackdropMesh);
-
-    // 4. Perspective Reflective Floor Grid
-    const cinemaFloorGeo = new THREE.PlaneGeometry(70.0, 50.0, 40, 30);
-    const cinemaFloorMat = new THREE.ShaderMaterial({
-        uniforms: {
-            uTime: { value: 0.0 },
-            uBass: { value: 0.0 }
-        },
-        vertexShader: `
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            void main() {
-                vUv = uv;
-                vec4 wp = modelMatrix * vec4(position, 1.0);
-                vWorldPos = wp.xyz;
-                gl_Position = projectionMatrix * viewMatrix * wp;
-            }
-        `,
-        fragmentShader: `
-            uniform float uTime;
-            uniform float uBass;
-            varying vec2 vUv;
-            varying vec3 vWorldPos;
-            void main() {
-                vec2 grid = abs(fract(vWorldPos.xz * 0.25 - 0.5) - 0.5) / fwidth(vWorldPos.xz * 0.25);
-                float line = 1.0 - min(min(grid.x, grid.y), 1.0);
-                float distFade = smoothstep(35.0, 5.0, length(vWorldPos.xz));
-                vec3 gridCol = mix(vec3(0.02, 0.04, 0.08), vec3(0.0, 0.85, 0.95), line * 0.45);
-                gridCol += uBass * 0.08;
-                gl_FragColor = vec4(gridCol * distFade, 1.0);
-            }
-        `
-    });
-    const cinemaFloorMesh = new THREE.Mesh(cinemaFloorGeo, cinemaFloorMat);
-    cinemaFloorMesh.rotation.x = -Math.PI * 0.5;
-    cinemaFloorMesh.position.set(0.0, -8.0, 0.0);
-    gVideoPlayback.add(cinemaFloorMesh);
-
-    // 5. Dual Overhead Moving Head Arena Spotlights
-    const cinemaSpot1 = new THREE.SpotLight(0x00e5ff, 5.0, 45.0, Math.PI / 6, 0.45, 1.0);
-    cinemaSpot1.position.set(-14.0, 10.0, 4.0);
-    cinemaSpot1.target = cinemaScreenMesh;
-    gVideoPlayback.add(cinemaSpot1);
-
-    const cinemaSpot2 = new THREE.SpotLight(0xff00aa, 5.0, 45.0, Math.PI / 6, 0.45, 1.0);
-    cinemaSpot2.position.set(14.0, 10.0, 4.0);
-    cinemaSpot2.target = cinemaScreenMesh;
-    gVideoPlayback.add(cinemaSpot2);
+    updateVideoScreenScale();
 
     // -------------------------------------------------------------------------
     // Resize Handler
@@ -15748,6 +15622,7 @@ export function createVFXScene(container) {
         updateVhsTextPlaneScale();
         applyLogoPlacement();
         applyStationLogoPlacement();
+        updateVideoScreenScale();
     }
     window.addEventListener('resize', onResize);
 
@@ -15821,6 +15696,7 @@ export function createVFXScene(container) {
             if (index === 22) {
                 const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
                 curVid.play().catch(() => {});
+                updateVideoScreenScale();
             }
         }
     }
