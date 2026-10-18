@@ -2474,68 +2474,132 @@
             font-weight: 700;
         }
 
-        /* Live Performance Deck Console Health Mini Strip */
-        .console-health-mini-strip {
+        /* ========================================================================= */
+        /* TOP-CENTER DYNAMIC ISLAND / MACBOOK NOTCH HUD STATUS PANEL                */
+        /* ========================================================================= */
+        .hud-top-notch {
+            position: fixed;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
             display: flex;
+            flex-direction: column;
             align-items: center;
-            justify-content: space-between;
-            gap: 6px;
-            padding: 5px 8px;
-            margin-bottom: 8px;
-            background: linear-gradient(135deg, rgba(16, 20, 30, 0.95), rgba(10, 12, 18, 0.95));
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 6px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
-            flex-wrap: wrap;
+            transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+            user-select: none;
+            max-width: 95vw;
         }
 
-        .health-mini-items {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-wrap: wrap;
-            flex: 1;
-            min-width: 0;
+        #hud.hidden ~ .hud-top-notch,
+        #hud.hidden ~ #hud-top-notch {
+            opacity: 0;
+            pointer-events: none;
+            transform: translate(-50%, -100%);
         }
 
+        /* Collapsed Notch Pill: Sits flush with top display bezel (MacBook notch style) */
+        .notch-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 3px 14px;
+            height: 28px;
+            box-sizing: border-box;
+            background: linear-gradient(180deg, rgba(8, 10, 16, 0.98) 0%, rgba(13, 17, 26, 0.95) 100%);
+            border: 1px solid rgba(0, 255, 204, 0.28);
+            border-top: none;
+            border-radius: 0 0 14px 14px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.75), 0 0 12px rgba(0, 255, 204, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            cursor: pointer;
+            transition: all 0.22s ease;
+        }
+
+        .notch-pill:hover {
+            border-color: rgba(0, 255, 204, 0.55);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85), 0 0 18px rgba(0, 255, 204, 0.22);
+            background: linear-gradient(180deg, rgba(12, 16, 24, 0.98) 0%, rgba(18, 24, 36, 0.96) 100%);
+        }
+
+        .hud-top-notch[data-expanded="true"] .notch-pill {
+            border-bottom-left-radius: 0;
+            border-bottom-right-radius: 0;
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            background: #080a10;
+        }
+
+        /* Health Pulse Indicator in Notch */
+        .notch-pulse-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #00ff88;
+            box-shadow: 0 0 8px #00ff88;
+            transition: all 0.3s ease;
+            flex-shrink: 0;
+        }
+
+        .notch-pulse-dot.status-amber {
+            background: #ffaa00;
+            box-shadow: 0 0 8px #ffaa00;
+        }
+
+        .notch-pulse-dot.status-red {
+            background: #ff3355;
+            box-shadow: 0 0 8px #ff3355;
+            animation: notchAlertPulse 1.2s infinite;
+        }
+
+        @keyframes notchAlertPulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(1.3); }
+        }
+
+        .notch-glanceable-items {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .notch-chip,
         .health-mini-badge {
             display: inline-flex;
             align-items: center;
             gap: 4px;
-            padding: 3px 6px;
+            padding: 2px 7px;
             border-radius: 4px;
             font-size: 8px;
             font-weight: 700;
             font-family: 'JetBrains Mono', monospace;
             letter-spacing: 0.2px;
-            cursor: pointer;
-            transition: all 0.2s ease;
             border: 1px solid rgba(255, 255, 255, 0.08);
             background: rgba(255, 255, 255, 0.03);
             color: #9aa0b0;
             white-space: nowrap;
+            transition: all 0.2s ease;
+            cursor: pointer;
         }
 
-        .health-mini-badge:hover {
-            background: rgba(255, 255, 255, 0.09);
-            transform: translateY(-1px);
-        }
-
+        .notch-chip.status-green,
         .health-mini-badge.status-green {
-            border-color: rgba(0, 255, 136, 0.4);
-            background: rgba(0, 255, 136, 0.09);
+            border-color: rgba(0, 255, 136, 0.35);
+            background: rgba(0, 255, 136, 0.08);
             color: #00ff88;
         }
 
+        .notch-chip.status-amber,
         .health-mini-badge.status-amber {
-            border-color: rgba(255, 170, 0, 0.45);
-            background: rgba(255, 170, 0, 0.10);
+            border-color: rgba(255, 170, 0, 0.4);
+            background: rgba(255, 170, 0, 0.09);
             color: #ffaa00;
         }
 
+        .notch-chip.status-red,
         .health-mini-badge.status-red {
-            border-color: rgba(255, 51, 85, 0.45);
-            background: rgba(255, 51, 85, 0.10);
+            border-color: rgba(255, 51, 85, 0.4);
+            background: rgba(255, 51, 85, 0.09);
             color: #ff3355;
         }
 
@@ -2547,28 +2611,263 @@
             box-shadow: 0 0 5px currentColor;
         }
 
+        .notch-expand-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(0, 255, 204, 0.65);
+            transition: transform 0.25s ease;
+            margin-left: 2px;
+        }
+
+        .hud-top-notch[data-expanded="true"] .notch-expand-indicator {
+            transform: rotate(180deg);
+            color: #00ffcc;
+        }
+
+        /* Expanded Dropdown Drawer */
+        .notch-dropdown {
+            width: 720px;
+            max-width: 94vw;
+            box-sizing: border-box;
+            background: linear-gradient(180deg, #080a10 0%, #0d1018 70%, #06080d 100%);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.95), 0 0 35px rgba(0, 255, 204, 0.15);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            padding: 14px 18px 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            opacity: 0;
+            max-height: 0;
+            overflow: hidden;
+            pointer-events: none;
+            transition: all 0.32s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .hud-top-notch[data-expanded="true"] .notch-dropdown {
+            opacity: 1;
+            max-height: 540px;
+            pointer-events: auto;
+        }
+
+        .notch-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding-bottom: 8px;
+        }
+
+        .notch-dropdown-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 0.6px;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .notch-title-led {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: #00ffcc;
+            box-shadow: 0 0 8px #00ffcc;
+        }
+
+        .notch-header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .notch-action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            color: #9aa0b0;
+            border-radius: 4px;
+            padding: 3px 8px;
+            font-size: 9.5px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            cursor: pointer;
+            transition: all 0.18s ease;
+        }
+
+        .notch-action-btn:hover {
+            background: rgba(0, 255, 204, 0.15);
+            border-color: rgba(0, 255, 204, 0.4);
+            color: #ffffff;
+        }
+
+        .notch-action-btn.active {
+            background: rgba(0, 255, 204, 0.25);
+            border-color: #00ffcc;
+            color: #00ffcc;
+        }
+
+        /* 5-Card Subsystem Grid */
+        .notch-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+        }
+
+        @media (max-width: 650px) {
+            .notch-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .notch-card {
+            background: rgba(18, 22, 32, 0.85);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 8px;
+            padding: 9px 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+            transition: all 0.2s ease;
+        }
+
+        .notch-card:hover {
+            border-color: rgba(0, 255, 204, 0.3);
+            background: rgba(22, 28, 42, 0.95);
+            transform: translateY(-1px);
+        }
+
+        .notch-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .notch-card-label {
+            font-size: 8px;
+            font-weight: 800;
+            color: #8c92a4;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.4px;
+        }
+
+        .notch-card-badge {
+            font-size: 7.5px;
+            font-weight: 800;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 1px 5px;
+            border-radius: 3px;
+            border: 1px solid transparent;
+        }
+
+        .notch-card-badge.status-green {
+            background: rgba(0, 255, 136, 0.12);
+            color: #00ff88;
+            border-color: rgba(0, 255, 136, 0.3);
+        }
+
+        .notch-card-badge.status-amber {
+            background: rgba(255, 170, 0, 0.12);
+            color: #ffaa00;
+            border-color: rgba(255, 170, 0, 0.3);
+        }
+
+        .notch-card-badge.status-red {
+            background: rgba(255, 51, 85, 0.12);
+            color: #ff3355;
+            border-color: rgba(255, 51, 85, 0.3);
+        }
+
+        .notch-card-val {
+            font-size: 11px;
+            font-weight: 700;
+            color: #ffffff;
+            font-family: 'JetBrains Mono', monospace;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .notch-card-sub {
+            font-size: 8px;
+            color: #7b8296;
+            font-family: 'JetBrains Mono', monospace;
+            line-height: 1.3;
+        }
+
+        /* Notch Footer Diagnostics Button */
+        .notch-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding-top: 4px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+        }
+
+        .btn-notch-diagnostics,
         .btn-open-diagnostics {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.18), rgba(0, 150, 255, 0.18));
+            border: 1px solid rgba(0, 255, 204, 0.45);
+            border-radius: 6px;
+            color: #00ffcc;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 9.5px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-notch-diagnostics:hover,
+        .btn-open-diagnostics:hover {
+            background: linear-gradient(135deg, rgba(0, 255, 204, 0.32), rgba(0, 150, 255, 0.32));
+            border-color: #00ffcc;
+            box-shadow: 0 0 16px rgba(0, 255, 204, 0.3);
+            transform: translateY(-1px);
+        }
+
+        /* Perform Panel Trigger Chip */
+        .btn-notch-trigger-chip {
+            background: rgba(0, 255, 204, 0.1);
+            border: 1px solid rgba(0, 255, 204, 0.3);
+            border-radius: 4px;
+            padding: 2px 7px;
+            font-size: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            color: #00ffcc;
+            cursor: pointer;
             display: inline-flex;
             align-items: center;
             gap: 5px;
-            padding: 4px 8px;
-            border-radius: 4px;
-            background: linear-gradient(135deg, rgba(0, 255, 204, 0.18), rgba(0, 180, 255, 0.18));
-            border: 1px solid rgba(0, 255, 204, 0.5);
-            color: #00ffcc;
-            font-size: 8.5px;
-            font-weight: 800;
-            font-family: 'JetBrains Mono', monospace;
-            cursor: pointer;
             transition: all 0.2s ease;
-            white-space: nowrap;
         }
 
-        .btn-open-diagnostics:hover {
-            background: linear-gradient(135deg, rgba(0, 255, 204, 0.32), rgba(0, 180, 255, 0.32));
+        .btn-notch-trigger-chip:hover {
+            background: rgba(0, 255, 204, 0.22);
             border-color: #00ffcc;
-            box-shadow: 0 0 10px rgba(0, 255, 204, 0.3);
-            transform: translateY(-1px);
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.3);
+        }
+
+        .notch-chip-pulse {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: #00ffcc;
+            box-shadow: 0 0 6px #00ffcc;
         }
 
         /* Studio Health & Telemetry Diagnostics Modal */
@@ -3578,6 +3877,136 @@
         </div>
     </div>
 
+    <!-- ========================================================================= -->
+    <!-- TOP-CENTER DYNAMIC ISLAND / MACBOOK NOTCH HUD STATUS PANEL                -->
+    <!-- ========================================================================= -->
+    <div id="hud-top-notch" class="hud-top-notch" data-expanded="false" data-pinned="false">
+        <!-- Collapsed Notch Header Pill (Visible at all times on top center) -->
+        <div class="notch-pill" id="notch-pill" title="Click or press [Alt+N] to expand Studio Telemetry Notch">
+            <!-- Pulsing Overall Health Dot -->
+            <div class="notch-pulse-dot status-green" id="notch-health-dot" title="All Subsystems Operational"></div>
+
+            <!-- 5 Glanceable Quick Status Chips -->
+            <div class="notch-glanceable-items">
+                <!-- Audio In Chip -->
+                <div class="notch-chip status-green" id="mini-status-audio" title="Audio Input Status (Click to expand)">
+                    <span class="mini-status-dot"></span>
+                    <span>🎧</span>
+                    <span id="mini-audio-text">AUDIO: LINE-IN</span>
+                </div>
+
+                <!-- Decks Telemetry Chip -->
+                <div class="notch-chip status-red" id="mini-status-deck" title="DJ Decks Telemetry (Click to expand)">
+                    <span class="mini-status-dot"></span>
+                    <span>🎛️</span>
+                    <span id="mini-deck-text">DECKS: OFFLINE</span>
+                </div>
+
+                <!-- Wired Network / Routing Chip -->
+                <div class="notch-chip status-green" id="mini-status-net" title="Wired Gigabit Ethernet & Latency (Click to expand)">
+                    <span class="mini-status-dot"></span>
+                    <span id="mini-net-icon">🔌</span>
+                    <span id="mini-net-text">WIRED (en13)</span>
+                </div>
+
+                <!-- GPU FPS & Memory Chip -->
+                <div class="notch-chip status-green" id="mini-status-perf" title="Render FPS & JS Heap Memory (Click to expand)">
+                    <span class="mini-status-dot"></span>
+                    <span>⚡</span>
+                    <span id="mini-perf-text">60 FPS • 42MB</span>
+                </div>
+
+                <!-- Broadcast & Headroom Chip -->
+                <div class="notch-chip status-green" id="mini-status-stream" title="OBS & BUTT Headroom Status (Click to expand)">
+                    <span class="mini-status-dot"></span>
+                    <span>📡</span>
+                    <span id="mini-stream-text">OBS: READY</span>
+                </div>
+            </div>
+
+            <!-- Expand Chevron Indicator -->
+            <div class="notch-expand-indicator" id="notch-expand-indicator" title="Toggle Expanded Panel [Alt+N]">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"></polyline></svg>
+            </div>
+        </div>
+
+        <!-- Expanded Notch Dropdown Drawer -->
+        <div class="notch-dropdown" id="notch-dropdown">
+            <div class="notch-dropdown-header">
+                <div class="notch-dropdown-title">
+                    <span class="notch-title-led"></span>
+                    <span>⚡ STUDIO HUD TELEMETRY &amp; HARDWARE NOTCH</span>
+                </div>
+                <div class="notch-header-actions">
+                    <button class="notch-action-btn" id="btn-notch-rescan" title="Quick Rescan Audio Interfaces &amp; Hardware">🔄 RESCAN</button>
+                    <button class="notch-action-btn" id="btn-notch-pin" title="Pin Notch Panel Open">📌 PIN</button>
+                    <button class="notch-action-btn" id="btn-notch-close" title="Collapse Notch Panel">&times;</button>
+                </div>
+            </div>
+
+            <!-- 5 Subsystem Micro-Cards Grid -->
+            <div class="notch-grid">
+                <!-- 1. Audio Interface Card -->
+                <div class="notch-card" id="notch-card-audio">
+                    <div class="notch-card-top">
+                        <span class="notch-card-label">🎧 AUDIO INTERFACE</span>
+                        <span class="notch-card-badge status-green" id="notch-badge-audio">LINE-IN</span>
+                    </div>
+                    <div class="notch-card-val" id="notch-val-audio">Focusrite Scarlett 2i2</div>
+                    <div class="notch-card-sub" id="notch-sub-audio">48,000 Hz • 4.8ms latency • Active feed</div>
+                </div>
+
+                <!-- 2. Hardware DJ Decks Card -->
+                <div class="notch-card" id="notch-card-deck">
+                    <div class="notch-card-top">
+                        <span class="notch-card-label">🎛️ DJ DECKS TELEMETRY</span>
+                        <span class="notch-card-badge status-red" id="notch-badge-deck">OFFLINE</span>
+                    </div>
+                    <div class="notch-card-val" id="notch-val-deck">StageLinQ / Pro DJ Link</div>
+                    <div class="notch-card-sub" id="notch-sub-deck">0 pkts/sec • Standby Synthetic Mode</div>
+                </div>
+
+                <!-- 3. Wired Network & Routing Card -->
+                <div class="notch-card" id="notch-card-net">
+                    <div class="notch-card-top">
+                        <span class="notch-card-label">🔌 WIRED NETWORK (OS ROUTE)</span>
+                        <span class="notch-card-badge status-green" id="notch-badge-net">WIRED GBE</span>
+                    </div>
+                    <div class="notch-card-val" id="notch-val-net">en13 (USB 10/100/1000 LAN)</div>
+                    <div class="notch-card-sub" id="notch-sub-net">192.168.1.194 • Ping: 12ms • Wi-Fi OK</div>
+                </div>
+
+                <!-- 4. Engine FPS & GPU Load Card -->
+                <div class="notch-card" id="notch-card-perf">
+                    <div class="notch-card-top">
+                        <span class="notch-card-label">⚡ GPU &amp; ENGINE FPS</span>
+                        <span class="notch-card-badge status-green" id="notch-badge-perf">60 FPS</span>
+                    </div>
+                    <div class="notch-card-val" id="notch-val-perf">60.0 FPS • 16.7ms frame</div>
+                    <div class="notch-card-sub" id="notch-sub-perf">42 MB JS Heap • WebGL 2.0 Metal</div>
+                </div>
+
+                <!-- 5. Broadcast Stream & Headroom Card -->
+                <div class="notch-card" id="notch-card-stream">
+                    <div class="notch-card-top">
+                        <span class="notch-card-label">📡 BROADCAST &amp; BUTT HEADROOM</span>
+                        <span class="notch-card-badge status-amber" id="notch-badge-stream">STANDBY</span>
+                    </div>
+                    <div class="notch-card-val" id="notch-val-stream">OBS Standby • Compliant</div>
+                    <div class="notch-card-sub" id="notch-sub-stream">Target -3.0 dBFS Compliant • Peak Safe</div>
+                </div>
+            </div>
+
+            <!-- Diagnostics Action Button Underneath -->
+            <div class="notch-footer">
+                <button class="btn-notch-diagnostics" id="btn-notch-open-diagnostics" title="Open Studio Health &amp; Telemetry Diagnostics Center [Alt+H]">
+                    <span>🩺 OPEN FULL STUDIO HEALTH &amp; TELEMETRY DIAGNOSTICS</span>
+                    <span style="font-size: 8px; opacity: 0.75; padding: 2px 5px; border-radius: 3px; background: rgba(0,255,204,0.15); border: 1px solid rgba(0,255,204,0.3);">Alt+H</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- IDE-Style HUD & Feature Console -->
     <div id="hud" class="ide-console">
         <!-- Vertical Activity Bar (Left Icon Sidebar - VS Code Style) -->
@@ -3672,51 +4101,13 @@
             <div class="ide-tab-pane active" id="pane-perform">
                 <div class="pane-section-title">
                     <span>🎛️ Live Performance Deck</span>
-                    <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
-                </div>
-
-                <!-- Console Health Mini Status Strip -->
-                <div class="console-health-mini-strip" id="console-health-mini-strip">
-                    <div class="health-mini-items">
-                        <!-- Audio In Badge -->
-                        <div class="health-mini-badge status-green" id="mini-status-audio" title="Audio Input Status (Click for Diagnostics)">
-                            <span class="mini-status-dot"></span>
-                            <span>🎧</span>
-                            <span id="mini-audio-text">AUDIO: LINE-IN</span>
-                        </div>
-
-                        <!-- Decks Telemetry Badge -->
-                        <div class="health-mini-badge status-red" id="mini-status-deck" title="Hardware DJ Deck Telemetry (Click for Diagnostics)">
-                            <span class="mini-status-dot"></span>
-                            <span>🎛️</span>
-                            <span id="mini-deck-text">DECKS: OFFLINE</span>
-                        </div>
-
-                        <!-- Network / Internet Badge -->
-                        <div class="health-mini-badge status-green" id="mini-status-net" title="Network Connection &amp; Latency (Click for Diagnostics)">
-                            <span class="mini-status-dot"></span>
-                            <span id="mini-net-icon">📶</span>
-                            <span id="mini-net-text">NET: WI-FI</span>
-                        </div>
-
-                        <!-- Performance / FPS & Memory Badge -->
-                        <div class="health-mini-badge status-green" id="mini-status-perf" title="Render FPS &amp; JS Heap Memory (Click for Diagnostics)">
-                            <span class="mini-status-dot"></span>
-                            <span>⚡</span>
-                            <span id="mini-perf-text">60 FPS • 42MB</span>
-                        </div>
-
-                        <!-- Broadcast / Stream Badge -->
-                        <div class="health-mini-badge status-green" id="mini-status-stream" title="OBS &amp; BUTT Stream Compliance (Click for Diagnostics)">
-                            <span class="mini-status-dot"></span>
-                            <span>📡</span>
-                            <span id="mini-stream-text">OBS: READY</span>
-                        </div>
+                    <div style="display:flex; align-items:center; gap:6px;">
+                        <span class="hud-badge" id="audio-device-badge">LINE-IN</span>
+                        <button class="btn-notch-trigger-chip" id="btn-open-notch-from-panel" title="Click to view Top-Center Telemetry Notch [Alt+N] / Diagnostics [Alt+H]">
+                            <span class="notch-chip-pulse"></span>
+                            <span id="panel-notch-summary-text">HUD NOTCH ⚡</span>
+                        </button>
                     </div>
-
-                    <button class="btn-open-diagnostics" id="btn-open-health-modal" title="Open Studio Health &amp; Telemetry Diagnostics Center [Alt+H]">
-                        <span>🩺 DIAGNOSTICS</span>
-                    </button>
                 </div>
 
                 <!-- Live Tempo & StageLinQ Deck Telemetry Visualizer -->
@@ -5542,6 +5933,8 @@
             <!-- Bottom Shortcuts Help Footer -->
             <div class="hud-section" style="margin-top: 10px; margin-bottom: 0; padding-top: 6px; border-top: 1px solid #2b2e3a; font-size: 8px; color: #8c909e; display: flex; justify-content: space-between; align-items:center; flex-wrap:wrap; gap:3px;">
                 <span>[Alt+1..6] Consoles</span>
+                <span>[Alt+N] Notch HUD</span>
+                <span>[Alt+H] Diagnostics</span>
                 <span>[H] Hide Console</span>
                 <span>[A] Auto VJ</span>
                 <span>[L] DJ Logo</span>

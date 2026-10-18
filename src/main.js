@@ -5458,6 +5458,68 @@ async function init() {
     const miniStreamText = document.getElementById('mini-stream-text');
     const btnOpenHealthModal = document.getElementById('btn-open-health-modal');
 
+    // Dynamic Island / MacBook Notch Elements
+    const hudTopNotch = document.getElementById('hud-top-notch');
+    const notchPill = document.getElementById('notch-pill');
+    const notchDropdown = document.getElementById('notch-dropdown');
+    const notchHealthDot = document.getElementById('notch-health-dot');
+    const btnNotchClose = document.getElementById('btn-notch-close');
+    const btnNotchPin = document.getElementById('btn-notch-pin');
+    const btnNotchRescan = document.getElementById('btn-notch-rescan');
+    const btnNotchOpenDiagnostics = document.getElementById('btn-notch-open-diagnostics');
+    const btnOpenNotchFromPanel = document.getElementById('btn-open-notch-from-panel');
+    const panelNotchSummaryText = document.getElementById('panel-notch-summary-text');
+
+    // Notch Micro-Cards Elements
+    const notchBadgeAudio = document.getElementById('notch-badge-audio');
+    const notchValAudio = document.getElementById('notch-val-audio');
+    const notchSubAudio = document.getElementById('notch-sub-audio');
+
+    const notchBadgeDeck = document.getElementById('notch-badge-deck');
+    const notchValDeck = document.getElementById('notch-val-deck');
+    const notchSubDeck = document.getElementById('notch-sub-deck');
+
+    const notchBadgeNet = document.getElementById('notch-badge-net');
+    const notchValNet = document.getElementById('notch-val-net');
+    const notchSubNet = document.getElementById('notch-sub-net');
+
+    const notchBadgePerf = document.getElementById('notch-badge-perf');
+    const notchValPerf = document.getElementById('notch-val-perf');
+    const notchSubPerf = document.getElementById('notch-sub-perf');
+
+    const notchBadgeStream = document.getElementById('notch-badge-stream');
+    const notchValStream = document.getElementById('notch-val-stream');
+    const notchSubStream = document.getElementById('notch-sub-stream');
+
+    let isNotchPinned = false;
+
+    function openNotchPanel() {
+        if (hudTopNotch) {
+            hudTopNotch.setAttribute('data-expanded', 'true');
+        }
+    }
+
+    function closeNotchPanel() {
+        if (hudTopNotch && !isNotchPinned) {
+            hudTopNotch.setAttribute('data-expanded', 'false');
+        }
+    }
+
+    function toggleNotchPanel() {
+        if (hudTopNotch) {
+            const isExp = hudTopNotch.getAttribute('data-expanded') === 'true';
+            if (isExp) {
+                hudTopNotch.setAttribute('data-expanded', 'false');
+            } else {
+                hudTopNotch.setAttribute('data-expanded', 'true');
+            }
+        }
+    }
+
+    window.openNotchPanel = openNotchPanel;
+    window.closeNotchPanel = closeNotchPanel;
+    window.toggleNotchPanel = toggleNotchPanel;
+
     // Studio Health & Telemetry Diagnostics Modal Elements
     const studioHealthModalBackdrop = document.getElementById('studio-health-modal-backdrop');
     const btnCloseHealthModal = document.getElementById('btn-close-health-modal');
@@ -5849,35 +5911,92 @@ async function init() {
         const obsH = getBroadcastHealthSnapshot(latestAudio);
 
         if (miniStatusAudio) {
-            miniStatusAudio.className = 'health-mini-badge ' + audioH.badgeClass;
-            miniStatusAudio.setAttribute('title', `${audioH.deviceName} (${audioH.interfaceType}) • Click for Diagnostics`);
+            miniStatusAudio.className = 'notch-chip ' + audioH.badgeClass;
+            miniStatusAudio.setAttribute('title', `${audioH.deviceName} (${audioH.interfaceType}) • Click to expand Notch`);
         }
         if (miniAudioText) miniAudioText.textContent = audioH.label;
 
         if (miniStatusDeck) {
-            miniStatusDeck.className = 'health-mini-badge ' + deckH.badgeClass;
-            miniStatusDeck.setAttribute('title', `${deckH.source} • ${deckH.pktsText} • Click for Diagnostics`);
+            miniStatusDeck.className = 'notch-chip ' + deckH.badgeClass;
+            miniStatusDeck.setAttribute('title', `${deckH.source} • ${deckH.pktsText} • Click to expand Notch`);
         }
         if (miniDeckText) miniDeckText.textContent = deckH.label;
 
         if (miniStatusNet) {
-            miniStatusNet.className = 'health-mini-badge ' + netH.badgeClass;
-            miniStatusNet.setAttribute('title', `${netH.medium} • Ping: ${netH.rttText} • Click for Diagnostics`);
+            miniStatusNet.className = 'notch-chip ' + netH.badgeClass;
+            miniStatusNet.setAttribute('title', `${netH.medium} • Ping: ${netH.rttText} • Click to expand Notch`);
         }
         if (miniNetIcon) miniNetIcon.textContent = netH.icon;
         if (miniNetText) miniNetText.textContent = netH.label;
 
         if (miniStatusPerf) {
-            miniStatusPerf.className = 'health-mini-badge ' + perfH.badgeClass;
+            miniStatusPerf.className = 'notch-chip ' + perfH.badgeClass;
             miniStatusPerf.setAttribute('title', `Performance: ${perfH.fpsText} • JS Heap: ${perfH.memoryText}`);
         }
         if (miniPerfText) miniPerfText.textContent = perfH.label;
 
         if (miniStatusStream) {
-            miniStatusStream.className = 'health-mini-badge ' + obsH.badgeClass;
+            miniStatusStream.className = 'notch-chip ' + obsH.badgeClass;
             miniStatusStream.setAttribute('title', `Broadcast: ${obsH.feedText} • BUTT: ${obsH.buttText}`);
         }
         if (miniStreamText) miniStreamText.textContent = obsH.label;
+
+        // Overall Health Pulse Indicator in Notch
+        if (notchHealthDot) {
+            const isRed = audioH.status === 'red' || deckH.status === 'red' || netH.status === 'red' || perfH.status === 'red' || obsH.status === 'red';
+            const isAmber = audioH.status === 'amber' || deckH.status === 'amber' || netH.status === 'amber' || perfH.status === 'amber' || obsH.status === 'amber';
+            if (isRed) {
+                notchHealthDot.className = 'notch-pulse-dot status-red';
+                notchHealthDot.title = 'Critical Hardware / Telemetry Alert';
+            } else if (isAmber) {
+                notchHealthDot.className = 'notch-pulse-dot status-amber';
+                notchHealthDot.title = 'Subsystem Fallback / Standby Notice';
+            } else {
+                notchHealthDot.className = 'notch-pulse-dot status-green';
+                notchHealthDot.title = 'All Subsystems Operational';
+            }
+        }
+
+        // Panel Trigger Text in Perform Tab
+        if (panelNotchSummaryText) {
+            panelNotchSummaryText.textContent = `${audioH.status === 'green' ? '✓' : '⚠️'} ${perfH.label}`;
+        }
+
+        // Detailed Subsystem Cards in Expanded Notch Dropdown
+        if (notchBadgeAudio) {
+            notchBadgeAudio.className = 'notch-card-badge ' + audioH.badgeClass;
+            notchBadgeAudio.textContent = audioH.status === 'green' ? (isExternalAudioInterface(audioH.deviceName) ? 'LINE-IN (USB)' : 'ACTIVE') : audioH.status === 'amber' ? 'FALLBACK MIC' : 'OFFLINE';
+        }
+        if (notchValAudio) notchValAudio.textContent = audioH.deviceName;
+        if (notchSubAudio) notchSubAudio.textContent = `${audioH.sampleRate} • ${audioH.levelsText}`;
+
+        if (notchBadgeDeck) {
+            notchBadgeDeck.className = 'notch-card-badge ' + deckH.badgeClass;
+            notchBadgeDeck.textContent = deckH.status === 'green' ? 'STREAMING' : 'OFFLINE';
+        }
+        if (notchValDeck) notchValDeck.textContent = deckH.source;
+        if (notchSubDeck) notchSubDeck.textContent = `${deckH.stateText} • ${deckH.pktsText}`;
+
+        if (notchBadgeNet) {
+            notchBadgeNet.className = 'notch-card-badge ' + netH.badgeClass;
+            notchBadgeNet.textContent = netH.status === 'green' ? (networkHardwareStatus.isWired ? 'WIRED GBE' : 'ONLINE') : 'OFFLINE';
+        }
+        if (notchValNet) notchValNet.textContent = netH.medium;
+        if (notchSubNet) notchSubNet.textContent = `${netH.speedText} • Ping: ${netH.rttText}`;
+
+        if (notchBadgePerf) {
+            notchBadgePerf.className = 'notch-card-badge ' + perfH.badgeClass;
+            notchBadgePerf.textContent = `${currentRenderFps} FPS`;
+        }
+        if (notchValPerf) notchValPerf.textContent = `${perfH.fpsText} • ${perfH.sceneText}`;
+        if (notchSubPerf) notchSubPerf.textContent = `${perfH.memoryText} • ${perfH.webglText}`;
+
+        if (notchBadgeStream) {
+            notchBadgeStream.className = 'notch-card-badge ' + obsH.badgeClass;
+            notchBadgeStream.textContent = obsH.status === 'green' ? 'LIVE FEED' : obsH.status === 'amber' ? 'STANDBY' : 'CLIPPING ⚠️';
+        }
+        if (notchValStream) notchValStream.textContent = obsH.feedText;
+        if (notchSubStream) notchSubStream.textContent = `BUTT: ${obsH.buttText} • ${obsH.stageText}`;
     }
 
     function updateHealthDiagnosticsModalUI(latestAudio) {
@@ -6021,13 +6140,74 @@ async function init() {
 
     // Attach Diagnostics Modal Listeners
     if (btnOpenHealthModal) btnOpenHealthModal.addEventListener('click', openHealthDiagnosticsModal);
-    if (miniStatusAudio) miniStatusAudio.addEventListener('click', openHealthDiagnosticsModal);
-    if (miniStatusDeck) miniStatusDeck.addEventListener('click', openHealthDiagnosticsModal);
-    if (miniStatusNet) miniStatusNet.addEventListener('click', openHealthDiagnosticsModal);
-    if (miniStatusPerf) miniStatusPerf.addEventListener('click', openHealthDiagnosticsModal);
-    if (miniStatusStream) miniStatusStream.addEventListener('click', openHealthDiagnosticsModal);
     if (btnCloseHealthModal) btnCloseHealthModal.addEventListener('click', closeHealthDiagnosticsModal);
     if (btnCloseHealthFooter) btnCloseHealthFooter.addEventListener('click', closeHealthDiagnosticsModal);
+
+    // Top-Center Notch HUD Listeners
+    if (notchPill) {
+        notchPill.addEventListener('click', (e) => {
+            toggleNotchPanel();
+        });
+    }
+
+    if (btnNotchClose) {
+        btnNotchClose.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isNotchPinned = false;
+            if (btnNotchPin) {
+                btnNotchPin.classList.remove('active');
+                btnNotchPin.textContent = '📌 PIN';
+            }
+            if (hudTopNotch) hudTopNotch.setAttribute('data-pinned', 'false');
+            closeNotchPanel();
+        });
+    }
+
+    if (btnNotchPin) {
+        btnNotchPin.addEventListener('click', (e) => {
+            e.stopPropagation();
+            isNotchPinned = !isNotchPinned;
+            btnNotchPin.classList.toggle('active', isNotchPinned);
+            btnNotchPin.textContent = isNotchPinned ? '📍 PINNED' : '📌 PIN';
+            if (hudTopNotch) hudTopNotch.setAttribute('data-pinned', isNotchPinned ? 'true' : 'false');
+        });
+    }
+
+    if (btnNotchRescan) {
+        btnNotchRescan.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (typeof rescanAudioDevices === 'function') {
+                rescanAudioDevices();
+            }
+        });
+    }
+
+    if (btnNotchOpenDiagnostics) {
+        btnNotchOpenDiagnostics.addEventListener('click', (e) => {
+            e.stopPropagation();
+            closeNotchPanel();
+            openHealthDiagnosticsModal();
+        });
+    }
+
+    if (btnOpenNotchFromPanel) {
+        btnOpenNotchFromPanel.addEventListener('click', (e) => {
+            e.stopPropagation();
+            toggleNotchPanel();
+        });
+    }
+
+    // Collapse notch on click outside if not pinned
+    document.addEventListener('click', (e) => {
+        if (!hudTopNotch) return;
+        if (hudTopNotch.getAttribute('data-expanded') === 'true' && !isNotchPinned) {
+            const isClickInside = hudTopNotch.contains(e.target);
+            const isPanelTrigger = btnOpenNotchFromPanel && btnOpenNotchFromPanel.contains(e.target);
+            if (!isClickInside && !isPanelTrigger) {
+                closeNotchPanel();
+            }
+        }
+    });
 
     if (studioHealthModalBackdrop) {
         studioHealthModalBackdrop.addEventListener('click', (e) => {
@@ -7317,6 +7497,13 @@ async function init() {
                 toggleHealthDiagnosticsModal();
             }
         }
+        // [Alt+N] to toggle Top-Center Telemetry Notch
+        else if (e.altKey && (e.key === 'n' || e.key === 'N')) {
+            e.preventDefault();
+            if (typeof toggleNotchPanel === 'function') {
+                toggleNotchPanel();
+            }
+        }
         // [M] to toggle Scene Reactive Matrix & Memory Profiles modal
         else if (e.key === 'm' || e.key === 'M') {
             const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
@@ -7326,8 +7513,11 @@ async function init() {
                 }
             }
         }
-        // [Escape] to close open modals
+        // [Escape] to close open modals & panels
         else if (e.key === 'Escape') {
+            if (typeof closeNotchPanel === 'function') {
+                closeNotchPanel();
+            }
             if (studioHealthModalBackdrop && studioHealthModalBackdrop.classList.contains('active')) {
                 if (typeof closeHealthDiagnosticsModal === 'function') {
                     closeHealthDiagnosticsModal();
