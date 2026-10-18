@@ -343,6 +343,18 @@ export const SCENE_METADATA = [
         requirements: { audio: true, deck: false, internet: false, strictDeck: false },
         summary: 'Gothic Victorian manor, rave windows & lightning',
         description: 'Gothic Victorian manor with upstairs windows pulsing like rave mini-lights to musical beats; bass drops trigger volumetric lightning flashes illuminating rain, cemetery headstones, and dead trees.'
+    },
+    {
+        id: 22,
+        name: 'Cyber Cinema Video',
+        hotkey: 'V',
+        category: 'video',
+        categoryLabel: 'Video Loops & Cinema',
+        icon: '🎬',
+        reactiveTags: ['audio_fft', 'bpm_sync', 'transients'],
+        requirements: { audio: false, deck: false, internet: false, strictDeck: false },
+        summary: '3D curved cyber cinema screen with seamless video transitions',
+        description: 'Renders local video loops onto a 3D curved cyber cinema display with audio-reactive ambient backglow, floor reflections, and seamless real-time transitions (Crossfade, Glitch Wipe, Zoom Dissolve, Strobe Cut).'
     }
 ];
 

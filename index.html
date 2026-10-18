@@ -4429,15 +4429,336 @@
             background: rgba(255, 51, 102, 0.3) !important;
         }
 
-        .matrix-btn-close {
-            background: rgba(255, 255, 255, 0.08) !important;
-            border: 1px solid rgba(255, 255, 255, 0.2) !important;
-            color: #ffffff !important;
-            font-weight: 800;
+        /* ========================================================================= */
+        /* 🎬 VIDEO LOOPS & CINEMA PLAYBACK PANEL STYLES                             */
+        /* ========================================================================= */
+        .video-bank-bar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background: #0e1118;
+            border: 1px solid #1c2333;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 10px;
+        }
+
+        .video-banks-dropdown-wrap {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        .video-bank-select {
+            background: #08090d;
+            border: 1px solid #28334a;
+            color: #00ffcc;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 10px;
-            padding: 6px 14px;
-            cursor: pointer;
+            font-weight: 700;
+            padding: 5px 8px;
             border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .video-bank-chips-bar {
+            display: flex;
+            gap: 4px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            margin-bottom: 8px;
+        }
+
+        .video-bank-chips-bar::-webkit-scrollbar {
+            height: 3px;
+        }
+        .video-bank-chips-bar::-webkit-scrollbar-thumb {
+            background: #28334a;
+            border-radius: 2px;
+        }
+
+        .video-bank-chip {
+            background: #141722;
+            border: 1px solid #283045;
+            color: #8c98b2;
+            font-size: 9px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            padding: 3px 8px;
+            border-radius: 4px;
+            white-space: nowrap;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .video-bank-chip:hover {
+            border-color: #00ffcc;
+            color: #e5e7ec;
+        }
+
+        .video-bank-chip.active {
+            background: rgba(0, 255, 204, 0.15);
+            border-color: #00ffcc;
+            color: #00ffcc;
+            box-shadow: 0 0 8px rgba(0, 255, 204, 0.25);
+        }
+
+        /* Video Setup Flow Card (Empty State) */
+        .video-setup-flow-card {
+            background: radial-gradient(circle at 50% 20%, rgba(0, 255, 204, 0.08) 0%, rgba(13, 16, 24, 0.95) 70%);
+            border: 1px dashed rgba(0, 255, 204, 0.4);
+            border-radius: 8px;
+            padding: 22px 18px;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .video-setup-icon {
+            font-size: 32px;
+            animation: pulseGlow 3s ease-in-out infinite;
+        }
+
+        .video-setup-title {
+            font-size: 13px;
+            font-weight: 800;
+            color: #ffffff;
+            letter-spacing: 0.5px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .video-setup-desc {
+            font-size: 9.5px;
+            color: #8c98b2;
+            max-width: 380px;
+            line-height: 1.45;
+        }
+
+        .video-setup-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+            margin-top: 4px;
+        }
+
+        .video-btn-primary {
+            background: linear-gradient(135deg, #00ffcc 0%, #00aaff 100%);
+            color: #050810;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 900;
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 14px rgba(0, 255, 204, 0.35);
+            transition: all 0.15s ease;
+        }
+
+        .video-btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 20px rgba(0, 255, 204, 0.55);
+        }
+
+        .video-btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #e5e7ec;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 8px 14px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .video-btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+            border-color: #ffffff;
+        }
+
+        /* Video Interactive Grid & Thumbnail Cards */
+        .video-library-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(136px, 1fr));
+            gap: 8px;
+            max-height: 320px;
+            overflow-y: auto;
+            padding: 2px 4px 6px 2px;
+            margin-bottom: 12px;
+        }
+
+        .video-library-grid::-webkit-scrollbar {
+            width: 5px;
+        }
+        .video-library-grid::-webkit-scrollbar-thumb {
+            background: #28334a;
+            border-radius: 3px;
+        }
+
+        .video-card-item {
+            background: #11141c;
+            border: 1px solid #232a3a;
+            border-radius: 6px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.18s ease;
+            position: relative;
+        }
+
+        .video-card-item:hover {
+            border-color: #00ffcc;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 204, 0.2);
+            transform: translateY(-1px);
+        }
+
+        .video-card-item.active-on-air {
+            border-color: #00ff88 !important;
+            box-shadow: 0 0 14px rgba(0, 255, 136, 0.45) !important;
+            background: #141b18 !important;
+        }
+
+        .video-card-item.excluded {
+            opacity: 0.45;
+            filter: grayscale(85%);
+        }
+
+        .video-thumb-preview-box {
+            position: relative;
+            width: 100%;
+            aspect-ratio: 16 / 9;
+            background: #000000;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .video-card-video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .video-thumb-overlay-hint {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.75);
+            border-radius: 3px;
+            padding: 2px 4px;
+            font-size: 7.5px;
+            font-weight: 700;
+            color: #00ffcc;
+            font-family: 'JetBrains Mono', monospace;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .video-card-item:hover .video-thumb-overlay-hint {
+            opacity: 0;
+        }
+
+        .video-thumb-playing-tag {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0, 255, 136, 0.9);
+            color: #050810;
+            font-size: 7px;
+            font-weight: 900;
+            padding: 2px 4px;
+            border-radius: 3px;
+            display: none;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+        }
+
+        .video-card-item.active-on-air .video-thumb-playing-tag {
+            display: block;
+        }
+
+        .video-card-info-box {
+            padding: 6px 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .video-card-filename {
+            font-size: 9px;
+            font-weight: 700;
+            color: #e5e7ec;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .video-card-meta-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 8px;
+            color: #8c98b2;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .video-inc-checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 8px;
+            color: #00ffcc;
+            user-select: none;
+        }
+
+        .video-inc-checkbox-label input {
+            accent-color: #00ffcc;
+            cursor: pointer;
+            width: 11px;
+            height: 11px;
+            margin: 0;
+        }
+
+        .video-btn-play-now {
+            background: rgba(0, 255, 204, 0.12);
+            border: 1px solid rgba(0, 255, 204, 0.35);
+            color: #00ffcc;
+            font-size: 8px;
+            font-weight: 800;
+            padding: 2px 6px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            transition: all 0.12s ease;
+        }
+
+        .video-btn-play-now:hover {
+            background: #00ffcc;
+            color: #050810;
+        }
+
+        /* Video Options Deck */
+        .video-options-deck {
+            background: #0d1017;
+            border: 1px solid #1c2333;
+            border-radius: 6px;
+            padding: 10px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 12px;
         }
     </style>
 </head>
@@ -5070,6 +5391,10 @@
                         <span class="power-btn-label">NOW PLAYING [N]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="nowplaying-power-status-text">OFF</span></span>
                     </button>
+                    <button class="logo-power-btn" id="btn-toggle-video-scene-top" title="Switch 3D Stage to Cyber Cinema Video Playback [V]">
+                        <span class="power-btn-label">VIDEO CINEMA [V]</span>
+                        <span class="power-btn-status"><span class="power-led"></span> <span id="video-scene-power-status-text">OFF</span></span>
+                    </button>
                 </div>
 
                 <!-- Live Quick Macro Faders -->
@@ -5351,6 +5676,19 @@
                         <div class="fx-pane-card-title">🏚️ Haunted Manor</div>
                     </div>
 
+                    <!-- 🎬 Video & Cinema -->
+                    <div class="fx-pane-card" data-fx="22" data-fxcat="video" title="Hot key: V">
+                        <div class="fx-card-thumb-wrap">
+                            <canvas class="fx-card-thumb-canvas" width="140" height="44" data-fx-thumb="22"></canvas>
+                            <div class="fx-card-thumb-overlay"></div>
+                        </div>
+                        <div class="fx-pane-card-top">
+                            <span class="fx-pane-key">V</span>
+                            <span class="fx-pane-cat-tag">🎬 Video Loops</span>
+                        </div>
+                        <div class="fx-pane-card-title">🎬 Cyber Cinema Video</div>
+                    </div>
+
                     <!-- 🕸️ Cyber & Retro -->
                     <div class="fx-pane-card" data-fx="8" data-fxcat="wire" title="Hot key: 9">
                         <div class="fx-card-thumb-wrap">
@@ -5482,6 +5820,10 @@
                     <button class="logos-nav-tab" id="subtab-btn-flyer" data-subtab="flyer" title="Switch to Event Flyer & Promo Graphic Layer">
                         <span class="tab-led"></span>
                         <span>🖼️ EVENT FLYER</span>
+                    </button>
+                    <button class="logos-nav-tab" id="subtab-btn-video" data-subtab="video" title="Switch to Video Loops & Cinema Playback Layer">
+                        <span class="tab-led"></span>
+                        <span>🎬 VIDEO LOOPS</span>
                     </button>
                 </div>
 
@@ -6174,6 +6516,175 @@
                         </label>
                     </div>
                 </div>
+
+                <!-- SUB-SECTION 4: VIDEO LOOPS & 3D CINEMA PLAYBACK CONTROLS -->
+                <div id="subtab-content-video" class="subtab-content" style="display:none;">
+                    <!-- Active Video Monitor Card -->
+                    <div class="media-preview-card" style="padding:10px 12px; margin-bottom:10px;">
+                        <div class="media-preview-thumb-box" style="width:72px; height:45px; min-width:72px; background:#000; border-radius:4px; overflow:hidden;">
+                            <video id="video-active-preview-vid" src="/images/videos/01_jkmclaren_shock.mp4" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                        </div>
+                        <div class="media-preview-meta" style="flex:1;">
+                            <span class="media-preview-name" id="video-active-title" style="color:#00ffcc; font-weight:800;">01 jkmclaren shock</span>
+                            <div class="media-preview-badges" style="display:flex; flex-wrap:wrap; gap:4px; margin-top:3px;">
+                                <span class="media-badge-tag" id="video-badge-on-air" style="background:rgba(0,255,136,0.15); color:#00ff88; border-color:rgba(0,255,136,0.35);">● SCENE 22 ACTIVE</span>
+                                <span class="media-badge-tag" id="video-badge-loop" style="background:rgba(0,255,204,0.12); color:#00ffcc; border-color:rgba(0,255,204,0.3);">🔁 PLAYLIST</span>
+                                <span class="media-badge-tag" id="video-badge-speed" style="background:rgba(255,170,0,0.12); color:#ffaa00; border-color:rgba(255,170,0,0.3);">1.0x SPEED</span>
+                                <span class="media-badge-tag" id="video-badge-mute" style="background:rgba(255,51,102,0.12); color:#ff3366; border-color:rgba(255,51,102,0.3);">🔇 MUTED</span>
+                            </div>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:4px;">
+                            <button class="btn-mini" id="btn-video-activate-scene22" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:linear-gradient(135deg, rgba(0,255,204,0.25), rgba(0,170,255,0.25)); border:1px solid #00ffcc; color:#00ffcc;" title="Switch 3D Scene directly to Video Playback [Hot key: V]">🎬 GO ON-AIR</button>
+                            <div style="display:flex; gap:4px;">
+                                <button class="btn-mini" id="btn-video-play-pause" style="flex:1; font-size:9px; padding:3px 6px;" title="Pause / Resume Video Playback">⏸ Pause</button>
+                                <button class="btn-mini" id="btn-video-next-clip" style="flex:1; font-size:9px; padding:3px 6px;" title="Advance to Next Video with active Transition">⏭ Next</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Video Bank Selector & Folder Controls (10 Saved Locations) -->
+                    <div class="video-bank-bar">
+                        <div class="video-banks-dropdown-wrap">
+                            <span class="hud-label" style="font-size:8.5px; white-space:nowrap;">📁 BANK:</span>
+                            <select id="select-video-bank" class="video-bank-select">
+                                <option value="0">Bank 1: ✨ Demo VJ Pack</option>
+                            </select>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:4px;">
+                            <button class="btn-mini" id="btn-choose-video-folder" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
+                            <button class="btn-mini" id="btn-scan-mac-path" style="font-size:9px; padding:4px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec;" title="Enter direct Mac folder path via Bridge scanner">🔍 PATH</button>
+                            <input type="file" id="file-video-folder" webkitdirectory directory multiple style="display:none;">
+                        </div>
+                    </div>
+
+                    <!-- 10 Bank Quick-Switch Chips Bar -->
+                    <div class="video-bank-chips-bar" id="video-bank-chips-bar">
+                        <!-- Populated dynamically via VideoPlaybackManager -->
+                    </div>
+
+                    <!-- Direct Mac Path Entry Bar (Collapsible via 🔍 PATH button) -->
+                    <div id="video-path-input-bar" style="display:none; background:#0a0c12; border:1px solid #1f2738; border-radius:5px; padding:6px 8px; margin-bottom:8px; align-items:center; gap:6px;">
+                        <span style="font-size:8.5px; color:#8c98b2; font-family:'JetBrains Mono',monospace;">PATH:</span>
+                        <input type="text" id="input-mac-video-path" placeholder="/Users/jarikuhanen/Movies" style="flex:1; background:#05070a; border:1px solid #28334a; color:#ffffff; font-family:'JetBrains Mono',monospace; font-size:9.5px; padding:4px 6px; border-radius:3px;">
+                        <button class="btn-mini" id="btn-exec-scan-path" style="font-size:9px; font-weight:800; background:#00ffcc; color:#050810; padding:4px 8px; border:none; border-radius:3px;">SCAN</button>
+                    </div>
+
+                    <!-- Setup Flow Card (Displayed when active bank is empty) -->
+                    <div class="video-setup-flow-card" id="video-setup-flow-card" style="display:none;">
+                        <div class="video-setup-icon">📁</div>
+                        <div class="video-setup-title">NO VIDEOS IN ACTIVE BANK</div>
+                        <div class="video-setup-desc">
+                            Select any folder on your Mac containing video files (<code style="color:#00ffcc;">.mp4, .webm, .mov</code>) or instantly load the pre-installed Demo VJ Pack. Details of your last 10 folder locations will be saved for 1-click selection!
+                        </div>
+                        <div class="video-setup-actions">
+                            <button class="video-btn-primary" id="btn-setup-choose-folder">📁 SELECT VIDEO FOLDER</button>
+                            <button class="video-btn-secondary" id="btn-setup-load-demo">✨ LOAD DEMO VJ PACK</button>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Video Library Grid -->
+                    <div id="video-library-grid-box">
+                        <div class="hud-row" style="margin-bottom:6px; align-items:center; justify-content:space-between;">
+                            <span class="hud-label" id="video-grid-count-label">VIDEOS (2 CLIPS)</span>
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <button class="btn-micro" id="btn-select-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Select All</button>
+                                <button class="btn-micro" id="btn-deselect-all-videos" style="font-size:8px; padding:2px 5px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#c0c4d0; border-radius:3px; cursor:pointer;">Deselect All</button>
+                            </div>
+                        </div>
+
+                        <div class="video-library-grid" id="video-grid-container">
+                            <!-- Populated dynamically with interactive thumbnail cards with hover-to-play -->
+                        </div>
+                    </div>
+
+                    <!-- VIDEO PLAYBACK & TRANSITION AUTOMATION DECK -->
+                    <div class="pane-section-title" style="margin-top:4px; padding-top:6px; border-top:1px solid #232a3a; display:flex; justify-content:space-between; align-items:center;">
+                        <span>⚙️ Playback & Transition Options</span>
+                        <span class="hud-badge" style="font-size:7.5px; color:#00ffcc; border-color:rgba(0,255,204,0.3);">FX 22 ENGINE</span>
+                    </div>
+
+                    <div class="video-options-deck">
+                        <!-- Row 1: Looping & Play Order Mode Pills -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:4px;">LOOP MODE</div>
+                                <div class="mode-pills" id="video-loop-pills">
+                                    <button class="mode-pill active" data-loop-mode="playlist" title="Automatically advances through all enabled videos in rotation">Loop Playlist</button>
+                                    <button class="mode-pill" data-loop-mode="single" title="Continuously loops only the current video">Loop Clip</button>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:4px;">PLAY ORDER</div>
+                                <div class="mode-pills" id="video-order-pills">
+                                    <button class="mode-pill active" data-order-mode="sequential" title="Plays videos in sequential order 1, 2, 3...">Sequential</button>
+                                    <button class="mode-pill" data-order-mode="random" title="Picks random enabled video from the bank">Shuffle / Random</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 2: Playback Speed -->
+                        <div>
+                            <div class="hud-row" style="margin-bottom:3px; align-items:center; justify-content:space-between;">
+                                <span class="hud-label" style="font-size:8px;">PLAYBACK SPEED</span>
+                                <span class="hud-badge" id="video-speed-val" style="font-size:8px; color:#ffaa00;">1.0x</span>
+                            </div>
+                            <div class="mode-pills" id="video-speed-pills">
+                                <button class="mode-pill" data-speed="0.5">0.5x</button>
+                                <button class="mode-pill" data-speed="0.75">0.75x</button>
+                                <button class="mode-pill active" data-speed="1.0">1.0x</button>
+                                <button class="mode-pill" data-speed="1.25">1.25x</button>
+                                <button class="mode-pill" data-speed="1.5">1.5x</button>
+                                <button class="mode-pill" data-speed="2.0">2.0x</button>
+                                <button class="mode-pill" data-speed="bpm" title="Automatically synchronizes playback rate with incoming track BPM">BPM Sync</button>
+                            </div>
+                        </div>
+
+                        <!-- Row 3: How long to keep it going / iterations (Duration) -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">CLIP DURATION / SWITCH TIMING</div>
+                                <select id="select-video-duration" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="natural">Natural Full Playthrough</option>
+                                    <option value="15s">15 Seconds</option>
+                                    <option value="30s">30 Seconds</option>
+                                    <option value="60s">60 Seconds</option>
+                                    <option value="16beats">16 Beats (4 Bars)</option>
+                                    <option value="32beats">32 Beats (8 Bars)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">AUDIO PASSTHROUGH</div>
+                                <div style="display:flex; align-items:center; height:28px; background:#090a0d; border:1px solid #28334a; border-radius:4px; padding:0 8px;">
+                                    <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:9.5px; color:#ffaa00; font-family:'JetBrains Mono',monospace;">
+                                        <input type="checkbox" id="check-video-mute" checked style="accent-color:#ffaa00; cursor:pointer;">
+                                        <span>Mute Audio (Default)</span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Row 4: Seamless Video Transitions -->
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                            <div>
+                                <div class="hud-label" style="font-size:8px; margin-bottom:3px;">TRANSITION STYLE</div>
+                                <select id="select-video-transition" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
+                                    <option value="crossfade">Crossfade Dissolve</option>
+                                    <option value="glitch">Glitch Wipe (Cyber)</option>
+                                    <option value="zoom">Zoom Dissolve</option>
+                                    <option value="strobe">Strobe Flash Cut</option>
+                                    <option value="cut">Instant Cut</option>
+                                </select>
+                            </div>
+                            <div>
+                                <div class="slider-header" style="font-size:8px; margin-bottom:3px;">
+                                    <span>TRANSITION SPEED</span>
+                                    <span class="val" id="video-trans-dur-val" style="font-size:8px; color:#00ffcc;">1.0s</span>
+                                </div>
+                                <input type="range" id="slider-video-trans-dur" min="0.2" max="3.0" step="0.1" value="1.0" style="width:100%;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- ========================================================================= -->
@@ -6778,11 +7289,12 @@
         <!-- Category Filter Tabs -->
         <div class="category-tabs">
             <div class="cat-tab-group">
-                <button class="cat-tab active" data-category="all">⚡ All (22)</button>
+                <button class="cat-tab active" data-category="all">⚡ All (23)</button>
                 <button class="cat-tab" data-category="eq">📊 Equalizers & Decks</button>
                 <button class="cat-tab" data-category="laser">⚡ Lasers</button>
                 <button class="cat-tab" data-category="disco">🪩 Disco</button>
                 <button class="cat-tab" data-category="spooky">🎃 Halloween Spooky</button>
+                <button class="cat-tab" data-category="video">🎬 Video Loops</button>
                 <button class="cat-tab" data-category="wire">🕸️ Cyber & Retro</button>
                 <button class="cat-tab" data-category="space">🌌 Space & Galaxy</button>
             </div>
@@ -6793,7 +7305,7 @@
             </div>
         </div>
 
-        <!-- FX Preset Buttons Row (22 Presets - 2-Row Hardware Rack) -->
+        <!-- FX Preset Buttons Row (23 Presets - 2-Row Hardware Rack) -->
         <div class="fx-presets-row all-mode" id="fx-presets-row">
             <!-- 📊 Equalizers & Decks -->
             <button class="fx-btn active" data-fx="0" data-cat="eq"><span class="fx-key">1</span> 📊 3D Studio EQ</button>
@@ -6815,6 +7327,9 @@
             <!-- 🎃 Halloween Spooky Special -->
             <button class="fx-btn" data-fx="20" data-cat="spooky"><span class="fx-key">[</span> 🎃 Pumpkin Disco</button>
             <button class="fx-btn" data-fx="21" data-cat="spooky"><span class="fx-key">]</span> 🏚️ Haunted Manor</button>
+
+            <!-- 🎬 Video & Cinema Playback -->
+            <button class="fx-btn" data-fx="22" data-cat="video"><span class="fx-key">V</span> 🎬 Cyber Cinema</button>
 
             <!-- 🕸️ Cyber & Retro -->
             <button class="fx-btn" data-fx="8" data-cat="wire"><span class="fx-key">9</span> 🌅 Synthwave Grid</button>

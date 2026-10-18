@@ -546,9 +546,11 @@ async function init() {
     const subtabBtnDj = document.getElementById('subtab-btn-dj');
     const subtabBtnStation = document.getElementById('subtab-btn-station');
     const subtabBtnFlyer = document.getElementById('subtab-btn-flyer');
+    const subtabBtnVideo = document.getElementById('subtab-btn-video');
     const subtabContentDj = document.getElementById('subtab-content-dj');
     const subtabContentStation = document.getElementById('subtab-content-station');
     const subtabContentFlyer = document.getElementById('subtab-content-flyer');
+    const subtabContentVideo = document.getElementById('subtab-content-video');
 
     // DJ Logo Layer DOM References & State
     const djMediaPreviewVideo = document.getElementById('dj-media-preview-video');
@@ -757,7 +759,7 @@ async function init() {
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
-    const TOTAL_FX = 22;
+    const TOTAL_FX = 23;
 
     // -------------------------------------------------------------------------
     // Cross-Window State & Audio Synchronizer (Detachable Console / 2nd Screen / OBS)
@@ -2742,11 +2744,12 @@ async function init() {
     if (logoBadge) logoBadge.addEventListener('click', toggleLogo);
     if (btnToggleDjLogoTop) btnToggleDjLogoTop.addEventListener('click', toggleLogo);
 
-    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo vs Event Flyer)
+    // Logos Sub-Tabs Switcher (DJ Logo vs Station Logo vs Event Flyer vs Video Loops)
     function switchLogosSubtab(subtabId) {
         if (subtabBtnDj) subtabBtnDj.classList.toggle('active', subtabId === 'dj');
         if (subtabBtnStation) subtabBtnStation.classList.toggle('active', subtabId === 'station');
         if (subtabBtnFlyer) subtabBtnFlyer.classList.toggle('active', subtabId === 'flyer');
+        if (subtabBtnVideo) subtabBtnVideo.classList.toggle('active', subtabId === 'video');
         if (subtabContentDj) {
             subtabContentDj.classList.toggle('active', subtabId === 'dj');
             subtabContentDj.style.display = subtabId === 'dj' ? 'block' : 'none';
@@ -2759,12 +2762,17 @@ async function init() {
             subtabContentFlyer.classList.toggle('active', subtabId === 'flyer');
             subtabContentFlyer.style.display = subtabId === 'flyer' ? 'block' : 'none';
         }
+        if (subtabContentVideo) {
+            subtabContentVideo.classList.toggle('active', subtabId === 'video');
+            subtabContentVideo.style.display = subtabId === 'video' ? 'block' : 'none';
+        }
         syncMediaFolders().catch(() => {});
     }
 
     if (subtabBtnDj) subtabBtnDj.addEventListener('click', () => switchLogosSubtab('dj'));
     if (subtabBtnStation) subtabBtnStation.addEventListener('click', () => switchLogosSubtab('station'));
     if (subtabBtnFlyer) subtabBtnFlyer.addEventListener('click', () => switchLogosSubtab('flyer'));
+    if (subtabBtnVideo) subtabBtnVideo.addEventListener('click', () => switchLogosSubtab('video'));
 
     // DJ Media Selector & Live Preview Monitor
     function selectDjLogo(url, title, isVideo = true, broadcast = true) {
@@ -4059,6 +4067,720 @@ async function init() {
     }
     initStoredMediaLibraries();
 
+    // =========================================================================
+    // 🎬 VIDEO LOOPS & CYBER CINEMA PLAYBACK MANAGER (FX 22)
+    // =========================================================================
+    function initVideoPlaybackManager() {
+        const selectVideoBank = document.getElementById('select-video-bank');
+        const videoBankChipsBar = document.getElementById('video-bank-chips-bar');
+        const btnChooseVideoFolder = document.getElementById('btn-choose-video-folder');
+        const fileVideoFolder = document.getElementById('file-video-folder');
+        const btnScanMacPath = document.getElementById('btn-scan-mac-path');
+        const videoPathInputBar = document.getElementById('video-path-input-bar');
+        const inputMacVideoPath = document.getElementById('input-mac-video-path');
+        const btnExecScanPath = document.getElementById('btn-exec-scan-path');
+        const videoSetupFlowCard = document.getElementById('video-setup-flow-card');
+        const btnSetupChooseFolder = document.getElementById('btn-setup-choose-folder');
+        const btnSetupLoadDemo = document.getElementById('btn-setup-load-demo');
+        const videoLibraryGridBox = document.getElementById('video-library-grid-box');
+        const videoGridContainer = document.getElementById('video-grid-container');
+        const videoGridCountLabel = document.getElementById('video-grid-count-label');
+        const btnSelectAllVideos = document.getElementById('btn-select-all-videos');
+        const btnDeselectAllVideos = document.getElementById('btn-deselect-all-videos');
+
+        // Monitor Card Elements
+        const videoActivePreviewVid = document.getElementById('video-active-preview-vid');
+        const videoActiveTitle = document.getElementById('video-active-title');
+        const videoBadgeOnAir = document.getElementById('video-badge-on-air');
+        const videoBadgeLoop = document.getElementById('video-badge-loop');
+        const videoBadgeSpeed = document.getElementById('video-badge-speed');
+        const videoBadgeMute = document.getElementById('video-badge-mute');
+        const btnVideoActivateScene22 = document.getElementById('btn-video-activate-scene22');
+        const btnVideoPlayPause = document.getElementById('btn-video-play-pause');
+        const btnVideoNextClip = document.getElementById('btn-video-next-clip');
+
+        // Options Elements
+        const videoLoopPills = document.querySelectorAll('#video-loop-pills .mode-pill');
+        const videoOrderPills = document.querySelectorAll('#video-order-pills .mode-pill');
+        const videoSpeedPills = document.querySelectorAll('#video-speed-pills .mode-pill');
+        const videoSpeedVal = document.getElementById('video-speed-val');
+        const selectVideoDuration = document.getElementById('select-video-duration');
+        const checkVideoMute = document.getElementById('check-video-mute');
+        const selectVideoTransition = document.getElementById('select-video-transition');
+        const sliderVideoTransDur = document.getElementById('slider-video-trans-dur');
+        const videoTransDurVal = document.getElementById('video-trans-dur-val');
+        const btnToggleVideoSceneTop = document.getElementById('btn-toggle-video-scene-top');
+
+        const STORAGE_KEY = 'dj_video_banks_v1';
+        const SETTINGS_KEY = 'dj_video_settings_v1';
+
+        const DEFAULT_BANKS = [
+            {
+                id: 0,
+                name: 'Bank 1: ✨ Demo VJ Pack',
+                folderPath: '/images/videos',
+                videos: [
+                    {
+                        name: '01_jkmclaren_shock.mp4',
+                        title: '01 JK McLaren Shock',
+                        url: '/images/videos/01_jkmclaren_shock.mp4',
+                        duration: 8.5,
+                        included: true
+                    },
+                    {
+                        name: 'jkmclaren_shock.mp4',
+                        title: 'JK McLaren Shock Alternate',
+                        url: '/images/logo/jkmclaren_shock.mp4',
+                        duration: 8.5,
+                        included: true
+                    }
+                ]
+            },
+            { id: 1, name: 'Bank 2: Cyber Visuals', folderPath: '', videos: [] },
+            { id: 2, name: 'Bank 3: Retro Synthwave', folderPath: '', videos: [] },
+            { id: 3, name: 'Bank 4: Laser Loops', folderPath: '', videos: [] },
+            { id: 4, name: 'Bank 5: Space Nebulas', folderPath: '', videos: [] },
+            { id: 5, name: 'Bank 6: Festival Drops', folderPath: '', videos: [] },
+            { id: 6, name: 'Bank 7: Dark Techno', folderPath: '', videos: [] },
+            { id: 7, name: 'Bank 8: Liquid Visuals', folderPath: '', videos: [] },
+            { id: 8, name: 'Bank 9: Abstract 3D', folderPath: '', videos: [] },
+            { id: 9, name: 'Bank 10: Promo & Commercials', folderPath: '', videos: [] }
+        ];
+
+        let banks = DEFAULT_BANKS;
+        try {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                    for (let i = 0; i < 10; i++) {
+                        if (!parsed[i]) {
+                            parsed[i] = { id: i, name: `Bank ${i + 1}: Folder ${i + 1}`, folderPath: '', videos: [] };
+                        }
+                    }
+                    banks = parsed;
+                }
+            }
+        } catch (e) {}
+
+        let activeBankIndex = 0;
+        let currentVideoIndex = 0;
+        let isPaused = false;
+        let loopMode = 'playlist';
+        let playOrder = 'sequential';
+        let playbackSpeed = 1.0;
+        let isBpmSync = false;
+        let durationSetting = 'natural';
+        let transitionType = 'crossfade';
+        let transitionDuration = 1.0;
+        let isMuted = true;
+        let clipStartTime = performance.now() / 1000;
+        let isTransitioning = false;
+
+        // Load saved settings
+        try {
+            const savedSettings = localStorage.getItem(SETTINGS_KEY);
+            if (savedSettings) {
+                const s = JSON.parse(savedSettings);
+                if (s.loopMode) loopMode = s.loopMode;
+                if (s.playOrder) playOrder = s.playOrder;
+                if (s.playbackSpeed !== undefined) playbackSpeed = s.playbackSpeed;
+                if (s.isBpmSync !== undefined) isBpmSync = s.isBpmSync;
+                if (s.durationSetting) durationSetting = s.durationSetting;
+                if (s.transitionType) transitionType = s.transitionType;
+                if (s.transitionDuration !== undefined) transitionDuration = s.transitionDuration;
+                if (s.isMuted !== undefined) isMuted = s.isMuted;
+                if (s.activeBankIndex !== undefined && s.activeBankIndex < banks.length) activeBankIndex = s.activeBankIndex;
+            }
+        } catch (e) {}
+
+        function saveBanks() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(banks));
+            } catch (e) {}
+        }
+
+        function saveSettings() {
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify({
+                    loopMode,
+                    playOrder,
+                    playbackSpeed,
+                    isBpmSync,
+                    durationSetting,
+                    transitionType,
+                    transitionDuration,
+                    isMuted,
+                    activeBankIndex
+                }));
+            } catch (e) {}
+        }
+
+        function renderBankSelector() {
+            if (!selectVideoBank) return;
+            selectVideoBank.innerHTML = '';
+            banks.forEach((b, idx) => {
+                const opt = document.createElement('option');
+                opt.value = idx;
+                const count = (b.videos && b.videos.length) || 0;
+                opt.textContent = `${b.name} (${count} clips)`;
+                if (idx === activeBankIndex) opt.selected = true;
+                selectVideoBank.appendChild(opt);
+            });
+
+            if (videoBankChipsBar) {
+                videoBankChipsBar.innerHTML = '';
+                banks.forEach((b, idx) => {
+                    const chip = document.createElement('button');
+                    chip.className = `video-bank-chip ${idx === activeBankIndex ? 'active' : ''}`;
+                    chip.textContent = `B${idx + 1}`;
+                    chip.title = `${b.name} (${(b.videos && b.videos.length) || 0} clips)`;
+                    chip.addEventListener('click', () => switchBank(idx));
+                    videoBankChipsBar.appendChild(chip);
+                });
+            }
+        }
+
+        function switchBank(bankIdx) {
+            if (bankIdx < 0 || bankIdx >= banks.length) return;
+            activeBankIndex = bankIdx;
+            currentVideoIndex = 0;
+            saveSettings();
+            renderBankSelector();
+            renderVideoGrid();
+            const currBank = banks[activeBankIndex];
+            if (currBank && currBank.videos && currBank.videos.length > 0) {
+                playVideoItem(0, false);
+            }
+        }
+
+        if (selectVideoBank) {
+            selectVideoBank.addEventListener('change', (e) => {
+                switchBank(parseInt(e.target.value, 10));
+            });
+        }
+
+        function renderVideoGrid() {
+            const currentBank = banks[activeBankIndex];
+            const vids = (currentBank && currentBank.videos) || [];
+
+            if (videoGridCountLabel) {
+                const incCount = vids.filter(v => v.included).length;
+                videoGridCountLabel.textContent = `${incCount} / ${vids.length} Active in Loop`;
+            }
+
+            if (vids.length === 0) {
+                if (videoSetupFlowCard) videoSetupFlowCard.style.display = 'block';
+                if (videoLibraryGridBox) videoLibraryGridBox.style.display = 'none';
+                return;
+            } else {
+                if (videoSetupFlowCard) videoSetupFlowCard.style.display = 'none';
+                if (videoLibraryGridBox) videoLibraryGridBox.style.display = 'block';
+            }
+
+            if (!videoGridContainer) return;
+            videoGridContainer.innerHTML = '';
+
+            vids.forEach((vid, idx) => {
+                const card = document.createElement('div');
+                card.className = `video-card-item ${vid.included ? '' : 'excluded'} ${idx === currentVideoIndex ? 'active-on-air' : ''}`;
+                card.dataset.index = idx;
+
+                const durLabel = vid.duration ? `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}` : '0:00';
+
+                card.innerHTML = `
+                    <div class="video-thumb-preview-box" title="Click to Cue Video / Hover to Preview">
+                        <video class="video-card-video" src="${vid.url}" preload="metadata" muted playsinline></video>
+                        <div class="video-thumb-overlay-hint">▶ HOVER</div>
+                        <div class="video-thumb-dur-badge">${durLabel}</div>
+                        <div class="video-thumb-playing-tag">● ON AIR</div>
+                    </div>
+                    <div class="video-card-info-box">
+                        <div class="video-card-filename" title="${vid.name}">${vid.title}</div>
+                        <div class="video-card-meta-row">
+                            <label class="video-inc-checkbox-label" title="Include in playlist loop rotation">
+                                <input type="checkbox" class="video-inc-check" ${vid.included ? 'checked' : ''}>
+                                <span>Mix</span>
+                            </label>
+                            <button class="video-btn-play-now" title="Cue and play this video immediately">▶ CUE</button>
+                        </div>
+                    </div>
+                `;
+
+                // Hover to preview
+                const thumbVid = card.querySelector('.video-card-video');
+                card.addEventListener('mouseenter', () => {
+                    if (thumbVid && thumbVid.paused) {
+                        thumbVid.currentTime = 0;
+                        thumbVid.play().catch(() => {});
+                    }
+                });
+                card.addEventListener('mouseleave', () => {
+                    if (thumbVid && !thumbVid.paused) {
+                        thumbVid.pause();
+                        thumbVid.currentTime = 0;
+                    }
+                });
+
+                // Update duration once metadata loads
+                if (thumbVid) {
+                    thumbVid.addEventListener('loadedmetadata', () => {
+                        if (thumbVid.duration && !isNaN(thumbVid.duration)) {
+                            vid.duration = thumbVid.duration;
+                            const durBadge = card.querySelector('.video-thumb-dur-badge');
+                            if (durBadge) {
+                                durBadge.textContent = `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}`;
+                            }
+                        }
+                    });
+                }
+
+                // Checkbox toggle
+                const chk = card.querySelector('.video-inc-check');
+                chk.addEventListener('change', (e) => {
+                    vid.included = e.target.checked;
+                    card.classList.toggle('excluded', !vid.included);
+                    saveBanks();
+                    if (videoGridCountLabel) {
+                        const incCount = vids.filter(v => v.included).length;
+                        videoGridCountLabel.textContent = `${incCount} / ${vids.length} Active in Loop`;
+                    }
+                });
+
+                // Play Now button
+                const btnPlay = card.querySelector('.video-btn-play-now');
+                btnPlay.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    playVideoItem(idx, true);
+                    if (vfx.getCurrentFX() !== 22) {
+                        selectFX(22);
+                    }
+                });
+
+                // Click preview box to cue
+                const previewBox = card.querySelector('.video-thumb-preview-box');
+                previewBox.addEventListener('click', () => {
+                    playVideoItem(idx, true);
+                    if (vfx.getCurrentFX() !== 22) {
+                        selectFX(22);
+                    }
+                });
+
+                videoGridContainer.appendChild(card);
+            });
+        }
+
+        function updateGridActiveHighlight() {
+            if (!videoGridContainer) return;
+            const cards = videoGridContainer.querySelectorAll('.video-card-item');
+            cards.forEach(c => {
+                const idx = parseInt(c.dataset.index, 10);
+                c.classList.toggle('active-on-air', idx === currentVideoIndex);
+            });
+        }
+
+        function playVideoItem(idx, useTransition = true) {
+            const currentBank = banks[activeBankIndex];
+            if (!currentBank || !currentBank.videos || !currentBank.videos[idx]) return;
+
+            currentVideoIndex = idx;
+            const targetVid = currentBank.videos[idx];
+
+            if (useTransition && vfx.transitionToVideo) {
+                isTransitioning = true;
+                vfx.transitionToVideo(targetVid.url, targetVid.title, transitionType, transitionDuration);
+                setTimeout(() => { isTransitioning = false; }, (transitionDuration + 0.3) * 1000);
+            } else if (vfx.playVideoInScene) {
+                vfx.playVideoInScene(targetVid.url, targetVid.title);
+            }
+
+            if (videoActivePreviewVid) {
+                videoActivePreviewVid.src = targetVid.url;
+                videoActivePreviewVid.muted = true;
+                videoActivePreviewVid.play().catch(() => {});
+            }
+            if (videoActiveTitle) {
+                videoActiveTitle.textContent = targetVid.title;
+            }
+
+            clipStartTime = performance.now() / 1000;
+            updateGridActiveHighlight();
+            syncBadges();
+        }
+
+        function transitionToNextVideo(forcedIndex = null) {
+            const currentBank = banks[activeBankIndex];
+            if (!currentBank || !currentBank.videos || currentBank.videos.length === 0) return;
+
+            const enabledIndices = currentBank.videos
+                .map((v, i) => v.included ? i : -1)
+                .filter(i => i !== -1);
+
+            if (enabledIndices.length === 0) return;
+
+            let nextIdx;
+            if (forcedIndex !== null) {
+                nextIdx = forcedIndex;
+            } else if (loopMode === 'single') {
+                nextIdx = currentVideoIndex;
+            } else if (playOrder === 'random') {
+                if (enabledIndices.length === 1) {
+                    nextIdx = enabledIndices[0];
+                } else {
+                    const remaining = enabledIndices.filter(i => i !== currentVideoIndex);
+                    nextIdx = remaining[Math.floor(Math.random() * remaining.length)];
+                }
+            } else {
+                const currPos = enabledIndices.indexOf(currentVideoIndex);
+                if (currPos === -1 || currPos >= enabledIndices.length - 1) {
+                    nextIdx = enabledIndices[0];
+                } else {
+                    nextIdx = enabledIndices[currPos + 1];
+                }
+            }
+
+            playVideoItem(nextIdx, true);
+        }
+
+        function syncBadges() {
+            const currentFX = vfx.getCurrentFX();
+            const isOnAir = currentFX === 22;
+
+            if (videoBadgeOnAir) {
+                videoBadgeOnAir.textContent = isOnAir ? '● SCENE 22 ON-AIR' : `OFF AIR (SCENE ${currentFX + 1})`;
+                videoBadgeOnAir.style.background = isOnAir ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.06)';
+                videoBadgeOnAir.style.color = isOnAir ? '#00ff88' : '#8c98b2';
+                videoBadgeOnAir.style.borderColor = isOnAir ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.15)';
+            }
+
+            if (videoBadgeLoop) {
+                videoBadgeLoop.textContent = loopMode === 'single' ? '🔂 SINGLE' : '🔁 PLAYLIST';
+            }
+
+            if (videoBadgeSpeed) {
+                videoBadgeSpeed.textContent = isBpmSync ? '⚡ BPM SYNC' : `${playbackSpeed}x SPEED`;
+            }
+
+            if (videoBadgeMute) {
+                videoBadgeMute.textContent = isMuted ? '🔇 MUTED' : '🔊 LIVE AUDIO';
+                videoBadgeMute.style.color = isMuted ? '#8c98b2' : '#00ffcc';
+            }
+
+            if (btnVideoPlayPause) {
+                btnVideoPlayPause.textContent = isPaused ? '▶ RESUME' : '⏸ PAUSE';
+            }
+
+            if (btnToggleVideoSceneTop) {
+                btnToggleVideoSceneTop.classList.toggle('active', isOnAir);
+            }
+            const videoScenePowerStatusText = document.getElementById('video-scene-power-status-text');
+            if (videoScenePowerStatusText) {
+                videoScenePowerStatusText.textContent = isOnAir ? 'ACTIVE ON' : 'OFF';
+            }
+        }
+
+        // Setup Buttons
+        if (btnChooseVideoFolder && fileVideoFolder) {
+            btnChooseVideoFolder.addEventListener('click', () => fileVideoFolder.click());
+        }
+        if (btnSetupChooseFolder && fileVideoFolder) {
+            btnSetupChooseFolder.addEventListener('click', () => fileVideoFolder.click());
+        }
+
+        if (fileVideoFolder) {
+            fileVideoFolder.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                const videoFiles = files.filter(f => {
+                    const ext = f.name.split('.').pop().toLowerCase();
+                    return ['mp4', 'webm', 'mov', 'm4v', 'ogv'].includes(ext);
+                });
+
+                if (videoFiles.length === 0) {
+                    showToast('⚠️ No video files (.mp4, .webm, .mov) found in selected folder.');
+                    return;
+                }
+
+                let folderName = 'Custom Folder';
+                if (videoFiles[0].webkitRelativePath) {
+                    folderName = videoFiles[0].webkitRelativePath.split('/')[0] || folderName;
+                }
+
+                const videoItems = videoFiles.map(f => {
+                    const objUrl = URL.createObjectURL(f);
+                    const cleanTitle = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+                    return {
+                        name: f.name,
+                        title: cleanTitle,
+                        url: objUrl,
+                        duration: 10,
+                        included: true
+                    };
+                });
+
+                banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: 📁 ${folderName}`;
+                banks[activeBankIndex].folderPath = folderName;
+                banks[activeBankIndex].videos = videoItems;
+                saveBanks();
+                renderBankSelector();
+                renderVideoGrid();
+                showToast(`🎬 Loaded ${videoItems.length} videos into Bank ${activeBankIndex + 1}!`);
+
+                playVideoItem(0, false);
+            });
+        }
+
+        if (btnSetupLoadDemo) {
+            btnSetupLoadDemo.addEventListener('click', () => {
+                banks[activeBankIndex] = {
+                    id: activeBankIndex,
+                    name: `Bank ${activeBankIndex + 1}: ✨ Demo VJ Pack`,
+                    folderPath: '/images/videos',
+                    videos: [
+                        {
+                            name: '01_jkmclaren_shock.mp4',
+                            title: '01 JK McLaren Shock',
+                            url: '/images/videos/01_jkmclaren_shock.mp4',
+                            duration: 8.5,
+                            included: true
+                        },
+                        {
+                            name: 'jkmclaren_shock.mp4',
+                            title: 'JK McLaren Shock Alternate',
+                            url: '/images/logo/jkmclaren_shock.mp4',
+                            duration: 8.5,
+                            included: true
+                        }
+                    ]
+                };
+                saveBanks();
+                renderBankSelector();
+                renderVideoGrid();
+                showToast(`✨ Preloaded Demo VJ Pack into Bank ${activeBankIndex + 1}!`);
+                playVideoItem(0, false);
+            });
+        }
+
+        if (btnScanMacPath && videoPathInputBar) {
+            btnScanMacPath.addEventListener('click', () => {
+                const isHidden = videoPathInputBar.style.display === 'none';
+                videoPathInputBar.style.display = isHidden ? 'flex' : 'none';
+                if (isHidden && inputMacVideoPath) inputMacVideoPath.focus();
+            });
+        }
+
+        if (btnExecScanPath && inputMacVideoPath) {
+            btnExecScanPath.addEventListener('click', () => {
+                const path = inputMacVideoPath.value.trim();
+                if (!path) {
+                    showToast('⚠️ Please enter a folder path.');
+                    return;
+                }
+                showToast(`🔍 Path set: ${path}. Use the folder picker to load browser video streams.`);
+            });
+        }
+
+        if (btnSelectAllVideos) {
+            btnSelectAllVideos.addEventListener('click', () => {
+                const curr = banks[activeBankIndex];
+                if (curr && curr.videos) {
+                    curr.videos.forEach(v => v.included = true);
+                    saveBanks();
+                    renderVideoGrid();
+                    showToast('✓ All videos included in playlist loop.');
+                }
+            });
+        }
+
+        if (btnDeselectAllVideos) {
+            btnDeselectAllVideos.addEventListener('click', () => {
+                const curr = banks[activeBankIndex];
+                if (curr && curr.videos) {
+                    curr.videos.forEach(v => v.included = false);
+                    saveBanks();
+                    renderVideoGrid();
+                    showToast('Deselected all videos.');
+                }
+            });
+        }
+
+        if (btnVideoActivateScene22) {
+            btnVideoActivateScene22.addEventListener('click', () => {
+                selectFX(22);
+            });
+        }
+
+        if (btnVideoPlayPause) {
+            btnVideoPlayPause.addEventListener('click', () => {
+                isPaused = !isPaused;
+                if (vfx.pauseVideoInScene && isPaused) {
+                    vfx.pauseVideoInScene();
+                } else if (vfx.resumeVideoInScene && !isPaused) {
+                    vfx.resumeVideoInScene();
+                }
+                if (videoActivePreviewVid) {
+                    if (isPaused) videoActivePreviewVid.pause();
+                    else videoActivePreviewVid.play().catch(() => {});
+                }
+                syncBadges();
+            });
+        }
+
+        if (btnVideoNextClip) {
+            btnVideoNextClip.addEventListener('click', () => {
+                transitionToNextVideo();
+            });
+        }
+
+        // Loop mode pills
+        videoLoopPills.forEach(p => {
+            p.addEventListener('click', () => {
+                videoLoopPills.forEach(x => x.classList.remove('active'));
+                p.classList.add('active');
+                loopMode = p.dataset.loop || 'playlist';
+                saveSettings();
+                syncBadges();
+            });
+        });
+
+        // Play order pills
+        videoOrderPills.forEach(p => {
+            p.addEventListener('click', () => {
+                videoOrderPills.forEach(x => x.classList.remove('active'));
+                p.classList.add('active');
+                playOrder = p.dataset.order || 'sequential';
+                saveSettings();
+            });
+        });
+
+        // Speed pills
+        videoSpeedPills.forEach(p => {
+            p.addEventListener('click', () => {
+                videoSpeedPills.forEach(x => x.classList.remove('active'));
+                p.classList.add('active');
+                const spd = p.dataset.speed;
+                if (spd === 'bpm') {
+                    isBpmSync = true;
+                    if (videoSpeedVal) videoSpeedVal.textContent = 'BPM Sync';
+                } else {
+                    isBpmSync = false;
+                    playbackSpeed = parseFloat(spd) || 1.0;
+                    if (videoSpeedVal) videoSpeedVal.textContent = `${playbackSpeed}x`;
+                    if (vfx.setVideoSpeed) vfx.setVideoSpeed(playbackSpeed);
+                }
+                saveSettings();
+                syncBadges();
+            });
+        });
+
+        if (selectVideoDuration) {
+            selectVideoDuration.value = durationSetting;
+            selectVideoDuration.addEventListener('change', (e) => {
+                durationSetting = e.target.value;
+                saveSettings();
+            });
+        }
+
+        if (checkVideoMute) {
+            checkVideoMute.checked = isMuted;
+            checkVideoMute.addEventListener('change', (e) => {
+                isMuted = e.target.checked;
+                if (vfx.setVideoMuted) vfx.setVideoMuted(isMuted);
+                saveSettings();
+                syncBadges();
+            });
+        }
+
+        if (selectVideoTransition) {
+            selectVideoTransition.value = transitionType;
+            selectVideoTransition.addEventListener('change', (e) => {
+                transitionType = e.target.value;
+                saveSettings();
+            });
+        }
+
+        if (sliderVideoTransDur) {
+            sliderVideoTransDur.value = transitionDuration;
+            if (videoTransDurVal) videoTransDurVal.textContent = `${transitionDuration.toFixed(1)}s`;
+            sliderVideoTransDur.addEventListener('input', (e) => {
+                transitionDuration = parseFloat(e.target.value) || 1.0;
+                if (videoTransDurVal) videoTransDurVal.textContent = `${transitionDuration.toFixed(1)}s`;
+                saveSettings();
+            });
+        }
+
+        // Ticker loop for automatic clip progression & BPM sync
+        setInterval(() => {
+            if (isPaused || isTransitioning) return;
+            const currentFX = vfx.getCurrentFX();
+            if (currentFX !== 22) return;
+
+            const now = performance.now() / 1000;
+            const elapsed = now - clipStartTime;
+
+            // BPM speed sync
+            if (isBpmSync && vfx.setVideoSpeed) {
+                const bpm = window.currentBpm || (stagelinqClient && stagelinqClient.getBpm && stagelinqClient.getBpm()) || 128;
+                const effectiveSpeed = Math.max(0.5, Math.min(2.5, bpm / 128.0));
+                vfx.setVideoSpeed(effectiveSpeed);
+            }
+
+            // Progression check based on durationSetting
+            if (durationSetting === 'natural') {
+                const state = vfx.getVideoPlaybackState && vfx.getVideoPlaybackState();
+                if (state && state.duration > 0 && (state.duration - state.currentTime) < (transitionDuration + 0.2)) {
+                    transitionToNextVideo();
+                }
+            } else if (durationSetting === '15s' && elapsed >= 15) {
+                transitionToNextVideo();
+            } else if (durationSetting === '30s' && elapsed >= 30) {
+                transitionToNextVideo();
+            } else if (durationSetting === '60s' && elapsed >= 60) {
+                transitionToNextVideo();
+            } else if (durationSetting === '16beats') {
+                const bpm = window.currentBpm || 128;
+                const beatsElapsed = elapsed * (bpm / 60);
+                if (beatsElapsed >= 16) {
+                    transitionToNextVideo();
+                }
+            } else if (durationSetting === '32beats') {
+                const bpm = window.currentBpm || 128;
+                const beatsElapsed = elapsed * (bpm / 60);
+                if (beatsElapsed >= 32) {
+                    transitionToNextVideo();
+                }
+            }
+        }, 200);
+
+        // Initial setup
+        renderBankSelector();
+        renderVideoGrid();
+        syncBadges();
+
+        // Load first video into scene silently
+        const firstBank = banks[activeBankIndex];
+        if (firstBank && firstBank.videos && firstBank.videos[0]) {
+            if (vfx.playVideoInScene) {
+                vfx.playVideoInScene(firstBank.videos[0].url, firstBank.videos[0].title);
+            }
+        }
+
+        return {
+            onSceneActivated: () => {
+                syncBadges();
+                const currBank = banks[activeBankIndex];
+                if (currBank && currBank.videos && currBank.videos[currentVideoIndex]) {
+                    if (vfx.playVideoInScene) {
+                        vfx.playVideoInScene(currBank.videos[currentVideoIndex].url, currBank.videos[currentVideoIndex].title);
+                    }
+                }
+            },
+            nextClip: transitionToNextVideo,
+            playVideoItem
+        };
+    }
+
+    window.videoPlaybackManager = initVideoPlaybackManager();
+
     // Drag & Drop
     window.addEventListener('dragover', (e) => {
         e.preventDefault();
@@ -4361,7 +5083,7 @@ async function init() {
         'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
         'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
         'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
-        'Pumpkin Disco Ball', 'Haunted Manor'
+        'Pumpkin Disco Ball', 'Haunted Manor', 'Cyber Cinema Video'
     ];
 
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
@@ -4419,6 +5141,26 @@ async function init() {
             cachedDeckWaveforms.forEach((pkt) => {
                 if (vfx.setDeckWaveform) vfx.setDeckWaveform(pkt);
             });
+        }
+
+        // Sync Scene 22 Video Cinema Rocker Switch & Badge
+        const btnToggleVideoSceneTop = document.getElementById('btn-toggle-video-scene-top');
+        const videoScenePowerStatusText = document.getElementById('video-scene-power-status-text');
+        const videoBadgeOnAir = document.getElementById('video-badge-on-air');
+        if (btnToggleVideoSceneTop) {
+            btnToggleVideoSceneTop.classList.toggle('active', targetIndex === 22);
+        }
+        if (videoScenePowerStatusText) {
+            videoScenePowerStatusText.textContent = targetIndex === 22 ? 'ACTIVE ON' : 'OFF';
+        }
+        if (videoBadgeOnAir) {
+            videoBadgeOnAir.textContent = targetIndex === 22 ? '● SCENE 22 ON-AIR' : 'OFF AIR (SCENE ' + (targetIndex + 1) + ')';
+            videoBadgeOnAir.style.background = targetIndex === 22 ? 'rgba(0,255,136,0.2)' : 'rgba(255,255,255,0.06)';
+            videoBadgeOnAir.style.color = targetIndex === 22 ? '#00ff88' : '#8c98b2';
+            videoBadgeOnAir.style.borderColor = targetIndex === 22 ? 'rgba(0,255,136,0.4)' : 'rgba(255,255,255,0.15)';
+        }
+        if (targetIndex === 22 && window.videoPlaybackManager && typeof window.videoPlaybackManager.onSceneActivated === 'function') {
+            window.videoPlaybackManager.onSceneActivated();
         }
     }
     window.selectFX = selectFX;
@@ -4833,6 +5575,32 @@ async function init() {
                         ctx.moveTo(w / 2, 4);
                         ctx.lineTo(w / 2 + 10, h);
                         ctx.lineTo(w / 2 - 10, h);
+                        ctx.closePath();
+                        ctx.fill();
+                        break;
+                    }
+                    case 22: {
+                        // 🎬 Cyber Cinema: Glowing 16:9 cinema screen & play badge
+                        ctx.fillStyle = '#05070d';
+                        ctx.fillRect(0, 0, w, h);
+                        const scrW = w * 0.72;
+                        const scrH = h * 0.65;
+                        const scrX = (w - scrW) / 2;
+                        const scrY = (h - scrH) / 2;
+                        const scrGrad = ctx.createLinearGradient(scrX, scrY, scrX + scrW, scrY + scrH);
+                        scrGrad.addColorStop(0, '#00e5ff');
+                        scrGrad.addColorStop(0.5, '#7a33ff');
+                        scrGrad.addColorStop(1, '#ff007f');
+                        ctx.fillStyle = scrGrad;
+                        ctx.fillRect(scrX, scrY, scrW, scrH);
+                        ctx.strokeStyle = '#00ffcc';
+                        ctx.lineWidth = 1.2;
+                        ctx.strokeRect(scrX, scrY, scrW, scrH);
+                        ctx.fillStyle = '#ffffff';
+                        ctx.beginPath();
+                        ctx.moveTo(w / 2 - 3, h / 2 - 4);
+                        ctx.lineTo(w / 2 + 5, h / 2);
+                        ctx.lineTo(w / 2 - 3, h / 2 + 4);
                         ctx.closePath();
                         ctx.fill();
                         break;
@@ -8727,7 +9495,8 @@ async function init() {
         'o': 18, 'O': 18,
         'p': 19, 'P': 19,
         '[': 20,
-        ']': 21
+        ']': 21,
+        'v': 22, 'V': 22
     };
 
     window.addEventListener('keydown', (e) => {

@@ -212,7 +212,8 @@ npm run preview
 | Key | Action |
 |---|---|
 | `Space` | Manual Beat Strobe / Xenon Flash Burst |
-| `0` – `9`, `-`, `=`, `Q` – `P` | Instant Scene Switch (All 22 Presets) |
+| `0` – `9`, `-`, `=`, `Q` – `P`, `[`, `]`, `V` | Instant Scene Switch (All 23 Presets) |
+| `V` | Toggle Scene 22: Cyber Cinema Video Playback |
 | `Alt + 1` – `Alt + 6` | Switch Master Consoles (Perform, FX Bank, Branding, Now Playing, Setup, About) |
 | `Alt + A` | Toggle Show All Panes (Multi-Pane Scroll View) |
 | `Arrow Left` / `Arrow Right` | Previous / Next Visual Effect Preset |
@@ -226,7 +227,33 @@ npm run preview
 | `C` | Toggle Clean Display Mode (Hide HUD overlays for clean video feed) |
 | `H` | Toggle HUD Console & Toolbar |
 | `O` / `Shift + O` | Open OBS Manager / Toggle OBS Mute |
-| `Esc` | Close Scene Matrix / DJ Connection Guide / Clear Search |
+| `Esc` | Close Scene Matrix / Notch Drawer / DJ Connection Guide / Clear Search |
+
+---
+
+### 🕹️ Top-Center Dynamic Island / MacBook Notch HUD
+- **Persistent Header Pill**: Displays the live **Time.is atomic clock**, 6-segment reactive LED VU meter (dBFS), audio interface lock, physical deck telemetry status, wired network speed, real-time FPS counter, and broadcast standby badge.
+- **Expanded Drawer (880px Wide Viewport)**:
+  - **Live Time.is NIST Clock & DJ Set Duration Timer** with pause and reset controls.
+  - **Quick Stage Actions**: One-click Xenon Strobe Flash, Blackout Curtain, and Instant Next FX switch.
+  - **6 Full-Fidelity Subsystem Cards**:
+    1. *Audio Interface & Fallback*: Device name, sample rate, buffer size, latency, and clip count.
+    2. *Hardware Decks & Channels*: Denon StageLinQ / Pioneer Pro DJ Link telemetry and active channels.
+    3. *Wired Network & OS Route*: IP route, ping latency, and packet loss.
+    4. *GPU & Scene Engine*: WebGL render tier, draw calls, active FX name, and target FPS.
+    5. *OBS Studio & Twitch Stream Detection*: Live websocket detection and bitrate headroom.
+    6. *BUTT Web Radio & Headroom*: Icecast/Shoutcast broadcast stream status and ITU-R BS.1770 LUFS headroom.
+  - **Stage Lighting Fixtures Strip**: Live sync status for Philips Hue Bridge and DMX SoundSwitch rigs.
+
+---
+
+### 🎬 Scene 22: Cyber Cinema 3D & 10-Bank Video Loops Manager
+- **3D Curved Cinema Screen**: Renders local video files onto a curved WebGL cinema display with ambient backglow, specular floor reflections, and beat-reactive spotlights.
+- **Dual-Channel A/B Seamless Video Engine**: Real-time crossfade, glitch wipe, zoom dissolve, and strobe cut transitions with adjustable duration (0.2s – 3.0s).
+- **10 Saved Folder Locations / Banks**: Instant switching between 10 saved directories with persistent browser memory.
+- **HTML5 Directory Scanner**: Scans local video folders (`.mp4`, `.webm`, `.mov`) with instant object URL streaming.
+- **Interactive VJ Grid**: 16:9 hover-to-play preview cards, duration badges, direct `[▶ CUE]` triggering, and individual `[✓ Mix]` playlist inclusion checkboxes.
+- **Playback & Progression Controls**: Sequential vs Shuffle order, Playlist vs Single loop, variable speed (0.5x – 2.0x or dynamic BPM Sync), and progression triggers (Natural, 15s, 30s, 60s, 16 beats, 32 beats).
 
 ---
 

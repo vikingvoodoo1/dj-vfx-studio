@@ -174,6 +174,7 @@ nowPlayingService.init();
 
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { execSync } from 'child_process';
 import { recognizeAudio } from './shazam-service.js';
 import { searchAlbumArt } from './artwork-service.js';
@@ -326,6 +327,122 @@ const server = http.createServer((req, res) => {
             station_logos: Array.from(stationMap.values()),
             flyers: Array.from(flyerMap.values())
         }));
+        return;
+    }
+
+    // Handle Video Loop Folder Scanning & Bank Lookup Endpoint
+    if (reqUrl.pathname === '/api/videos/scan') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            });
+            res.end();
+            return;
+        }
+
+        try {
+            let targetFolder = reqUrl.searchParams.get('folder') || 'public/images/videos';
+            if (targetFolder.startsWith('~')) {
+                targetFolder = path.join(os.homedir(), targetFolder.slice(1));
+            }
+            if (!path.isAbsolute(targetFolder)) {
+                targetFolder = path.resolve(process.cwd(), targetFolder);
+            }
+
+            const videoExts = ['.mp4', '.webm', '.mov', '.m4v', '.mkv'];
+            const videos = [];
+
+            if (fs.existsSync(targetFolder)) {
+                const files = fs.readdirSync(targetFolder);
+                for (const file of files) {
+                    if (file.startsWith('.')) continue;
+                    const ext = path.extname(file).toLowerCase();
+                    if (videoExts.includes(ext)) {
+                        const fullPath = path.join(targetFolder, file);
+                        try {
+                            const stat = fs.statSync(fullPath);
+                            if (stat.isFile()) {
+                                videos.push({
+                                    name: file,
+                                    title: path.basename(file, ext).replace(/[-_]/g, ' '),
+                                    path: fullPath,
+                                    url: `/api/videos/stream?file=${encodeURIComponent(fullPath)}`,
+                                    size: stat.size,
+                                    mtime: stat.mtimeMs,
+                                    included: true
+                                });
+                            }
+                        } catch (err) {}
+                    }
+                }
+            }
+
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({
+                success: true,
+                folder: targetFolder,
+                count: videos.length,
+                videos
+            }));
+        } catch (err) {
+            res.writeHead(500, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({ success: false, message: err.message }));
+        }
+        return;
+    }
+
+    // Handle High-Performance Video Partial Range Streaming Endpoint
+    if (reqUrl.pathname === '/api/videos/stream') {
+        const filePath = reqUrl.searchParams.get('file');
+        if (!filePath || !fs.existsSync(filePath)) {
+            res.writeHead(404, { 'Access-Control-Allow-Origin': '*' });
+            res.end('Video file not found');
+            return;
+        }
+
+        try {
+            const stat = fs.statSync(filePath);
+            const fileSize = stat.size;
+            const range = req.headers.range;
+            const ext = path.extname(filePath).toLowerCase();
+            const contentType = ext === '.webm' ? 'video/webm' : (ext === '.mov' ? 'video/quicktime' : 'video/mp4');
+
+            if (range) {
+                const parts = range.replace(/bytes=/, "").split("-");
+                const start = parseInt(parts[0], 10);
+                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+                const chunksize = (end - start) + 1;
+                const file = fs.createReadStream(filePath, { start, end });
+                const head = {
+                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': chunksize,
+                    'Content-Type': contentType,
+                    'Access-Control-Allow-Origin': '*'
+                };
+                res.writeHead(206, head);
+                file.pipe(res);
+            } else {
+                const head = {
+                    'Content-Length': fileSize,
+                    'Content-Type': contentType,
+                    'Access-Control-Allow-Origin': '*'
+                };
+                res.writeHead(200, head);
+                fs.createReadStream(filePath).pipe(res);
+            }
+        } catch (err) {
+            res.writeHead(500, { 'Access-Control-Allow-Origin': '*' });
+            res.end('Error streaming video: ' + err.message);
+        }
         return;
     }
 

@@ -15427,6 +15427,270 @@ export function createVFXScene(container) {
     let hauntedFaultyBottomDuration = 0.8;
     let hauntedFaultyBottomNextTime = 4.2;
 
+    // =========================================================================
+    // FX 22: 🎬 CYBER CINEMA VIDEO PLAYBACK [SEAMLESS DUAL-CHANNEL VIDEO ARENA]
+    // =========================================================================
+    const gVideoPlayback = createFXGroup();
+
+    // Dual-Channel Video Players for Zero-Gap Seamless Transitions
+    const videoChannelA = document.createElement('video');
+    videoChannelA.crossOrigin = 'anonymous';
+    videoChannelA.loop = true;
+    videoChannelA.muted = true;
+    videoChannelA.playsInline = true;
+    videoChannelA.autoplay = true;
+    videoChannelA.src = '/images/videos/01_jkmclaren_shock.mp4';
+
+    const videoChannelB = document.createElement('video');
+    videoChannelB.crossOrigin = 'anonymous';
+    videoChannelB.loop = true;
+    videoChannelB.muted = true;
+    videoChannelB.playsInline = true;
+    videoChannelB.autoplay = true;
+    videoChannelB.src = '/images/videos/02_vintage_filament.webm';
+
+    const videoTexA = new THREE.VideoTexture(videoChannelA);
+    videoTexA.minFilter = THREE.LinearFilter;
+    videoTexA.magFilter = THREE.LinearFilter;
+    videoTexA.colorSpace = THREE.SRGBColorSpace;
+
+    const videoTexB = new THREE.VideoTexture(videoChannelB);
+    videoTexB.minFilter = THREE.LinearFilter;
+    videoTexB.magFilter = THREE.LinearFilter;
+    videoTexB.colorSpace = THREE.SRGBColorSpace;
+
+    let videoActiveChannel = 'A'; // 'A' or 'B'
+    let videoTransitionActive = false;
+    let videoTransitionStartTime = 0.0;
+    let videoTransitionDuration = 1.0;
+    let videoTransitionType = 0; // 0: Crossfade, 1: Glitch, 2: Zoom, 3: Strobe, 4: Cut
+    let videoCurrentTitle = '01 jkmclaren shock';
+    let videoCurrentUrl = '/images/videos/01_jkmclaren_shock.mp4';
+    let videoSpeedSetting = 1.0;
+    let videoMutedSetting = true;
+    let videoLoopSetting = 'playlist'; // 'single' or 'playlist'
+
+    // 1. Curved IMAX Cinema Screen Mesh (16:9 widescreen curved display)
+    const cinemaW = 28.0;
+    const cinemaH = 15.75;
+    const cinemaGeo = new THREE.PlaneGeometry(cinemaW, cinemaH, 36, 18);
+    const cPosAttr = cinemaGeo.attributes.position;
+    for (let i = 0; i < cPosAttr.count; i++) {
+        const x = cPosAttr.getX(i);
+        const normX = x / (cinemaW * 0.5);
+        const curveZ = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.6;
+        cPosAttr.setZ(i, curveZ);
+    }
+    cinemaGeo.computeVertexNormals();
+
+    const cinemaScreenShaderMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTextureA: { value: videoTexA },
+            uTextureB: { value: videoTexB },
+            uMix: { value: 0.0 },
+            uTransitionType: { value: 0 },
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform sampler2D uTextureA;
+            uniform sampler2D uTextureB;
+            uniform float uMix;
+            uniform int uTransitionType;
+            uniform float uTime;
+            uniform float uBass;
+            varying vec2 vUv;
+
+            void main() {
+                vec2 uvA = vUv;
+                vec2 uvB = vUv;
+                vec4 colA = texture2D(uTextureA, uvA);
+                vec4 colB = texture2D(uTextureB, uvB);
+                vec4 outCol;
+
+                if (uTransitionType == 0) {
+                    // 0: Crossfade Dissolve
+                    outCol = mix(colA, colB, uMix);
+                } else if (uTransitionType == 1) {
+                    // 1: Glitch Wipe (Cyberpunk Chromatic Offset)
+                    float sliceJitter = sin(vUv.y * 45.0 + uTime * 25.0) * 0.08 * sin(uMix * 3.14159);
+                    float slice = step(vUv.x + sliceJitter, uMix);
+                    vec2 gUvA = vUv + vec2(sin(uTime * 30.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
+                    vec2 gUvB = vUv - vec2(cos(uTime * 25.0) * 0.02 * (1.0 - abs(uMix - 0.5) * 2.0), 0.0);
+                    vec4 ca = texture2D(uTextureA, gUvA);
+                    vec4 cb = texture2D(uTextureB, gUvB);
+                    outCol = mix(ca, cb, slice);
+                } else if (uTransitionType == 2) {
+                    // 2: Zoom Dissolve
+                    float zA = 1.0 + uMix * 0.35;
+                    float zB = 1.35 - uMix * 0.35;
+                    vec2 zuvA = clamp((vUv - 0.5) / zA + 0.5, 0.0, 1.0);
+                    vec2 zuvB = clamp((vUv - 0.5) / zB + 0.5, 0.0, 1.0);
+                    outCol = mix(texture2D(uTextureA, zuvA), texture2D(uTextureB, zuvB), smoothstep(0.0, 1.0, uMix));
+                } else if (uTransitionType == 3) {
+                    // 3: Strobe Flash Cut
+                    float flash = sin(uMix * 3.14159);
+                    vec4 base = uMix < 0.5 ? colA : colB;
+                    outCol = mix(base, vec4(1.0, 1.0, 1.0, 1.0), flash * 0.88);
+                } else {
+                    // 4: Instant Cut
+                    outCol = uMix < 0.5 ? colA : colB;
+                }
+
+                // Audio reactive edge pulse
+                outCol.rgb += uBass * 0.05;
+                gl_FragColor = outCol;
+            }
+        `,
+        side: THREE.DoubleSide
+    });
+
+    const cinemaScreenMesh = new THREE.Mesh(cinemaGeo, cinemaScreenShaderMat);
+    cinemaScreenMesh.position.set(0.0, 0.5, -2.0);
+    gVideoPlayback.add(cinemaScreenMesh);
+
+    // 2. Beveled Cyber Frame & Glowing Neon Bezel
+    const cinemaFrameGeo = new THREE.PlaneGeometry(cinemaW + 1.2, cinemaH + 1.2, 36, 18);
+    const fPosAttr = cinemaFrameGeo.attributes.position;
+    for (let i = 0; i < fPosAttr.count; i++) {
+        const x = fPosAttr.getX(i);
+        const normX = x / ((cinemaW + 1.2) * 0.5);
+        const curveZ = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.58;
+        fPosAttr.setZ(i, curveZ);
+    }
+    cinemaFrameGeo.computeVertexNormals();
+
+    const cinemaFrameMat = new THREE.MeshBasicMaterial({
+        color: 0x08090d,
+        side: THREE.BackSide
+    });
+    const cinemaFrameMesh = new THREE.Mesh(cinemaFrameGeo, cinemaFrameMat);
+    cinemaFrameMesh.position.set(0.0, 0.5, -2.05);
+    gVideoPlayback.add(cinemaFrameMesh);
+
+    // Glowing Neon Rim around Screen
+    const cinemaRimGeo = new THREE.BufferGeometry();
+    const rimPoints = [];
+    const rW = (cinemaW * 0.5) + 0.15;
+    const rH = (cinemaH * 0.5) + 0.15;
+    for (let x = -rW; x <= rW; x += 1.0) {
+        const normX = x / rW;
+        const z = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.62;
+        rimPoints.push(new THREE.Vector3(x, rH, z));
+    }
+    for (let y = rH; y >= -rH; y -= 1.0) {
+        const z = -Math.cos(Math.PI * 0.5) * 1.6 + 1.62;
+        rimPoints.push(new THREE.Vector3(rW, y, z));
+    }
+    for (let x = rW; x >= -rW; x -= 1.0) {
+        const normX = x / rW;
+        const z = -Math.cos(normX * (Math.PI * 0.5)) * 1.6 + 1.62;
+        rimPoints.push(new THREE.Vector3(x, -rH, z));
+    }
+    for (let y = -rH; y <= rH; y += 1.0) {
+        const z = -Math.cos(Math.PI * 0.5) * 1.6 + 1.62;
+        rimPoints.push(new THREE.Vector3(-rW, y, z));
+    }
+    cinemaRimGeo.setFromPoints(rimPoints);
+    const cinemaRimMat = new THREE.LineBasicMaterial({
+        color: 0x00ffcc,
+        linewidth: 2,
+        transparent: true,
+        opacity: 0.85
+    });
+    const cinemaRimLine = new THREE.Line(cinemaRimGeo, cinemaRimMat);
+    cinemaRimLine.position.set(0.0, 0.5, -1.98);
+    gVideoPlayback.add(cinemaRimLine);
+
+    // 3. Ambient Arena Back-Wall Diffuser (Pulsing backglow)
+    const cinemaBackdropGeo = new THREE.PlaneGeometry(80.0, 45.0);
+    const cinemaBackdropMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 },
+            uGlowCol: { value: new THREE.Color(0x003366) }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `,
+        fragmentShader: `
+            uniform float uTime;
+            uniform float uBass;
+            uniform vec3 uGlowCol;
+            varying vec2 vUv;
+            void main() {
+                vec2 center = vUv - 0.5;
+                float dist = length(center);
+                float halo = exp(-dist * 2.8) * (0.45 + uBass * 0.55);
+                vec3 col = mix(vec3(0.02, 0.02, 0.04), uGlowCol, halo);
+                gl_FragColor = vec4(col, 1.0);
+            }
+        `,
+        depthWrite: false
+    });
+    const cinemaBackdropMesh = new THREE.Mesh(cinemaBackdropGeo, cinemaBackdropMat);
+    cinemaBackdropMesh.position.set(0.0, 0.0, -8.0);
+    gVideoPlayback.add(cinemaBackdropMesh);
+
+    // 4. Perspective Reflective Floor Grid
+    const cinemaFloorGeo = new THREE.PlaneGeometry(70.0, 50.0, 40, 30);
+    const cinemaFloorMat = new THREE.ShaderMaterial({
+        uniforms: {
+            uTime: { value: 0.0 },
+            uBass: { value: 0.0 }
+        },
+        vertexShader: `
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            void main() {
+                vUv = uv;
+                vec4 wp = modelMatrix * vec4(position, 1.0);
+                vWorldPos = wp.xyz;
+                gl_Position = projectionMatrix * viewMatrix * wp;
+            }
+        `,
+        fragmentShader: `
+            uniform float uTime;
+            uniform float uBass;
+            varying vec2 vUv;
+            varying vec3 vWorldPos;
+            void main() {
+                vec2 grid = abs(fract(vWorldPos.xz * 0.25 - 0.5) - 0.5) / fwidth(vWorldPos.xz * 0.25);
+                float line = 1.0 - min(min(grid.x, grid.y), 1.0);
+                float distFade = smoothstep(35.0, 5.0, length(vWorldPos.xz));
+                vec3 gridCol = mix(vec3(0.02, 0.04, 0.08), vec3(0.0, 0.85, 0.95), line * 0.45);
+                gridCol += uBass * 0.08;
+                gl_FragColor = vec4(gridCol * distFade, 1.0);
+            }
+        `
+    });
+    const cinemaFloorMesh = new THREE.Mesh(cinemaFloorGeo, cinemaFloorMat);
+    cinemaFloorMesh.rotation.x = -Math.PI * 0.5;
+    cinemaFloorMesh.position.set(0.0, -8.0, 0.0);
+    gVideoPlayback.add(cinemaFloorMesh);
+
+    // 5. Dual Overhead Moving Head Arena Spotlights
+    const cinemaSpot1 = new THREE.SpotLight(0x00e5ff, 5.0, 45.0, Math.PI / 6, 0.45, 1.0);
+    cinemaSpot1.position.set(-14.0, 10.0, 4.0);
+    cinemaSpot1.target = cinemaScreenMesh;
+    gVideoPlayback.add(cinemaSpot1);
+
+    const cinemaSpot2 = new THREE.SpotLight(0xff00aa, 5.0, 45.0, Math.PI / 6, 0.45, 1.0);
+    cinemaSpot2.position.set(14.0, 10.0, 4.0);
+    cinemaSpot2.target = cinemaScreenMesh;
+    gVideoPlayback.add(cinemaSpot2);
+
     // -------------------------------------------------------------------------
     // Resize Handler
     // -------------------------------------------------------------------------
@@ -15517,6 +15781,10 @@ export function createVFXScene(container) {
                 hauntedNextGustTime = now + 1.2; // Sudden rushing wind gust within 1.2s!
                 hauntedFaultyTopNextTime = now + 1.0; // Top floor electrical blackout within 1.0s!
                 hauntedFaultyBottomNextTime = now + 2.4; // Bottom floor electrical blackout within 2.4s!
+            }
+            if (index === 22) {
+                const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+                curVid.play().catch(() => {});
             }
         }
     }
@@ -18765,15 +19033,62 @@ export function createVFXScene(container) {
                 hauntedCamTargetLookAt.copy(hauntedLookAtSpline.getPoint(0.0));
             }
         }
+        // ---------------------------------------------------------------------
+        // FX 22: 🎬 Cyber Cinema Video Playback [Seamless Dual-Channel Video Arena]
+        // ---------------------------------------------------------------------
+        else if (currentFXIndex === 22) {
+            const rawBass = audio.bass || 0;
+            const bassImpact = audio.bassImpact || 0;
+            const transient = audio.transientImpulse || (audio.isOnset ? 0.8 : 0.0);
+
+            // 1. Advance transition timer if active
+            if (videoTransitionActive) {
+                const elapsedTrans = elapsedTime - videoTransitionStartTime;
+                const mixProgress = Math.min(1.0, Math.max(0.0, elapsedTrans / videoTransitionDuration));
+                
+                // If transitioning to B, mix goes 0 -> 1. If to A, mix goes 1 -> 0
+                cinemaScreenShaderMat.uniforms.uMix.value = (videoActiveChannel === 'B') ? mixProgress : (1.0 - mixProgress);
+
+                if (mixProgress >= 1.0) {
+                    videoTransitionActive = false;
+                    // Outgoing video can pause to preserve CPU/GPU
+                    if (videoActiveChannel === 'B') {
+                        videoChannelA.pause();
+                    } else {
+                        videoChannelB.pause();
+                    }
+                }
+            }
+
+            // 2. Uniforms & Audio Reactive Pulse
+            cinemaScreenShaderMat.uniforms.uTime.value = elapsedTime;
+            cinemaScreenShaderMat.uniforms.uBass.value = bassImpact;
+            cinemaBackdropMat.uniforms.uTime.value = elapsedTime;
+            cinemaBackdropMat.uniforms.uBass.value = bassImpact;
+            cinemaFloorMat.uniforms.uTime.value = elapsedTime;
+            cinemaFloorMat.uniforms.uBass.value = bassImpact;
+
+            // 3. Audio reactive rim pulsing
+            cinemaRimMat.opacity = 0.5 + bassImpact * 0.5;
+            cinemaRimLine.scale.setScalar(1.0 + bassImpact * 0.012);
+
+            // 4. Moving Head Spotlights Beat Sweep
+            const bps = currentBPM / 60.0;
+            const beatSwing = Math.sin(elapsedTime * bps * Math.PI * 0.5);
+            cinemaSpot1.position.x = -14.0 + beatSwing * 3.5;
+            cinemaSpot2.position.x = 14.0 - beatSwing * 3.5;
+            cinemaSpot1.intensity = 3.0 + bassImpact * 3.5;
+            cinemaSpot2.intensity = 3.0 + bassImpact * 3.5;
+        }
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
         }
-        // Camera Recoil: strictly disabled for FX 3 (DJ Deck Waveform), FX 4 (Disco Ball) and FX 16-21
-        if (audio.isOnset && currentFXIndex !== 3 && currentFXIndex !== 4 && currentFXIndex !== 21 && (currentFXIndex < 16 || currentFXIndex > 21)) {
+        // Camera Recoil: strictly disabled for FX 3 (DJ Deck Waveform), FX 4 (Disco Ball) and FX 16-22
+        if (audio.isOnset && currentFXIndex !== 3 && currentFXIndex !== 4 && currentFXIndex !== 21 && currentFXIndex !== 22 && (currentFXIndex < 16 || currentFXIndex > 22)) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
             camRecoilX = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
-        } else if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) {
+        } else if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22 || (currentFXIndex >= 16 && currentFXIndex <= 22)) {
             camRecoilX = 0;
             camRecoilY = 0;
             camRecoilZ = 0;
@@ -18795,18 +19110,17 @@ export function createVFXScene(container) {
             camera.position.z = THREE.MathUtils.lerp(camera.position.z, 16.0 + camRecoilZ, 0.2);
         }
 
-        // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch (Refined Nightclub Contrast)
-        // Strictly disable audio bloom boost, glitch and aberration for FX 3 (DJ Deck), FX 4 & FX 21
-        const fxBloomBoost = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
-        const targetBloom = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21)
+        // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch
+        const fxBloomBoost = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
+        const targetBloom = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22)
             ? 0.18 * bloomMultiplier
             : Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
-        const targetAberration = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
+        const targetAberration = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22 || (currentFXIndex >= 16 && currentFXIndex <= 22)) ? 0.0 : ((transient > 0.7 ? 0.12 : 0.0) + (manualFlash * 0.4));
         nightclubPass.uniforms.uAberration.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uAberration.value, targetAberration, 0.18);
 
-        const targetGlitch = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || (currentFXIndex >= 16 && currentFXIndex <= 21)) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
+        const targetGlitch = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22 || (currentFXIndex >= 16 && currentFXIndex <= 22)) ? 0.0 : ((transient > 0.85) ? (transient * 0.20) : 0.0);
         nightclubPass.uniforms.uGlitch.value = THREE.MathUtils.lerp(nightclubPass.uniforms.uGlitch.value, targetGlitch, 0.20);
 
         nightclubPass.uniforms.uFlash.value = manualFlash;
@@ -18818,8 +19132,8 @@ export function createVFXScene(container) {
 
         nightclubPass.uniforms.uTime.value = elapsedTime;
 
-        // Global Scene Lights: Disabled for FX 3 (DJ Deck), FX 4 & FX 21 so they don't pulse neon colors
-        if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21) {
+        // Global Scene Lights: Disabled for FX 3 (DJ Deck), FX 4, FX 21 & FX 22
+        if (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22) {
             lightCyan.intensity = 0.0;
             lightMagenta.intensity = 0.0;
         } else {
@@ -19192,6 +19506,7 @@ export function createVFXScene(container) {
                 19: ['#00f0ff', '#ff00aa', '#00ff88', '#ffaa00', '#9900ff', '#00e5ff'], // White Godrays & Fog
                 20: ['#0044ff', '#ff4400', '#00e5ff', '#00ff22', '#9400d3', '#ff007f'], // Pumpkin Disco Ball
                 21: ['#0b1626', '#cce0ff', '#ff9922', '#7a33ff', '#44ffbb', '#ffffff'], // Haunted Manor & Moonlit Forest
+                22: ['#00e5ff', '#ff007f', '#00ffaa', '#ffaa00', '#7a33ff', '#ffffff'], // Cyber Cinema Video Playback
             };
             return SCENE_PALETTES[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ff0033'];
         },
@@ -19200,6 +19515,11 @@ export function createVFXScene(container) {
             const bps = currentBPM / 60.0;
             const beatStep = Math.floor(time * bps);
 
+            // FX 22: 🎬 Cyber Cinema Video Playback -> Electric Cyan, Hot Magenta & Neon Mint
+            if (currentFXIndex === 22) {
+                const cinemaPalette = ['#00e5ff', '#ff007f', '#00ffaa', '#ffaa00', '#7a33ff', '#ffffff'];
+                return cinemaPalette[beatStep % cinemaPalette.length];
+            }
             // FX 20: 🎃 Pumpkin Disco Ball -> Sapphire Blue, Flame Orange & Electric Cyan
             if (currentFXIndex === 20) {
                 const pumpkinPalette = ['#0044ff', '#ff4400', '#00e5ff', '#00ff22', '#9400d3', '#ff007f'];
@@ -19243,6 +19563,70 @@ export function createVFXScene(container) {
             const pal = defaultPalettes[currentFXIndex] || ['#00ffff', '#ff007f', '#ffaa00', '#00ff66', '#9900ff', '#ffffff'];
             const idx = Math.floor((time * bps) % pal.length);
             return pal[idx] || '#00ffff';
+        },
+        // Scene 22: Cyber Cinema Video Playback Control Methods
+        playVideoInScene: (url, title, options = {}) => {
+            if (!url) return;
+            videoCurrentUrl = url;
+            videoCurrentTitle = title || url.split('/').pop().replace(/[-_]/g, ' ');
+            const targetVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            targetVid.src = url;
+            targetVid.playbackRate = videoSpeedSetting;
+            targetVid.muted = videoMutedSetting;
+            targetVid.play().catch(() => {});
+            cinemaScreenShaderMat.uniforms.uMix.value = (videoActiveChannel === 'A') ? 0.0 : 1.0;
+            videoTransitionActive = false;
+        },
+        transitionToVideo: (url, title, transType = 0, durSec = 1.0) => {
+            if (!url) return;
+            const nextChannel = (videoActiveChannel === 'A') ? 'B' : 'A';
+            const incomingVid = (nextChannel === 'B') ? videoChannelB : videoChannelA;
+
+            incomingVid.src = url;
+            incomingVid.playbackRate = videoSpeedSetting;
+            incomingVid.muted = videoMutedSetting;
+            incomingVid.currentTime = 0;
+            incomingVid.play().catch(() => {});
+
+            videoActiveChannel = nextChannel;
+            videoCurrentUrl = url;
+            videoCurrentTitle = title || url.split('/').pop().replace(/[-_]/g, ' ');
+
+            const transMap = { crossfade: 0, glitch: 1, zoom: 2, strobe: 3, cut: 4 };
+            videoTransitionType = typeof transType === 'number' ? transType : (transMap[transType] ?? 0);
+            cinemaScreenShaderMat.uniforms.uTransitionType.value = videoTransitionType;
+            videoTransitionDuration = Math.max(0.1, Number(durSec) || 1.0);
+            videoTransitionStartTime = clock.getElapsedTime();
+            videoTransitionActive = true;
+        },
+        setVideoSpeed: (speed) => {
+            videoSpeedSetting = Math.max(0.2, Math.min(3.0, Number(speed) || 1.0));
+            videoChannelA.playbackRate = videoSpeedSetting;
+            videoChannelB.playbackRate = videoSpeedSetting;
+        },
+        setVideoMute: (muted) => {
+            videoMutedSetting = !!muted;
+            videoChannelA.muted = videoMutedSetting;
+            videoChannelB.muted = videoMutedSetting;
+        },
+        setVideoLoop: (mode) => {
+            videoLoopSetting = mode;
+            videoChannelA.loop = (mode === 'single');
+            videoChannelB.loop = (mode === 'single');
+        },
+        getVideoState: () => {
+            const activeVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            return {
+                url: videoCurrentUrl,
+                title: videoCurrentTitle,
+                currentTime: activeVid.currentTime || 0,
+                duration: activeVid.duration || 0,
+                paused: activeVid.paused,
+                speed: videoSpeedSetting,
+                muted: videoMutedSetting,
+                loopMode: videoLoopSetting,
+                channel: videoActiveChannel
+            };
         }
     };
 }
