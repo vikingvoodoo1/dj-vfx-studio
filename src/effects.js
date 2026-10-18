@@ -13032,7 +13032,7 @@ export function createVFXScene(container) {
     // -------------------------------------------------------------------------
     const gPumpkinDiscoBall = createFXGroup();
 
-    // Procedural Parametric 3D Lobed Pumpkin Geometry (Classic organic pumpkin height 0.88 of width with 10 vertical lobes)
+    // Procedural Parametric 3D Lobed Pumpkin Geometry (Defined organic pumpkin shape, squashed to 0.76 height ratio with 10 vertical ribbed lobes)
     function createPumpkinDiscoGeometry(baseRadius = 5.2, widthSegments = 128, heightSegments = 64, numLobes = 10) {
         const geo = new THREE.SphereGeometry(baseRadius, widthSegments, heightSegments);
         const pos = geo.attributes.position;
@@ -13050,19 +13050,20 @@ export function createVFXScene(container) {
             const sinPhi = Math.sin(phi);
             const cosPhi = Math.cos(phi);
 
-            // Top stem and bottom pole depression (dimple)
-            const poleDimple = 1.0 - 0.08 * Math.pow(Math.abs(cosPhi), 2.5);
+            // Enhanced top stem and bottom pole depression (natural concave dimple)
+            const poleDimple = 1.0 - 0.11 * Math.pow(Math.abs(cosPhi), 2.2);
 
-            // 10 vertical ribbed lobes
+            // 10 vertical ribbed lobes with deep, defined organic crevices
             const lobeWave = Math.cos(numLobes * theta);
-            const lobeDepth = 0.08 * lobeWave * Math.pow(sinPhi, 0.85);
+            const lobeDepth = 0.115 * lobeWave * Math.pow(sinPhi, 0.85);
 
-            // Slightly reduced height (0.88 ratio) gives authentic pumpkin silhouette
-            const radialScale = (1.0 + lobeDepth) * poleDimple;
+            // Subtle equatorial fullness for an authentic pumpkin silhouette
+            const equatorialBulge = 1.0 + 0.04 * Math.pow(sinPhi, 1.2);
+            const radialScale = (1.0 + lobeDepth) * poleDimple * equatorialBulge;
 
             v.x = r * sinPhi * Math.sin(theta) * radialScale;
             v.z = r * sinPhi * Math.cos(theta) * radialScale;
-            v.y = r * cosPhi * poleDimple * 0.88; // Reduced height gives classic pumpkin shape
+            v.y = r * cosPhi * poleDimple * 0.76; // Squashed height ratio gives a defined, unmistakable pumpkin shape
 
             pos.setXYZ(i, v.x, v.y, v.z);
         }
@@ -13082,11 +13083,11 @@ export function createVFXScene(container) {
         const stemGroup = new THREE.Group();
 
         const curve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 4.18, 0),         // Stem base securely in top dimple
-            new THREE.Vector3(0.06, 4.70, 0.04),   // Lower stalk
-            new THREE.Vector3(0.16, 5.20, 0.10),   // Mid stalk curving out
-            new THREE.Vector3(0.14, 5.60, 0.08),   // Upper stalk curve
-            new THREE.Vector3(0.04, 5.85, 0.03)    // Stalk tip meeting eyelet
+            new THREE.Vector3(0, 3.50, 0),         // Stem base securely in top dimple
+            new THREE.Vector3(0.06, 4.02, 0.04),   // Lower stalk
+            new THREE.Vector3(0.16, 4.52, 0.10),   // Mid stalk curving out
+            new THREE.Vector3(0.14, 4.94, 0.08),   // Upper stalk curve
+            new THREE.Vector3(0.04, 5.20, 0.03)    // Stalk tip meeting eyelet
         ]);
 
         const stemGeo = new THREE.TubeGeometry(curve, 32, 0.30, 16, false);
@@ -13094,7 +13095,7 @@ export function createVFXScene(container) {
         const v = new THREE.Vector3();
         for (let i = 0; i < stemPos.count; i++) {
             v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 4.18) / 1.67));
+            const t = Math.max(0, Math.min(1, (v.y - 3.50) / 1.70));
             const taper = 1.25 * (1.0 - t * 0.55);
             const angle = Math.atan2(v.x, v.z);
             const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
@@ -13118,7 +13119,7 @@ export function createVFXScene(container) {
         // Heavy-duty polished chrome mounting eyelet / shackle ring welded to stem tip
         const stemEyeletGeo = new THREE.TorusGeometry(0.32, 0.08, 16, 24);
         const stemEyeletMesh = new THREE.Mesh(stemEyeletGeo, stemMat);
-        stemEyeletMesh.position.set(0.04, 5.85, 0.03);
+        stemEyeletMesh.position.set(0.04, 5.20, 0.03);
         stemEyeletMesh.rotation.y = Math.PI * 0.25;
         stemGroup.add(stemEyeletMesh);
 
@@ -13957,9 +13958,9 @@ export function createVFXScene(container) {
             varying vec2 vUv;
 
             void main() {
-                // Elliptical contour framing the authentic pumpkin silhouette (0.88 height ratio)
+                // Elliptical contour framing the authentic squashed pumpkin silhouette (0.76 height ratio)
                 vec2 p = (vUv - 0.5) * 2.0;
-                p.y /= 0.88;
+                p.y /= 0.76;
                 float dist = length(p);
                 
                 // Outer perimeter halo geometry:
@@ -17564,8 +17565,8 @@ export function createVFXScene(container) {
             pumpkinPivot.position.y = 0.0;
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
-            // Calculate exact world position of the stalk top eyelet ring
-            const stalkTipLocal = new THREE.Vector3(0.04, 5.85, 0.03);
+            // Calculate exact world position of the stalk top eyelet ring (nestled on 0.76 squashed pumpkin crown)
+            const stalkTipLocal = new THREE.Vector3(0.04, 5.20, 0.03);
             const stalkTipWorld = stalkTipLocal.clone().applyEuler(pumpkinPivot.rotation).add(pumpkinPivot.position);
             const ceilingAnchor = new THREE.Vector3(0, 13.2, 0);
 
@@ -17592,19 +17593,19 @@ export function createVFXScene(container) {
                 );
             }
 
-            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the pumpkin
+            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the squashed pumpkin (0.76 ratio)
             const tL = elapsedTime * 0.55;
             const txL = -1.0 + Math.sin(tL * 0.85) * 2.3; // -3.3 to +1.3
-            const tyL = Math.cos(tL * 0.65) * 2.1;       // -2.1 to +2.1 (spans 0.88 height pumpkin)
-            const rSqL = (txL * txL) + ((tyL / 0.88) * (tyL / 0.88));
+            const tyL = Math.cos(tL * 0.65) * 1.82;      // spans 0.76 height squashed pumpkin
+            const rSqL = (txL * txL) + ((tyL / 0.76) * (tyL / 0.76));
             const tzL = Math.sqrt(Math.max(4.0, 27.0 - rSqL)); // Front surface of pumpkin
             const targetLeftPos = new THREE.Vector3(txL, tyL, tzL);
             pLeftTargetObj.position.copy(targetLeftPos);
 
             const tR = elapsedTime * 0.55 + Math.PI * 0.72;
             const txR = 1.0 + Math.cos(tR * 0.82) * 2.3;  // -1.3 to +3.3
-            const tyR = Math.sin(tR * 0.68) * 2.1;       // -2.1 to +2.1
-            const rSqR = (txR * txR) + ((tyR / 0.88) * (tyR / 0.88));
+            const tyR = Math.sin(tR * 0.68) * 1.82;
+            const rSqR = (txR * txR) + ((tyR / 0.76) * (tyR / 0.76));
             const tzR = Math.sqrt(Math.max(4.0, 27.0 - rSqR)); // Front surface of pumpkin
             const targetRightPos = new THREE.Vector3(txR, tyR, tzR);
             pRightTargetObj.position.copy(targetRightPos);
@@ -17647,15 +17648,15 @@ export function createVFXScene(container) {
             // Group A: Inner Left & Right Fixtures (-2.4 and +2.4) - Crossing 'X' sweep
             const sweep1 = pumpkinMiniSweepPhase;
             const txMini1 = Math.sin(sweep1) * 4.4;
-            const tyMini1 = -2.70 + Math.cos(sweep1 * 0.8) * 0.60;
-            const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.88) * (tyMini1 / 0.88));
+            const tyMini1 = -2.35 + Math.cos(sweep1 * 0.8) * 0.52;
+            const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.76) * (tyMini1 / 0.76));
             const tzMini1 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini1)));
             const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1);
 
             const sweep2 = -pumpkinMiniSweepPhase;
             const txMini2 = Math.sin(sweep2) * 4.4;
-            const tyMini2 = -2.70 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.60;
-            const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.88) * (tyMini2 / 0.88));
+            const tyMini2 = -2.35 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.52;
+            const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.76) * (tyMini2 / 0.76));
             const tzMini2 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini2)));
             const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2);
 
@@ -17663,37 +17664,37 @@ export function createVFXScene(container) {
             // Center fixture sweeps upward across the middle front
             const sweepC = pumpkinMiniSweepPhase * 1.25;
             const txCenter = Math.sin(sweepC) * 2.8;
-            const tyCenter = -2.50 + Math.cos(sweepC * 0.7) * 0.65;
-            const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.88) * (tyCenter / 0.88));
+            const tyCenter = -2.15 + Math.cos(sweepC * 0.7) * 0.55;
+            const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.76) * (tyCenter / 0.76));
             const tzCenter = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqCenter)));
             const targetCenterPos = new THREE.Vector3(txCenter, tyCenter, tzCenter);
 
             // Far Left fixture sweeps inward towards center
             const sweepFL = pumpkinMiniSweepPhase + Math.PI * 0.5;
             const txFarLeft = -1.2 + Math.sin(sweepFL) * 3.6;
-            const tyFarLeft = -2.70 + Math.cos(sweepFL * 0.85) * 0.60;
-            const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.88) * (tyFarLeft / 0.88));
+            const tyFarLeft = -2.35 + Math.cos(sweepFL * 0.85) * 0.52;
+            const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.76) * (tyFarLeft / 0.76));
             const tzFarLeft = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarLeft)));
             const targetFarLeftPos = new THREE.Vector3(txFarLeft, tyFarLeft, tzFarLeft);
 
             // Far Right fixture sweeps inward towards center (symmetrically opposite)
             const sweepFR = -pumpkinMiniSweepPhase - Math.PI * 0.5;
             const txFarRight = 1.2 + Math.sin(sweepFR) * 3.6;
-            const tyFarRight = -2.70 + Math.cos(sweepFR * 0.85 + Math.PI) * 0.60;
-            const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.88) * (tyFarRight / 0.88));
+            const tyFarRight = -2.35 + Math.cos(sweepFR * 0.85 + Math.PI) * 0.52;
+            const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.76) * (tyFarRight / 0.76));
             const tzFarRight = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarRight)));
             const targetFarRightPos = new THREE.Vector3(txFarRight, tyFarRight, tzFarRight);
 
             // Gradual specular sun-glare geometry:
             // "a gradual intensity like the sun glaring through a window hitting your face temporarily as you move past it"
             // Front-facing sweet spot on convex pumpkin facing the viewer/camera (centered around x=0, y=0, z=5.2)
-            const leftDistFromFrontCenter = Math.sqrt(txL * txL + (tyL * 1.1) * (tyL * 1.1));
+            const leftDistFromFrontCenter = Math.sqrt(txL * txL + (tyL * 1.25) * (tyL * 1.25));
             // Raised-cosine window (smooth entry, gentle crest, smooth exit with zero pop)
             const leftSunGlare = leftDistFromFrontCenter < 2.6
                 ? (0.5 + 0.5 * Math.cos((leftDistFromFrontCenter / 2.6) * Math.PI))
                 : 0.0;
 
-            const rightDistFromFrontCenter = Math.sqrt(txR * txR + (tyR * 1.1) * (tyR * 1.1));
+            const rightDistFromFrontCenter = Math.sqrt(txR * txR + (tyR * 1.25) * (tyR * 1.25));
             const rightSunGlare = rightDistFromFrontCenter < 2.6
                 ? (0.5 + 0.5 * Math.cos((rightDistFromFrontCenter / 2.6) * Math.PI))
                 : 0.0;
