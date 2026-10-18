@@ -15434,7 +15434,6 @@ export function createVFXScene(container) {
 
     // Dual-Channel Video Players for Zero-Gap Seamless Transitions
     const videoChannelA = document.createElement('video');
-    videoChannelA.crossOrigin = 'anonymous';
     videoChannelA.loop = true;
     videoChannelA.muted = true;
     videoChannelA.playsInline = true;
@@ -15442,7 +15441,6 @@ export function createVFXScene(container) {
     videoChannelA.src = '';
 
     const videoChannelB = document.createElement('video');
-    videoChannelB.crossOrigin = 'anonymous';
     videoChannelB.loop = true;
     videoChannelB.muted = true;
     videoChannelB.playsInline = true;
@@ -19099,6 +19097,12 @@ export function createVFXScene(container) {
             }
 
             // 2. Uniforms & Audio Reactive Pulse
+            if (videoChannelA && videoChannelA.readyState >= 2) {
+                videoTexA.needsUpdate = true;
+            }
+            if (videoChannelB && videoChannelB.readyState >= 2) {
+                videoTexB.needsUpdate = true;
+            }
             cinemaScreenShaderMat.uniforms.uTime.value = elapsedTime;
             cinemaScreenShaderMat.uniforms.uBass.value = bassImpact;
             cinemaBackdropMat.uniforms.uTime.value = elapsedTime;
@@ -19613,10 +19617,19 @@ export function createVFXScene(container) {
             videoCurrentUrl = url;
             videoCurrentTitle = title || url.split('/').pop().replace(/[-_]/g, ' ');
             const targetVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            if (url.startsWith('blob:')) {
+                targetVid.removeAttribute('crossorigin');
+            } else if (url.startsWith('http://') || url.startsWith('https://')) {
+                targetVid.crossOrigin = 'anonymous';
+            } else {
+                targetVid.removeAttribute('crossorigin');
+            }
             targetVid.src = url;
             targetVid.playbackRate = videoSpeedSetting;
             targetVid.muted = videoMutedSetting;
-            targetVid.play().catch(() => {});
+            targetVid.play().catch(err => {
+                console.warn('[Cyber Cinema 3D] playVideoInScene notice:', err?.message || err);
+            });
             cinemaScreenShaderMat.uniforms.uMix.value = (videoActiveChannel === 'A') ? 0.0 : 1.0;
             if (cinemaScreenShaderMat.uniforms.uHasVideo) {
                 cinemaScreenShaderMat.uniforms.uHasVideo.value = 1.0;
@@ -19633,11 +19646,20 @@ export function createVFXScene(container) {
             const nextChannel = (videoActiveChannel === 'A') ? 'B' : 'A';
             const incomingVid = (nextChannel === 'B') ? videoChannelB : videoChannelA;
 
+            if (url.startsWith('blob:')) {
+                incomingVid.removeAttribute('crossorigin');
+            } else if (url.startsWith('http://') || url.startsWith('https://')) {
+                incomingVid.crossOrigin = 'anonymous';
+            } else {
+                incomingVid.removeAttribute('crossorigin');
+            }
             incomingVid.src = url;
             incomingVid.playbackRate = videoSpeedSetting;
             incomingVid.muted = videoMutedSetting;
             incomingVid.currentTime = 0;
-            incomingVid.play().catch(() => {});
+            incomingVid.play().catch(err => {
+                console.warn('[Cyber Cinema 3D] transitionToVideo notice:', err?.message || err);
+            });
 
             videoActiveChannel = nextChannel;
             videoCurrentUrl = url;

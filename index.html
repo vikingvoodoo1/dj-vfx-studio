@@ -6722,8 +6722,11 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:4px;">
                         <button class="btn-mini" id="btn-choose-video-folder" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
+                        <button class="btn-mini" id="btn-choose-video-files" style="font-size:9px; font-weight:700; padding:4px 7px; background:rgba(0,170,255,0.15); border:1px solid rgba(0,170,255,0.45); color:#00aaff;" title="Select individual video files (.mp4, .webm, .mov)">🎞️ FILES</button>
+                        <button class="btn-mini" id="btn-load-demo-videos" style="font-size:9px; font-weight:700; padding:4px 7px; background:rgba(255,0,85,0.15); border:1px solid rgba(255,0,85,0.45); color:#ff3377;" title="Load high-res Demo VJ Clips instantly">✨ DEMO</button>
                         <button class="btn-mini" id="btn-scan-mac-path" style="font-size:9px; padding:4px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec;" title="Enter direct Mac folder path">🔍 PATH</button>
-                        <input type="file" id="file-video-folder" webkitdirectory directory multiple style="display:none;">
+                        <input type="file" id="file-video-folder" webkitdirectory directory multiple style="opacity:0; position:absolute; z-index:-1; width:1px; height:1px; pointer-events:none;">
+                        <input type="file" id="file-video-files" multiple accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.m4v" style="opacity:0; position:absolute; z-index:-1; width:1px; height:1px; pointer-events:none;">
                     </div>
                 </div>
 
@@ -6744,10 +6747,12 @@
                     <div class="video-setup-icon">📁</div>
                     <div class="video-setup-title">NO VIDEOS IN ACTIVE BANK</div>
                     <div class="video-setup-desc">
-                        Select a folder on your Mac containing your video files (<code style="color:#00ffcc;">.mp4, .webm, .mov</code>). Details of your last 10 folder locations will be remembered for 1-click selection across banks!
+                        Select a folder on your Mac containing your video files (<code style="color:#00ffcc;">.mp4, .webm, .mov</code>), pick video files directly, or load the instant Demo VJ Loops. Details of your folder locations are remembered for 1-click selection across banks!
                     </div>
-                    <div class="video-setup-actions" style="justify-content:center;">
+                    <div class="video-setup-actions" style="justify-content:center; display:flex; flex-wrap:wrap; gap:8px;">
                         <button class="video-btn-primary" id="btn-setup-choose-folder" style="font-size:11px; padding:10px 18px;">📁 SELECT VIDEO FOLDER</button>
+                        <button class="video-btn-primary" id="btn-setup-choose-files" style="font-size:11px; padding:10px 18px; background:linear-gradient(135deg, rgba(0,170,255,0.3), rgba(0,255,204,0.2)); border-color:#00aaff; color:#00aaff;">🎞️ SELECT VIDEO FILES</button>
+                        <button class="video-btn-primary" id="btn-setup-load-demo" style="font-size:11px; padding:10px 18px; background:linear-gradient(135deg, rgba(255,0,85,0.3), rgba(255,100,0,0.2)); border-color:#ff0055; color:#ff3377;">✨ LOAD DEMO VJ CLIPS</button>
                     </div>
                 </div>
 

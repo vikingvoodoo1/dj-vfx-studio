@@ -4118,13 +4118,18 @@ async function init() {
         const selectVideoBank = document.getElementById('select-video-bank');
         const videoBankChipsBar = document.getElementById('video-bank-chips-bar');
         const btnChooseVideoFolder = document.getElementById('btn-choose-video-folder');
+        const btnChooseVideoFiles = document.getElementById('btn-choose-video-files');
+        const btnLoadDemoVideos = document.getElementById('btn-load-demo-videos');
         const fileVideoFolder = document.getElementById('file-video-folder');
+        const fileVideoFiles = document.getElementById('file-video-files');
         const btnScanMacPath = document.getElementById('btn-scan-mac-path');
         const videoPathInputBar = document.getElementById('video-path-input-bar');
         const inputMacVideoPath = document.getElementById('input-mac-video-path');
         const btnExecScanPath = document.getElementById('btn-exec-scan-path');
         const videoSetupFlowCard = document.getElementById('video-setup-flow-card');
         const btnSetupChooseFolder = document.getElementById('btn-setup-choose-folder');
+        const btnSetupChooseFiles = document.getElementById('btn-setup-choose-files');
+        const btnSetupLoadDemo = document.getElementById('btn-setup-load-demo');
         const videoLibraryGridBox = document.getElementById('video-library-grid-box');
         const videoGridContainer = document.getElementById('video-grid-container');
         const videoGridCountLabel = document.getElementById('video-grid-count-label');
@@ -4582,53 +4587,122 @@ async function init() {
             });
         }
 
-        // Setup Buttons
+        // Demo VJ Video Loops (Public CORS-enabled fast streaming samples)
+        const DEMO_VJ_LOOPS = [
+            {
+                name: 'Cyber Blaze FX.mp4',
+                title: 'Cyber Blaze FX',
+                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+                duration: 15,
+                included: true
+            },
+            {
+                name: 'Glitch Dimension.mp4',
+                title: 'Glitch Dimension',
+                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
+                duration: 653,
+                included: true
+            },
+            {
+                name: 'Bass Odyssey.mp4',
+                title: 'Bass Odyssey',
+                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                duration: 596,
+                included: true
+            },
+            {
+                name: 'Neon Velocity.mp4',
+                title: 'Neon Velocity',
+                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+                duration: 15,
+                included: true
+            }
+        ];
+
+        function loadVideoFiles(files, sourceName) {
+            const videoFiles = Array.from(files).filter(f => {
+                const ext = f.name.split('.').pop().toLowerCase();
+                return ['mp4', 'webm', 'mov', 'm4v', 'ogv'].includes(ext);
+            });
+
+            if (videoFiles.length === 0) {
+                showToast('⚠️ No video files (.mp4, .webm, .mov) found.');
+                return;
+            }
+
+            const videoItems = videoFiles.map(f => {
+                const objUrl = URL.createObjectURL(f);
+                const cleanTitle = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
+                return {
+                    name: f.name,
+                    title: cleanTitle,
+                    url: objUrl,
+                    duration: 10,
+                    included: true
+                };
+            });
+
+            banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: 📁 ${sourceName}`;
+            banks[activeBankIndex].folderPath = sourceName;
+            banks[activeBankIndex].videos = videoItems;
+            saveBanks();
+            renderBankSelector();
+            renderVideoGrid();
+            showToast(`🎬 Loaded ${videoItems.length} videos into Bank ${activeBankIndex + 1}!`);
+
+            playVideoItem(0, false);
+        }
+
+        function loadDemoVideos() {
+            banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: ✨ Demo VJ Loops`;
+            banks[activeBankIndex].folderPath = 'Demo VJ Loops';
+            banks[activeBankIndex].videos = JSON.parse(JSON.stringify(DEMO_VJ_LOOPS));
+            saveBanks();
+            renderBankSelector();
+            renderVideoGrid();
+            showToast(`✨ Loaded 4 Demo VJ Clips into Bank ${activeBankIndex + 1}!`);
+            playVideoItem(0, false);
+            if (vfx.getCurrentFX() !== 22) {
+                selectFX(22);
+            }
+        }
+
+        // Setup Buttons & Pickers
         if (btnChooseVideoFolder && fileVideoFolder) {
             btnChooseVideoFolder.addEventListener('click', () => fileVideoFolder.click());
         }
         if (btnSetupChooseFolder && fileVideoFolder) {
             btnSetupChooseFolder.addEventListener('click', () => fileVideoFolder.click());
         }
+        if (btnChooseVideoFiles && fileVideoFiles) {
+            btnChooseVideoFiles.addEventListener('click', () => fileVideoFiles.click());
+        }
+        if (btnSetupChooseFiles && fileVideoFiles) {
+            btnSetupChooseFiles.addEventListener('click', () => fileVideoFiles.click());
+        }
+        if (btnLoadDemoVideos) {
+            btnLoadDemoVideos.addEventListener('click', loadDemoVideos);
+        }
+        if (btnSetupLoadDemo) {
+            btnSetupLoadDemo.addEventListener('click', loadDemoVideos);
+        }
 
         if (fileVideoFolder) {
             fileVideoFolder.addEventListener('change', (e) => {
                 const files = Array.from(e.target.files || []);
-                const videoFiles = files.filter(f => {
-                    const ext = f.name.split('.').pop().toLowerCase();
-                    return ['mp4', 'webm', 'mov', 'm4v', 'ogv'].includes(ext);
-                });
-
-                if (videoFiles.length === 0) {
-                    showToast('⚠️ No video files (.mp4, .webm, .mov) found in selected folder.');
-                    return;
-                }
-
                 let folderName = 'Custom Folder';
-                if (videoFiles[0].webkitRelativePath) {
-                    folderName = videoFiles[0].webkitRelativePath.split('/')[0] || folderName;
+                if (files[0] && files[0].webkitRelativePath) {
+                    folderName = files[0].webkitRelativePath.split('/')[0] || folderName;
                 }
+                loadVideoFiles(files, folderName);
+            });
+        }
 
-                const videoItems = videoFiles.map(f => {
-                    const objUrl = URL.createObjectURL(f);
-                    const cleanTitle = f.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' ');
-                    return {
-                        name: f.name,
-                        title: cleanTitle,
-                        url: objUrl,
-                        duration: 10,
-                        included: true
-                    };
-                });
-
-                banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: 📁 ${folderName}`;
-                banks[activeBankIndex].folderPath = folderName;
-                banks[activeBankIndex].videos = videoItems;
-                saveBanks();
-                renderBankSelector();
-                renderVideoGrid();
-                showToast(`🎬 Loaded ${videoItems.length} videos into Bank ${activeBankIndex + 1}!`);
-
-                playVideoItem(0, false);
+        if (fileVideoFiles) {
+            fileVideoFiles.addEventListener('change', (e) => {
+                const files = Array.from(e.target.files || []);
+                const sourceName = files.length === 1 ? files[0].name : `${files.length} Selected Files`;
+                loadVideoFiles(files, sourceName);
             });
         }
 
@@ -4642,13 +4716,33 @@ async function init() {
         }
 
         if (btnExecScanPath && inputMacVideoPath) {
-            btnExecScanPath.addEventListener('click', () => {
-                const path = inputMacVideoPath.value.trim();
-                if (!path) {
+            btnExecScanPath.addEventListener('click', async () => {
+                const folderPath = inputMacVideoPath.value.trim();
+                if (!folderPath) {
                     showToast('⚠️ Please enter a folder path.');
                     return;
                 }
-                showToast(`🔍 Path set: ${path}. Use the folder picker to load browser video streams.`);
+                showToast(`🔍 Scanning: ${folderPath}...`);
+                try {
+                    const res = await fetch(`/api/videos/scan?folder=${encodeURIComponent(folderPath)}`);
+                    const data = await res.json();
+                    if (data.success && data.videos && data.videos.length > 0) {
+                        const folderName = folderPath.split('/').filter(Boolean).pop() || 'Mac Folder';
+                        banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: 📁 ${folderName}`;
+                        banks[activeBankIndex].folderPath = folderPath;
+                        banks[activeBankIndex].videos = data.videos;
+                        saveBanks();
+                        renderBankSelector();
+                        renderVideoGrid();
+                        showToast(`🎬 Loaded ${data.videos.length} videos from ${folderName}!`);
+                        playVideoItem(0, false);
+                        if (videoPathInputBar) videoPathInputBar.style.display = 'none';
+                    } else {
+                        showToast(`⚠️ No video files found in ${folderPath}. You can also use the 📁 OPEN FOLDER or 🎞️ FILES buttons.`);
+                    }
+                } catch (e) {
+                    showToast(`⚠️ Folder scan error: ${e.message}`);
+                }
             });
         }
 

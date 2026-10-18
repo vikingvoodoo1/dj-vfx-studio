@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 import { recognizeAudio } from './server/shazam-service.js';
 import { searchAlbumArt } from './server/artwork-service.js';
 
@@ -151,6 +152,121 @@ function apiHandlerPlugin() {
                     res.setHeader('Content-Type', 'application/json');
                     res.setHeader('Access-Control-Allow-Origin', '*');
                     res.end(JSON.stringify(data));
+                    return;
+                }
+
+                // 4. Video Loop Folder Scanning Endpoint
+                if (url.pathname === '/api/videos/scan') {
+                    if (req.method === 'OPTIONS') {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+                        res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+                        res.statusCode = 204;
+                        res.end();
+                        return;
+                    }
+
+                    try {
+                        let targetFolder = url.searchParams.get('folder') || 'public/images/videos';
+                        if (targetFolder.startsWith('~')) {
+                            targetFolder = path.join(os.homedir(), targetFolder.slice(1));
+                        }
+                        if (!path.isAbsolute(targetFolder)) {
+                            targetFolder = path.resolve(process.cwd(), targetFolder);
+                        }
+
+                        const videoExts = ['.mp4', '.webm', '.mov', '.m4v', '.mkv', '.ogv'];
+                        const videos = [];
+
+                        if (fs.existsSync(targetFolder)) {
+                            const files = fs.readdirSync(targetFolder);
+                            for (const file of files) {
+                                if (file.startsWith('.')) continue;
+                                const ext = path.extname(file).toLowerCase();
+                                if (videoExts.includes(ext)) {
+                                    const fullPath = path.join(targetFolder, file);
+                                    try {
+                                        const stat = fs.statSync(fullPath);
+                                        if (stat.isFile()) {
+                                            videos.push({
+                                                name: file,
+                                                title: path.basename(file, ext).replace(/[-_]/g, ' '),
+                                                path: fullPath,
+                                                url: `/api/videos/stream?file=${encodeURIComponent(fullPath)}`,
+                                                size: stat.size,
+                                                mtime: stat.mtimeMs,
+                                                included: true
+                                            });
+                                        }
+                                    } catch (err) {}
+                                }
+                            }
+                        }
+
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 200;
+                        res.end(JSON.stringify({
+                            success: true,
+                            folder: targetFolder,
+                            count: videos.length,
+                            videos
+                        }));
+                    } catch (err) {
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 500;
+                        res.end(JSON.stringify({ success: false, message: err.message }));
+                    }
+                    return;
+                }
+
+                // 5. High-Performance Video Partial Range Streaming Endpoint
+                if (url.pathname === '/api/videos/stream') {
+                    const filePath = url.searchParams.get('file');
+                    if (!filePath || !fs.existsSync(filePath)) {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 404;
+                        res.end('Video file not found');
+                        return;
+                    }
+
+                    try {
+                        const stat = fs.statSync(filePath);
+                        const fileSize = stat.size;
+                        const range = req.headers.range;
+                        const ext = path.extname(filePath).toLowerCase();
+                        const contentType = ext === '.webm' ? 'video/webm' : (ext === '.mov' ? 'video/quicktime' : 'video/mp4');
+
+                        if (range) {
+                            const parts = range.replace(/bytes=/, "").split("-");
+                            const start = parseInt(parts[0], 10);
+                            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+                            const chunksize = (end - start) + 1;
+                            const fileStream = fs.createReadStream(filePath, { start, end });
+
+                            res.writeHead(206, {
+                                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                                'Accept-Ranges': 'bytes',
+                                'Content-Length': chunksize,
+                                'Content-Type': contentType,
+                                'Access-Control-Allow-Origin': '*'
+                            });
+                            fileStream.pipe(res);
+                        } else {
+                            res.writeHead(200, {
+                                'Content-Length': fileSize,
+                                'Content-Type': contentType,
+                                'Accept-Ranges': 'bytes',
+                                'Access-Control-Allow-Origin': '*'
+                            });
+                            fs.createReadStream(filePath).pipe(res);
+                        }
+                    } catch (streamErr) {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 500;
+                        res.end('Error streaming video: ' + streamErr.message);
+                    }
                     return;
                 }
                 next();
