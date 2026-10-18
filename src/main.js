@@ -23,6 +23,16 @@ window.__DJ_VFX_BUILD__ = {
     email: 'info@jkmclaren.com'
 };
 
+const FX_NAMES = [
+    '3D Studio EQ', 'Circular Spectrum', 'Fluid Wave Matrix', 'DJ Deck Waveforms',
+    'Spinning Disco Ball', 'Dual-Bank Lasers', 'Saber Multi-Beams', 'Strobe Rings',
+    'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
+    'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
+    'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
+    'Pumpkin Disco Ball', 'Haunted Manor', 'Scene 22: Cyber Cinema 3D'
+];
+window.FX_NAMES = FX_NAMES;
+
 async function init() {
     const container = document.getElementById('canvas-container');
     const hud = document.getElementById('hud');
@@ -75,6 +85,19 @@ async function init() {
     const btnCloseDjGuideDone = document.getElementById('btn-close-dj-guide-done');
 
     let isHardwareDeckStreaming = false;
+    let lastHardwareSource = 'DENON STAGELINQ';
+    let lastHardwarePacketTimestamp = 0;
+    let hardwarePacketTotal = 1420;
+    let hardwarePacketWindow = 0;
+    let hardwarePacketsPerSec = 42;
+    let lastPacketRateCalcTime = performance.now();
+    let networkPingMs = 4;
+    let networkPingState = 'green';
+    let currentRenderFps = 60;
+    let currentRenderFrameMs = 16.7;
+    let lastFpsTime = performance.now();
+    let frameCount = 0;
+    let lastHealthMiniUpdate = 0;
 
     const deckCards = [
         { card: document.getElementById('deck-card-1'), bpm: document.getElementById('deck-bpm-1'), state: document.getElementById('deck-state-1') },
@@ -5133,15 +5156,6 @@ async function init() {
     });
 
     // 4. Categorized FX Bank Switching & Filtering
-    const FX_NAMES = [
-        '3D Studio EQ', 'Circular Spectrum', 'Fluid Wave Matrix', 'DJ Deck Waveforms',
-        'Spinning Disco Ball', 'Dual-Bank Lasers', 'Saber Multi-Beams', 'Strobe Rings',
-        'Synthwave Grid', 'Synthwave River & Sun', 'Matrix Code Rain', 'Retro Arcade 80s',
-        'Warp Starfield', 'Spiral Galaxy Vortex', 'Hyper Particle Stream', 'Time.is Clock',
-        'Sweeping Godrays', 'White Godrays & Fog', 'Disco Floor & Godrays', 'VHS Glitch Words',
-        'Pumpkin Disco Ball', 'Haunted Manor', 'Scene 22: Cyber Cinema 3D'
-    ];
-
     const btnAutoVJFxPane = document.getElementById('btn-auto-vj-fxpane');
     const btnFlashFxPane = document.getElementById('btn-flash-fxpane');
     const btnRandomFx = document.getElementById('btn-random-fx');
@@ -6887,19 +6901,7 @@ async function init() {
     // =========================================================================
     // 6a-3. STUDIO HEALTH & TELEMETRY DIAGNOSTICS CENTER
     // =========================================================================
-    let lastHardwareSource = 'DENON STAGELINQ';
-    let hardwarePacketTotal = 1420;
-    let hardwarePacketWindow = 0;
-    let hardwarePacketsPerSec = 42;
-    let lastPacketRateCalcTime = performance.now();
-    let networkPingMs = 4;
-    let networkPingState = 'green';
-    let currentRenderFps = 60;
-    let currentRenderFrameMs = 16.7;
-    let lastFpsTime = performance.now();
-    let frameCount = 0;
     let lastFrameTime = performance.now();
-    let lastHealthMiniUpdate = 0;
 
     // Mini status strip elements
     const miniStatusAudio = document.getElementById('mini-status-audio');
@@ -8463,7 +8465,7 @@ async function init() {
     let currentBeatInBar = 1;
     let lastBeatTimestamp = performance.now();
     isHardwareDeckStreaming = false;
-    let lastHardwarePacketTimestamp = 0;
+    lastHardwarePacketTimestamp = 0;
     let activePhraseDisplayMode = '3000';
     try {
         activePhraseDisplayMode = localStorage.getItem('dj_vfx_phrase_mode') || '3000';
