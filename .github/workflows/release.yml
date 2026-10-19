@@ -14,8 +14,9 @@ jobs:
     name: Build & Package (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
-        os: [macos-latest, windows-latest, ubuntu-latest]
+        os: [macos-latest, windows-2022, ubuntu-latest]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -28,6 +29,9 @@ jobs:
 
       - name: Install dependencies
         run: npm ci
+        env:
+          npm_config_msvs_version: '2022'
+          GYP_MSVS_VERSION: '2022'
 
       - name: Build Web Application
         run: npm run build
@@ -41,6 +45,7 @@ jobs:
     name: Publish Release Notes
     needs: build-and-release
     runs-on: ubuntu-latest
+    if: ${{ always() && !cancelled() && startsWith(github.ref, 'refs/tags/') }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

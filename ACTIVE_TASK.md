@@ -23,5 +23,13 @@
   - `npm run build` (`vite build`): **PASSED** in 936ms (`26 modules transformed`, `dist/index.html`, `dist/assets/index-*.css`, `dist/assets/index-*.js`).
   - Static VM & symbol export/import verification across all 9 JS modules: **PASSED** with zero syntax or reference errors.
 
-## 3. Active Next Step
-- Establish anti-monolithic architecture rules/skills across all projects and confirm whether to commit Tier 1 & Tier 2 changes or proceed to Tier 3.
+## 3. GitHub Actions CI / Release Fix
+- **Issue:** Tag `v2.1.0` build run 39268445625 failed on `windows-latest` during `npm ci` due to `better-sqlite3-multiple-ciphers` failing node-gyp Visual Studio detection, and canceled macOS/Linux builds.
+- **Fix in `.github/workflows/release.yml`:**
+  - Added `fail-fast: false` to matrix so OS failures do not cancel parallel builds.
+  - Switched Windows runner to `windows-2022` (stable Visual Studio 2022 environment supported by node-gyp).
+  - Added `npm_config_msvs_version: '2022'` and `GYP_MSVS_VERSION: '2022'` to dependency installation.
+  - Updated `create-github-release` condition to `always() && !cancelled() && startsWith(github.ref, 'refs/tags/')` so releases publish with whatever platform packages succeeded.
+
+## 4. Active Next Step
+- Confirm with user to commit and push the CI workflow fix or re-tag/re-trigger release build.
