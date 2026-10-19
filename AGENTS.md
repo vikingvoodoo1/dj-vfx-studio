@@ -1,10 +1,20 @@
 # Project Policy: Context Efficiency, Codebase Map & Compaction Recovery
 
-## 1. Monolithic File Protection (CRITICAL FOR THIS REPO)
-This repository contains very large source files (`src/effects.js` ~19,500 lines, `src/main.js` ~10,800 lines, `index.html` ~8,200 lines). Reading large chunks of these files will rapidly exhaust the context window and trigger frequent compactions.
-- **NEVER call `view_file` with >120 lines** on `src/effects.js`, `src/main.js`, or `index.html`.
-- **ALWAYS run `grep_search` first** to find the exact function or selector line number before calling `view_file`.
-- **Use Subagents (`invoke_subagent`)** for broad searches, multi-file tracing, or running headless Electron/browser verification loops so tool output stays out of the main chat context.
+## 1. Modular Codebase Map & Anti-Monolithic Standard
+This repository uses modular ES imports bundled by Vite. To prevent files from growing back into monoliths:
+- **Styles (`src/styles/main.css`)**: All CSS lives in [src/styles/main.css](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/styles/main.css). Never add `<style>` blocks back into [index.html](file:///Users/jarikuhanen/agy/dj-vfx-studio/index.html).
+- **VFX Shaders & Textures (`src/vfx/`)**:
+  - [src/vfx/shaders.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/vfx/shaders.js): All custom GLSL shader definitions.
+  - [src/vfx/textures-club.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/vfx/textures-club.js): Club/disco PBR maps, star/flare/beam textures, and PMREM environment maps.
+  - [src/vfx/textures-haunted.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/vfx/textures-haunted.js): Haunted Manor (FX 21) & Matrix 2D canvas textures and window animator.
+  - [src/vfx/deck-hud-renderer.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/vfx/deck-hud-renderer.js): 2D Canvas DJ Deck HUD renderer (`renderDJDeckHUD`) and Edison bulb flicker helpers.
+  - [src/effects.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/effects.js): `createVFXScene(container)` scene graph builder and master animation loop.
+- **UI & Services (`src/ui/`, `src/services/`)**:
+  - [src/services/media-db.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/services/media-db.js): `MediaDB` IndexedDB storage manager.
+  - [src/ui/particle-eq-2d.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/ui/particle-eq-2d.js): 2D Canvas Particle Spectrum EQ renderer.
+  - [src/ui/scene-thumbnails.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/ui/scene-thumbnails.js): Live 24 FPS animated scene card thumbnails (`initSceneCardThumbnails`).
+- **Zero Monolith Growth Rule**: Never add new shaders, texture generators, modals, or standalone UI controllers inline inside `src/effects.js` or `src/main.js`. Place new shaders/textures/scenes in `src/vfx/` and new UI/service modules in `src/ui/` or `src/services/`.
+- **Tight File Reads**: Never call `view_file` with >120 lines on `src/effects.js` or `src/main.js`. Always run `grep_search` first to locate exact line numbers.
 
 ## 2. Anchor State Tracking (`ACTIVE_TASK.md`)
 For any non-trivial feature or bugfix, maintain [ACTIVE_TASK.md](file:///Users/jarikuhanen/agy/dj-vfx-studio/ACTIVE_TASK.md) in the project root with:

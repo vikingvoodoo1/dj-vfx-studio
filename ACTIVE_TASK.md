@@ -1,33 +1,27 @@
 # Active Task State (Anchor File)
 
+> **Note to Agent:** Update this file as you complete steps or switch tasks. After any context compaction, read this file and run `git diff --stat` first before acting.
+
 ## 1. Current Active Goal
-- **User Prompt**: "why is there a console button in the left panel at the bottom that has a pumpkin inside it? if I press it nothing happens. If we dont need it remove it. Also for the pumpkin disco scene - I have decided my pumpkin looks too squashed - can you make it less squashed and more the size and shape of a real pumpkin in profile"
-- **Tasks**:
-  1. Remove unused `#btn-theme-halloween` button from bottom of left activity bar in `index.html` and clean up handlers in `src/main.js`. (DONE)
-  2. Redesign `createPumpkinDiscoGeometry` and stem/chain anchoring in `src/effects.js` to eliminate the squashed aspect ratio and achieve a natural, authentic round pumpkin profile. (DONE)
-- **Status**: **COMPLETED & VERIFIED**
+- **Task:** Rescan `dj-vfx-studio` at tag `v2.1.0` (`5076f00`), execute **Tier 1** (`index.html` CSS extraction + `src/effects.js` top-level shaders/textures/HUD extraction) and **Tier 2** (`src/main.js` standalone utilities extraction: `media-db.js`, `scene-thumbnails.js`, `particle-eq-2d.js`), verify with `npm run build` (`vite build`), and establish anti-monolithic architecture rules/skills across all projects.
 
-## 2. Root Causes Identified & Resolved
-1. **`nightclubPass` Vignette Multiplier (`smoothstep(1.35, 0.42, dist)`)**:
-   - Every single frame was being multiplied by a fixed radial vignette centered at (0.5, 0.5), darkening the edges and crushing dark gradients into stepped, concentric quantized rings.
-   - **Fix**: Added uniform `uVignette: { value: 1.0 }`. Set `uVignette = 0.0` for Scene 22 (`direct` and `ultra` modes), eliminating the vignette distortion entirely.
-2. **`bloomPass` UnrealBloom Mip Blur Composite**:
-   - Bloom downsampled the 1080p frame into low-resolution mip buffers and blurred them back across the screen, softening crisp neon lines and injecting 8-bit mip dithering artifacts.
-   - **Fix**: Disabled `bloomPass` during Scene 22 in `ultra` and `direct` modes (`targetBloom = 0.0`).
-3. **Double Gamma / sRGB Transfer & ACES Filmic Distortion**:
-   - Marking `videoTexA.colorSpace = THREE.SRGBColorSpace` while rendering through `EffectComposer` with ACES filmic tone mapping caused dark gradients to be severely clipped and band.
-   - **Fix**: Video textures set to `THREE.NoColorSpace`. Added `uLinearOutput: { value: 0.0 }` to `cinemaScreenShaderMat`. Direct WebGL rendering (`renderer.render(scene, camera)`) bypasses composer passes and tone mapping entirely.
-4. **Direct Hardware Surface Mode (`direct`)**:
-   - Added native `<video id="vfx-direct-video-overlay">` inside `#canvas-container` running directly on macOS VideoToolbox/Metal hardware decoding (`z-index: 0`, `object-fit: contain`).
-   - WebGL canvas rendered with clear color alpha 0.0 (`z-index: 1; pointer-events: none;`), enabling floating 3D DJ branding over a native hardware video layer matching VLC bit-for-bit.
-5. **Clarity Engines Functional Separation**:
-   - `⚡ Direct Hardware Overlay`: 100% native video playback via HTML5/VideoToolbox/Metal; 0 post-processing.
-   - `💎 Ultra-HD (VLC Match)`: Direct WebGL pipeline (0 bloom, 0 vignette, direct native DPR, raw sRGB pass-through) supporting 3D transitions.
-   - `🔮 Nightclub FX`: Creative nightclub post-fx with bloom, vignette, and filmic tonemapping.
-6. **Startup Scene URL Bug Fixed**:
-   - Fixed missing `const urlParams = new URLSearchParams(window.location.search);` in `src/main.js` so `?fx=22` or `?scene=23` correctly loads Scene 23 on startup.
+## 2. Completed Changes (Tier 1 & Tier 2 Modularization)
+- **Baseline:** Git commit `5076f00` (`HEAD -> main, tag: v2.1.0, origin/main`).
+- **Tier 1 Extractions:**
+  - `index.html`: **8,255 -> 3,380 lines** (-4,875 lines / -59.1%). Extracted `<style>...</style>` (formerly lines 26–4901) into `src/styles/main.css` (4,874 lines) and linked via `<link rel="stylesheet" href="/src/styles/main.css">` while preserving the synchronous Zero-FOUC `<script>` in `<head>`.
+  - `src/effects.js`: **19,847 -> 10,922 lines** (-8,925 lines / -45.0%). Extracted all 81 top-level shaders, procedural textures, environment maps, and 2D HUD helpers above `createVFXScene(container)` into 4 ES modules:
+    - `src/vfx/shaders.js`: **3,605 lines** (31 exported GLSL shader objects including `WitchBroomThrustShader`).
+    - `src/vfx/textures-club.js`: **606 lines** (12 exported club/disco/pumpkin/beam/floor texture & PMREM environment map generators).
+    - `src/vfx/textures-haunted.js`: **3,653 lines** (32 exported Haunted Manor & Matrix 2D canvas texture generators + `renderHauntedManorWindows`).
+    - `src/vfx/deck-hud-renderer.js`: **1,157 lines** (6 exported DJ Deck HUD functions + internal `animDeck1BarY`/`animDeck2BarY` state).
+- **Tier 2 Extractions (`src/main.js`):**
+  - `src/main.js`: **10,951 -> 10,295 lines** (-656 lines / -6.0%). Extracted standalone utilities into 3 ES modules:
+    - `src/ui/particle-eq-2d.js`: **101 lines** (`renderParticleSpectrumEQ` + dedicated peak/particle state arrays).
+    - `src/services/media-db.js`: **65 lines** (`MediaDB` IndexedDB storage manager).
+    - `src/ui/scene-thumbnails.js`: **492 lines** (`initSceneCardThumbnails` 2D canvas animated preview loop).
+- **Verification:**
+  - `npm run build` (`vite build`): **PASSED** in 936ms (`26 modules transformed`, `dist/index.html`, `dist/assets/index-*.css`, `dist/assets/index-*.js`).
+  - Static VM & symbol export/import verification across all 9 JS modules: **PASSED** with zero syntax or reference errors.
 
-## 3. Verification
-- Side-by-side comparison verified against VLC playback (`scratch/before_after_quality_comparison.png`).
-- Live Chrome tab verified running `?fx=22` with smooth gradients and razor-sharp lines.
-- Headless Electron verification script (`scratch/verify_quality_modes.cjs`) verified switching between all 3 clarity engines without errors.
+## 3. Active Next Step
+- Establish anti-monolithic architecture rules/skills across all projects and confirm whether to commit Tier 1 & Tier 2 changes or proceed to Tier 3.
