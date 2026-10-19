@@ -16,6 +16,7 @@ export function setupStageLinqClient({
     onDeckWaveform,
     onDeckTelemetry,
     onCrossfader,
+    onDeckUnloaded,
     onSync 
 }) {
     const WS_URL = 'ws://localhost:8080';
@@ -58,6 +59,9 @@ export function setupStageLinqClient({
                             break;
                         case 'deck_loaded':
                             if (onDeckLoaded) onDeckLoaded(data);
+                            break;
+                        case 'deck_unloaded':
+                            if (onDeckUnloaded) onDeckUnloaded(data);
                             break;
                         case 'deck_waveform':
                             if (onDeckWaveform) onDeckWaveform(data);

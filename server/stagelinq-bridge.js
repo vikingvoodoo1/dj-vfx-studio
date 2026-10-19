@@ -57,12 +57,33 @@ function relayToOthers(senderWs, messageObj) {
 const lastDeckWaveforms = new Map();
 
 // Unified Handlers for Hardware Telemetry
+function handleDeckUnloaded(deckNum) {
+    const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
+    currentDeck.artist = '';
+    currentDeck.title = '';
+    currentDeck.play = false;
+    currentDeck.isHardware = true;
+    deckStatuses.set(deckNum, currentDeck);
+    lastDeckWaveforms.delete(deckNum);
+    console.log(`[Universal Bridge] ⏹️ Deck ${deckNum} Unloaded / Disarmed`);
+    broadcast({
+        type: 'deck_unloaded',
+        deck: deckNum,
+        unloaded: true,
+        isHardware: true
+    });
+}
+
 function handleIncomingTrack(trackData) {
+    const deckNum = trackData.deck || 1;
+    if (trackData.unloaded || !trackData.title || trackData.title === 'No Track Loaded' || trackData.title === '—') {
+        handleDeckUnloaded(deckNum);
+        return;
+    }
     lastTrackData = trackData;
     if (trackData.bpm && trackData.bpm > 40 && trackData.bpm < 300) {
         lastBpm = trackData.bpm;
     }
-    const deckNum = trackData.deck || 1;
     const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
     currentDeck.artist = trackData.artist || currentDeck.artist;
     currentDeck.title = trackData.title || currentDeck.title;
@@ -842,6 +863,13 @@ async function startStageLinq() {
             const deckKey = String(deckNum);
             const artist = status.artist || '';
             const title = status.title || '';
+
+            if (!title || title === 'No Track Loaded' || title === '—') {
+                lastDeckLoadedTracks.delete(deckKey);
+                handleDeckUnloaded(deckNum);
+                return;
+            }
+
             const trackSignature = `${artist} - ${title}`;
 
             const prevSignature = lastDeckLoadedTracks.get(deckKey);
@@ -904,7 +932,11 @@ async function startStageLinq() {
             }
 
             // In StageLinQ, SongName and ArtistName often stream as individual state changes after songLoaded
-            if (status.title || status.artist) {
+            if (status.songLoaded === false) {
+                const deckKey = String(deckNum);
+                lastDeckLoadedTracks.delete(deckKey);
+                handleDeckUnloaded(deckNum);
+            } else if (status.title || status.artist) {
                 const deckKey = String(deckNum);
                 const trackSignature = `${status.artist || ''} - ${status.title || ''}`;
                 if (trackSignature !== ' - ' && trackSignature !== lastDeckLoadedTracks.get(deckKey)) {
@@ -937,6 +969,18 @@ async function startStageLinq() {
             const name = data.message.name;
             const json = data.message.json;
             if (!name || !json) return;
+
+            // Deck Track Loaded status: /Engine/Deck1/SongLoaded or /Engine/Deck2/SongLoaded
+            const songLoadedMatch = name.match(/Engine\/Deck(\d+)\/SongLoaded/i);
+            if (songLoadedMatch) {
+                const d = parseInt(songLoadedMatch[1], 10);
+                const isLoaded = Boolean(json.state ?? json.value);
+                if (!isLoaded) {
+                    const deckKey = String(d);
+                    lastDeckLoadedTracks.delete(deckKey);
+                    handleDeckUnloaded(d);
+                }
+            }
 
             // Mixer channel faders: /Mixer/CH1faderPosition, /Mixer/CH2faderPosition, etc.
             const chMatch = name.match(/Mixer\/CH(\d+)faderPosition/i);

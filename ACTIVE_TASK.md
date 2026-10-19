@@ -55,3 +55,31 @@
 
 ## 5. Status
 - All changes checked into GitHub and tagged `v2.2.0` / `v2.2` stable. Release workflow triggered.
+
+## 6. ARMED - READY Standby State, Burning Record on Fire & Track Unload Handling
+- **User Request:**
+  - When no track is loaded on a deck, display track info as `ARMED - READY` at the top (with artist subtitle indicating deck standby).
+  - Replace album art with a procedural burning vinyl record on fire!
+  - Overview tracklist waveform (upper rail) must not show synthetic waveforms; show a clean standby rail until a track is loaded and mapped out.
+  - When unloading a track, cleanly remove track info and waveform until the next track is loaded.
+- **Implemented Changes:**
+  - `src/vfx/deck-hud-renderer.js`:
+    - Added `drawBurningRecord(ctx, artX, artY, artSize, defaultColor)` and `drawFlameRing` procedural 60 FPS animation with charcoal sleeve, anisotropic grooved vinyl disc, solar/lava core spindle label, convection-driven licking fire tongues, and rising micro-embers.
+    - Updated `drawArtwork` to render the burning record whenever a deck has no loaded track or album art.
+    - Updated `drawMiniWaveform` to check `hasRealSamples`. When not loaded/mapped, returns immediately with a sleek dashed standby guide and `[ DECK X ARMED — WAITING FOR TRACK ON ENGINE OS ]` readout without synthetic wave bars.
+    - Updated header metadata to show `ARMED - READY`, `DECK X STANDBY • LOAD TRACK ON ENGINE OS`, `--.- BPM`, and `STANDBY` key/role pills when unloaded.
+    - Suppressed hot cue flags and loops on overview rails when unloaded, and parked position needle at `padX + 8` with `D1 (ARMED)` / `D2 (ARMED)`.
+  - `src/effects.js`:
+    - Replaced initial mock Deck 2 data with empty unloaded state (`title: ''`, `artist: ''`, `bpm: null`, `samples: null`).
+    - Added `unloadDeck(deckNum)` method in `createVFXScene` return object.
+    - Handled track unloads in `setDeckData` and `setDeckWaveform`.
+  - `server/stagelinq-bridge.js`:
+    - Added `handleDeckUnloaded(deckNum)` broadcasting `{ type: 'deck_unloaded', deck: deckNum }`.
+    - Handled unloads on `/Engine/DeckX/SongLoaded` state changes, empty titles in `trackLoaded`, and `stateChanged`.
+  - `src/stagelinq.js` & `src/main.js`:
+    - Added `onDeckUnloaded` event plumbing and hooked to `vfx.unloadDeck(deckNum)`.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.10s.
+  - Node syntax check on `server/stagelinq-bridge.js`: PASSED.
+  - Node VM execution test on `renderDJDeckHUD`: PASSED across all deck configurations.
+  - Chrome tab reloaded with new bundle.

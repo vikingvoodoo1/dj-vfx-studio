@@ -9372,6 +9372,28 @@ async function init() {
                 selectFX(nextFX);
             }
         },
+        onDeckUnloaded: (data) => {
+            if (!data) return;
+            const dNum = Number(data.deck) || 1;
+            console.log(`[Universal Bridge] ⏹️ Deck ${dNum} unloaded — resetting to ARMED-READY`);
+            cachedDeckWaveforms.delete(dNum);
+            if (vfx.unloadDeck) {
+                vfx.unloadDeck(dNum);
+            }
+            if (vfx.setDeckData) {
+                vfx.setDeckData({ deck: dNum, unloaded: true });
+            }
+            const cardIdx = dNum - 1;
+            if (deckCards && deckCards[cardIdx]) {
+                const dc = deckCards[cardIdx];
+                if (dc.card) {
+                    dc.card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                    dc.card.style.background = 'rgba(255, 255, 255, 0.03)';
+                }
+                if (dc.bpm) dc.bpm.textContent = '--.-';
+                if (dc.state) dc.state.textContent = 'ARMED';
+            }
+        },
         onDeckWaveform: (waveformPacket) => {
             if (!waveformPacket) return;
             console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);

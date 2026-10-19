@@ -170,6 +170,183 @@ export function getPiratesCandleFlicker(timeSec, seedOffset = 0) {
     return Math.max(0.12, Math.min(1.65, raw));
 }
 
+// -------------------------------------------------------------------------
+// PROCEDURAL BURNING VINYL RECORD ON FIRE (ARMED - READY STANDBY ARTWORK)
+// -------------------------------------------------------------------------
+export function drawFlameRing(ctx, cx, cy, r, animTime, scale = 1.0, isBack = false) {
+    const numTongues = 16;
+    ctx.shadowColor = 'rgba(255, 80, 0, 0.75)';
+    ctx.shadowBlur = 8;
+
+    for (let i = 0; i < numTongues; i++) {
+        const angle = (i / numTongues) * Math.PI * 2;
+        const isUpper = Math.sin(angle) < 0.2;
+        if (isBack && !isUpper) continue;
+        if (!isBack && isUpper && Math.abs(Math.cos(angle)) < 0.5) continue;
+
+        // Upward buoyancy factor (convection points flames upward toward -Y)
+        const upwardBias = Math.max(0.2, (0.5 - Math.sin(angle) * 0.7));
+        const flick1 = Math.sin(animTime * 12.0 + i * 2.3) * 3.5;
+        const flick2 = Math.cos(animTime * 9.0 + i * 1.7) * 2.2;
+        const flameHeight = (10 + flick1 + flick2) * upwardBias * scale;
+
+        const baseX = cx + Math.cos(angle) * r;
+        const baseY = cy + Math.sin(angle) * r;
+
+        // Tip of flame stretches upward with lateral thermal curl
+        const tipX = baseX + Math.cos(angle) * (flameHeight * 0.4) + Math.sin(animTime * 7.0 + i) * 2.5;
+        const tipY = baseY - flameHeight;
+
+        // Outer Orange/Crimson flame envelope
+        ctx.beginPath();
+        ctx.moveTo(baseX - 3.5, baseY);
+        ctx.quadraticCurveTo(baseX - 4, baseY - flameHeight * 0.5, tipX, tipY);
+        ctx.quadraticCurveTo(baseX + 4, baseY - flameHeight * 0.5, baseX + 3.5, baseY);
+        ctx.closePath();
+        ctx.fillStyle = isBack ? 'rgba(255, 60, 0, 0.65)' : 'rgba(255, 110, 0, 0.85)';
+        ctx.fill();
+
+        // Inner Yellow/White thermal core
+        if (flameHeight > 7) {
+            ctx.beginPath();
+            ctx.moveTo(baseX - 1.8, baseY);
+            ctx.quadraticCurveTo(baseX - 1.5, baseY - flameHeight * 0.4, tipX, tipY + 2.5);
+            ctx.quadraticCurveTo(baseX + 1.5, baseY - flameHeight * 0.4, baseX + 1.8, baseY);
+            ctx.closePath();
+            ctx.fillStyle = isBack ? 'rgba(255, 190, 50, 0.75)' : 'rgba(255, 245, 150, 0.95)';
+            ctx.fill();
+        }
+    }
+}
+
+export function drawBurningRecord(ctx, artX, artY, artSize, defaultColor = '#ff6600') {
+    const cx = artX + artSize / 2;
+    const cy = artY + artSize / 2;
+    const r = artSize * 0.44;
+    const animTime = performance.now() * 0.001;
+    const rot = animTime * 0.8;
+
+    // 1. Charcoal & Soot Burnt Sleeve Bed
+    const bgGrad = ctx.createRadialGradient(cx, cy, 2, cx, cy, artSize * 0.72);
+    bgGrad.addColorStop(0, '#1c100a');
+    bgGrad.addColorStop(0.65, '#0d0705');
+    bgGrad.addColorStop(1, '#050302');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(artX, artY, artSize, artSize);
+
+    // 2. Base Fiery Aura / Convection Heat Haze
+    ctx.save();
+    const auraGrad = ctx.createRadialGradient(cx, cy, r * 0.3, cx, cy - 6, r * 1.35);
+    auraGrad.addColorStop(0, 'rgba(255, 90, 0, 0.45)');
+    auraGrad.addColorStop(0.5, 'rgba(255, 50, 0, 0.22)');
+    auraGrad.addColorStop(1, 'rgba(180, 20, 0, 0.0)');
+    ctx.fillStyle = auraGrad;
+    ctx.fillRect(artX, artY, artSize, artSize);
+    ctx.restore();
+
+    // 3. Flame Tongues (Behind the Vinyl - Leaping upwards from back rim)
+    ctx.save();
+    drawFlameRing(ctx, cx, cy, r, animTime, 0.95, true);
+    ctx.restore();
+
+    // 4. Burnt Grooved Vinyl Record
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(rot);
+
+    // Main charred disc body
+    ctx.beginPath();
+    ctx.arc(0, 0, r, 0, Math.PI * 2);
+    const discGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, r);
+    discGrad.addColorStop(0, '#1c1410');
+    discGrad.addColorStop(0.4, '#120d0a');
+    discGrad.addColorStop(0.85, '#0a0705');
+    discGrad.addColorStop(1, '#1a0802');
+    ctx.fillStyle = discGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#3d1c08';
+    ctx.lineWidth = 1.0;
+    ctx.stroke();
+
+    // Concentric Micro-Grooves with Dynamic Light Sheen
+    const grooveRadii = [r * 0.90, r * 0.82, r * 0.74, r * 0.66, r * 0.58, r * 0.50, r * 0.42];
+    ctx.lineWidth = 0.65;
+    for (let i = 0; i < grooveRadii.length; i++) {
+        const gr = grooveRadii[i];
+        ctx.beginPath();
+        ctx.arc(0, 0, gr, 0, Math.PI * 2);
+        ctx.strokeStyle = (i % 2 === 0) ? 'rgba(255, 170, 70, 0.16)' : 'rgba(255, 120, 40, 0.09)';
+        ctx.stroke();
+    }
+
+    // Anisotropic Vinyl Light Refraction Wedges
+    const wedgeGrad = ctx.createLinearGradient(-r, -r, r, r);
+    wedgeGrad.addColorStop(0, 'rgba(255, 180, 80, 0.12)');
+    wedgeGrad.addColorStop(0.5, 'transparent');
+    wedgeGrad.addColorStop(1, 'rgba(255, 180, 80, 0.12)');
+    ctx.fillStyle = wedgeGrad;
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, -0.4, 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    ctx.arc(0, 0, r, Math.PI - 0.4, Math.PI + 0.4);
+    ctx.closePath();
+    ctx.fill();
+
+    // 5. Molten Solar/Lava Spindle Label
+    const labelR = r * 0.35;
+    ctx.beginPath();
+    ctx.arc(0, 0, labelR, 0, Math.PI * 2);
+    const labelGrad = ctx.createRadialGradient(0, 0, 1, 0, 0, labelR);
+    labelGrad.addColorStop(0, '#fff4b8');
+    labelGrad.addColorStop(0.35, '#ff9900');
+    labelGrad.addColorStop(0.8, '#d83600');
+    labelGrad.addColorStop(1, '#661400');
+    ctx.fillStyle = labelGrad;
+    ctx.fill();
+    ctx.strokeStyle = '#ffa200';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    // Spindle Hole
+    ctx.beginPath();
+    ctx.arc(0, 0, r * 0.09, 0, Math.PI * 2);
+    ctx.fillStyle = '#060302';
+    ctx.fill();
+    ctx.strokeStyle = '#ffe082';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+
+    ctx.restore(); // Restore disc rotation
+
+    // 6. Foreground Fiery Tongues (Licking over the front rim & sides)
+    ctx.save();
+    drawFlameRing(ctx, cx, cy, r, animTime, 1.0, false);
+    ctx.restore();
+
+    // 7. Rising Micro-Embers & Sparks
+    ctx.save();
+    for (let k = 0; k < 9; k++) {
+        const seed = k * 1.371;
+        const emberCycle = (animTime * 0.65 + k * 0.113) % 1.0;
+        const emberY = (cy + r * 0.3) - emberCycle * (artSize * 0.82);
+        const emberX = cx + Math.sin(animTime * 4.0 + seed) * (r * 0.72) + (Math.cos(seed * 3.1) * (r * 0.3));
+        const emberAlpha = Math.sin(emberCycle * Math.PI);
+        const emberR = 0.8 + (k % 3) * 0.45;
+
+        ctx.fillStyle = (k % 2 === 0) 
+            ? `rgba(255, 230, 120, ${emberAlpha.toFixed(2)})` 
+            : `rgba(255, 120, 30, ${emberAlpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(emberX, emberY, emberR, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+}
+
 // Dynamic Overview Track Bar Animation State (realigns active on-air deck to top track bar)
 let animDeck1BarY = 126.0;
 let animDeck2BarY = 182.0;
@@ -390,76 +567,59 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     }
 
     function drawMiniWaveform(x, topY, w, h, deckObj, profileType, colorScheme) {
+        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded);
+        const hasRealSamples = Boolean(hasTrack && Array.isArray(deckObj.samples) && deckObj.samples.length >= 6);
+
+        if (!hasRealSamples) {
+            // Track is not loaded or has not been mapped out yet: render sleek standby guide rail without synthetic wave bars
+            const deckLabel = (profileType === 2) ? 'DECK 2' : 'DECK 1';
+            const midRailY = topY + h * 0.52;
+
+            ctx.save();
+            // Subtle brushed track groove slot
+            ctx.fillStyle = 'rgba(10, 6, 4, 0.35)';
+            ctx.beginPath();
+            ctx.roundRect(x + 2, topY + 4, w - 4, h - 8, 4);
+            ctx.fill();
+
+            // Dashed standby alignment guide
+            ctx.strokeStyle = (profileType === 2) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(255, 170, 0, 0.22)';
+            ctx.lineWidth = 1.0;
+            ctx.setLineDash([6, 8]);
+            ctx.beginPath();
+            ctx.moveTo(x + 14, midRailY);
+            ctx.lineTo(x + w - 14, midRailY);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Standby indicator readout
+            ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillStyle = (profileType === 2) ? 'rgba(255, 120, 80, 0.38)' : 'rgba(255, 190, 80, 0.38)';
+            ctx.fillText(`[ ${deckLabel} ARMED — WAITING FOR TRACK ON ENGINE OS ]`, x + w / 2, midRailY - 6);
+            ctx.restore();
+            return;
+        }
+
         const numBars = Math.floor(w / 2.5);
         const barW = w / numBars;
         const waveBaseY = topY + h - 5;
         const maxBarH = h - 10;
-        const hasRealSamples = deckObj && Array.isArray(deckObj.samples) && deckObj.samples.length >= 6;
-        const totalTriplets = hasRealSamples ? Math.floor(deckObj.samples.length / 3) : 0;
+        const totalTriplets = Math.floor(deckObj.samples.length / 3);
 
         for (let i = 0; i < numBars; i++) {
             const u = i / numBars;
             const bx = x + i * barW;
 
-            let profile = 0.55;
-            let subRatio = 0.35;
-            let midRatio = 0.65;
+            const sIdx = Math.floor(u * totalTriplets) * 3;
+            const r = (deckObj.samples[sIdx] || 0) / 255.0;     // Bass
+            const g = (deckObj.samples[sIdx + 1] || 0) / 255.0; // Mid
+            const b = (deckObj.samples[sIdx + 2] || 0) / 255.0; // High
+            const profile = Math.max(0.06, Math.min(1.0, r * 0.52 + g * 0.34 + b * 0.14));
+            const sum = r + g + b + 0.03;
+            const subRatio = Math.max(0.12, Math.min(0.85, (r + 0.01) / sum));
+            const midRatio = Math.max(subRatio + 0.10, Math.min(0.95, (r + g + 0.01) / sum));
 
-            if (hasRealSamples) {
-                const sIdx = Math.floor(u * totalTriplets) * 3;
-                const r = (deckObj.samples[sIdx] || 0) / 255.0;     // Bass
-                const g = (deckObj.samples[sIdx + 1] || 0) / 255.0; // Mid
-                const b = (deckObj.samples[sIdx + 2] || 0) / 255.0; // High
-                profile = Math.max(0.06, Math.min(1.0, r * 0.52 + g * 0.34 + b * 0.14));
-                const sum = r + g + b + 0.03;
-                subRatio = Math.max(0.12, Math.min(0.85, (r + 0.01) / sum));
-                midRatio = Math.max(subRatio + 0.10, Math.min(0.95, (r + g + 0.01) / sum));
-            } else if (profileType === 1) {
-                // Deck 1 Profile
-                if (u < 0.15) {
-                    profile = 0.40 + Math.sin(u * 80.0) * 0.08 + Math.cos(u * 140.0) * 0.05;
-                    subRatio = 0.25; midRatio = 0.55;
-                } else if (u < 0.35) {
-                    profile = 0.52 + Math.sin(u * 95.0) * 0.10 + Math.sin(u * 210.0) * 0.06;
-                    subRatio = 0.32; midRatio = 0.68;
-                } else if (u < 0.50) {
-                    profile = 0.88 + Math.sin(u * 120.0) * 0.10 + Math.cos(u * 300.0) * 0.04;
-                    subRatio = 0.36; midRatio = 0.72;
-                } else if (u < 0.62) {
-                    profile = 0.28 + Math.sin(u * 60.0) * 0.06;
-                    subRatio = 0.04; midRatio = 0.60;
-                } else if (u < 0.86) {
-                    profile = 0.96 + Math.sin(u * 150.0) * 0.04 + Math.cos(u * 280.0) * 0.04;
-                    subRatio = 0.38; midRatio = 0.74;
-                } else {
-                    const outFade = (1.0 - u) / 0.14;
-                    profile = (0.45 + Math.sin(u * 70.0) * 0.08) * outFade;
-                    subRatio = 0.25; midRatio = 0.55;
-                }
-            } else {
-                // Deck 2 Profile (Distinct alternative arrangement)
-                if (u < 0.12) {
-                    profile = 0.42 + Math.sin(u * 90.0) * 0.09;
-                    subRatio = 0.30; midRatio = 0.60;
-                } else if (u < 0.32) {
-                    profile = 0.65 + Math.sin(u * 110.0) * 0.12 + Math.cos(u * 220.0) * 0.05;
-                    subRatio = 0.40; midRatio = 0.70;
-                } else if (u < 0.45) {
-                    profile = 0.92 + Math.sin(u * 140.0) * 0.08;
-                    subRatio = 0.42; midRatio = 0.75;
-                } else if (u < 0.58) {
-                    profile = 0.32 + Math.sin(u * 50.0) * 0.08;
-                    subRatio = 0.08; midRatio = 0.55;
-                } else if (u < 0.88) {
-                    profile = 0.98 + Math.sin(u * 160.0) * 0.05 + Math.cos(u * 310.0) * 0.04;
-                    subRatio = 0.44; midRatio = 0.76;
-                } else {
-                    profile = (0.50 + Math.sin(u * 80.0) * 0.08) * ((1.0 - u) / 0.12);
-                    subRatio = 0.25; midRatio = 0.55;
-                }
-            }
-
-            profile = Math.max(0.06, Math.min(1.0, profile));
             const totalH = profile * maxBarH;
             const bH = totalH * subRatio;
             const mH = totalH * midRatio;
@@ -490,34 +650,35 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.fillRect(x, topY, w, h);
     }
 
-    // Determine dynamic on-air deck status
-    const isD2OnAir = (primaryDeck === 2 && d1Weight <= 0.05);
-    const isD1OnAir = (primaryDeck === 1 && d2Weight <= 0.05);
-    const isDualBlend = (d1Weight > 0.05 && d2Weight > 0.05);
-    const hasD2 = Boolean((d2Weight > 0.01 || (d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—')));
+    // Determine dynamic on-air deck status and track loaded validity
+    const hasD1Track = !!(d1 && d1.title && d1.title.trim() !== '' && d1.title !== 'No Track Loaded' && d1.title !== '—' && !d1.unloaded);
+    const hasD2Track = !!(d2 && d2.title && d2.title.trim() !== '' && d2.title !== 'No Track Loaded' && d2.title !== '—' && !d2.unloaded);
+    const hasD2 = Boolean(d2 !== undefined && d2 !== null);
 
-    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(1) : Number(bpm).toFixed(1);
-    const d1Title = (d1 && d1.title) ? d1.title.toUpperCase() : 'FIGURE IT OUT (EXTENDED MIX)';
-    const d1Artist = (d1 && d1.artist) ? d1.artist.toUpperCase() : 'LP GIOBBI, HOUSE GOSPEL CHOIR';
-    const d1Key = (d1 && d1.key) ? d1.key : '9A';
+    const isD2OnAir = hasD2Track && (primaryDeck === 2 || !hasD1Track);
+    const isD1OnAir = hasD1Track && (primaryDeck === 1 || !hasD2Track);
+    const isDualBlend = hasD1Track && hasD2Track && (d1Weight > 0.05 && d2Weight > 0.05);
+
+    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(1) : (hasD1Track ? Number(bpm).toFixed(1) : '--.-');
+    const d1Title = hasD1Track ? d1.title.toUpperCase() : 'ARMED - READY';
+    const d1Artist = hasD1Track ? (d1.artist || 'LIVE').toUpperCase() : 'DECK 1 STANDBY • LOAD TRACK ON ENGINE OS';
+    const d1Key = hasD1Track ? (d1.key || '9A') : 'STANDBY';
     const totalSec1 = (d1 && d1.duration) ? d1.duration : 364;
     const el1 = prog1 * totalSec1;
     const rem1 = Math.max(0, totalSec1 - el1);
 
-    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(1) : Number(bpm).toFixed(1);
-    const d2Title = (d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—') ? d2.title.toUpperCase() : 'TRACK 2 (HOT MIX)';
-    const d2Artist = (d2 && d2.artist) ? d2.artist.toUpperCase() : 'DENON PRIME LIVE';
-    const d2Key = (d2 && d2.key) ? d2.key : '8A';
+    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(1) : (hasD2Track ? Number(bpm).toFixed(1) : '--.-');
+    const d2Title = hasD2Track ? d2.title.toUpperCase() : 'ARMED - READY';
+    const d2Artist = hasD2Track ? (d2.artist || 'LIVE').toUpperCase() : 'DECK 2 STANDBY • LOAD TRACK ON ENGINE OS';
+    const d2Key = hasD2Track ? (d2.key || '8A') : 'STANDBY';
     const totalSec2 = (d2 && d2.duration) ? d2.duration : 360;
     const el2 = prog2 * totalSec2;
     const rem2 = Math.max(0, totalSec2 - el2);
 
-    const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * Number(d1Bpm));
-    const totalBeats2 = (d2 && d2.totalBeats) || ((totalSec2 / 60.0) * Number(d2Bpm));
+    const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * (Number(d1Bpm) || 126.0));
+    const totalBeats2 = (d2 && d2.totalBeats) || ((totalSec2 / 60.0) * (Number(d2Bpm) || 126.0));
 
     // Active deck selection for moving waveform beat grid, loops, and cues
-    const hasD1Track = !!(d1 && d1.title && d1.title !== 'No Track Loaded' && d1.title !== '—');
-    const hasD2Track = !!(d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—');
     const pDeck = (primaryDeck === 2 && hasD2Track)
         ? 2
         : ((primaryDeck === 1 && hasD1Track)
@@ -527,23 +688,12 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     const activeProg = (pDeck === 2) ? prog2 : prog1;
     const activeTotalBeats = (pDeck === 2) ? totalBeats2 : totalBeats1;
     const activeLoops = (pDeck === 2)
-        ? ((d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [
-            { name: 'Loop 1', num: 1, startProgress: 0.125, endProgress: 0.150, beats: 8, color: '#ff4d2e' }
-        ])
-        : ((d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
-            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
-            { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
-        ]);
+        ? ((hasD2Track && d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [])
+        : ((hasD1Track && d1 && d1.loops && d1.loops.length > 0) ? d1.loops : []);
 
     const activeCues = (pDeck === 2)
-        ? ((d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [
-            { name: 'Cue 1', num: 1, progress: 0.125, color: '#ff4d2e' },
-            { name: 'Cue 2', num: 2, progress: 0.500, color: '#ffaa33' }
-        ])
-        : ((d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
-            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
-            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
-        ]);
+        ? ((hasD2Track && d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [])
+        : ((hasD1Track && d1 && d1.cues && d1.cues.length > 0) ? d1.cues : []);
 
     // =========================================================================
     // 1. DUAL / SINGLE DECK HEADER & TRACK METADATA
@@ -559,53 +709,40 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     ctx.fill();
 
     function drawArtwork(artX, artY, artSize, deckObj, defaultVinylColor = '#ff7700') {
+        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded);
+
         ctx.save();
         ctx.beginPath();
         ctx.roundRect(artX, artY, artSize, artSize, 8);
         ctx.clip();
-        if (deckObj && deckObj.artworkImg && deckObj.artworkImg.complete && deckObj.artworkImg.naturalWidth > 0) {
+
+        if (hasTrack && deckObj.artworkImg && deckObj.artworkImg.complete && deckObj.artworkImg.naturalWidth > 0) {
             ctx.drawImage(deckObj.artworkImg, artX, artY, artSize, artSize);
+        } else if (hasTrack && deckObj.artworkUrl && !deckObj.artworkImg) {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => { deckObj.artworkImg = img; };
+            img.src = deckObj.artworkUrl;
+            drawBurningRecord(ctx, artX, artY, artSize, defaultVinylColor);
         } else {
-            if (deckObj && deckObj.artworkUrl && !deckObj.artworkImg) {
-                const img = new Image();
-                img.crossOrigin = 'anonymous';
-                img.onload = () => { deckObj.artworkImg = img; };
-                img.src = deckObj.artworkUrl;
-            } else if (deckObj && !deckObj._artRequested && deckObj.title) {
+            // Deck has NO track loaded yet (or track was unloaded):
+            // Replace album art with the requested procedural burning record on fire!
+            if (hasTrack && !deckObj._artRequested && deckObj.title) {
                 deckObj._artRequested = true;
                 loadDeckArtwork(deckObj.title, deckObj.artist, deckObj);
             }
-            // Procedural Denon Vinyl Sleeve & Grooved Disc
-            ctx.fillStyle = '#0f131a';
-            ctx.fillRect(artX, artY, artSize, artSize);
-            ctx.beginPath();
-            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.44, 0, Math.PI * 2);
-            ctx.fillStyle = '#06080c';
-            ctx.fill();
-            ctx.strokeStyle = defaultVinylColor;
-            ctx.lineWidth = 1.8;
-            ctx.stroke();
-            // Vinyl grooves
-            ctx.beginPath();
-            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.28, 0, Math.PI * 2);
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-            ctx.stroke();
-            // Spindle center
-            ctx.beginPath();
-            ctx.arc(artX + artSize / 2, artY + artSize / 2, artSize * 0.12, 0, Math.PI * 2);
-            ctx.fillStyle = defaultVinylColor;
-            ctx.fill();
+            drawBurningRecord(ctx, artX, artY, artSize, defaultVinylColor);
         }
         ctx.restore();
 
-        // Warm ambient shadow
+        // Warm ambient shadow / fiery perimeter rim
         ctx.save();
-        ctx.shadowColor = 'rgba(255, 160, 40, 0.28)';
-        ctx.shadowBlur = 8;
+        ctx.shadowColor = hasTrack ? 'rgba(255, 160, 40, 0.28)' : 'rgba(255, 80, 0, 0.65)';
+        ctx.shadowBlur = hasTrack ? 8 : 14;
         ctx.beginPath();
         ctx.roundRect(artX, artY, artSize, artSize, 8);
-        ctx.strokeStyle = 'rgba(255, 185, 90, 0.22)';
-        ctx.lineWidth = 1.0;
+        ctx.strokeStyle = hasTrack ? 'rgba(255, 185, 90, 0.22)' : 'rgba(255, 110, 30, 0.65)';
+        ctx.lineWidth = 1.2;
         ctx.stroke();
         ctx.restore();
     }
@@ -651,8 +788,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     ctx.strokeStyle = isD1OnAir ? 'rgba(255, 170, 30, 0.85)' : 'rgba(255, 170, 30, 0.35)';
     ctx.lineWidth = 0.8;
     ctx.stroke();
-    ctx.fillStyle = isD1OnAir ? '#ffe082' : (isD2OnAir ? '#a08560' : '#ffcf77');
-    ctx.fillText(isD1OnAir ? 'D1 ● ON AIR' : (isD2OnAir ? 'D1 STANDBY' : 'DECK 1'), d1RoleX + 40, 104);
+    ctx.fillStyle = hasD1Track ? (isD1OnAir ? '#ffe082' : (isD2OnAir ? '#a08560' : '#ffcf77')) : '#ffaa33';
+    ctx.fillText(hasD1Track ? (isD1OnAir ? 'D1 ● ON AIR' : (isD2OnAir ? 'D1 STANDBY' : 'DECK 1')) : 'D1 STANDBY', d1RoleX + 40, 104);
     ctx.restore();
 
     if (hasD2) {
@@ -672,21 +809,38 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.fillStyle = '#fffaee';
         ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
-        if (isD2OnAir) {
-            ctx.fillText('● DECK 2 ON AIR', width / 2, 72);
-            ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.fillStyle = '#ffad99';
-            ctx.fillText(`MASTER • ${d2Bpm} BPM • ${d2Key}`, width / 2, 84);
-        } else if (isD1OnAir) {
+        if (hasD1Track && hasD2Track) {
+            if (isD2OnAir) {
+                ctx.fillText('● DECK 2 ON AIR', width / 2, 72);
+                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                ctx.fillStyle = '#ffad99';
+                ctx.fillText(`MASTER • ${d2Bpm} BPM • ${d2Key}`, width / 2, 84);
+            } else if (isD1OnAir) {
+                ctx.fillText('● DECK 1 ON AIR', width / 2, 72);
+                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                ctx.fillStyle = '#ffc266';
+                ctx.fillText(`MASTER • ${d1Bpm} BPM • ${d1Key}`, width / 2, 84);
+            } else {
+                ctx.fillText('⮂ DUAL DECK BLEND', width / 2, 72);
+                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                ctx.fillStyle = '#ffc266';
+                ctx.fillText(`BEAT SYNC • ${(Number(d1Bpm) === Number(d2Bpm)) ? 'LOCKED' : `${d1Bpm} / ${d2Bpm}`}`, width / 2, 84);
+            }
+        } else if (hasD1Track && !hasD2Track) {
             ctx.fillText('● DECK 1 ON AIR', width / 2, 72);
             ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             ctx.fillStyle = '#ffc266';
             ctx.fillText(`MASTER • ${d1Bpm} BPM • ${d1Key}`, width / 2, 84);
-        } else {
-            ctx.fillText('⮂ DUAL DECK BLEND', width / 2, 72);
+        } else if (!hasD1Track && hasD2Track) {
+            ctx.fillText('● DECK 2 ON AIR', width / 2, 72);
             ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.fillStyle = '#ffc266';
-            ctx.fillText(`BEAT SYNC • ${(Number(d1Bpm) === Number(d2Bpm)) ? 'LOCKED' : `${d1Bpm} / ${d2Bpm}`}`, width / 2, 84);
+            ctx.fillStyle = '#ffad99';
+            ctx.fillText(`MASTER • ${d2Bpm} BPM • ${d2Key}`, width / 2, 84);
+        } else {
+            ctx.fillText('ARMED — READY', width / 2, 72);
+            ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+            ctx.fillStyle = '#ffb042';
+            ctx.fillText('STANDBY • LOAD TRACK ON ENGINE OS', width / 2, 84);
         }
 
         // Deck 2 Artwork & Metadata on Far Right
@@ -727,8 +881,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.strokeStyle = isD2OnAir ? 'rgba(255, 100, 60, 0.85)' : 'rgba(255, 100, 60, 0.35)';
         ctx.lineWidth = 0.8;
         ctx.stroke();
-        ctx.fillStyle = isD2OnAir ? '#ffbca8' : (isD1OnAir ? '#a0685c' : '#ff9980');
-        ctx.fillText(isD2OnAir ? 'D2 ● ON AIR' : (isD1OnAir ? 'D2 STANDBY' : 'DECK 2'), d2RoleX + 40, 104);
+        ctx.fillStyle = hasD2Track ? (isD2OnAir ? '#ffbca8' : (isD1OnAir ? '#a0685c' : '#ff9980')) : '#ff7a59';
+        ctx.fillText(hasD2Track ? (isD2OnAir ? 'D2 ● ON AIR' : (isD1OnAir ? 'D2 STANDBY' : 'DECK 2')) : 'D2 STANDBY', d2RoleX + 40, 104);
         ctx.restore();
 
     } else {
@@ -827,11 +981,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         const rail1Y = d1BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
 
-        // Strip 1 Active Hot Cues & Loops
-        const activeLoops1 = (d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
-            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
-            { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
-        ];
+        // Strip 1 Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
+        const activeLoops1 = (hasD1Track && d1 && Array.isArray(d1.loops)) ? d1.loops : [];
         activeLoops1.forEach(loop => {
             const lx1 = padX + loop.startProgress * overviewW;
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
@@ -839,10 +990,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             ctx.fillRect(lx1, d1BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
         });
 
-        const activeCues1 = (d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
-            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
-            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
-        ];
+        const activeCues1 = (hasD1Track && d1 && Array.isArray(d1.cues)) ? d1.cues : [];
         activeCues1.forEach(cue => {
             const cx = padX + cue.progress * overviewW;
             ctx.fillStyle = cue.color || '#ef8130';
@@ -856,14 +1004,16 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         });
 
         // Strip 1 Track Position Needle (Vintage LED Filament Tube)
-        const prog1X = padX + prog1 * overviewW;
+        const prog1X = hasD1Track ? (padX + prog1 * overviewW) : (padX + 8);
         const el1Min = Math.floor(el1 / 60);
         const el1Sec = Math.floor(el1 % 60);
-        const d1Tag = isD2OnAir 
-            ? 'D1 (STANDBY)' 
-            : (isTransitioning 
-                ? `D1 (TRANSITION)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` 
-                : `D1 (ON AIR)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+        const d1Tag = hasD1Track
+            ? (isD2OnAir 
+                ? 'D1 (STANDBY)' 
+                : (isTransitioning 
+                    ? `D1 (TRANSITION)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` 
+                    : `D1 (ON AIR)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`))
+            : 'D1 (ARMED)';
         drawEdisonFilamentNeedle(prog1X, d1BarY + 12, barH - 18, bulbStyle1, 1, '#ffaa18', d1Tag);
         ctx.restore();
 
@@ -881,10 +1031,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         const rail2Y = d2BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
 
-        // Strip 2 Active Hot Cues & Loops
-        const activeLoops2 = (d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [
-            { name: 'Loop 1', num: 1, startProgress: 0.125, endProgress: 0.150, beats: 8, color: '#ff4d2e' }
-        ];
+        // Strip 2 Active Hot Cues & Loops (rendered only if Deck 2 has track loaded)
+        const activeLoops2 = (hasD2Track && d2 && Array.isArray(d2.loops)) ? d2.loops : [];
         activeLoops2.forEach(loop => {
             const lx1 = padX + loop.startProgress * overviewW;
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
@@ -892,10 +1040,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             ctx.fillRect(lx1, d2BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
         });
 
-        const activeCues2 = (d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [
-            { name: 'Cue 1', num: 1, progress: 0.125, color: '#ff4d2e' },
-            { name: 'Cue 2', num: 2, progress: 0.500, color: '#ffaa33' }
-        ];
+        const activeCues2 = (hasD2Track && d2 && Array.isArray(d2.cues)) ? d2.cues : [];
         activeCues2.forEach(cue => {
             const cx = padX + cue.progress * overviewW;
             ctx.fillStyle = cue.color || '#ff4d2e';
@@ -909,14 +1054,16 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         });
 
         // Strip 2 Track Position Needle (Vintage LED Filament Tube)
-        const prog2X = padX + prog2 * overviewW;
+        const prog2X = hasD2Track ? (padX + prog2 * overviewW) : (padX + 8);
         const el2Min = Math.floor(el2 / 60);
         const el2Sec = Math.floor(el2 % 60);
-        const d2Tag = isD1OnAir 
-            ? 'D2 (STANDBY)' 
-            : (isTransitioning 
-                ? `D2 (TRANSITION)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}` 
-                : `D2 (ON AIR)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`);
+        const d2Tag = hasD2Track
+            ? (isD1OnAir 
+                ? 'D2 (STANDBY)' 
+                : (isTransitioning 
+                    ? `D2 (TRANSITION)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}` 
+                    : `D2 (ON AIR)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`))
+            : 'D2 (ARMED)';
         drawEdisonFilamentNeedle(prog2X, d2BarY + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', d2Tag);
         ctx.restore();
 
@@ -965,11 +1112,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         const rail1Y = bar1Y + barH - 8;
         drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
 
-        // Active Hot Cues & Loops
-        const activeLoops1 = (d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
-            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
-            { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
-        ];
+        // Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
+        const activeLoops1 = (hasD1Track && d1 && Array.isArray(d1.loops)) ? d1.loops : [];
         activeLoops1.forEach(loop => {
             const lx1 = padX + loop.startProgress * overviewW;
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
@@ -977,10 +1121,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             ctx.fillRect(lx1, bar1Y + 18, Math.max(3, lx2 - lx1), barH - 26);
         });
 
-        const activeCuesSingle = (d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
-            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
-            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
-        ];
+        const activeCuesSingle = (hasD1Track && d1 && Array.isArray(d1.cues)) ? d1.cues : [];
         activeCuesSingle.forEach(cue => {
             const cx = padX + cue.progress * overviewW;
             ctx.fillStyle = cue.color || '#ef8130';
@@ -993,10 +1134,11 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             ctx.fill();
         });
 
-        const prog1X = padX + prog1 * overviewW;
+        const prog1X = hasD1Track ? (padX + prog1 * overviewW) : (padX + 8);
         const el1Min = Math.floor(el1 / 60);
         const el1Sec = Math.floor(el1 % 60);
-        drawEdisonFilamentNeedle(prog1X, bar1Y + 16, barH - 24, bulbStyle1, 1, '#ffaa18', `DECK 1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+        const d1SingleTag = hasD1Track ? `DECK 1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` : 'DECK 1 (ARMED)';
+        drawEdisonFilamentNeedle(prog1X, bar1Y + 16, barH - 24, bulbStyle1, 1, '#ffaa18', d1SingleTag);
     }
 
     // =========================================================================

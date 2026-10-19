@@ -1765,19 +1765,17 @@ export function createVFXScene(container) {
     loadDeckArtwork(deck1Data.title, deck1Data.artist, deck1Data);
 
     let deck2Data = { 
-        artist: "DENON PRIME", 
-        title: "TRACK 2 (HOT MIX)", 
-        bpm: 126.0, 
-        key: "8A",
-        duration: 360,
-        totalBeats: 756.0,
-        cues: [
-            { name: "CUE 1", num: 1, progress: 0.125, color: "#ff4d2e" },
-            { name: "CUE 2", num: 2, progress: 0.500, color: "#ffaa33" }
-        ],
+        artist: "", 
+        title: "", 
+        bpm: null, 
+        key: "",
+        duration: 0,
+        totalBeats: 0,
+        cues: [],
         loops: [],
         artworkUrl: "",
-        artworkImg: null
+        artworkImg: null,
+        samples: null
     };
 
     // Persistent low-pass temporal smoothing state for jitter-free audio reactivity
@@ -1833,9 +1831,19 @@ export function createVFXScene(container) {
     }
 
     function setDeckWaveform(packet) {
-        if (!packet || !packet.samples || packet.samples.length < 3) return;
+        if (!packet) return;
         const dNum = Number(packet.deck);
         const targetDeck = (dNum === 2 || packet.deck === "2" || packet.deck === "B" || dNum === 4 || packet.deck === "4") ? 2 : 1;
+        if (packet.unloaded || !packet.samples || packet.samples.length < 3) {
+            if (targetDeck === 1) {
+                deck1HasHardwareWaveform = false;
+                deck1Data.samples = null;
+            } else {
+                deck2HasHardwareWaveform = false;
+                deck2Data.samples = null;
+            }
+            return;
+        }
         const totalTriplets = Math.floor(packet.samples.length / 3);
 
         if (targetDeck === 1) {
@@ -10372,6 +10380,51 @@ export function createVFXScene(container) {
                 if (data.play || (data.fader !== undefined && Number(data.fader) > 0.05)) targetDeck = 2;
             }
             if (!targetDeck) return;
+
+            // Handle Track Unload / Standby reset
+            if (data.unloaded || data.title === '' || data.title === 'No Track Loaded' || data.title === '—') {
+                if (targetDeck === 1) {
+                    deck1Data.title = '';
+                    deck1Data.artist = '';
+                    deck1Data.bpm = null;
+                    deck1Data.key = '';
+                    deck1Data.duration = 0;
+                    deck1Data.totalBeats = 0;
+                    deck1Data.cues = [];
+                    deck1Data.loops = [];
+                    deck1Data.artworkUrl = '';
+                    deck1Data.artworkImg = null;
+                    deck1Data._artRequested = false;
+                    deck1Data.samples = null;
+                    deck1Data.loopActive = false;
+                    deck1Progress = 0;
+                    deck1WireProgress = 0;
+                    deck1Playing = false;
+                    deck1HasHardwareWaveform = false;
+                    deck1Active = false;
+                } else {
+                    deck2Data.title = '';
+                    deck2Data.artist = '';
+                    deck2Data.bpm = null;
+                    deck2Data.key = '';
+                    deck2Data.duration = 0;
+                    deck2Data.totalBeats = 0;
+                    deck2Data.cues = [];
+                    deck2Data.loops = [];
+                    deck2Data.artworkUrl = '';
+                    deck2Data.artworkImg = null;
+                    deck2Data._artRequested = false;
+                    deck2Data.samples = null;
+                    deck2Data.loopActive = false;
+                    deck2Progress = 0;
+                    deck2WireProgress = 0;
+                    deck2Playing = false;
+                    deck2HasHardwareWaveform = false;
+                    deck2Active = false;
+                }
+                return;
+            }
+
             if (targetDeck === 1) {
                 if (data.fader !== undefined) {
                     deck1Fader = Number(data.fader);
@@ -10502,6 +10555,48 @@ export function createVFXScene(container) {
                 // Deck 2 is active whenever Track 2 is loaded in the player
                 const hasValidTrack = !!(deck2Data.title && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—');
                 deck2Active = hasValidTrack;
+            }
+        },
+        unloadDeck: (deckNum) => {
+            const d = (deckNum === 2 || deckNum === 4 || deckNum === '2' || deckNum === '4' || deckNum === 'B' || deckNum === 'D') ? 2 : 1;
+            if (d === 1) {
+                deck1Data.title = '';
+                deck1Data.artist = '';
+                deck1Data.bpm = null;
+                deck1Data.key = '';
+                deck1Data.duration = 0;
+                deck1Data.totalBeats = 0;
+                deck1Data.cues = [];
+                deck1Data.loops = [];
+                deck1Data.artworkUrl = '';
+                deck1Data.artworkImg = null;
+                deck1Data._artRequested = false;
+                deck1Data.samples = null;
+                deck1Data.loopActive = false;
+                deck1Progress = 0;
+                deck1WireProgress = 0;
+                deck1Playing = false;
+                deck1HasHardwareWaveform = false;
+                deck1Active = false;
+            } else {
+                deck2Data.title = '';
+                deck2Data.artist = '';
+                deck2Data.bpm = null;
+                deck2Data.key = '';
+                deck2Data.duration = 0;
+                deck2Data.totalBeats = 0;
+                deck2Data.cues = [];
+                deck2Data.loops = [];
+                deck2Data.artworkUrl = '';
+                deck2Data.artworkImg = null;
+                deck2Data._artRequested = false;
+                deck2Data.samples = null;
+                deck2Data.loopActive = false;
+                deck2Progress = 0;
+                deck2WireProgress = 0;
+                deck2Playing = false;
+                deck2HasHardwareWaveform = false;
+                deck2Active = false;
             }
         },
         getDeckData: (deckNum) => (deckNum === 2 ? deck2Data : deck1Data),
