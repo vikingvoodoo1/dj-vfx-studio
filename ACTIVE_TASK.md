@@ -31,5 +31,24 @@
   - Added `npm_config_msvs_version: '2022'` and `GYP_MSVS_VERSION: '2022'` to dependency installation.
   - Updated `create-github-release` condition to `always() && !cancelled() && startsWith(github.ref, 'refs/tags/')` so releases publish with whatever platform packages succeeded.
 
-## 4. Active Next Step
-- Confirm with user to commit and push the CI workflow fix or re-tag/re-trigger release build.
+## 4. Hardware Denon StageLinQ Deck Waveform Rendering Fix
+- **Issue:** User connected Denon Prime 4 via StageLinQ; tempo and beat switched over, but the DJ deck waveform effect was not rendering or reacting to the loaded track. Then, after adding 2D canvas bars, the center appeared "blocky" instead of the intended procedural "on-fire" shader effect.
+- **Root Causes Identified:**
+  1. `drawMiniWaveform()` in [src/vfx/deck-hud-renderer.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/vfx/deck-hud-renderer.js) used hardcoded synthetic sine wave profiles and never inspected pre-analyzed hardware `samples`.
+  2. The center viewport 2D canvas `fillRect` bars obstructed the underlying WebGL 3D procedural fire shader (`DJDeckWaveformShader`).
+  3. `d1InPlay` / `smoothDeck1SmokePhase` in [src/effects.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/effects.js) dissolved the fire waveform into smoke when paused or cueing because it checked `deck1Playing` instead of whether a track was loaded.
+  4. The fire shader uniforms (`uBass`, `uTransient`) depended solely on laptop microphone/line-in audio input and ignored StageLinQ beat pulses and wire audio spectral slices.
+- **Changes Applied:**
+  - `src/effects.js`:
+    - Assigned `packet.samples` to `deck1Data` and `deck2Data` in `setDeckWaveform()` and `setDeckData()`.
+    - Updated `d1InPlay`/`d2InPlay` to keep the deck active and on-fire whenever a track is loaded or has hardware waveform data.
+    - Augmented `effectiveBass`, `effectiveMid`, `effectiveTreble`, and `effectiveTransient` with StageLinQ hardware beat pulses (`combinedBeatPulse`) and live waveform slices (`wireSmoothBass`, `wireSmoothHit`) so the fire roars and crackles dynamically to the beat even if computer line-in audio is silent.
+  - `src/vfx/deck-hud-renderer.js`:
+    - Updated `drawMiniWaveform()` to dynamically map authentic Denon Prime 4 3-band RGB samples (`r` = bass, `g` = mid, `b` = high) into the top overview rails with Edison needles.
+    - Removed the solid 2D rectangular bars in the middle so the procedural WebGL "on-fire" shader (`DJDeckWaveformShader`) shines through with full fluid flame tongues, thermal turbulence, and embers.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 945ms.
+  - Active Chrome tab refreshed via AppleScript.
+
+## 5. Active Next Step
+- Confirm with user that the central scrolling waveform is back to its fluid "on-fire" shader effect and reacting to the Denon deck's beat and track waveform.

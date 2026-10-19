@@ -1840,6 +1840,7 @@ export function createVFXScene(container) {
 
         if (targetDeck === 1) {
             deck1HasHardwareWaveform = true;
+            deck1Data.samples = packet.samples;
             if (packet.title) deck1Data.title = packet.title;
             if (packet.artist) deck1Data.artist = packet.artist;
             if (packet.bpm) deck1Data.bpm = packet.bpm;
@@ -1863,9 +1864,13 @@ export function createVFXScene(container) {
             djAudioHistoryTex.needsUpdate = true;
         } else {
             deck2HasHardwareWaveform = true;
+            deck2Data.samples = packet.samples;
             if (packet.title) deck2Data.title = packet.title;
             if (packet.artist) deck2Data.artist = packet.artist;
             if (packet.bpm) deck2Data.bpm = packet.bpm;
+            if (packet.cues && Array.isArray(packet.cues)) deck2Data.cues = packet.cues;
+            if (packet.loops && Array.isArray(packet.loops)) deck2Data.loops = packet.loops;
+            if (packet.totalBeats) deck2Data.totalBeats = Number(packet.totalBeats);
 
             for (let i = 0; i < 512; i++) {
                 const sIdx = Math.floor((i / 512) * totalTriplets) * 3;
@@ -7711,15 +7716,21 @@ export function createVFXScene(container) {
             const beatPhaseVal = (elapsedTime * (primaryBpm / 60.0)) % 1.0;
 
             // Smooth smoke phase-out for inactive decks
-            // A deck is in play when actively playing/moving and its mixer weight is up
-            const d1InPlay = (deck1Playing || d1IsMoving) && (w1 > 0.02);
-            const d2InPlay = (deck2Playing || d2IsMoving) && (w2 > 0.02);
+            // A deck is in play when actively playing/moving or loaded and its mixer weight is up
+            const d1InPlay = (deck1Active || deck1Playing || d1IsMoving || deck1HasHardwareWaveform) && (w1 > 0.02);
+            const d2InPlay = (deck2Active || deck2Playing || d2IsMoving || deck2HasHardwareWaveform) && (w2 > 0.02);
 
             const targetD1Smoke = d1InPlay ? 0.0 : 1.0;
             const targetD2Smoke = d2InPlay ? 0.0 : 1.0;
 
             smoothDeck1SmokePhase = THREE.MathUtils.damp(smoothDeck1SmokePhase, targetD1Smoke, 3.2, delta);
             smoothDeck2SmokePhase = THREE.MathUtils.damp(smoothDeck2SmokePhase, targetD2Smoke, 3.2, delta);
+
+            // Feed live audio or StageLinQ beat pulses & hardware track slices to shader
+            const effectiveBass = Math.max(audio ? (audio.smoothedBass || audio.bass || 0) : 0, (wireSmoothBass || 0) * 0.85 + (combinedBeatPulse || 0) * 0.40);
+            const effectiveMid = Math.max(audio ? (audio.smoothedMid || audio.mid || 0) : 0, (wireSmoothMid || 0) * 0.80);
+            const effectiveTreble = Math.max(audio ? (audio.smoothedTreble || audio.treble || 0) : 0, (wireSmoothTreble || 0) * 0.80);
+            const effectiveTransient = Math.max(audio ? (audio.transientImpulse || 0) : 0, (combinedBeatPulse || 0) * 0.70 + (wireSmoothHit || 0) * 0.50);
 
             // Update Shader Uniforms: dynamic routing to active on-air deck
             djWaveMat.uniforms.uTime.value = elapsedTime;
@@ -7745,8 +7756,8 @@ export function createVFXScene(container) {
                 waveSmokeMat.uniforms.uDeck2SmokePhase.value = smoothDeck2SmokePhase;
                 waveSmokeMat.uniforms.uPrimaryDeck.value = primaryDeck;
                 waveSmokeMat.uniforms.uZoom.value = 0.08;
-                waveSmokeMat.uniforms.uBass.value = audio ? (audio.smoothedBass || audio.bass || 0) : 0;
-                waveSmokeMat.uniforms.uTransient.value = audio ? (audio.transientImpulse || audio.transient || 0) : 0;
+                waveSmokeMat.uniforms.uBass.value = effectiveBass;
+                waveSmokeMat.uniforms.uTransient.value = effectiveTransient;
             }
             djWaveMat.uniforms.uTotalBeats.value = primaryTotalBeats;
             djWaveMat.uniforms.uDeck1TotalBeats.value = deck1Data.totalBeats || 776.1085;
@@ -7755,16 +7766,16 @@ export function createVFXScene(container) {
             djWaveMat.uniforms.uDeck2BPM.value = deck2Data.bpm || currentBPM;
             djWaveMat.uniforms.uBeatPhase.value = beatPhaseVal;
             if (djWaveMat.uniforms.uTransient) {
-                djWaveMat.uniforms.uTransient.value = audio ? (audio.transientImpulse || 0) : 0;
+                djWaveMat.uniforms.uTransient.value = effectiveTransient;
             }
             if (djWaveMat.uniforms.uBass) {
-                djWaveMat.uniforms.uBass.value = audio ? (audio.smoothedBass || audio.bass || 0) : 0;
+                djWaveMat.uniforms.uBass.value = effectiveBass;
             }
             if (djWaveMat.uniforms.uMid) {
-                djWaveMat.uniforms.uMid.value = audio ? (audio.smoothedMid || audio.mid || 0) : 0;
+                djWaveMat.uniforms.uMid.value = effectiveMid;
             }
             if (djWaveMat.uniforms.uTreble) {
-                djWaveMat.uniforms.uTreble.value = audio ? (audio.smoothedTreble || audio.treble || 0) : 0;
+                djWaveMat.uniforms.uTreble.value = effectiveTreble;
             }
 
             const activeLoop = (primaryDeck === 2) ? (deck2Data.loopActive || false) : deck1LoopActive;
@@ -10415,6 +10426,7 @@ export function createVFXScene(container) {
                 if (data.sync !== undefined) deck1Data.sync = Boolean(data.sync);
                 if (data.cues && Array.isArray(data.cues)) deck1Data.cues = data.cues;
                 if (data.loops && Array.isArray(data.loops)) deck1Data.loops = data.loops;
+                if (data.samples && Array.isArray(data.samples)) deck1Data.samples = data.samples;
 
                 if (data.progress !== undefined) {
                     const newProg = Number(data.progress);
@@ -10477,6 +10489,7 @@ export function createVFXScene(container) {
                 if (data.sync !== undefined) deck2Data.sync = Boolean(data.sync);
                 if (data.cues && Array.isArray(data.cues)) deck2Data.cues = data.cues;
                 if (data.loops && Array.isArray(data.loops)) deck2Data.loops = data.loops;
+                if (data.samples && Array.isArray(data.samples)) deck2Data.samples = data.samples;
 
                 if (data.progress !== undefined) {
                     const newProg2 = Number(data.progress);

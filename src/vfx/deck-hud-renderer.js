@@ -389,11 +389,13 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.restore();
     }
 
-    function drawMiniWaveform(x, topY, w, h, profileType, colorScheme) {
+    function drawMiniWaveform(x, topY, w, h, deckObj, profileType, colorScheme) {
         const numBars = Math.floor(w / 2.5);
         const barW = w / numBars;
         const waveBaseY = topY + h - 5;
         const maxBarH = h - 10;
+        const hasRealSamples = deckObj && Array.isArray(deckObj.samples) && deckObj.samples.length >= 6;
+        const totalTriplets = hasRealSamples ? Math.floor(deckObj.samples.length / 3) : 0;
 
         for (let i = 0; i < numBars; i++) {
             const u = i / numBars;
@@ -403,7 +405,16 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             let subRatio = 0.35;
             let midRatio = 0.65;
 
-            if (profileType === 1) {
+            if (hasRealSamples) {
+                const sIdx = Math.floor(u * totalTriplets) * 3;
+                const r = (deckObj.samples[sIdx] || 0) / 255.0;     // Bass
+                const g = (deckObj.samples[sIdx + 1] || 0) / 255.0; // Mid
+                const b = (deckObj.samples[sIdx + 2] || 0) / 255.0; // High
+                profile = Math.max(0.06, Math.min(1.0, r * 0.52 + g * 0.34 + b * 0.14));
+                const sum = r + g + b + 0.03;
+                subRatio = Math.max(0.12, Math.min(0.85, (r + 0.01) / sum));
+                midRatio = Math.max(subRatio + 0.10, Math.min(0.95, (r + g + 0.01) / sum));
+            } else if (profileType === 1) {
                 // Deck 1 Profile
                 if (u < 0.15) {
                     profile = 0.40 + Math.sin(u * 80.0) * 0.08 + Math.cos(u * 140.0) * 0.05;
@@ -505,16 +516,24 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     const totalBeats2 = (d2 && d2.totalBeats) || ((totalSec2 / 60.0) * Number(d2Bpm));
 
     // Active deck selection for moving waveform beat grid, loops, and cues
-    const activeProg = (primaryDeck === 2) ? prog2 : prog1;
-    const activeTotalBeats = (primaryDeck === 2) ? totalBeats2 : totalBeats1;
-    const activeLoops = (primaryDeck === 2)
+    const hasD1Track = !!(d1 && d1.title && d1.title !== 'No Track Loaded' && d1.title !== '—');
+    const hasD2Track = !!(d2 && d2.title && d2.title !== 'No Track Loaded' && d2.title !== '—');
+    const pDeck = (primaryDeck === 2 && hasD2Track)
+        ? 2
+        : ((primaryDeck === 1 && hasD1Track)
+            ? 1
+            : (hasD2Track ? 2 : (hasD1Track ? 1 : primaryDeck)));
+
+    const activeProg = (pDeck === 2) ? prog2 : prog1;
+    const activeTotalBeats = (pDeck === 2) ? totalBeats2 : totalBeats1;
+    const activeLoops = (pDeck === 2)
         ? ((d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [])
         : ((d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
             { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
             { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
         ]);
 
-    const activeCues = (primaryDeck === 2)
+    const activeCues = (pDeck === 2)
         ? ((d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [])
         : ((d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
             { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
@@ -798,7 +817,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.roundRect(padX, d1BarY, overviewW, barH, 6);
         ctx.fill();
 
-        drawMiniWaveform(padX, d1BarY, overviewW, barH, 1, themeDeck1);
+        drawMiniWaveform(padX, d1BarY, overviewW, barH, d1, 1, themeDeck1);
 
         const rail1Y = d1BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
@@ -835,7 +854,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.roundRect(padX, d2BarY, overviewW, barH, 6);
         ctx.fill();
 
-        drawMiniWaveform(padX, d2BarY, overviewW, barH, 2, themeDeck2);
+        drawMiniWaveform(padX, d2BarY, overviewW, barH, d2, 2, themeDeck2);
 
         const rail2Y = d2BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
@@ -892,7 +911,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.roundRect(padX, bar1Y, overviewW, barH, 8);
         ctx.fill();
 
-        drawMiniWaveform(padX, bar1Y, overviewW, barH, 1, themeDeck1);
+        drawMiniWaveform(padX, bar1Y, overviewW, barH, d1, 1, themeDeck1);
 
         const rail1Y = bar1Y + barH - 8;
         drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
@@ -942,6 +961,8 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     ctx.moveTo(padX, waveTopY);
     ctx.lineTo(rightX, waveTopY);
     ctx.stroke();
+
+    // 3.0 Moving Waveform Viewport: Clear central window for WebGL procedural "on-fire" shader (DJDeckWaveformShader)
 
     // 3A. Persistent Loops on Moving Wave: Locked to Active Deck
     activeLoops.forEach(loop => {
@@ -1066,7 +1087,6 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
     // 3C. Center Moving Waveform Playhead: Warm & Homely Vintage Edison Filament Tube
     ctx.save();
-    const playX = width / 2;
     const nowMs2 = performance.now();
     const needleStyle2 = getVintageBulbStyle(getVintageBulbFlicker(nowMs2 * 0.001, (primaryDeck === 2) ? 2.4 : 1.37));
 
