@@ -47,8 +47,10 @@
     - Updated `drawMiniWaveform()` to dynamically map authentic Denon Prime 4 3-band RGB samples (`r` = bass, `g` = mid, `b` = high) into the top overview rails with Edison needles.
     - Removed the solid 2D rectangular bars in the middle so the procedural WebGL "on-fire" shader (`DJDeckWaveformShader`) shines through with full fluid flame tongues, thermal turbulence, and embers.
 - **Verification:**
-  - `npm run build` (`vite build`): PASSED in 945ms.
+  - `npm run build` (`vite build`): PASSED in 1.02s.
+  - Runtime execution verified via automated VM mock test with zero ReferenceErrors.
   - Active Chrome tab refreshed via AppleScript.
+  - Pushed to GitHub in commits `aad5ab5` and `ba8acf4`.
 
 ## 5. Active Next Step
-- Confirm with user that the central scrolling waveform is back to its fluid "on-fire" shader effect and reacting to the Denon deck's beat and track waveform.
+- Confirm with user that hot cues, loops, track position needles, and the on-fire waveform are all visible and actively animating.
