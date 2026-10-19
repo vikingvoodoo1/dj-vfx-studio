@@ -260,6 +260,7 @@ npm run preview
 
 ## 📚 Technical Documentation
 
+- **[Video Clarity & Cyber Cinema Render Pipeline Guide (VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)](VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)** — Tri-engine video architecture, hardware acceleration via macOS VideoToolbox/Metal, 1:1 bit-for-bit VLC parity, and eliminating WebGL banding.
 - **[Scene Reactive Matrix & Hardware Memory Profiles Guide (SCENE_REACTIVE_MATRIX_AND_PROFILES.md)](SCENE_REACTIVE_MATRIX_AND_PROFILES.md)** — Comprehensive guide to all 22 scenes, hotkeys, reactive engine tags (audio FFT, StageLinQ, BPM sync, transients, physical rig), per-scene parameter memory, and auto-recall architecture.
 - **[Authentic DJ Deck Waveforms & Wire Telemetry Guide (DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)](DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)** — Universal 3-tier waveform architecture covering Denon StageLinQ, Pioneer Pro DJ Link, and live spectral fallbacks.
 - **[Streaming Audio Calibration Guide (AUDIO_CALIBRATION_GUIDE.md)](AUDIO_CALIBRATION_GUIDE.md)** — ITU-R BS.1770 LUFS loudness metering, true-peak gauges, and headroom targets.

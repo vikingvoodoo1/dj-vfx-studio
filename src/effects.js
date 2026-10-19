@@ -12,6 +12,7 @@ const NightclubPostFX = {
         uAberration: { value: 0.0 },
         uGlitch: { value: 0.0 },
         uFlash: { value: 0.0 },
+        uVignette: { value: 1.0 },
         uTime: { value: 0.0 }
     },
     vertexShader: `
@@ -26,6 +27,7 @@ const NightclubPostFX = {
         uniform float uAberration;
         uniform float uGlitch;
         uniform float uFlash;
+        uniform float uVignette;
         uniform float uTime;
         varying vec2 vUv;
 
@@ -48,9 +50,11 @@ const NightclubPostFX = {
             float b = texture2D(tDiffuse, uv - offset).b;
             vec3 color = vec3(r, g, b);
 
-            float dist = distance(vUv, center);
-            float vignette = smoothstep(1.35, 0.42, dist);
-            color *= vignette;
+            if (uVignette > 0.01) {
+                float dist = distance(vUv, center);
+                float vignette = smoothstep(1.35, 0.42, dist);
+                color *= mix(1.0, vignette, clamp(uVignette, 0.0, 1.0));
+            }
 
             // Smooth additive full-screen flash on light hit (preserves 3D depth and prevents blank washouts)
             color += vec3(clamp(uFlash, 0.0, 1.0) * 0.75);
@@ -9060,10 +9064,29 @@ export function createVFXScene(container) {
         oldOverlay.parentNode.removeChild(oldOverlay);
     }
 
+    const directVideoOverlay = document.createElement('video');
+    directVideoOverlay.id = 'vfx-direct-video-overlay';
+    directVideoOverlay.style.position = 'absolute';
+    directVideoOverlay.style.inset = '0';
+    directVideoOverlay.style.width = '100%';
+    directVideoOverlay.style.height = '100%';
+    directVideoOverlay.style.objectFit = 'contain';
+    directVideoOverlay.style.backgroundColor = '#000000';
+    directVideoOverlay.style.pointerEvents = 'none';
+    directVideoOverlay.style.display = 'none';
+    directVideoOverlay.style.zIndex = '0';
+    directVideoOverlay.loop = true;
+    directVideoOverlay.muted = true;
+    directVideoOverlay.playsInline = true;
+    directVideoOverlay.autoplay = true;
+    container.appendChild(directVideoOverlay);
+
     renderer.domElement.style.position = 'absolute';
     renderer.domElement.style.inset = '0';
     renderer.domElement.style.width = '100%';
     renderer.domElement.style.height = '100%';
+    renderer.domElement.style.zIndex = '1';
+    renderer.domElement.style.pointerEvents = 'none';
     container.appendChild(renderer.domElement);
 
     // 2. Post-Processing Chain (Crisp Dark Nightclub Contrast)
@@ -13066,20 +13089,22 @@ export function createVFXScene(container) {
             const sinPhi = Math.sin(phi);
             const cosPhi = Math.cos(phi);
 
-            // Enhanced top stem and bottom pole depression (natural concave dimple)
-            const poleDimple = 1.0 - 0.11 * Math.pow(Math.abs(cosPhi), 2.2);
+            // Natural concave dimple at top stem and bottom pole
+            const poleDimple = 1.0 - 0.08 * Math.pow(Math.abs(cosPhi), 2.5);
 
-            // 10 vertical ribbed lobes with deep, defined organic crevices
+            // 10 vertical ribbed lobes with defined organic crevices
             const lobeWave = Math.cos(numLobes * theta);
-            const lobeDepth = 0.115 * lobeWave * Math.pow(sinPhi, 0.85);
+            const lobeDepth = 0.075 * lobeWave * Math.pow(sinPhi, 0.90);
 
-            // Subtle equatorial fullness for an authentic pumpkin silhouette
-            const equatorialBulge = 1.0 + 0.04 * Math.pow(sinPhi, 1.2);
-            const radialScale = (1.0 + lobeDepth) * poleDimple * equatorialBulge;
+            // Natural organic pumpkin profile: slightly fuller in lower hemisphere
+            const subtleTaper = 1.0 - 0.035 * cosPhi;
+            const equatorialBulge = 1.0 + 0.025 * Math.pow(sinPhi, 1.3);
+            const radialScale = (1.0 + lobeDepth) * poleDimple * equatorialBulge * subtleTaper;
 
             v.x = r * sinPhi * Math.sin(theta) * radialScale;
             v.z = r * sinPhi * Math.cos(theta) * radialScale;
-            v.y = r * cosPhi * poleDimple * 0.76; // Squashed height ratio gives a defined, unmistakable pumpkin shape
+            // Authentic round pumpkin profile: 0.94 height ratio (eliminates squashed look)
+            v.y = r * cosPhi * poleDimple * 0.94;
 
             pos.setXYZ(i, v.x, v.y, v.z);
         }
@@ -13099,11 +13124,11 @@ export function createVFXScene(container) {
         const stemGroup = new THREE.Group();
 
         const curve = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(0, 3.50, 0),         // Stem base securely in top dimple
-            new THREE.Vector3(0.06, 4.02, 0.04),   // Lower stalk
-            new THREE.Vector3(0.16, 4.52, 0.10),   // Mid stalk curving out
-            new THREE.Vector3(0.14, 4.94, 0.08),   // Upper stalk curve
-            new THREE.Vector3(0.04, 5.20, 0.03)    // Stalk tip meeting eyelet
+            new THREE.Vector3(0, 4.46, 0),         // Stem base securely in top dimple
+            new THREE.Vector3(0.06, 5.00, 0.04),   // Lower stalk
+            new THREE.Vector3(0.16, 5.54, 0.10),   // Mid stalk curving out
+            new THREE.Vector3(0.14, 5.98, 0.08),   // Upper stalk curve
+            new THREE.Vector3(0.04, 6.26, 0.03)    // Stalk tip meeting eyelet
         ]);
 
         const stemGeo = new THREE.TubeGeometry(curve, 32, 0.30, 16, false);
@@ -13111,7 +13136,7 @@ export function createVFXScene(container) {
         const v = new THREE.Vector3();
         for (let i = 0; i < stemPos.count; i++) {
             v.fromBufferAttribute(stemPos, i);
-            const t = Math.max(0, Math.min(1, (v.y - 3.50) / 1.70));
+            const t = Math.max(0, Math.min(1, (v.y - 4.46) / 1.80));
             const taper = 1.25 * (1.0 - t * 0.55);
             const angle = Math.atan2(v.x, v.z);
             const ridge = 1.0 + 0.12 * Math.cos(6 * angle);
@@ -13135,7 +13160,7 @@ export function createVFXScene(container) {
         // Heavy-duty polished chrome mounting eyelet / shackle ring welded to stem tip
         const stemEyeletGeo = new THREE.TorusGeometry(0.32, 0.08, 16, 24);
         const stemEyeletMesh = new THREE.Mesh(stemEyeletGeo, stemMat);
-        stemEyeletMesh.position.set(0.04, 5.20, 0.03);
+        stemEyeletMesh.position.set(0.04, 6.26, 0.03);
         stemEyeletMesh.rotation.y = Math.PI * 0.25;
         stemGroup.add(stemEyeletMesh);
 
@@ -13975,9 +14000,9 @@ export function createVFXScene(container) {
             varying vec2 vUv;
 
             void main() {
-                // Elliptical contour framing the authentic squashed pumpkin silhouette (0.76 height ratio)
+                // Elliptical contour framing the authentic round pumpkin silhouette (0.94 height ratio)
                 vec2 p = (vUv - 0.5) * 2.0;
-                p.y /= 0.76;
+                p.y /= 0.94;
                 float dist = length(p);
                 
                 // Outer perimeter halo geometry:
@@ -15472,14 +15497,14 @@ export function createVFXScene(container) {
     videoTexA.magFilter = THREE.LinearFilter;
     videoTexA.generateMipmaps = false;
     videoTexA.anisotropy = maxAniso;
-    videoTexA.colorSpace = THREE.SRGBColorSpace;
+    videoTexA.colorSpace = THREE.NoColorSpace;
 
     const videoTexB = new THREE.VideoTexture(videoChannelB);
     videoTexB.minFilter = THREE.LinearFilter;
     videoTexB.magFilter = THREE.LinearFilter;
     videoTexB.generateMipmaps = false;
     videoTexB.anisotropy = maxAniso;
-    videoTexB.colorSpace = THREE.SRGBColorSpace;
+    videoTexB.colorSpace = THREE.NoColorSpace;
 
     let videoActiveChannel = 'A'; // 'A' or 'B'
     let videoTransitionActive = false;
@@ -15503,7 +15528,8 @@ export function createVFXScene(container) {
             uTransitionType: { value: 0 },
             uTime: { value: 0.0 },
             uBass: { value: 0.0 },
-            uHasVideo: { value: 0.0 }
+            uHasVideo: { value: 0.0 },
+            uLinearOutput: { value: 0.0 }
         },
         vertexShader: `
             varying vec2 vUv;
@@ -15520,6 +15546,7 @@ export function createVFXScene(container) {
             uniform float uTime;
             uniform float uBass;
             uniform float uHasVideo;
+            uniform float uLinearOutput;
             varying vec2 vUv;
 
             void main() {
@@ -15576,6 +15603,10 @@ export function createVFXScene(container) {
 
                     vec3 iconCol = vec3(0.0, 0.85, 0.75);
                     outCol = vec4(mix(bg, iconCol, icon * 0.45), 1.0);
+                }
+
+                if (uLinearOutput > 0.5) {
+                    outCol.rgb = pow(clamp(outCol.rgb, 0.0, 1.0), vec3(2.2));
                 }
 
                 gl_FragColor = outCol;
@@ -15722,11 +15753,31 @@ export function createVFXScene(container) {
             if (index === 22) {
                 if (videoRenderQuality !== 'retro') {
                     nightclubPass.uniforms.uAberration.value = 0.0;
+                    nightclubPass.uniforms.uVignette.value = 0.0;
                     manualFlash = 0.0;
                 }
                 const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
                 curVid.play().catch(() => {});
+                if (videoRenderQuality === 'direct') {
+                    if (directVideoOverlay && videoCurrentUrl) {
+                        directVideoOverlay.currentTime = curVid.currentTime || 0;
+                        directVideoOverlay.playbackRate = videoSpeedSetting;
+                        directVideoOverlay.muted = videoMutedSetting;
+                        directVideoOverlay.loop = (videoLoopSetting === 'single');
+                        directVideoOverlay.play().catch(() => {});
+                        directVideoOverlay.style.display = 'block';
+                    }
+                    cinemaScreenMesh.visible = false;
+                } else {
+                    if (directVideoOverlay) directVideoOverlay.style.display = 'none';
+                    cinemaScreenMesh.visible = true;
+                }
                 updateVideoScreenScale();
+            } else {
+                if (directVideoOverlay) {
+                    directVideoOverlay.style.display = 'none';
+                    directVideoOverlay.pause();
+                }
             }
             const targetPR = getOptimalPixelRatio();
             if (renderer.getPixelRatio() !== targetPR) {
@@ -17805,8 +17856,8 @@ export function createVFXScene(container) {
             }
 
             // 🔗 100% Attached Hanging Chain Dynamic Physics:
-            // Calculate exact world position of the stalk top eyelet ring (nestled on 0.76 squashed pumpkin crown)
-            const stalkTipLocal = new THREE.Vector3(0.04, 5.20, 0.03);
+            // Calculate exact world position of the stalk top eyelet ring (nestled on authentic 0.94 round pumpkin crown)
+            const stalkTipLocal = new THREE.Vector3(0.04, 6.26, 0.03);
             const stalkTipWorld = stalkTipLocal.clone().applyEuler(pumpkinPivot.rotation).add(pumpkinPivot.position);
             const ceilingAnchor = new THREE.Vector3(0, 13.2, 0);
 
@@ -17833,19 +17884,19 @@ export function createVFXScene(container) {
                 );
             }
 
-            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the squashed pumpkin (0.76 ratio)
+            // 4. Dynamic Rotating Head Sweeping Targets strictly on the FRONT convex surface of the round pumpkin (0.94 ratio)
             const tL = elapsedTime * 0.55;
             const txL = -1.0 + Math.sin(tL * 0.85) * 2.3; // -3.3 to +1.3
-            const tyL = Math.cos(tL * 0.65) * 1.82;      // spans 0.76 height squashed pumpkin
-            const rSqL = (txL * txL) + ((tyL / 0.76) * (tyL / 0.76));
+            const tyL = Math.cos(tL * 0.65) * 2.25;      // spans 0.94 height round pumpkin
+            const rSqL = (txL * txL) + ((tyL / 0.94) * (tyL / 0.94));
             const tzL = Math.sqrt(Math.max(4.0, 27.0 - rSqL)); // Front surface of pumpkin
             const targetLeftPos = new THREE.Vector3(txL, tyL, tzL).add(pumpkinPivot.position);
             pLeftTargetObj.position.copy(targetLeftPos);
 
             const tR = elapsedTime * 0.55 + Math.PI * 0.72;
             const txR = 1.0 + Math.cos(tR * 0.82) * 2.3;  // -1.3 to +3.3
-            const tyR = Math.sin(tR * 0.68) * 1.82;
-            const rSqR = (txR * txR) + ((tyR / 0.76) * (tyR / 0.76));
+            const tyR = Math.sin(tR * 0.68) * 2.25;
+            const rSqR = (txR * txR) + ((tyR / 0.94) * (tyR / 0.94));
             const tzR = Math.sqrt(Math.max(4.0, 27.0 - rSqR)); // Front surface of pumpkin
             const targetRightPos = new THREE.Vector3(txR, tyR, tzR).add(pumpkinPivot.position);
             pRightTargetObj.position.copy(targetRightPos);
@@ -17919,14 +17970,14 @@ export function createVFXScene(container) {
             const sweep1 = pumpkinMiniSweepPhase;
             const txMini1 = Math.sin(sweep1) * 4.4;
             const tyMini1 = -2.35 + Math.cos(sweep1 * 0.8) * 0.52;
-            const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.76) * (tyMini1 / 0.76));
+            const rSqMini1 = (txMini1 * txMini1) + ((tyMini1 / 0.94) * (tyMini1 / 0.94));
             const tzMini1 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini1)));
             const targetMini1Pos = new THREE.Vector3(txMini1, tyMini1, tzMini1).add(pumpkinPivot.position);
 
             const sweep2 = -pumpkinMiniSweepPhase;
             const txMini2 = Math.sin(sweep2) * 4.4;
             const tyMini2 = -2.35 + Math.cos(sweep2 * 0.8 + Math.PI) * 0.52;
-            const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.76) * (tyMini2 / 0.76));
+            const rSqMini2 = (txMini2 * txMini2) + ((tyMini2 / 0.94) * (tyMini2 / 0.94));
             const tzMini2 = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqMini2)));
             const targetMini2Pos = new THREE.Vector3(txMini2, tyMini2, tzMini2).add(pumpkinPivot.position);
 
@@ -17935,7 +17986,7 @@ export function createVFXScene(container) {
             const sweepC = pumpkinMiniSweepPhase * 1.25;
             const txCenter = Math.sin(sweepC) * 2.8;
             const tyCenter = -2.15 + Math.cos(sweepC * 0.7) * 0.55;
-            const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.76) * (tyCenter / 0.76));
+            const rSqCenter = (txCenter * txCenter) + ((tyCenter / 0.94) * (tyCenter / 0.94));
             const tzCenter = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqCenter)));
             const targetCenterPos = new THREE.Vector3(txCenter, tyCenter, tzCenter).add(pumpkinPivot.position);
 
@@ -17943,7 +17994,7 @@ export function createVFXScene(container) {
             const sweepFL = pumpkinMiniSweepPhase + Math.PI * 0.5;
             const txFarLeft = -1.2 + Math.sin(sweepFL) * 3.6;
             const tyFarLeft = -2.35 + Math.cos(sweepFL * 0.85) * 0.52;
-            const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.76) * (tyFarLeft / 0.76));
+            const rSqFarLeft = (txFarLeft * txFarLeft) + ((tyFarLeft / 0.94) * (tyFarLeft / 0.94));
             const tzFarLeft = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarLeft)));
             const targetFarLeftPos = new THREE.Vector3(txFarLeft, tyFarLeft, tzFarLeft).add(pumpkinPivot.position);
 
@@ -17951,7 +18002,7 @@ export function createVFXScene(container) {
             const sweepFR = -pumpkinMiniSweepPhase - Math.PI * 0.5;
             const txFarRight = 1.2 + Math.sin(sweepFR) * 3.6;
             const tyFarRight = -2.35 + Math.cos(sweepFR * 0.85 + Math.PI) * 0.52;
-            const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.76) * (tyFarRight / 0.76));
+            const rSqFarRight = (txFarRight * txFarRight) + ((tyFarRight / 0.94) * (tyFarRight / 0.94));
             const tzFarRight = Math.sqrt(Math.max(1.0, 27.04 - Math.min(26.0, rSqFarRight)));
             const targetFarRightPos = new THREE.Vector3(txFarRight, tyFarRight, tzFarRight).add(pumpkinPivot.position);
 
@@ -19068,7 +19119,7 @@ export function createVFXScene(container) {
         // 4. Post-Processing: Crisp Neon Bloom & Transient Glitch
         const fxBloomBoost = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22) ? 0.0 : ((currentFXIndex >= 16 && currentFXIndex <= 20) ? (bassPop * 0.12 + transient * 0.08) : (bassPop * 0.18));
         const targetBloom = (currentFXIndex === 3 || currentFXIndex === 4 || currentFXIndex === 21 || currentFXIndex === 22)
-            ? 0.18 * bloomMultiplier
+            ? ((currentFXIndex === 22 && videoRenderQuality !== 'retro') ? 0.0 : 0.18 * bloomMultiplier)
             : Math.min(0.70, (0.20 + fxBloomBoost + (manualFlash * 0.45)) * bloomMultiplier);
         bloomPass.strength = bloomMultiplier <= 0.05 ? 0.0 : THREE.MathUtils.lerp(bloomPass.strength, targetBloom, 0.15);
 
@@ -19102,12 +19153,55 @@ export function createVFXScene(container) {
         }
 
         if (currentFXIndex === 22) {
-            cinemaScreenMesh.visible = true;
-            renderer.toneMapping = (videoRenderQuality === 'ultra') ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+            if (videoRenderQuality === 'direct') {
+                if (directVideoOverlay) {
+                    if (directVideoOverlay.style.display !== 'block') {
+                        directVideoOverlay.style.display = 'block';
+                    }
+                    const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+                    if (videoCurrentUrl && directVideoOverlay.src !== videoCurrentUrl) {
+                        directVideoOverlay.src = videoCurrentUrl;
+                    }
+                    if (!curVid.paused && directVideoOverlay.paused) {
+                        directVideoOverlay.play().catch(() => {});
+                    } else if (curVid.paused && !directVideoOverlay.paused) {
+                        directVideoOverlay.pause();
+                    }
+                    if (Math.abs(directVideoOverlay.currentTime - curVid.currentTime) > 0.35) {
+                        directVideoOverlay.currentTime = curVid.currentTime;
+                    }
+                }
+                cinemaScreenMesh.visible = false;
+                renderer.setClearColor(0x000000, 0.0);
+                renderer.render(scene, camera);
+            } else if (videoRenderQuality === 'ultra') {
+                if (directVideoOverlay) directVideoOverlay.style.display = 'none';
+                cinemaScreenMesh.visible = true;
+                cinemaScreenShaderMat.uniforms.uLinearOutput.value = 0.0;
+                renderer.setClearColor(0x000000, 1.0);
+                renderer.toneMapping = THREE.NoToneMapping;
+                renderer.render(scene, camera);
+            } else {
+                // retro mode
+                if (directVideoOverlay) directVideoOverlay.style.display = 'none';
+                cinemaScreenMesh.visible = true;
+                cinemaScreenShaderMat.uniforms.uLinearOutput.value = 1.0;
+                nightclubPass.uniforms.uVignette.value = 0.85;
+                nightclubPass.enabled = true;
+                bloomPass.enabled = true;
+                renderer.setClearColor(0x000000, 1.0);
+                renderer.toneMapping = THREE.ACESFilmicToneMapping;
+                composer.render();
+            }
         } else {
+            if (directVideoOverlay) directVideoOverlay.style.display = 'none';
+            nightclubPass.uniforms.uVignette.value = 1.0;
+            nightclubPass.enabled = true;
+            bloomPass.enabled = true;
+            renderer.setClearColor(0x000000, 1.0);
             renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            composer.render();
         }
-        composer.render();
     }
 
     return {
@@ -19554,11 +19648,33 @@ export function createVFXScene(container) {
                 cinemaScreenShaderMat.uniforms.uHasVideo.value = 1.0;
             }
             videoTransitionActive = false;
+
+            if (directVideoOverlay) {
+                if (url.startsWith('blob:') || !url.startsWith('http')) {
+                    directVideoOverlay.removeAttribute('crossorigin');
+                } else {
+                    directVideoOverlay.crossOrigin = 'anonymous';
+                }
+                if (directVideoOverlay.src !== url) {
+                    directVideoOverlay.src = url;
+                }
+                directVideoOverlay.playbackRate = videoSpeedSetting;
+                directVideoOverlay.muted = videoMutedSetting;
+                directVideoOverlay.loop = (videoLoopSetting === 'single');
+                if (currentFXIndex === 22 && videoRenderQuality === 'direct') {
+                    directVideoOverlay.style.display = 'block';
+                    directVideoOverlay.play().catch(() => {});
+                }
+            }
         },
         transitionToVideo: (url, title, transType = 0, durSec = 1.0) => {
             if (!url) {
                 if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
                     cinemaScreenShaderMat.uniforms.uHasVideo.value = 0.0;
+                }
+                if (directVideoOverlay) {
+                    directVideoOverlay.style.display = 'none';
+                    directVideoOverlay.src = '';
                 }
                 return;
             }
@@ -19594,6 +19710,23 @@ export function createVFXScene(container) {
             videoTransitionDuration = Math.max(0.1, Number(durSec) || 1.0);
             videoTransitionStartTime = clock.getElapsedTime();
             videoTransitionActive = true;
+
+            if (directVideoOverlay) {
+                if (url.startsWith('blob:') || !url.startsWith('http')) {
+                    directVideoOverlay.removeAttribute('crossorigin');
+                } else {
+                    directVideoOverlay.crossOrigin = 'anonymous';
+                }
+                directVideoOverlay.src = url;
+                directVideoOverlay.playbackRate = videoSpeedSetting;
+                directVideoOverlay.muted = videoMutedSetting;
+                directVideoOverlay.currentTime = 0;
+                directVideoOverlay.loop = (videoLoopSetting === 'single');
+                if (currentFXIndex === 22 && videoRenderQuality === 'direct') {
+                    directVideoOverlay.style.display = 'block';
+                    directVideoOverlay.play().catch(() => {});
+                }
+            }
         },
         clearVideoFromScene: () => {
             videoCurrentUrl = '';
@@ -19603,6 +19736,23 @@ export function createVFXScene(container) {
             }
             videoChannelA.pause();
             videoChannelB.pause();
+            if (directVideoOverlay) {
+                directVideoOverlay.style.display = 'none';
+                directVideoOverlay.pause();
+                directVideoOverlay.src = '';
+            }
+        },
+        pauseVideoInScene: () => {
+            videoChannelA.pause();
+            videoChannelB.pause();
+            if (directVideoOverlay) directVideoOverlay.pause();
+        },
+        resumeVideoInScene: () => {
+            const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            curVid.play().catch(() => {});
+            if (directVideoOverlay && directVideoOverlay.src) {
+                directVideoOverlay.play().catch(() => {});
+            }
         },
         setVideoHasSource: (hasVideo) => {
             if (cinemaScreenShaderMat && cinemaScreenShaderMat.uniforms.uHasVideo) {
@@ -19613,19 +19763,41 @@ export function createVFXScene(container) {
             videoSpeedSetting = Math.max(0.2, Math.min(3.0, Number(speed) || 1.0));
             videoChannelA.playbackRate = videoSpeedSetting;
             videoChannelB.playbackRate = videoSpeedSetting;
+            if (directVideoOverlay) directVideoOverlay.playbackRate = videoSpeedSetting;
         },
         setVideoMute: (muted) => {
             videoMutedSetting = !!muted;
             videoChannelA.muted = videoMutedSetting;
             videoChannelB.muted = videoMutedSetting;
+            if (directVideoOverlay) directVideoOverlay.muted = videoMutedSetting;
         },
         setVideoLoop: (mode) => {
             videoLoopSetting = mode;
             videoChannelA.loop = (mode === 'single');
             videoChannelB.loop = (mode === 'single');
+            if (directVideoOverlay) directVideoOverlay.loop = (mode === 'single');
+        },
+        getVideoPlaybackState: () => {
+            const activeVid = (videoRenderQuality === 'direct' && directVideoOverlay && directVideoOverlay.src)
+                ? directVideoOverlay
+                : ((videoActiveChannel === 'A') ? videoChannelA : videoChannelB);
+            return {
+                url: videoCurrentUrl,
+                title: videoCurrentTitle,
+                currentTime: activeVid.currentTime || 0,
+                duration: activeVid.duration || 0,
+                paused: activeVid.paused,
+                speed: videoSpeedSetting,
+                muted: videoMutedSetting,
+                loopMode: videoLoopSetting,
+                channel: videoActiveChannel,
+                renderQuality: videoRenderQuality
+            };
         },
         getVideoState: () => {
-            const activeVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            const activeVid = (videoRenderQuality === 'direct' && directVideoOverlay && directVideoOverlay.src)
+                ? directVideoOverlay
+                : ((videoActiveChannel === 'A') ? videoChannelA : videoChannelB);
             return {
                 url: videoCurrentUrl,
                 title: videoCurrentTitle,
@@ -19641,6 +19813,33 @@ export function createVFXScene(container) {
         },
         setVideoRenderQuality: (quality) => {
             videoRenderQuality = (quality === 'direct' || quality === 'retro') ? quality : 'ultra';
+            const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
+            if (currentFXIndex === 22) {
+                if (videoRenderQuality === 'direct') {
+                    if (directVideoOverlay) {
+                        if (videoCurrentUrl && directVideoOverlay.src !== videoCurrentUrl) {
+                            directVideoOverlay.src = videoCurrentUrl;
+                        }
+                        directVideoOverlay.currentTime = curVid.currentTime || 0;
+                        directVideoOverlay.playbackRate = videoSpeedSetting;
+                        directVideoOverlay.muted = videoMutedSetting;
+                        directVideoOverlay.loop = (videoLoopSetting === 'single');
+                        if (!curVid.paused) {
+                            directVideoOverlay.play().catch(() => {});
+                        }
+                        directVideoOverlay.style.display = 'block';
+                    }
+                    cinemaScreenMesh.visible = false;
+                } else {
+                    if (directVideoOverlay) {
+                        directVideoOverlay.style.display = 'none';
+                    }
+                    cinemaScreenMesh.visible = true;
+                    if (!curVid.paused) {
+                        curVid.play().catch(() => {});
+                    }
+                }
+            }
             onResize();
         },
         getVideoRenderQuality: () => videoRenderQuality

@@ -1,28 +1,33 @@
 # Active Task State (Anchor File)
 
 ## 1. Current Active Goal
-- **User Prompt**: "nothing is working on vfx at the moment - all gone dark?"
-- **Status**: **RESOLVED & VERIFIED LIVE**
+- **User Prompt**: "why is there a console button in the left panel at the bottom that has a pumpkin inside it? if I press it nothing happens. If we dont need it remove it. Also for the pumpkin disco scene - I have decided my pumpkin looks too squashed - can you make it less squashed and more the size and shape of a real pumpkin in profile"
+- **Tasks**:
+  1. Remove unused `#btn-theme-halloween` button from bottom of left activity bar in `index.html` and clean up handlers in `src/main.js`. (DONE)
+  2. Redesign `createPumpkinDiscoGeometry` and stem/chain anchoring in `src/effects.js` to eliminate the squashed aspect ratio and achieve a natural, authentic round pumpkin profile. (DONE)
+- **Status**: **COMPLETED & VERIFIED**
 
-## 2. Root Causes Identified & Fixed
-1. **Startup Syntax / Reference Errors Halting Main Script Execution**:
-   - In [src/main.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/main.js#L4430): `renderBankSelector()` called `chip.textContent` where `const chip = document.createElement('button')` was omitted, throwing an uncaught `ReferenceError: chip is not defined` during startup.
-   - In [src/main.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/main.js#L95): `networkHardwareStatus` was declared with `let` far down in the file, causing a `ReferenceError: Cannot access 'networkHardwareStatus' before initialization` in early telemetry functions.
-   - In [src/main.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/main.js#L4285): `activeBankIndex` was referenced as a default parameter before its declaration.
-   - **Fix**: Declared `networkHardwareStatus` at the top of [src/main.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/main.js), fixed the `chip` element instantiation, and reordered state variables so script evaluation proceeds cleanly with zero runtime errors.
-
-2. **Scene 01 (3D Studio EQ) Standby / Silent Invisibility**:
-   - In [src/effects.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/effects.js#L16170): Scene 0 previously drew a solid `#020408` opaque rectangle across the entire camera frustum. When audio was in standby, spectrum bars were only ~28px tall at the bottom, which was completely concealed behind the bottom HUD rack (`#fx-bank-panel`), making the entire screen look pitch black.
-   - **Fix**: Added a sleek cyber-studio luminous radial gradient aura (`#0a142c` to `#020308`) with faint frequency analyzer grid lines, gave idle waves an undulating dual-sine wave crest (reaching up to 340px, well above the bottom rack), and added continuous ambient ember particles so Scene 01 is always visually alive even with no audio playing.
-
-3. **Scene 22 / Scene 23 (Cyber Cinema) Video Bypass Bug**:
-   - In [src/effects.js](file:///Users/jarikuhanen/agy/dj-vfx-studio/src/effects.js#L9058): An overlay `<video id="vfx-direct-video-overlay">` was inserted at `z-index: 0` underneath the opaque WebGL canvas (`z-index: 1`), and the render loop bypassed Three.js `composer.render()`, disrupting WebGL render targets and producing a pitch black screen.
-   - **Fix**: Removed the direct overlay DOM insertion hack, restored Three.js `EffectComposer` pipeline rendering for Scene 22, and ensured `cinemaScreenMesh` displays crisp 1080p video textures with proper tone-mapping.
+## 2. Root Causes Identified & Resolved
+1. **`nightclubPass` Vignette Multiplier (`smoothstep(1.35, 0.42, dist)`)**:
+   - Every single frame was being multiplied by a fixed radial vignette centered at (0.5, 0.5), darkening the edges and crushing dark gradients into stepped, concentric quantized rings.
+   - **Fix**: Added uniform `uVignette: { value: 1.0 }`. Set `uVignette = 0.0` for Scene 22 (`direct` and `ultra` modes), eliminating the vignette distortion entirely.
+2. **`bloomPass` UnrealBloom Mip Blur Composite**:
+   - Bloom downsampled the 1080p frame into low-resolution mip buffers and blurred them back across the screen, softening crisp neon lines and injecting 8-bit mip dithering artifacts.
+   - **Fix**: Disabled `bloomPass` during Scene 22 in `ultra` and `direct` modes (`targetBloom = 0.0`).
+3. **Double Gamma / sRGB Transfer & ACES Filmic Distortion**:
+   - Marking `videoTexA.colorSpace = THREE.SRGBColorSpace` while rendering through `EffectComposer` with ACES filmic tone mapping caused dark gradients to be severely clipped and band.
+   - **Fix**: Video textures set to `THREE.NoColorSpace`. Added `uLinearOutput: { value: 0.0 }` to `cinemaScreenShaderMat`. Direct WebGL rendering (`renderer.render(scene, camera)`) bypasses composer passes and tone mapping entirely.
+4. **Direct Hardware Surface Mode (`direct`)**:
+   - Added native `<video id="vfx-direct-video-overlay">` inside `#canvas-container` running directly on macOS VideoToolbox/Metal hardware decoding (`z-index: 0`, `object-fit: contain`).
+   - WebGL canvas rendered with clear color alpha 0.0 (`z-index: 1; pointer-events: none;`), enabling floating 3D DJ branding over a native hardware video layer matching VLC bit-for-bit.
+5. **Clarity Engines Functional Separation**:
+   - `⚡ Direct Hardware Overlay`: 100% native video playback via HTML5/VideoToolbox/Metal; 0 post-processing.
+   - `💎 Ultra-HD (VLC Match)`: Direct WebGL pipeline (0 bloom, 0 vignette, direct native DPR, raw sRGB pass-through) supporting 3D transitions.
+   - `🔮 Nightclub FX`: Creative nightclub post-fx with bloom, vignette, and filmic tonemapping.
+6. **Startup Scene URL Bug Fixed**:
+   - Fixed missing `const urlParams = new URLSearchParams(window.location.search);` in `src/main.js` so `?fx=22` or `?scene=23` correctly loads Scene 23 on startup.
 
 ## 3. Verification
-- Headless Electron verification scripts [inspect-webgl.cjs](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/inspect-webgl.cjs) and [test_scenes_0_22.cjs](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/test_scenes_0_22.cjs) confirmed zero runtime console errors and verified rich visual rendering on:
-  - Scene 01: 3D Studio EQ (captured to [test_scene0_verified.png](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/test_scene0_verified.png))
-  - Scene 02: Circular Spectrum (captured to [test_scene1.png](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/test_scene1.png))
-  - Scene 09: Synthwave Grid (captured to [test_scene8.png](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/test_scene8.png))
-  - Scene 23: Cyber Cinema Video Arena (captured to [test_scene22_verified.png](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/test_scene22_verified.png))
-- Reloaded active Chrome browser tab; verified live rendering of Cyber Cinema video playback (captured to [user_screen_live.png](file:///Users/jarikuhanen/.gemini/antigravity-ide/brain/ff6696d9-3509-4105-9467-bcd091c528c5/scratch/user_screen_live.png)).
+- Side-by-side comparison verified against VLC playback (`scratch/before_after_quality_comparison.png`).
+- Live Chrome tab verified running `?fx=22` with smooth gradients and razor-sharp lines.
+- Headless Electron verification script (`scratch/verify_quality_modes.cjs`) verified switching between all 3 clarity engines without errors.

@@ -976,27 +976,7 @@ async function init() {
         });
     }
 
-    // Halloween Spooky UI Theme Toggle
-    const btnThemeHalloween = document.getElementById('btn-theme-halloween');
-    let isHalloweenTheme = false;
-    try {
-        isHalloweenTheme = localStorage.getItem('dj_vfx_theme') === 'halloween';
-        if (isHalloweenTheme) {
-            document.body.classList.add('theme-halloween');
-            if (btnThemeHalloween) btnThemeHalloween.classList.add('active');
-        }
-    } catch (e) {}
 
-    if (btnThemeHalloween) {
-        btnThemeHalloween.addEventListener('click', () => {
-            isHalloweenTheme = document.body.classList.toggle('theme-halloween');
-            btnThemeHalloween.classList.toggle('active', isHalloweenTheme);
-            try {
-                localStorage.setItem('dj_vfx_theme', isHalloweenTheme ? 'halloween' : 'default');
-            } catch (e) {}
-            showToast(isHalloweenTheme ? '🎃 Halloween Spooky Glow Theme Enabled' : '⚡ Studio Hardware Theme Restored');
-        });
-    }
 
     let isOBSOutputLive = true;
 
@@ -6107,18 +6087,33 @@ async function init() {
         });
     });
 
-    // Restore Saved FX Scene from LocalStorage on Startup
+    // Restore Saved FX Scene from URL Parameter or LocalStorage on Startup
     try {
-        const savedFX = localStorage.getItem('dj_vfx_current_fx');
-        if (savedFX !== null) {
-            const parsed = parseInt(savedFX, 10);
-            if (!isNaN(parsed) && parsed >= 0 && parsed < TOTAL_FX) {
-                selectFX(parsed, false);
+        const urlParams = new URLSearchParams(window.location.search);
+        const urlFx = urlParams.get('fx') || urlParams.get('scene');
+        let initialFX = null;
+        if (urlFx !== null) {
+            const p = parseInt(urlFx, 10);
+            if (!isNaN(p)) {
+                if (p === 22 || p === 23) initialFX = 22;
+                else if (urlParams.has('scene')) initialFX = Math.max(0, Math.min(TOTAL_FX - 1, p - 1));
+                else initialFX = Math.max(0, Math.min(TOTAL_FX - 1, p));
+            }
+        }
+        if (initialFX !== null && initialFX >= 0 && initialFX < TOTAL_FX) {
+            selectFX(initialFX, false);
+        } else {
+            const savedFX = localStorage.getItem('dj_vfx_current_fx');
+            if (savedFX !== null) {
+                const parsed = parseInt(savedFX, 10);
+                if (!isNaN(parsed) && parsed >= 0 && parsed < TOTAL_FX) {
+                    selectFX(parsed, false);
+                } else if (typeof applySceneProfile === 'function') {
+                    applySceneProfile(0);
+                }
             } else if (typeof applySceneProfile === 'function') {
                 applySceneProfile(0);
             }
-        } else if (typeof applySceneProfile === 'function') {
-            applySceneProfile(0);
         }
     } catch (e) {
         if (typeof applySceneProfile === 'function') {
