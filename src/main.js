@@ -93,6 +93,15 @@ async function init() {
     let lastPacketRateCalcTime = performance.now();
     let networkPingMs = 4;
     let networkPingState = 'green';
+    let networkHardwareStatus = {
+        isWired: true, // Default to true on macOS local network
+        activeInterface: 'en13',
+        hardwarePort: 'USB 10/100/1000 LAN',
+        activeIp: '192.168.1.194',
+        gateway: '192.168.1.1',
+        wifiSsid: '',
+        wifiIp: '192.168.1.160'
+    };
     let currentRenderFps = 60;
     let currentRenderFrameMs = 16.7;
     let lastFpsTime = performance.now();
@@ -894,8 +903,13 @@ async function init() {
                     selectFX(22);
                 }
             }
-            if (window.videoPlaybackManager && typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
-                window.videoPlaybackManager.ensureFirstFrames();
+            if (window.videoPlaybackManager) {
+                if (typeof window.videoPlaybackManager.ensureActiveMonitor === 'function') {
+                    window.videoPlaybackManager.ensureActiveMonitor();
+                }
+                if (typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
+                    window.videoPlaybackManager.ensureFirstFrames();
+                }
             }
         }
     }
@@ -907,8 +921,13 @@ async function init() {
             vfx.switchFX(22);
         }
         switchTab('video');
-        if (window.videoPlaybackManager && typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
-            window.videoPlaybackManager.ensureFirstFrames();
+        if (window.videoPlaybackManager) {
+            if (typeof window.videoPlaybackManager.ensureActiveMonitor === 'function') {
+                window.videoPlaybackManager.ensureActiveMonitor();
+            }
+            if (typeof window.videoPlaybackManager.ensureFirstFrames === 'function') {
+                window.videoPlaybackManager.ensureFirstFrames();
+            }
         }
         if (typeof showToast === 'function') {
             showToast('🎬 Scene 23: Cyber Cinema 3D • Video Loops & Library Console Loaded');
@@ -4126,6 +4145,7 @@ async function init() {
         const btnChooseVideoFolder = document.getElementById('btn-choose-video-folder');
         const btnChooseVideoFiles = document.getElementById('btn-choose-video-files');
         const btnLoadDemoVideos = document.getElementById('btn-load-demo-videos');
+        const btnRevealFinder = document.getElementById('btn-reveal-finder');
         const fileVideoFolder = document.getElementById('file-video-folder');
         const fileVideoFiles = document.getElementById('file-video-files');
         const btnScanMacPath = document.getElementById('btn-scan-mac-path');
@@ -4144,6 +4164,7 @@ async function init() {
 
         // Monitor Card Elements
         const videoActivePreviewVid = document.getElementById('video-active-preview-vid');
+        const videoActivePreviewPoster = document.getElementById('video-active-preview-poster');
         const videoActiveTitle = document.getElementById('video-active-title');
         const videoBadgeOnAir = document.getElementById('video-badge-on-air');
         const videoBadgeLoop = document.getElementById('video-badge-loop');
@@ -4168,14 +4189,67 @@ async function init() {
         const STORAGE_KEY = 'dj_video_banks_v2';
         const SETTINGS_KEY = 'dj_video_settings_v2';
 
-        const DEFAULT_BANKS = Array.from({ length: 10 }, (_, i) => ({
-            id: i,
-            name: `Bank ${i + 1}: (Empty)`,
-            folderPath: '',
+        // Demo VJ Video Loops (Fast, reliable local visual loops)
+        const DEMO_VJ_LOOPS = [
+            {
+                name: '01_jkmclaren_shock.mp4',
+                title: 'JK McLaren Shockwave',
+                url: '/images/videos/01_jkmclaren_shock.mp4',
+                duration: 8.5,
+                included: true,
+                thumbnailUrl: '',
+                previewTime: 1.0
+            },
+            {
+                name: '02_vintage_filament.webm',
+                title: 'Vintage Filament Neon',
+                url: '/images/videos/02_vintage_filament.webm',
+                duration: 10.0,
+                included: true,
+                thumbnailUrl: '',
+                previewTime: 1.0
+            },
+            {
+                name: 'vintage-bulb.webm',
+                title: 'Vintage Edison Filament',
+                url: '/vintage-bulb.webm',
+                duration: 12.0,
+                included: true,
+                thumbnailUrl: '',
+                previewTime: 1.0
+            },
+            {
+                name: 'jkmclaren_shock.mp4',
+                title: 'Shock Laser Tunnel',
+                url: '/images/logo/jkmclaren_shock.mp4',
+                duration: 8.5,
+                included: true,
+                thumbnailUrl: '',
+                previewTime: 1.0
+            }
+        ];
+
+        const PREMAPPED_BANKS = [
+            { id: 0, name: 'Bank 1: 📁 Big Screen', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Big Screen' },
+            { id: 1, name: 'Bank 2: 📁 Neon', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Neon' },
+            { id: 2, name: 'Bank 3: 📁 Lights', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Lights' },
+            { id: 3, name: 'Bank 4: 📁 Key', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Key' },
+            { id: 4, name: 'Bank 5: 📁 xmaseve', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/xmaseve' },
+            { id: 5, name: 'Bank 6: 📁 Halloween', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Halloween' },
+            { id: 6, name: 'Bank 7: 📁 Events', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Events' },
+            { id: 7, name: 'Bank 8: 📁 Flight', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Flight' },
+            { id: 8, name: 'Bank 9: 📁 other', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/other' },
+            { id: 9, name: 'Bank 10: 📁 Abstract', folderPath: '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Abstract' }
+        ];
+
+        const DEFAULT_BANKS = PREMAPPED_BANKS.map((b) => ({
+            id: b.id,
+            name: b.name,
+            folderPath: b.folderPath,
             videos: []
         }));
 
-        let banks = DEFAULT_BANKS;
+        let banks = JSON.parse(JSON.stringify(DEFAULT_BANKS));
         try {
             const saved = localStorage.getItem(STORAGE_KEY);
             if (saved) {
@@ -4183,16 +4257,35 @@ async function init() {
                 if (Array.isArray(parsed) && parsed.length > 0) {
                     for (let i = 0; i < 10; i++) {
                         const item = parsed[i];
-                        const cleanVids = (item?.videos || []).filter(v => v.url && !v.url.startsWith('/images/')).map((v, vIdx) => ({
-                            ...v,
-                            thumbnailUrl: v.thumbnailUrl || createProceduralPoster(v.title || v.name, vIdx)
-                        }));
-                        banks[i] = {
-                            id: i,
-                            name: (item && cleanVids.length > 0) ? (item.name || `Bank ${i + 1}`) : `Bank ${i + 1}: (Empty)`,
-                            folderPath: (cleanVids.length > 0) ? (item?.folderPath || '') : '',
-                            videos: cleanVids
-                        };
+                        const cleanVids = (item?.videos || [])
+                            .filter(v => v.url && !v.url.startsWith('https://commondatastorage.googleapis.com/') && (!v.url.startsWith('blob:') || v.path))
+                            .map(v => {
+                                let effectiveUrl = v.url;
+                                if (effectiveUrl.startsWith('blob:') && v.path) {
+                                    effectiveUrl = `/api/videos/stream?file=${encodeURIComponent(v.path)}`;
+                                }
+                                return {
+                                    ...v,
+                                    url: effectiveUrl,
+                                    thumbnailUrl: (v.thumbnailUrl && v.thumbnailUrl.startsWith('data:image/jpeg') && v.thumbnailUrl.length > 1800) ? v.thumbnailUrl : null,
+                                    previewTime: v.previewTime || 1.0
+                                };
+                            });
+                        if (cleanVids.length > 0) {
+                            banks[i] = {
+                                id: i,
+                                name: item?.name || PREMAPPED_BANKS[i].name,
+                                folderPath: item?.folderPath || PREMAPPED_BANKS[i].folderPath,
+                                videos: cleanVids
+                            };
+                        } else {
+                            banks[i] = {
+                                id: i,
+                                name: PREMAPPED_BANKS[i].name,
+                                folderPath: PREMAPPED_BANKS[i].folderPath,
+                                videos: []
+                            };
+                        }
                     }
                 }
             }
@@ -4209,8 +4302,57 @@ async function init() {
         let transitionType = 'crossfade';
         let transitionDuration = 1.0;
         let isMuted = true;
+        let videoQuality = 'ultra'; // 'ultra' (VLC Match), 'direct' (Direct Hardware Overlay), 'retro' (Nightclub FX)
         let clipStartTime = performance.now() / 1000;
         let isTransitioning = false;
+
+        async function scanAndLoadFolder(folderPath, bankIndex = activeBankIndex, autoPlay = false) {
+            try {
+                const res = await fetch(`/api/videos/scan?folder=${encodeURIComponent(folderPath)}`);
+                const data = await res.json();
+                if (data && data.success && data.videos && data.videos.length > 0) {
+                    const folderName = folderPath.split('/').filter(Boolean).pop() || `Bank ${bankIndex + 1}`;
+                    banks[bankIndex].name = `Bank ${bankIndex + 1}: 📁 ${folderName}`;
+                    banks[bankIndex].folderPath = folderPath;
+                    banks[bankIndex].videos = data.videos.map(v => ({
+                        ...v,
+                        thumbnailUrl: '',
+                        previewTime: 1.0
+                    }));
+                    saveBanks();
+                    renderBankSelector();
+                    if (bankIndex === activeBankIndex) {
+                        renderVideoGrid();
+                        if (autoPlay) playVideoItem(0, false);
+                    }
+                    return true;
+                }
+            } catch (err) {
+                console.warn(`[Bank ${bankIndex + 1}] Folder scan error:`, err);
+            }
+            return false;
+        }
+
+        // Auto-seed Bank 1 with Big Screen if empty or if currently pointing to Neon
+        const b0NeedsBigScreen = banks[0].videos.length === 0 || (banks[0].folderPath && banks[0].folderPath.includes('Neon'));
+        if (b0NeedsBigScreen) {
+            scanAndLoadFolder(PREMAPPED_BANKS[0].folderPath, 0, false).then(() => {
+                if (activeBankIndex === 0 && banks[0].videos.length > 0) {
+                    playVideoItem(0, false);
+                }
+            });
+        }
+
+        // Staggered background pre-scan for the remaining banks so their videos & counts are ready
+        setTimeout(() => {
+            PREMAPPED_BANKS.forEach((pm, bIdx) => {
+                if (bIdx > 0 && banks[bIdx].videos.length === 0 && banks[bIdx].folderPath) {
+                    setTimeout(() => {
+                        scanAndLoadFolder(banks[bIdx].folderPath, bIdx, false);
+                    }, bIdx * 180);
+                }
+            });
+        }, 1000);
 
         // Load saved settings
         try {
@@ -4225,21 +4367,43 @@ async function init() {
                 if (s.transitionType) transitionType = s.transitionType;
                 if (s.transitionDuration !== undefined) transitionDuration = s.transitionDuration;
                 if (s.isMuted !== undefined) isMuted = s.isMuted;
+                if (s.videoQuality) videoQuality = s.videoQuality;
                 if (s.activeBankIndex !== undefined && s.activeBankIndex < banks.length) activeBankIndex = s.activeBankIndex;
             }
         } catch (e) {}
+
+        if (vfx && typeof vfx.setVideoRenderQuality === 'function') {
+            vfx.setVideoRenderQuality(videoQuality);
+        }
 
         function saveBanks() {
             try {
                 const serializable = banks.map(b => ({
                     ...b,
-                    videos: (b.videos || []).map(v => {
-                        const { thumbnailUrl, ...rest } = v;
-                        return rest;
-                    })
+                    videos: (b.videos || []).map(v => ({
+                        name: v.name,
+                        title: v.title,
+                        url: v.url,
+                        path: v.path || '',
+                        duration: v.duration || 10,
+                        previewTime: v.previewTime || 1.0,
+                        included: v.included !== false,
+                        thumbnailUrl: (v.thumbnailUrl && v.thumbnailUrl.startsWith('data:image/jpeg') && v.thumbnailUrl.length > 1800) ? v.thumbnailUrl : ''
+                    }))
                 }));
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(serializable));
-            } catch (e) {}
+            } catch (e) {
+                try {
+                    const fallback = banks.map(b => ({
+                        ...b,
+                        videos: (b.videos || []).map(v => {
+                            const { thumbnailUrl, ...rest } = v;
+                            return rest;
+                        })
+                    }));
+                    localStorage.setItem(STORAGE_KEY, JSON.stringify(fallback));
+                } catch (e2) {}
+            }
         }
 
         function saveSettings() {
@@ -4253,6 +4417,7 @@ async function init() {
                     transitionType,
                     transitionDuration,
                     isMuted,
+                    videoQuality,
                     activeBankIndex
                 }));
             } catch (e) {}
@@ -4273,17 +4438,19 @@ async function init() {
             if (videoBankChipsBar) {
                 videoBankChipsBar.innerHTML = '';
                 banks.forEach((b, idx) => {
+                    const count = (b.videos && b.videos.length) || 0;
+                    const folderName = b.folderPath ? b.folderPath.split('/').filter(Boolean).pop() : `Bank ${idx + 1}`;
                     const chip = document.createElement('button');
                     chip.className = `video-bank-chip ${idx === activeBankIndex ? 'active' : ''}`;
-                    chip.textContent = `B${idx + 1}`;
-                    chip.title = `${b.name} (${(b.videos && b.videos.length) || 0} clips)`;
+                    chip.textContent = count > 0 ? `B${idx + 1}: ${folderName} (${count})` : `B${idx + 1}: ${folderName}`;
+                    chip.title = `${b.name} (${count} clips)`;
                     chip.addEventListener('click', () => switchBank(idx));
                     videoBankChipsBar.appendChild(chip);
                 });
             }
         }
 
-        function switchBank(bankIdx) {
+        async function switchBank(bankIdx) {
             if (bankIdx < 0 || bankIdx >= banks.length) return;
             activeBankIndex = bankIdx;
             currentVideoIndex = 0;
@@ -4293,6 +4460,10 @@ async function init() {
             const currBank = banks[activeBankIndex];
             if (currBank && currBank.videos && currBank.videos.length > 0) {
                 playVideoItem(0, false);
+                healBankVideos(activeBankIndex);
+            } else if (currBank && currBank.folderPath) {
+                showToast(`⏳ Scanning ${currBank.name}...`);
+                await scanAndLoadFolder(currBank.folderPath, activeBankIndex, true);
             }
         }
 
@@ -4302,94 +4473,182 @@ async function init() {
             });
         }
 
-        function createProceduralPoster(title, themeIdx = 0) {
-            const themes = [
-                { c1: '#ff0055', c2: '#7a00ff', icon: '🔥', label: 'VJ CLIP' },
-                { c1: '#00e5ff', c2: '#002bff', icon: '⚡', label: 'CYBER LOOP' },
-                { c1: '#00ff88', c2: '#00a86b', icon: '🌌', label: 'BASS FX' },
-                { c1: '#ff9900', c2: '#ff007f', icon: '🚀', label: 'NEON WAVE' },
-                { c1: '#9d4edd', c2: '#3c096c', icon: '🔮', label: 'COSMIC FX' },
-                { c1: '#06d6a0', c2: '#118ab2', icon: '💫', label: 'PULSE FX' }
+        function createProceduralPoster(title, index = 0) {
+            const gradients = [
+                ['#0d1117', '#00f2fe', '#4facfe'],
+                ['#160b24', '#f107a3', '#7b2ff7'],
+                ['#071913', '#00ff88', '#00b4d8'],
+                ['#1e0e02', '#ff8c00', '#ff0080'],
+                ['#0c1527', '#00b4d8', '#90e0ef'],
+                ['#1b061c', '#b5179e', '#7209b7'],
+                ['#081726', '#0077b6', '#00f2fe'],
+                ['#190818', '#f72585', '#4361ee']
             ];
-            const theme = themes[Math.abs(themeIdx) % themes.length];
-            const cleanTitle = (title || 'VIDEO CLIP').substring(0, 22).replace(/[<>&"]/g, '').toUpperCase();
-            const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 180" width="320" height="180">
+            const grad = gradients[index % gradients.length];
+            const safeTitle = (title || 'Video Clip').replace(/[<>&"]/g, '').slice(0, 26);
+            const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="180" viewBox="0 0 320 180">
                 <defs>
-                    <linearGradient id="bgGrad${themeIdx}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="${theme.c1}" stop-opacity="0.85"/>
-                        <stop offset="100%" stop-color="${theme.c2}" stop-opacity="0.95"/>
+                    <linearGradient id="pg${index}" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" stop-color="${grad[0]}" />
+                        <stop offset="50%" stop-color="${grad[1]}" stop-opacity="0.4" />
+                        <stop offset="100%" stop-color="${grad[2]}" stop-opacity="0.8" />
                     </linearGradient>
-                    <radialGradient id="glow${themeIdx}" cx="50%" cy="50%" r="50%">
-                        <stop offset="0%" stop-color="#ffffff" stop-opacity="0.2"/>
-                        <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
-                    </radialGradient>
+                    <pattern id="pgrid${index}" width="16" height="16" patternUnits="userSpaceOnUse">
+                        <path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="1"/>
+                    </pattern>
                 </defs>
-                <rect width="320" height="180" fill="#070a12"/>
-                <rect width="320" height="180" fill="url(#bgGrad${themeIdx})"/>
-                <circle cx="160" cy="78" r="80" fill="url(#glow${themeIdx})"/>
-                <circle cx="160" cy="72" r="28" fill="rgba(0,0,0,0.5)" stroke="rgba(255,255,255,0.3)" stroke-width="1.5"/>
-                <text x="160" y="80" font-family="-apple-system, system-ui, sans-serif" font-size="22" text-anchor="middle" fill="#ffffff">${theme.icon}</text>
-                <rect x="16" y="124" width="288" height="42" rx="4" fill="rgba(6,9,16,0.85)" stroke="rgba(255,255,255,0.15)" stroke-width="1"/>
-                <text x="28" y="139" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="#00ffcc" letter-spacing="1">${theme.label} [CH ${String(themeIdx + 1).padStart(2, '0')}]</text>
-                <text x="28" y="153" font-family="-apple-system, BlinkMacSystemFont, sans-serif" font-size="11" font-weight="700" fill="#ffffff">${cleanTitle}</text>
+                <rect width="320" height="180" fill="#06080e"/>
+                <rect width="320" height="180" fill="url(#pg${index})"/>
+                <rect width="320" height="180" fill="url(#pgrid${index})"/>
+                <circle cx="160" cy="74" r="26" fill="rgba(0,0,0,0.55)" stroke="rgba(0,255,204,0.6)" stroke-width="1.5"/>
+                <polygon points="154,62 172,74 154,86" fill="#00ffcc"/>
+                <text x="160" y="128" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="11.5" font-weight="800" fill="#ffffff" text-anchor="middle" letter-spacing="0.4">${safeTitle}</text>
+                <text x="160" y="146" font-family="'JetBrains Mono', monospace" font-size="8.5" font-weight="700" fill="rgba(0,255,204,0.85)" text-anchor="middle" letter-spacing="1">VJ LOOP • CLICK TO CUE</text>
             </svg>`;
-            return 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+            return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
         }
 
-        function captureVideoFrame(videoUrl, seekTime = 1.0) {
+        function captureNonBlankVideoFrame(videoUrl) {
             return new Promise((resolve) => {
-                if (!videoUrl) return resolve(null);
+                if (!videoUrl || videoUrl.startsWith('data:image/svg')) return resolve(null);
+                const cleanUrl = videoUrl.split('#')[0];
                 const v = document.createElement('video');
-                v.preload = 'metadata';
+                v.preload = 'auto';
                 v.muted = true;
                 v.playsInline = true;
-                if (!videoUrl.startsWith('blob:') && !videoUrl.startsWith('data:')) {
+                if (!cleanUrl.startsWith('blob:') && !cleanUrl.startsWith('data:')) {
                     v.crossOrigin = 'anonymous';
                 }
-                v.src = videoUrl;
 
                 let done = false;
+                let candidates = [1.0, 2.0, 0.5, 3.0, 1.5, 4.0, 0.2];
+                let currentIdx = 0;
+                let bestCandidate = null;
+
+                const cleanup = () => {
+                    clearTimeout(timer);
+                    v.onloadedmetadata = null;
+                    v.onseeked = null;
+                    v.onerror = null;
+                    try {
+                        v.removeAttribute('src');
+                        v.load();
+                    } catch (e) {}
+                    v.remove();
+                };
+
                 const finish = (result) => {
                     if (!done) {
                         done = true;
-                        clearTimeout(timer);
-                        v.removeAttribute('src');
-                        v.load();
-                        v.remove();
+                        cleanup();
                         resolve(result);
                     }
                 };
 
-                const timer = setTimeout(() => finish(null), 3500);
+                const timer = setTimeout(() => {
+                    if (bestCandidate && bestCandidate.thumbnailUrl) {
+                        finish(bestCandidate);
+                    } else {
+                        finish(null);
+                    }
+                }, 7000);
 
-                v.addEventListener('loadedmetadata', () => {
-                    const dur = v.duration || 5;
-                    const target = Math.min(seekTime, Math.max(0.2, dur * 0.15));
+                v.onloadedmetadata = () => {
                     try {
-                        v.currentTime = target;
+                        const dur = (v.duration && !isNaN(v.duration)) ? v.duration : 10;
+                        if (dur > 4) {
+                            candidates = [
+                                Math.min(1.0, dur * 0.15),
+                                Math.min(2.0, dur * 0.25),
+                                Math.min(3.5, dur * 0.4),
+                                Math.min(0.5, dur * 0.08),
+                                Math.min(5.0, dur * 0.6)
+                            ];
+                        } else if (dur > 0.6) {
+                            candidates = [dur * 0.25, dur * 0.5, dur * 0.75, dur * 0.1];
+                        } else {
+                            candidates = [0.05];
+                        }
+                        currentIdx = 0;
+                        v.currentTime = candidates[0];
                     } catch (e) {
                         finish(null);
                     }
-                });
+                };
 
-                v.addEventListener('seeked', () => {
+                v.onseeked = () => {
                     try {
                         if (v.videoWidth > 0 && v.videoHeight > 0) {
                             const canvas = document.createElement('canvas');
-                            canvas.width = Math.min(360, v.videoWidth);
-                            canvas.height = Math.round(canvas.width * (v.videoHeight / v.videoWidth)) || 202;
-                            const ctx = canvas.getContext('2d');
+                            canvas.width = 320;
+                            canvas.height = Math.round(320 * (v.videoHeight / v.videoWidth)) || 180;
+                            const ctx = canvas.getContext('2d', { willReadFrequently: true });
                             ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+                            let isNotBlank = false;
+                            let score = 0;
+
+                            try {
+                                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                const d = imgData.data;
+                                let totalLuma = 0;
+                                let brightCount = 0;
+                                const step = 16;
+                                let samples = 0;
+                                for (let i = 0; i < d.length; i += step) {
+                                    const luma = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                                    totalLuma += luma;
+                                    if (luma > 18) brightCount++;
+                                    samples++;
+                                }
+                                const avgLuma = samples > 0 ? (totalLuma / samples) : 0;
+                                const brightPct = samples > 0 ? (brightCount / samples) : 0;
+                                score = avgLuma * (1 + brightPct);
+
+                                // Frame is confirmed NOT blank if average brightness > 10 OR > 3% pixels are lit
+                                if (avgLuma > 10 || brightPct > 0.03) {
+                                    isNotBlank = true;
+                                }
+                            } catch (corsErr) {
+                                // If CORS prevents pixel inspection, assume canvas is good
+                                isNotBlank = true;
+                                score = 50;
+                            }
+
+                            const seekTime = candidates[currentIdx] || 1.0;
                             const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
+
                             if (dataUrl && dataUrl.length > 500) {
-                                return finish(dataUrl);
+                                if (!bestCandidate || score > bestCandidate.score) {
+                                    bestCandidate = { thumbnailUrl: dataUrl, previewTime: seekTime, score };
+                                }
+                                if (isNotBlank) {
+                                    return finish({ thumbnailUrl: dataUrl, previewTime: seekTime, score });
+                                }
                             }
                         }
                     } catch (err) {}
-                    finish(null);
-                });
 
-                v.addEventListener('error', () => finish(null));
+                    currentIdx++;
+                    if (currentIdx < candidates.length) {
+                        try {
+                            v.currentTime = candidates[currentIdx];
+                        } catch (e) {
+                            if (bestCandidate) finish(bestCandidate);
+                            else finish(null);
+                        }
+                    } else {
+                        if (bestCandidate) finish(bestCandidate);
+                        else finish(null);
+                    }
+                };
+
+                v.onerror = () => {
+                    if (bestCandidate) finish(bestCandidate);
+                    else finish(null);
+                };
+
+                v.src = cleanUrl;
             });
         }
 
@@ -4407,6 +4666,7 @@ async function init() {
                 if (videoLibraryGridBox) videoLibraryGridBox.style.display = 'none';
                 if (videoActiveTitle) videoActiveTitle.textContent = 'No Video Selected - Open Folder';
                 if (videoActivePreviewVid) videoActivePreviewVid.src = '';
+                if (videoActivePreviewPoster) videoActivePreviewPoster.style.display = 'none';
                 const videoQuickTitle = document.getElementById('video-quick-title');
                 if (videoQuickTitle) videoQuickTitle.textContent = 'No Videos - Open Bank';
                 syncBadges();
@@ -4414,6 +4674,31 @@ async function init() {
             } else {
                 if (videoSetupFlowCard) videoSetupFlowCard.style.display = 'none';
                 if (videoLibraryGridBox) videoLibraryGridBox.style.display = 'block';
+                const activeVid = vids[currentVideoIndex] || vids[0];
+                if (activeVid && videoActiveTitle && (videoActiveTitle.textContent === 'No Video Loaded' || !videoActivePreviewVid || !videoActivePreviewVid.src || videoActivePreviewVid.src === '')) {
+                    videoActiveTitle.textContent = activeVid.title;
+                    const effectivePoster = (activeVid.thumbnailUrl && activeVid.thumbnailUrl.startsWith('data:image/jpeg'))
+                        ? activeVid.thumbnailUrl
+                        : '';
+                    if (videoActivePreviewPoster) {
+                        if (effectivePoster) {
+                            videoActivePreviewPoster.src = effectivePoster;
+                            videoActivePreviewPoster.style.display = 'block';
+                        } else {
+                            videoActivePreviewPoster.style.display = 'none';
+                        }
+                    }
+                    if (videoActivePreviewVid) {
+                        if (effectivePoster) videoActivePreviewVid.poster = effectivePoster;
+                        if (!videoActivePreviewVid.src || videoActivePreviewVid.src !== activeVid.url) {
+                            videoActivePreviewVid.src = activeVid.url;
+                        }
+                        videoActivePreviewVid.muted = true;
+                        videoActivePreviewVid.play().then(() => {
+                            if (videoActivePreviewPoster) videoActivePreviewPoster.style.display = 'none';
+                        }).catch(() => {});
+                    }
+                }
             }
 
             if (!videoGridContainer) return;
@@ -4425,14 +4710,17 @@ async function init() {
                 card.dataset.index = idx;
 
                 const durLabel = vid.duration ? `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}` : '0:00';
-                const initialPoster = vid.thumbnailUrl || createProceduralPoster(vid.title, idx);
-                const vidMediaSrc = vid.url.includes('#') ? vid.url : `${vid.url}#t=0.5`;
+                const hasRealPoster = (vid.thumbnailUrl && vid.thumbnailUrl.startsWith('data:image/jpeg') && vid.thumbnailUrl.length > 1800);
+                const initialPoster = hasRealPoster ? vid.thumbnailUrl : '';
+                const previewSeekTime = vid.previewTime || 1.0;
+                const vidMediaSrc = vid.url.includes('#') ? vid.url : `${vid.url}#t=${previewSeekTime}`;
 
                 card.innerHTML = `
                     <div class="video-thumb-preview-box" title="Click to Cue Video / Hover to Preview">
-                        <img class="video-card-poster" src="${initialPoster}" alt="${vid.title}">
-                        <video class="video-card-video" src="${vidMediaSrc}" preload="metadata" muted playsinline></video>
-                        <div class="video-thumb-overlay-hint">▶ HOVER</div>
+                        <video class="video-card-video" src="${vidMediaSrc}" preload="auto" muted playsinline loop></video>
+                        <img class="video-card-poster" src="${initialPoster}" alt="${vid.title}" style="${hasRealPoster ? 'display:block; opacity:1;' : 'display:none;'}">
+                        <div class="video-thumb-preview-indicator">▶ LIVE PREVIEW</div>
+                        <div class="video-thumb-overlay-hint">▶ HOVER TO PREVIEW</div>
                         <div class="video-thumb-dur-badge">${durLabel}</div>
                         <div class="video-thumb-playing-tag">● ON AIR</div>
                     </div>
@@ -4450,48 +4738,168 @@ async function init() {
 
                 const thumbVid = card.querySelector('.video-card-video');
                 const posterImg = card.querySelector('.video-card-poster');
+                const previewBox = card.querySelector('.video-thumb-preview-box');
 
-                // If real video screenshot isn't captured yet, extract it asynchronously
-                if (!vid.thumbnailUrl || vid.thumbnailUrl.startsWith('data:image/svg')) {
-                    captureVideoFrame(vid.url, 1.0).then((frameData) => {
-                        if (frameData) {
-                            vid.thumbnailUrl = frameData;
-                            if (posterImg) {
-                                posterImg.src = frameData;
+                if (thumbVid) {
+                    thumbVid.defaultMuted = true;
+                    thumbVid.muted = true;
+                    thumbVid.playsInline = true;
+                }
+
+                // Frame capture directly from the active DOM video element
+                let frameCaptured = Boolean(vid.thumbnailUrl && vid.thumbnailUrl.startsWith('data:image/jpeg') && vid.thumbnailUrl.length > 1800);
+                const captureFromActiveVideo = () => {
+                    if (frameCaptured && vid.thumbnailUrl && vid.thumbnailUrl.startsWith('data:image/jpeg') && vid.thumbnailUrl.length > 1800) return;
+                    try {
+                        if (thumbVid && thumbVid.videoWidth > 0 && thumbVid.videoHeight > 0) {
+                            const canvas = document.createElement('canvas');
+                            canvas.width = 320;
+                            canvas.height = Math.round(320 * (thumbVid.videoHeight / thumbVid.videoWidth)) || 180;
+                            const ctx = canvas.getContext('2d', { willReadFrequently: true });
+                            ctx.drawImage(thumbVid, 0, 0, canvas.width, canvas.height);
+
+                            let isNotBlank = true;
+                            try {
+                                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                                const d = imgData.data;
+                                let totalLuma = 0;
+                                let brightCount = 0;
+                                for (let i = 0; i < d.length; i += 16) {
+                                    const luma = 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+                                    totalLuma += luma;
+                                    if (luma > 18) brightCount++;
+                                }
+                                const avgLuma = totalLuma / (d.length / 16);
+                                const brightPct = brightCount / (d.length / 16);
+                                isNotBlank = avgLuma > 8 || brightPct > 0.02;
+                            } catch (eCors) {}
+
+                            if (isNotBlank) {
+                                const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+                                if (dataUrl && dataUrl.length > 1500) {
+                                    frameCaptured = true;
+                                    vid.thumbnailUrl = dataUrl;
+                                    vid.previewTime = thumbVid.currentTime || 1.0;
+                                    if (posterImg) {
+                                        posterImg.src = dataUrl;
+                                        posterImg.style.display = 'block';
+                                        if (!card.classList.contains('is-hover-playing')) {
+                                            posterImg.style.opacity = '1';
+                                        }
+                                    }
+                                    thumbVid.poster = dataUrl;
+                                    saveBanks();
+                                }
+                            } else if (thumbVid.paused && thumbVid.currentTime < 3.5) {
+                                // Frame was black, advance 1.0s to find non-blank visual
+                                thumbVid.currentTime = (thumbVid.currentTime || 0) + 1.0;
                             }
+                        }
+                    } catch (err) {}
+                };
+
+                // Read duration and seek video element to non-blank preview frame
+                const seekToFirstFrame = () => {
+                    if (thumbVid.duration && !isNaN(thumbVid.duration)) {
+                        vid.duration = thumbVid.duration;
+                        const durBadge = card.querySelector('.video-thumb-dur-badge');
+                        if (durBadge) {
+                            durBadge.textContent = `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}`;
+                        }
+                    }
+                    const targetSeek = vid.previewTime || (vid.duration && vid.duration > 2.0 ? 1.0 : 0.2);
+                    if (thumbVid.paused && (thumbVid.currentTime < 0.1 || isNaN(thumbVid.currentTime))) {
+                        try { thumbVid.currentTime = targetSeek; } catch (e) {}
+                    }
+                    captureFromActiveVideo();
+                };
+                thumbVid.addEventListener('loadedmetadata', seekToFirstFrame);
+                thumbVid.addEventListener('loadeddata', seekToFirstFrame);
+                thumbVid.addEventListener('seeked', captureFromActiveVideo);
+
+                // If real thumbnail not yet captured or if it might be blank, capture it asynchronously
+                const needsCapture = !vid.thumbnailUrl || !vid.thumbnailUrl.startsWith('data:image/jpeg') || (vid.thumbnailUrl.length < 1800);
+                if (needsCapture) {
+                    captureNonBlankVideoFrame(vid.url).then((res) => {
+                        if (res && res.thumbnailUrl) {
+                            vid.thumbnailUrl = res.thumbnailUrl;
+                            vid.previewTime = res.previewTime;
+                            frameCaptured = true;
+                            if (posterImg) {
+                                posterImg.src = res.thumbnailUrl;
+                                posterImg.style.display = 'block';
+                                if (!card.classList.contains('is-hover-playing')) {
+                                    posterImg.style.opacity = '1';
+                                }
+                            }
+                            if (thumbVid) {
+                                thumbVid.poster = res.thumbnailUrl;
+                                if (thumbVid.paused) {
+                                    try { thumbVid.currentTime = res.previewTime; } catch (e) {}
+                                }
+                            }
+                            saveBanks();
                         }
                     });
                 }
 
-                // Hover to preview
-                card.addEventListener('mouseenter', () => {
-                    if (posterImg) posterImg.style.opacity = '0';
-                    if (thumbVid) {
-                        thumbVid.currentTime = 0;
-                        thumbVid.play().catch(() => {});
-                    }
-                });
-                card.addEventListener('mouseleave', () => {
-                    if (thumbVid) {
-                        if (!thumbVid.paused) thumbVid.pause();
-                        thumbVid.currentTime = 0.5;
-                    }
+                // Hover to preview: play the video inside the thumbnail area
+                let isHovered = false;
+                let playPromise = null;
+
+                const startHoverPreview = () => {
+                    isHovered = true;
+                    card.classList.add('is-hover-playing');
                     if (posterImg) {
+                        posterImg.style.opacity = '0';
+                    }
+                    if (thumbVid) {
+                        thumbVid.defaultMuted = true;
+                        thumbVid.muted = true;
+                        thumbVid.loop = true;
+                        if (thumbVid.currentTime < 0.1 || isNaN(thumbVid.currentTime)) {
+                            const targetSeek = vid.previewTime || 1.0;
+                            try { thumbVid.currentTime = targetSeek; } catch (e) {}
+                        }
+                        playPromise = thumbVid.play();
+                        if (playPromise !== undefined) {
+                            playPromise.catch(() => {});
+                        }
+                    }
+                };
+
+                const stopHoverPreview = () => {
+                    isHovered = false;
+                    card.classList.remove('is-hover-playing');
+                    if (thumbVid) {
+                        const doPause = () => {
+                            try {
+                                thumbVid.pause();
+                                const resetTime = vid.previewTime || 1.0;
+                                thumbVid.currentTime = (thumbVid.duration && thumbVid.duration > 0.5)
+                                    ? Math.min(resetTime, thumbVid.duration * 0.5)
+                                    : 0.1;
+                            } catch (e) {}
+                        };
+                        if (playPromise !== undefined) {
+                            playPromise.then(() => {
+                                if (!isHovered) doPause();
+                            }).catch(() => {
+                                if (!isHovered) doPause();
+                            });
+                        } else {
+                            doPause();
+                        }
+                    }
+                    if (posterImg && posterImg.src && !posterImg.src.startsWith('data:image/svg')) {
                         posterImg.style.opacity = '1';
                     }
-                });
+                };
 
-                // Update duration once metadata loads
-                if (thumbVid) {
-                    thumbVid.addEventListener('loadedmetadata', () => {
-                        if (thumbVid.duration && !isNaN(thumbVid.duration)) {
-                            vid.duration = thumbVid.duration;
-                            const durBadge = card.querySelector('.video-thumb-dur-badge');
-                            if (durBadge) {
-                                durBadge.textContent = `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}`;
-                            }
-                        }
-                    });
+                card.addEventListener('mouseenter', startHoverPreview);
+                card.addEventListener('mouseleave', stopHoverPreview);
+                if (previewBox) {
+                    previewBox.addEventListener('mouseenter', startHoverPreview);
                 }
 
                 // Checkbox toggle
@@ -4517,18 +4925,19 @@ async function init() {
                 });
 
                 // Click preview box to cue
-                const previewBox = card.querySelector('.video-thumb-preview-box');
-                previewBox.addEventListener('click', () => {
-                    playVideoItem(idx, true);
-                    if (vfx.getCurrentFX() !== 22) {
-                        selectFX(22);
-                    }
-                });
+                if (previewBox) {
+                    previewBox.addEventListener('click', () => {
+                        playVideoItem(idx, true);
+                        if (vfx.getCurrentFX() !== 22) {
+                            selectFX(22);
+                        }
+                    });
+                }
 
                 videoGridContainer.appendChild(card);
             });
 
-            // Ensure first frames decode and paint across cards
+            // Ensure posters and preview frames are shown across cards
             ensureFirstFrames();
         }
 
@@ -4546,18 +4955,29 @@ async function init() {
                     const thumbVid = card.querySelector('.video-card-video');
                     const posterImg = card.querySelector('.video-card-poster');
 
-                    if (posterImg) {
-                        const targetSrc = vid.thumbnailUrl || createProceduralPoster(vid.title, idx);
-                        if (!posterImg.src || posterImg.src === '' || posterImg.src.endsWith('/')) {
-                            posterImg.src = targetSrc;
-                        }
-                        posterImg.style.opacity = '1';
-                    }
+                    const hasRealPoster = (vid.thumbnailUrl && vid.thumbnailUrl.startsWith('data:image/jpeg') && vid.thumbnailUrl.length > 1800);
 
+                    if (posterImg) {
+                        if (hasRealPoster) {
+                            posterImg.src = vid.thumbnailUrl;
+                            posterImg.style.display = 'block';
+                            if (!card.classList.contains('is-hover-playing')) {
+                                posterImg.style.opacity = '1';
+                            }
+                        } else {
+                            posterImg.style.display = 'none';
+                        }
+                    }
                     if (thumbVid) {
+                        if (hasRealPoster) {
+                            thumbVid.poster = vid.thumbnailUrl;
+                        }
                         if (thumbVid.paused) {
-                            if (thumbVid.currentTime === 0 || isNaN(thumbVid.currentTime)) {
-                                thumbVid.currentTime = 0.5;
+                            const targetSeek = (vid.duration && vid.duration > 0.5)
+                                ? Math.min(vid.previewTime || 1.0, vid.duration * 0.5)
+                                : 0.1;
+                            if (thumbVid.currentTime < 0.1 || isNaN(thumbVid.currentTime)) {
+                                try { thumbVid.currentTime = targetSeek; } catch (e) {}
                             }
                         }
                     }
@@ -4565,11 +4985,12 @@ async function init() {
 
                 if (videoActivePreviewVid) {
                     if (videoActivePreviewVid.paused && (videoActivePreviewVid.currentTime === 0 || isNaN(videoActivePreviewVid.currentTime))) {
-                        videoActivePreviewVid.currentTime = 0.5;
+                        try { videoActivePreviewVid.currentTime = 0.5; } catch (e) {}
                     }
                 }
             });
         }
+
 
         function updateGridActiveHighlight() {
             if (!videoGridContainer) return;
@@ -4595,10 +5016,36 @@ async function init() {
                 vfx.playVideoInScene(targetVid.url, targetVid.title);
             }
 
+            const effectivePoster = (targetVid.thumbnailUrl && targetVid.thumbnailUrl.startsWith('data:image/jpeg'))
+                ? targetVid.thumbnailUrl
+                : '';
+
+            if (videoActivePreviewPoster) {
+                if (effectivePoster) {
+                    videoActivePreviewPoster.src = effectivePoster;
+                    videoActivePreviewPoster.style.display = 'block';
+                } else {
+                    videoActivePreviewPoster.style.display = 'none';
+                }
+            }
+
             if (videoActivePreviewVid) {
-                videoActivePreviewVid.src = targetVid.url;
+                if (effectivePoster) {
+                    videoActivePreviewVid.poster = effectivePoster;
+                }
+                if (videoActivePreviewVid.src !== targetVid.url) {
+                    videoActivePreviewVid.src = targetVid.url;
+                }
                 videoActivePreviewVid.muted = true;
-                videoActivePreviewVid.play().catch(() => {});
+                videoActivePreviewVid.play().then(() => {
+                    if (videoActivePreviewPoster) {
+                        videoActivePreviewPoster.style.display = 'none';
+                    }
+                }).catch(() => {
+                    if (videoActivePreviewPoster && effectivePoster) {
+                        videoActivePreviewPoster.style.display = 'block';
+                    }
+                });
             }
             if (videoActiveTitle) {
                 videoActiveTitle.textContent = targetVid.title;
@@ -4757,42 +5204,6 @@ async function init() {
             });
         }
 
-        // Demo VJ Video Loops (Public CORS-enabled fast streaming samples)
-        const DEMO_VJ_LOOPS = [
-            {
-                name: 'Cyber Blaze FX.mp4',
-                title: 'Cyber Blaze FX',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
-                duration: 15,
-                included: true,
-                thumbnailUrl: createProceduralPoster('Cyber Blaze FX', 0)
-            },
-            {
-                name: 'Glitch Dimension.mp4',
-                title: 'Glitch Dimension',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ElephantsDream.mp4',
-                duration: 653,
-                included: true,
-                thumbnailUrl: createProceduralPoster('Glitch Dimension', 1)
-            },
-            {
-                name: 'Bass Odyssey.mp4',
-                title: 'Bass Odyssey',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                duration: 596,
-                included: true,
-                thumbnailUrl: createProceduralPoster('Bass Odyssey', 2)
-            },
-            {
-                name: 'Neon Velocity.mp4',
-                title: 'Neon Velocity',
-                url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
-                duration: 15,
-                included: true,
-                thumbnailUrl: createProceduralPoster('Neon Velocity', 3)
-            }
-        ];
-
         function loadVideoFiles(files, sourceName) {
             const videoFiles = Array.from(files).filter(f => {
                 const ext = f.name.split('.').pop().toLowerCase();
@@ -4811,9 +5222,11 @@ async function init() {
                     name: f.name,
                     title: cleanTitle,
                     url: objUrl,
+                    path: f.path || '',
                     duration: 10,
                     included: true,
-                    thumbnailUrl: createProceduralPoster(cleanTitle, fIdx)
+                    thumbnailUrl: '',
+                    previewTime: 1.0
                 };
             });
 
@@ -4829,25 +5242,121 @@ async function init() {
         }
 
         function loadDemoVideos() {
-            banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: ✨ Demo VJ Loops`;
-            banks[activeBankIndex].folderPath = 'Demo VJ Loops';
-            banks[activeBankIndex].videos = JSON.parse(JSON.stringify(DEMO_VJ_LOOPS));
-            saveBanks();
-            renderBankSelector();
-            renderVideoGrid();
-            showToast(`✨ Loaded 4 Demo VJ Clips into Bank ${activeBankIndex + 1}!`);
-            playVideoItem(0, false);
-            if (vfx.getCurrentFX() !== 22) {
-                selectFX(22);
-            }
+            // First check if user's Mac Neon loops exist
+            fetch('/api/videos/scan?folder=' + encodeURIComponent('~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS/Neon'))
+                .then(r => r.json())
+                .then(data => {
+                    if (data && data.success && data.videos && data.videos.length > 0) {
+                        banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: ✨ Neon Loops`;
+                        banks[activeBankIndex].folderPath = data.folder;
+                        banks[activeBankIndex].videos = data.videos.map(v => ({
+                            ...v,
+                            thumbnailUrl: '',
+                            previewTime: 1.0
+                        }));
+                    } else {
+                        banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: ✨ Demo VJ Loops`;
+                        banks[activeBankIndex].folderPath = 'Demo VJ Loops';
+                        banks[activeBankIndex].videos = JSON.parse(JSON.stringify(DEMO_VJ_LOOPS));
+                    }
+                    saveBanks();
+                    renderBankSelector();
+                    renderVideoGrid();
+                    showToast(`✨ Loaded video loops into Bank ${activeBankIndex + 1}!`);
+                    playVideoItem(0, false);
+                    if (vfx.getCurrentFX() !== 22) {
+                        selectFX(22);
+                    }
+                })
+                .catch(() => {
+                    banks[activeBankIndex].name = `Bank ${activeBankIndex + 1}: ✨ Demo VJ Loops`;
+                    banks[activeBankIndex].folderPath = 'Demo VJ Loops';
+                    banks[activeBankIndex].videos = JSON.parse(JSON.stringify(DEMO_VJ_LOOPS));
+                    saveBanks();
+                    renderBankSelector();
+                    renderVideoGrid();
+                    showToast(`✨ Loaded Demo VJ Clips into Bank ${activeBankIndex + 1}!`);
+                    playVideoItem(0, false);
+                    if (vfx.getCurrentFX() !== 22) {
+                        selectFX(22);
+                    }
+                });
         }
 
         // Setup Buttons & Pickers
-        if (btnChooseVideoFolder && fileVideoFolder) {
-            btnChooseVideoFolder.addEventListener('click', () => fileVideoFolder.click());
+        async function handleOpenFolder() {
+            const currentBank = banks[activeBankIndex];
+            const defaultFolder = (currentBank && currentBank.folderPath) ? currentBank.folderPath : '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS';
+
+            // 1. Electron Native Folder Dialog (opens precisely at this bank's folder!)
+            if (window.electronAPI && typeof window.electronAPI.selectFolder === 'function') {
+                try {
+                    const picked = await window.electronAPI.selectFolder(defaultFolder);
+                    if (picked) {
+                        await scanAndLoadFolder(picked, activeBankIndex, true);
+                        showToast(`🎬 Loaded videos from ${picked.split('/').filter(Boolean).pop()}!`);
+                        return;
+                    }
+                    if (picked === null) return; // User cancelled
+                } catch (err) {
+                    console.warn('[Electron] Dialog failed, falling back:', err);
+                }
+            }
+
+            // 2. Web / Vite Native macOS Dialog via backend AppleScript (opens precisely at this bank's folder!)
+            try {
+                showToast(`📂 Opening folder chooser for ${currentBank?.name || 'Bank'}...`);
+                const res = await fetch(`/api/videos/choose-folder?defaultPath=${encodeURIComponent(defaultFolder)}`);
+                const data = await res.json();
+                if (data && data.success && data.folder) {
+                    await scanAndLoadFolder(data.folder, activeBankIndex, true);
+                    showToast(`🎬 Loaded videos from ${data.folder.split('/').filter(Boolean).pop()}!`);
+                    return;
+                }
+                if (data && data.cancelled) {
+                    return; // User cancelled
+                }
+            } catch (err) {
+                console.warn('[Web] Backend folder picker failed, falling back to input:', err);
+            }
+
+            // 3. Fallback to HTML input file/folder chooser
+            if (fileVideoFolder) fileVideoFolder.click();
         }
-        if (btnSetupChooseFolder && fileVideoFolder) {
-            btnSetupChooseFolder.addEventListener('click', () => fileVideoFolder.click());
+
+        async function handleRevealFinder() {
+            const currentBank = banks[activeBankIndex];
+            const defaultFolder = (currentBank && currentBank.folderPath) ? currentBank.folderPath : '~/Documents/OBS jkmclaren/VIDEOWALL/LOOP VIDS';
+
+            if (window.electronAPI && typeof window.electronAPI.openInFinder === 'function') {
+                const ok = await window.electronAPI.openInFinder(defaultFolder);
+                if (ok) {
+                    showToast(`📂 Opened in macOS Finder: ${defaultFolder.split('/').filter(Boolean).pop()}`);
+                    return;
+                }
+            }
+
+            try {
+                const res = await fetch(`/api/videos/reveal?folder=${encodeURIComponent(defaultFolder)}`);
+                const data = await res.json();
+                if (data && data.success) {
+                    showToast(`📂 Opened in macOS Finder: ${defaultFolder.split('/').filter(Boolean).pop()}`);
+                } else {
+                    showToast(`⚠️ Folder not found: ${data?.message || defaultFolder}`);
+                }
+            } catch (err) {
+                showToast(`⚠️ Could not open Finder: ${err.message}`);
+            }
+        }
+
+        if (btnChooseVideoFolder) {
+            btnChooseVideoFolder.addEventListener('click', handleOpenFolder);
+        }
+        if (btnSetupChooseFolder) {
+            btnSetupChooseFolder.addEventListener('click', handleOpenFolder);
+        }
+        if (btnRevealFinder) {
+            btnRevealFinder.addEventListener('click', handleRevealFinder);
         }
         if (btnChooseVideoFiles && fileVideoFiles) {
             btnChooseVideoFiles.addEventListener('click', () => fileVideoFiles.click());
@@ -4907,7 +5416,8 @@ async function init() {
                         banks[activeBankIndex].folderPath = folderPath;
                         banks[activeBankIndex].videos = data.videos.map((v, vIdx) => ({
                             ...v,
-                            thumbnailUrl: v.thumbnailUrl || createProceduralPoster(v.title || v.name, vIdx)
+                            thumbnailUrl: (v.thumbnailUrl && v.thumbnailUrl.startsWith('data:image/jpeg') && v.thumbnailUrl.length > 1800) ? v.thumbnailUrl : '',
+                            previewTime: v.previewTime || 1.0
                         }));
                         saveBanks();
                         renderBankSelector();
@@ -5057,6 +5567,39 @@ async function init() {
                 if (videoTransDurVal) videoTransDurVal.textContent = `${transitionDuration.toFixed(1)}s`;
                 saveSettings();
             });
+        }
+
+        // Video Quality Clarity Engine pills (VLC parity)
+        const videoQualityPills = document.querySelectorAll('#video-quality-pills .mode-pill');
+        const videoQualityVal = document.getElementById('video-quality-val');
+        if (videoQualityPills.length > 0) {
+            videoQualityPills.forEach(p => {
+                if (p.dataset.quality === videoQuality) {
+                    p.classList.add('active');
+                } else {
+                    p.classList.remove('active');
+                }
+                p.addEventListener('click', () => {
+                    videoQualityPills.forEach(x => x.classList.remove('active'));
+                    p.classList.add('active');
+                    videoQuality = p.dataset.quality || 'ultra';
+                    if (vfx && typeof vfx.setVideoRenderQuality === 'function') {
+                        vfx.setVideoRenderQuality(videoQuality);
+                    }
+                    if (videoQualityVal) {
+                        if (videoQuality === 'direct') videoQualityVal.textContent = '⚡ DIRECT HARDWARE OVERLAY';
+                        else if (videoQuality === 'retro') videoQualityVal.textContent = '🔮 NIGHTCLUB BLOOM & GLITCH';
+                        else videoQualityVal.textContent = '💎 ULTRA-HD (VLC MATCH)';
+                    }
+                    saveSettings();
+                    showToast(`🎬 Video Clarity Engine: ${videoQuality === 'ultra' ? 'Ultra-HD (VLC Match)' : (videoQuality === 'direct' ? 'Direct Hardware Overlay' : 'Nightclub FX')}`);
+                });
+            });
+            if (videoQualityVal) {
+                if (videoQuality === 'direct') videoQualityVal.textContent = '⚡ DIRECT HARDWARE OVERLAY';
+                else if (videoQuality === 'retro') videoQualityVal.textContent = '🔮 NIGHTCLUB BLOOM & GLITCH';
+                else videoQualityVal.textContent = '💎 ULTRA-HD (VLC MATCH)';
+            }
         }
 
         // Ticker loop for automatic clip progression & BPM sync
@@ -7405,16 +7948,7 @@ async function init() {
     // Interactive Self-Test Results Container
     const diagSelftestContainer = document.getElementById('diag-selftest-container');
 
-    // Network Hardware Routing State (queried from local bridge)
-    let networkHardwareStatus = {
-        isWired: true, // Default to true on macOS local network
-        activeInterface: 'en13',
-        hardwarePort: 'USB 10/100/1000 LAN',
-        activeIp: '192.168.1.194',
-        gateway: '192.168.1.1',
-        wifiSsid: '',
-        wifiIp: '192.168.1.160'
-    };
+    // Network Hardware Routing State (queried from local bridge - initialized at top of module)
 
     // Non-intrusive network latency and hardware route test
     async function measureNetworkPing() {

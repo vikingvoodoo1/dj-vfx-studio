@@ -1,5 +1,6 @@
-const { app, BrowserWindow, Menu, shell, screen, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, shell, screen, ipcMain, dialog } = require('electron');
 const path = require('path');
+const os = require('os');
 const { spawn } = require('child_process');
 const http = require('http');
 const fs = require('fs');
@@ -193,6 +194,39 @@ function openStageProjectorWindow() {
         stageWindow = null;
     });
 }
+
+// IPC Handlers for Native Video Folder Selection & Finder Reveal
+ipcMain.handle('dialog:selectFolder', async (event, defaultPath) => {
+    let resolved = defaultPath;
+    if (resolved && resolved.startsWith('~')) {
+        resolved = path.join(os.homedir(), resolved.slice(1));
+    }
+    const fallbackPath = path.join(os.homedir(), 'Documents', 'OBS jkmclaren', 'VIDEOWALL', 'LOOP VIDS');
+    const startPath = (resolved && fs.existsSync(resolved)) ? resolved : (fs.existsSync(fallbackPath) ? fallbackPath : os.homedir());
+
+    const result = await dialog.showOpenDialog(mainWindow, {
+        title: 'Select Video Loop Folder',
+        defaultPath: startPath,
+        properties: ['openDirectory', 'createDirectory']
+    });
+
+    if (!result.canceled && result.filePaths && result.filePaths.length > 0) {
+        return result.filePaths[0];
+    }
+    return null;
+});
+
+ipcMain.handle('shell:openPath', async (event, folderPath) => {
+    let resolved = folderPath;
+    if (resolved && resolved.startsWith('~')) {
+        resolved = path.join(os.homedir(), resolved.slice(1));
+    }
+    if (resolved && fs.existsSync(resolved)) {
+        shell.openPath(resolved);
+        return true;
+    }
+    return false;
+});
 
 // App Lifecycle
 app.whenReady().then(() => {

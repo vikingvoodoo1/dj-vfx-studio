@@ -9024,6 +9024,9 @@ export function createVFXScene(container) {
     let pinspotShineEnvelope = 0.0;
 
     // 1. Scene, Camera, WebGL Renderer
+    let currentFXIndex = 0;
+    let videoRenderQuality = 'ultra'; // 'ultra' (VLC Native Clarity), 'direct' (Direct Hardware Surface), 'retro' (Nightclub FX)
+
     const scene = new THREE.Scene();
     scene.fog = new THREE.FogExp2(0x020208, 0.02);
 
@@ -9032,11 +9035,14 @@ export function createVFXScene(container) {
 
     function getOptimalPixelRatio() {
         const dpr = window.devicePixelRatio || 1;
+        // On Scene 22 (Video loops in Ultra or Direct mode), unlock full native Retina / 4K resolution (up to 2.5x)
+        if (currentFXIndex === 22 && (videoRenderQuality === 'ultra' || videoRenderQuality === 'direct')) {
+            return Math.min(dpr, 2.5);
+        }
         const maxDim = Math.max(window.innerWidth, window.innerHeight);
-        // On large external monitors (4K / 1440p / Retina displays), cap DPR to prevent 8K framebuffer fill-rate stalls
-        if (maxDim >= 2560) return Math.min(dpr, 1.0);
-        if (maxDim >= 1920) return Math.min(dpr, 1.25);
-        return Math.min(dpr, 1.5);
+        if (maxDim >= 2560) return Math.min(dpr, 1.25);
+        if (maxDim >= 1920) return Math.min(dpr, 1.5);
+        return Math.min(dpr, 2.0);
     }
 
     const renderer = new THREE.WebGLRenderer({
@@ -9048,6 +9054,16 @@ export function createVFXScene(container) {
     renderer.setPixelRatio(getOptimalPixelRatio());
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     renderer.toneMappingExposure = 1.0;
+
+    const oldOverlay = document.getElementById('vfx-direct-video-overlay');
+    if (oldOverlay && oldOverlay.parentNode) {
+        oldOverlay.parentNode.removeChild(oldOverlay);
+    }
+
+    renderer.domElement.style.position = 'absolute';
+    renderer.domElement.style.inset = '0';
+    renderer.domElement.style.width = '100%';
+    renderer.domElement.style.height = '100%';
     container.appendChild(renderer.domElement);
 
     // 2. Post-Processing Chain (Crisp Dark Nightclub Contrast)
@@ -10210,7 +10226,7 @@ export function createVFXScene(container) {
     // CATEGORIZED VFX BANK: 17 SCENES
     // =========================================================================
     const fxRoots = [];
-    let currentFXIndex = 0;
+    currentFXIndex = 0;
 
     function createFXGroup() {
         const group = new THREE.Group();
@@ -15447,14 +15463,22 @@ export function createVFXScene(container) {
     videoChannelB.autoplay = true;
     videoChannelB.src = '';
 
+    const maxAniso = (renderer.capabilities && typeof renderer.capabilities.getMaxAnisotropy === 'function')
+        ? renderer.capabilities.getMaxAnisotropy()
+        : 1;
+
     const videoTexA = new THREE.VideoTexture(videoChannelA);
     videoTexA.minFilter = THREE.LinearFilter;
     videoTexA.magFilter = THREE.LinearFilter;
+    videoTexA.generateMipmaps = false;
+    videoTexA.anisotropy = maxAniso;
     videoTexA.colorSpace = THREE.SRGBColorSpace;
 
     const videoTexB = new THREE.VideoTexture(videoChannelB);
     videoTexB.minFilter = THREE.LinearFilter;
     videoTexB.magFilter = THREE.LinearFilter;
+    videoTexB.generateMipmaps = false;
+    videoTexB.anisotropy = maxAniso;
     videoTexB.colorSpace = THREE.SRGBColorSpace;
 
     let videoActiveChannel = 'A'; // 'A' or 'B'
@@ -15609,9 +15633,11 @@ export function createVFXScene(container) {
         const h = (container && container.clientHeight > 0) ? container.clientHeight : window.innerHeight;
         camera.aspect = (w > 0 && h > 0) ? (w / h) : (window.innerWidth / window.innerHeight);
         camera.updateProjectionMatrix();
+        const pr = getOptimalPixelRatio();
         renderer.setSize(w, h);
-        renderer.setPixelRatio(getOptimalPixelRatio());
+        renderer.setPixelRatio(pr);
         composer.setSize(w, h);
+        composer.setPixelRatio(pr);
         bloomPass.resolution.set(w, h);
         if (proteanCloudMat && proteanCloudMat.uniforms.uResolution) {
             proteanCloudMat.uniforms.uResolution.value.set(w, h);
@@ -15694,9 +15720,18 @@ export function createVFXScene(container) {
                 hauntedFaultyBottomNextTime = now + 2.4; // Bottom floor electrical blackout within 2.4s!
             }
             if (index === 22) {
+                if (videoRenderQuality !== 'retro') {
+                    nightclubPass.uniforms.uAberration.value = 0.0;
+                    manualFlash = 0.0;
+                }
                 const curVid = (videoActiveChannel === 'A') ? videoChannelA : videoChannelB;
                 curVid.play().catch(() => {});
                 updateVideoScreenScale();
+            }
+            const targetPR = getOptimalPixelRatio();
+            if (renderer.getPixelRatio() !== targetPR) {
+                renderer.setPixelRatio(targetPR);
+                composer.setPixelRatio(targetPR);
             }
         }
     }
@@ -16123,24 +16158,41 @@ export function createVFXScene(container) {
 
                 const isAudioActive = (audio.bass > 0.02 || (audio.smoothedMid || audio.mid || 0) > 0.02 || (audio.smoothedTreble || audio.treble || 0) > 0.02 || (audio.overall || 0) > 0.02);
 
-                // 1. Pure Borderless Dark Background (No borders, no boxes, no frames)
-                ctx.fillStyle = '#020408';
+                // 1. Sleek Cyber Studio Atmospheric Backdrop (Luminous Radial Glow + Faint Horizon Grid)
+                const bgGrad = ctx.createRadialGradient(W * 0.5, H * 0.55, 30, W * 0.5, H * 0.55, W * 0.72);
+                bgGrad.addColorStop(0.0, '#0a142c'); // Luminous deep indigo/cyan center aura
+                bgGrad.addColorStop(0.45, '#040816');
+                bgGrad.addColorStop(1.0, '#020308');
+                ctx.fillStyle = bgGrad;
                 ctx.fillRect(0, 0, W, H);
+
+                // Subtle studio frequency analyzer grid lines (Faint cyan / midnight blue)
+                ctx.strokeStyle = 'rgba(0, 229, 255, 0.05)';
+                ctx.lineWidth = 1;
+                for (let y = H * 0.15; y < H * 0.85; y += H * 0.14) {
+                    ctx.beginPath();
+                    ctx.moveTo(16, y);
+                    ctx.lineTo(W - 16, y);
+                    ctx.stroke();
+                }
 
                 // 2. Full-Width Spectrum Bars (36 smooth rounded gradient bars rising from bottom edge)
                 const barMargin = 16;
                 const barSpacing = 5.5;
                 const totalBarSpan = W - barMargin * 2;
                 const barWidth = (totalBarSpan - (barSpacing * (STUDIO_EQ_BARS - 1))) / STUDIO_EQ_BARS;
-                const maxBarHeight = H * 0.62; // Allows dynamic crests up to 62% screen height
+                const maxBarHeight = H * 0.68; // Allows dynamic crests up to 68% screen height
                 const baseY = H;
 
                 for (let i = 0; i < STUDIO_EQ_BARS; i++) {
                     const binIdx = Math.min((dataArr.length || 1) - 1, Math.floor(Math.pow(i / STUDIO_EQ_BARS, 1.25) * 54) + 1);
-                    const idleWave = (Math.sin(elapsedTime * 2.2 + i * 0.28) * 0.5 + 0.5) * 0.07 + 0.03;
+                    // Rich undulating dual-sine wave during standby so visualizer dances visibly high above bottom HUD rack
+                    const wave1 = Math.sin(elapsedTime * 2.0 + i * 0.26) * 0.5 + 0.5;
+                    const wave2 = Math.cos(elapsedTime * 2.8 - i * 0.18) * 0.5 + 0.5;
+                    const idleWave = 0.24 + (wave1 * 0.18 + wave2 * 0.14); // 0.24 to 0.56 normalized amplitude!
                     const rawAmp = (isAudioActive && dataArr[binIdx]) ? (dataArr[binIdx] / 255.0) : idleWave;
                     const boostAmp = rawAmp + (i < 6 ? bassPop * 0.18 : 0);
-                    const barHeight = Math.max(8.0, Math.min(maxBarHeight, boostAmp * maxBarHeight));
+                    const barHeight = Math.max(32.0, Math.min(maxBarHeight, boostAmp * maxBarHeight));
 
                     const bx = barMargin + i * (barWidth + barSpacing);
                     const by = baseY - barHeight;
@@ -16182,8 +16234,8 @@ export function createVFXScene(container) {
                     }
 
                     // Spawn floating spectrum particles from active bar peaks
-                    const spawnThreshold = isAudioActive ? 0.16 : 0.08;
-                    if (rawAmp > spawnThreshold && Math.random() < (rawAmp * 0.65) && studioEq2DParticles.length < MAX_STUDIO_2D_PARTICLES) {
+                    const spawnProb = isAudioActive ? (rawAmp * 0.65) : 0.08;
+                    if (Math.random() < spawnProb && studioEq2DParticles.length < MAX_STUDIO_2D_PARTICLES) {
                         studioEq2DParticles.push({
                             x: bx + barWidth * 0.5 + (Math.random() - 0.5) * (barWidth * 0.85),
                             y: by,
@@ -18981,22 +19033,7 @@ export function createVFXScene(container) {
             }
             cinemaScreenShaderMat.uniforms.uTime.value = elapsedTime;
             cinemaScreenShaderMat.uniforms.uBass.value = bassImpact;
-            cinemaBackdropMat.uniforms.uTime.value = elapsedTime;
-            cinemaBackdropMat.uniforms.uBass.value = bassImpact;
-            cinemaFloorMat.uniforms.uTime.value = elapsedTime;
-            cinemaFloorMat.uniforms.uBass.value = bassImpact;
-
-            // 3. Audio reactive rim pulsing
-            cinemaRimMat.opacity = 0.5 + bassImpact * 0.5;
-            cinemaRimLine.scale.setScalar(1.0 + bassImpact * 0.012);
-
-            // 4. Moving Head Spotlights Beat Sweep
-            const bps = currentBPM / 60.0;
-            const beatSwing = Math.sin(elapsedTime * bps * Math.PI * 0.5);
-            cinemaSpot1.position.x = -14.0 + beatSwing * 3.5;
-            cinemaSpot2.position.x = 14.0 - beatSwing * 3.5;
-            cinemaSpot1.intensity = 3.0 + bassImpact * 3.5;
-            cinemaSpot2.intensity = 3.0 + bassImpact * 3.5;
+            updateVideoScreenScale();
         }
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
@@ -19064,6 +19101,12 @@ export function createVFXScene(container) {
             lightMagenta.intensity = Math.min(1.5, (0.7 + (audio.smoothedMid || 0) * 0.5) * (bloomMultiplier + 0.5));
         }
 
+        if (currentFXIndex === 22) {
+            cinemaScreenMesh.visible = true;
+            renderer.toneMapping = (videoRenderQuality === 'ultra') ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+        } else {
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        }
         composer.render();
     }
 
@@ -19592,8 +19635,14 @@ export function createVFXScene(container) {
                 speed: videoSpeedSetting,
                 muted: videoMutedSetting,
                 loopMode: videoLoopSetting,
-                channel: videoActiveChannel
+                channel: videoActiveChannel,
+                renderQuality: videoRenderQuality
             };
-        }
+        },
+        setVideoRenderQuality: (quality) => {
+            videoRenderQuality = (quality === 'direct' || quality === 'retro') ? quality : 'ultra';
+            onResize();
+        },
+        getVideoRenderQuality: () => videoRenderQuality
     };
 }

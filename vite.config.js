@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
+import { exec } from 'child_process';
 import { recognizeAudio } from './server/shazam-service.js';
 import { searchAlbumArt } from './server/artwork-service.js';
 
@@ -217,6 +218,80 @@ function apiHandlerPlugin() {
                         res.setHeader('Access-Control-Allow-Origin', '*');
                         res.statusCode = 500;
                         res.end(JSON.stringify({ success: false, message: err.message }));
+                    }
+                    return;
+                }
+
+                // 4b. Native macOS Folder Picker via AppleScript
+                if (url.pathname === '/api/videos/choose-folder') {
+                    if (req.method === 'OPTIONS') {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+                        res.statusCode = 204;
+                        res.end();
+                        return;
+                    }
+
+                    let defaultFolder = url.searchParams.get('defaultPath') || '';
+                    if (defaultFolder.startsWith('~')) {
+                        defaultFolder = path.join(os.homedir(), defaultFolder.slice(1));
+                    }
+                    const fallback = path.join(os.homedir(), 'Documents', 'OBS jkmclaren', 'VIDEOWALL', 'LOOP VIDS');
+                    const startLoc = (defaultFolder && fs.existsSync(defaultFolder)) ? defaultFolder : (fs.existsSync(fallback) ? fallback : os.homedir());
+
+                    if (process.platform === 'darwin') {
+                        const safeLoc = startLoc.replace(/"/g, '\\"');
+                        const appleScript = `try\nreturn POSIX path of (choose folder with prompt "Select Video Loop Folder" default location POSIX file "${safeLoc}")\non error number -128\nreturn ""\nend try`;
+                        exec(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`, (err, stdout) => {
+                            res.setHeader('Content-Type', 'application/json');
+                            res.setHeader('Access-Control-Allow-Origin', '*');
+                            if (err) {
+                                res.statusCode = 200;
+                                res.end(JSON.stringify({ success: false, error: err.message }));
+                                return;
+                            }
+                            const picked = (stdout || '').trim();
+                            if (picked) {
+                                res.statusCode = 200;
+                                res.end(JSON.stringify({ success: true, folder: picked }));
+                            } else {
+                                res.statusCode = 200;
+                                res.end(JSON.stringify({ success: false, cancelled: true }));
+                            }
+                        });
+                    } else {
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 200;
+                        res.end(JSON.stringify({ success: false, message: 'Platform not supported' }));
+                    }
+                    return;
+                }
+
+                // 4c. Reveal Folder in macOS Finder
+                if (url.pathname === '/api/videos/reveal') {
+                    if (req.method === 'OPTIONS') {
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
+                        res.statusCode = 204;
+                        res.end();
+                        return;
+                    }
+                    let targetFolder = url.searchParams.get('folder') || '';
+                    if (targetFolder.startsWith('~')) {
+                        targetFolder = path.join(os.homedir(), targetFolder.slice(1));
+                    }
+                    if (targetFolder && fs.existsSync(targetFolder)) {
+                        exec(`open "${targetFolder.replace(/"/g, '\\"')}"`);
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 200;
+                        res.end(JSON.stringify({ success: true, folder: targetFolder }));
+                    } else {
+                        res.setHeader('Content-Type', 'application/json');
+                        res.setHeader('Access-Control-Allow-Origin', '*');
+                        res.statusCode = 404;
+                        res.end(JSON.stringify({ success: false, message: 'Folder not found' }));
                     }
                     return;
                 }

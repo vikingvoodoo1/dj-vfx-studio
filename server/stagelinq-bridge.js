@@ -175,7 +175,7 @@ nowPlayingService.init();
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
-import { execSync } from 'child_process';
+import { execSync, exec } from 'child_process';
 import { recognizeAudio } from './shazam-service.js';
 import { searchAlbumArt } from './artwork-service.js';
 
@@ -395,6 +395,84 @@ const server = http.createServer((req, res) => {
                 'Access-Control-Allow-Origin': '*'
             });
             res.end(JSON.stringify({ success: false, message: err.message }));
+        }
+        return;
+    }
+
+    // Handle Native macOS Folder Picker via AppleScript
+    if (reqUrl.pathname === '/api/videos/choose-folder') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS'
+            });
+            res.end();
+            return;
+        }
+
+        let defaultFolder = reqUrl.searchParams.get('defaultPath') || '';
+        if (defaultFolder.startsWith('~')) {
+            defaultFolder = path.join(os.homedir(), defaultFolder.slice(1));
+        }
+        const fallback = path.join(os.homedir(), 'Documents', 'OBS jkmclaren', 'VIDEOWALL', 'LOOP VIDS');
+        const startLoc = (defaultFolder && fs.existsSync(defaultFolder)) ? defaultFolder : (fs.existsSync(fallback) ? fallback : os.homedir());
+
+        if (process.platform === 'darwin') {
+            const safeLoc = startLoc.replace(/"/g, '\\"');
+            const appleScript = `try\nreturn POSIX path of (choose folder with prompt "Select Video Loop Folder" default location POSIX file "${safeLoc}")\non error number -128\nreturn ""\nend try`;
+            exec(`osascript -e '${appleScript.replace(/'/g, "'\\''")}'`, (err, stdout) => {
+                res.writeHead(200, {
+                    'Content-Type': 'application/json',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                if (err) {
+                    res.end(JSON.stringify({ success: false, error: err.message }));
+                    return;
+                }
+                const picked = (stdout || '').trim();
+                if (picked) {
+                    res.end(JSON.stringify({ success: true, folder: picked }));
+                } else {
+                    res.end(JSON.stringify({ success: false, cancelled: true }));
+                }
+            });
+        } else {
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({ success: false, message: 'Platform not supported' }));
+        }
+        return;
+    }
+
+    // Handle Reveal Folder in macOS Finder
+    if (reqUrl.pathname === '/api/videos/reveal') {
+        if (req.method === 'OPTIONS') {
+            res.writeHead(204, {
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Methods': 'GET, OPTIONS'
+            });
+            res.end();
+            return;
+        }
+        let targetFolder = reqUrl.searchParams.get('folder') || '';
+        if (targetFolder.startsWith('~')) {
+            targetFolder = path.join(os.homedir(), targetFolder.slice(1));
+        }
+        if (targetFolder && fs.existsSync(targetFolder)) {
+            exec(`open "${targetFolder.replace(/"/g, '\\"')}"`);
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({ success: true, folder: targetFolder }));
+        } else {
+            res.writeHead(404, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify({ success: false, message: 'Folder not found' }));
         }
         return;
     }

@@ -32,12 +32,45 @@
         /* Instant Zero-FOUC Clean Stream / OBS Mode Styles */
         html.stage-mode #hud,
         html.stage-mode #fx-bank-panel,
+        html.stage-mode #hud-top-notch,
+        html.stage-mode .controller-banner,
+        html.stage-mode #controller-banner,
+        html.stage-mode #drop-zone,
+        html.stage-mode #obs-modal-backdrop,
+        html.stage-mode #about-modal-backdrop,
         html.obs-mode #hud,
         html.obs-mode #fx-bank-panel,
+        html.obs-mode #hud-top-notch,
+        html.obs-mode .controller-banner,
+        html.obs-mode #controller-banner,
+        html.obs-mode #drop-zone,
+        html.obs-mode #obs-modal-backdrop,
+        html.obs-mode #about-modal-backdrop,
         body.stage-mode #hud,
         body.stage-mode #fx-bank-panel,
+        body.stage-mode #hud-top-notch,
+        body.stage-mode .controller-banner,
+        body.stage-mode #controller-banner,
+        body.stage-mode #drop-zone,
+        body.stage-mode #obs-modal-backdrop,
+        body.stage-mode #about-modal-backdrop,
         body.obs-mode #hud,
-        body.obs-mode #fx-bank-panel {
+        body.obs-mode #fx-bank-panel,
+        body.obs-mode #hud-top-notch,
+        body.obs-mode .controller-banner,
+        body.obs-mode #controller-banner,
+        body.obs-mode #drop-zone,
+        body.obs-mode #obs-modal-backdrop,
+        body.obs-mode #about-modal-backdrop {
+            display: none !important;
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
+        /* Permanently hide obsolete master controller top-left banner */
+        .controller-banner,
+        #controller-banner {
             display: none !important;
             opacity: 0 !important;
             visibility: hidden !important;
@@ -2633,10 +2666,17 @@
         }
 
         #hud.hidden ~ .hud-top-notch,
-        #hud.hidden ~ #hud-top-notch {
-            opacity: 0;
-            pointer-events: none;
-            transform: translate(-50%, -100%);
+        #hud.hidden ~ #hud-top-notch,
+        body.stage-mode #hud-top-notch,
+        body.obs-mode #hud-top-notch,
+        body.controller-mode #hud-top-notch,
+        html.stage-mode #hud-top-notch,
+        html.obs-mode #hud-top-notch,
+        .hud-top-notch.hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translate(-50%, -100%) !important;
+            display: none !important;
         }
 
         /* Collapsed Notch Pill: Sits flush with top display bezel (MacBook notch style) */
@@ -4455,9 +4495,8 @@
         /* ========================================================================= */
         .video-bank-bar {
             display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 8px;
+            flex-direction: column;
+            gap: 6px;
             background: #0e1118;
             border: 1px solid #1c2333;
             border-radius: 6px;
@@ -4465,11 +4504,19 @@
             margin-bottom: 10px;
         }
 
+        .video-bank-bar-top {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            width: 100%;
+        }
+
         .video-banks-dropdown-wrap {
             display: flex;
             align-items: center;
             gap: 6px;
             flex: 1;
+            min-width: 0;
         }
 
         .video-bank-select {
@@ -4484,6 +4531,15 @@
             outline: none;
             cursor: pointer;
             flex: 1;
+            min-width: 0;
+        }
+
+        .video-bank-actions-row {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            width: 100%;
+            flex-wrap: wrap;
         }
 
         .video-bank-chips-bar {
@@ -4640,7 +4696,6 @@
         .video-card-item:hover {
             border-color: #00ffcc;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 255, 204, 0.2);
-            transform: translateY(-1px);
         }
 
         .video-card-item.active-on-air {
@@ -4673,8 +4728,8 @@
             display: block;
             z-index: 2;
             pointer-events: none;
-            transition: opacity 0.2s ease;
-            background: #06080e;
+            transition: opacity 0.25s ease;
+            background: transparent;
         }
 
         .video-card-item:hover .video-card-poster {
@@ -4691,6 +4746,28 @@
             display: block;
             z-index: 1;
             background: #05070c;
+        }
+
+        .video-thumb-preview-indicator {
+            position: absolute;
+            top: 4px;
+            right: 4px;
+            background: rgba(0, 255, 204, 0.9);
+            color: #050810;
+            font-size: 7.5px;
+            font-weight: 800;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'JetBrains Mono', monospace;
+            letter-spacing: 0.5px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            z-index: 5;
+        }
+
+        .video-card-item:hover .video-thumb-preview-indicator {
+            opacity: 1;
         }
 
         .video-thumb-dur-badge {
@@ -4827,8 +4904,8 @@
 <body>
     <div id="drop-zone">⚡ DROP LOGO / VIDEO TO LOAD (MP4, GIF, PNG, JPG)</div>
 
-    <!-- Master Controller Live Status Banner -->
-    <div class="controller-banner" id="controller-banner">
+    <!-- Master Controller Live Status Banner (Obsolete Prototype - Kept Hidden For Reference & DOM IDs) -->
+    <div class="controller-banner" id="controller-banner" style="display: none !important;">
         <div style="display:flex; align-items:center; gap:10px;">
             <span style="color:#ff007f; font-weight:800; font-size:12px;">🎛️ MASTER CONTROLLER</span>
             <span style="color:#00ffcc; font-size:11px;">● BROADCASTING LIVE TO EXTERNAL DISPLAY & OBS</span>
@@ -6731,8 +6808,9 @@
 
                 <!-- Active Video Monitor Card -->
                 <div class="media-preview-card" style="padding:10px 12px; margin-bottom:10px;">
-                    <div class="media-preview-thumb-box" style="width:72px; height:45px; min-width:72px; background:#000; border-radius:4px; overflow:hidden;">
-                        <video id="video-active-preview-vid" autoplay loop muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                    <div class="media-preview-thumb-box" style="width:72px; height:45px; min-width:72px; background:#000; border-radius:4px; overflow:hidden; position:relative;">
+                        <img id="video-active-preview-poster" style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; display:none; z-index:1;" alt="Preview Poster" />
+                        <video id="video-active-preview-vid" autoplay loop muted playsinline style="position:relative; z-index:2; width:100%; height:100%; object-fit:cover;"></video>
                     </div>
                     <div class="media-preview-meta" style="flex:1;">
                         <span class="media-preview-name" id="video-active-title" style="color:#00ffcc; font-weight:800;">No Video Loaded</span>
@@ -6754,17 +6832,20 @@
 
                 <!-- Video Bank Selector & Folder Controls (10 Saved Locations) -->
                 <div class="video-bank-bar">
-                    <div class="video-banks-dropdown-wrap">
-                        <span class="hud-label" style="font-size:8.5px; white-space:nowrap;">📁 BANK:</span>
-                        <select id="select-video-bank" class="video-bank-select">
-                            <!-- Populated with 10 user banks -->
-                        </select>
+                    <div class="video-bank-bar-top">
+                        <div class="video-banks-dropdown-wrap">
+                            <span class="hud-label" style="font-size:8.5px; white-space:nowrap;">📁 BANK:</span>
+                            <select id="select-video-bank" class="video-bank-select">
+                                <!-- Populated with 10 user banks -->
+                            </select>
+                        </div>
+                        <button class="btn-mini" id="btn-reveal-finder" style="font-size:8.5px; font-weight:700; padding:4px 7px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec; white-space:nowrap; display:inline-flex; align-items:center; gap:3px;" title="Reveal current bank folder in macOS Finder">📂 FINDER</button>
                     </div>
-                    <div style="display:flex; align-items:center; gap:4px;">
-                        <button class="btn-mini" id="btn-choose-video-folder" style="font-size:9.5px; font-weight:800; padding:4px 8px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
-                        <button class="btn-mini" id="btn-choose-video-files" style="font-size:9px; font-weight:700; padding:4px 7px; background:rgba(0,170,255,0.15); border:1px solid rgba(0,170,255,0.45); color:#00aaff;" title="Select individual video files (.mp4, .webm, .mov)">🎞️ FILES</button>
-                        <button class="btn-mini" id="btn-load-demo-videos" style="font-size:9px; font-weight:700; padding:4px 7px; background:rgba(255,0,85,0.15); border:1px solid rgba(255,0,85,0.45); color:#ff3377;" title="Load high-res Demo VJ Clips instantly">✨ DEMO</button>
-                        <button class="btn-mini" id="btn-scan-mac-path" style="font-size:9px; padding:4px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec;" title="Enter direct Mac folder path">🔍 PATH</button>
+                    <div class="video-bank-actions-row">
+                        <button class="btn-mini" id="btn-choose-video-folder" style="flex:1; min-width:85px; font-size:9px; font-weight:800; padding:5px 6px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; white-space:nowrap; text-align:center;" title="Choose local folder containing video files (.mp4, .webm, .mov)">📁 OPEN FOLDER</button>
+                        <button class="btn-mini" id="btn-choose-video-files" style="flex:1; min-width:62px; font-size:9px; font-weight:700; padding:5px 6px; background:rgba(0,170,255,0.15); border:1px solid rgba(0,170,255,0.45); color:#00aaff; white-space:nowrap; text-align:center;" title="Select individual video files (.mp4, .webm, .mov)">🎞️ FILES</button>
+                        <button class="btn-mini" id="btn-scan-mac-path" style="flex:1; min-width:58px; font-size:9px; font-weight:700; padding:5px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#e5e7ec; white-space:nowrap; text-align:center;" title="Enter direct Mac folder path">🔍 PATH</button>
+                        <button class="btn-mini" id="btn-load-demo-videos" style="flex:1; min-width:58px; font-size:9px; font-weight:700; padding:5px 6px; background:rgba(255,0,85,0.12); border:1px solid rgba(255,0,85,0.35); color:#ff3377; white-space:nowrap; text-align:center;" title="Load high-res Demo VJ Clips instantly">✨ DEMO</button>
                         <input type="file" id="file-video-folder" webkitdirectory directory multiple style="opacity:0; position:absolute; z-index:-1; width:1px; height:1px; pointer-events:none;">
                         <input type="file" id="file-video-files" multiple accept="video/mp4,video/webm,video/quicktime,video/ogg,.mp4,.webm,.mov,.m4v" style="opacity:0; position:absolute; z-index:-1; width:1px; height:1px; pointer-events:none;">
                     </div>
@@ -6895,6 +6976,19 @@
                                 <span class="val" id="video-trans-dur-val" style="font-size:8px; color:#00ffcc;">1.0s</span>
                             </div>
                             <input type="range" id="slider-video-trans-dur" min="0.2" max="3.0" step="0.1" value="1.0" style="width:100%;">
+                        </div>
+                    </div>
+
+                    <!-- Row 5: Video Render Quality & Clarity -->
+                    <div style="margin-top:8px; padding-top:8px; border-top:1px solid #1a2030;">
+                        <div class="hud-row" style="margin-bottom:4px; align-items:center; justify-content:space-between;">
+                            <span class="hud-label" style="font-size:8px;">RENDER QUALITY / CLARITY ENGINE</span>
+                            <span class="hud-badge" id="video-quality-val" style="font-size:8px; color:#00ffcc; font-weight:800;">💎 ULTRA-HD (VLC MATCH)</span>
+                        </div>
+                        <div class="mode-pills" id="video-quality-pills">
+                            <button class="mode-pill active" data-quality="ultra" title="Full native Retina / 4K DPR, zero post-FX blur/bloom, pure sRGB colors (VLC Clarity)">💎 Ultra-HD (VLC Match)</button>
+                            <button class="mode-pill" data-quality="direct" title="Direct hardware video surface with 100% native GPU decoding">⚡ Direct Hardware Overlay</button>
+                            <button class="mode-pill" data-quality="retro" title="Nightclub style with bloom and cyber glitch effects">🔮 Nightclub FX</button>
                         </div>
                     </div>
                 </div>
