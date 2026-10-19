@@ -1844,8 +1844,8 @@ export function createVFXScene(container) {
             if (packet.title) deck1Data.title = packet.title;
             if (packet.artist) deck1Data.artist = packet.artist;
             if (packet.bpm) deck1Data.bpm = packet.bpm;
-            if (packet.cues && Array.isArray(packet.cues)) deck1Data.cues = packet.cues;
-            if (packet.loops && Array.isArray(packet.loops)) deck1Data.loops = packet.loops;
+            if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck1Data.cues = packet.cues;
+            if (packet.loops && Array.isArray(packet.loops) && packet.loops.length > 0) deck1Data.loops = packet.loops;
             if (packet.totalBeats) deck1Data.totalBeats = Number(packet.totalBeats);
 
             for (let i = 0; i < 512; i++) {
@@ -1868,8 +1868,8 @@ export function createVFXScene(container) {
             if (packet.title) deck2Data.title = packet.title;
             if (packet.artist) deck2Data.artist = packet.artist;
             if (packet.bpm) deck2Data.bpm = packet.bpm;
-            if (packet.cues && Array.isArray(packet.cues)) deck2Data.cues = packet.cues;
-            if (packet.loops && Array.isArray(packet.loops)) deck2Data.loops = packet.loops;
+            if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck2Data.cues = packet.cues;
+            if (packet.loops && Array.isArray(packet.loops) && packet.loops.length > 0) deck2Data.loops = packet.loops;
             if (packet.totalBeats) deck2Data.totalBeats = Number(packet.totalBeats);
 
             for (let i = 0; i < 512; i++) {
@@ -10424,8 +10424,8 @@ export function createVFXScene(container) {
                     }
                 }
                 if (data.sync !== undefined) deck1Data.sync = Boolean(data.sync);
-                if (data.cues && Array.isArray(data.cues)) deck1Data.cues = data.cues;
-                if (data.loops && Array.isArray(data.loops)) deck1Data.loops = data.loops;
+                if (data.cues && Array.isArray(data.cues) && data.cues.length > 0) deck1Data.cues = data.cues;
+                if (data.loops && Array.isArray(data.loops) && data.loops.length > 0) deck1Data.loops = data.loops;
                 if (data.samples && Array.isArray(data.samples)) deck1Data.samples = data.samples;
 
                 if (data.progress !== undefined) {
@@ -10487,8 +10487,8 @@ export function createVFXScene(container) {
                     }
                 }
                 if (data.sync !== undefined) deck2Data.sync = Boolean(data.sync);
-                if (data.cues && Array.isArray(data.cues)) deck2Data.cues = data.cues;
-                if (data.loops && Array.isArray(data.loops)) deck2Data.loops = data.loops;
+                if (data.cues && Array.isArray(data.cues) && data.cues.length > 0) deck2Data.cues = data.cues;
+                if (data.loops && Array.isArray(data.loops) && data.loops.length > 0) deck2Data.loops = data.loops;
                 if (data.samples && Array.isArray(data.samples)) deck2Data.samples = data.samples;
 
                 if (data.progress !== undefined) {

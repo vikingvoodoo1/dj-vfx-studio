@@ -527,14 +527,19 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     const activeProg = (pDeck === 2) ? prog2 : prog1;
     const activeTotalBeats = (pDeck === 2) ? totalBeats2 : totalBeats1;
     const activeLoops = (pDeck === 2)
-        ? ((d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [])
+        ? ((d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [
+            { name: 'Loop 1', num: 1, startProgress: 0.125, endProgress: 0.150, beats: 8, color: '#ff4d2e' }
+        ])
         : ((d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
             { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
             { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
         ]);
 
     const activeCues = (pDeck === 2)
-        ? ((d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [])
+        ? ((d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [
+            { name: 'Cue 1', num: 1, progress: 0.125, color: '#ff4d2e' },
+            { name: 'Cue 2', num: 2, progress: 0.500, color: '#ffaa33' }
+        ])
         : ((d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
             { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
             { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
@@ -824,13 +829,30 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         // Strip 1 Active Hot Cues & Loops
         const activeLoops1 = (d1 && d1.loops && d1.loops.length > 0) ? d1.loops : [
-            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' }
+            { name: 'Loop 2', num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: '#ef8130' },
+            { name: 'Loop 7', num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: '#30c1b9' }
         ];
         activeLoops1.forEach(loop => {
             const lx1 = padX + loop.startProgress * overviewW;
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
             ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
             ctx.fillRect(lx1, d1BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
+        });
+
+        const activeCues1 = (d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
+            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
+            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
+        ];
+        activeCues1.forEach(cue => {
+            const cx = padX + cue.progress * overviewW;
+            ctx.fillStyle = cue.color || '#ef8130';
+            ctx.fillRect(cx - 1, d1BarY + 8, 2, barH - 14);
+            ctx.beginPath();
+            ctx.moveTo(cx, d1BarY + 8);
+            ctx.lineTo(cx - 4, d1BarY + 2);
+            ctx.lineTo(cx + 4, d1BarY + 2);
+            ctx.closePath();
+            ctx.fill();
         });
 
         // Strip 1 Track Position Needle (Vintage LED Filament Tube)
@@ -858,6 +880,33 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         const rail2Y = d2BarY + barH - 6;
         drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
+
+        // Strip 2 Active Hot Cues & Loops
+        const activeLoops2 = (d2 && d2.loops && d2.loops.length > 0) ? d2.loops : [
+            { name: 'Loop 1', num: 1, startProgress: 0.125, endProgress: 0.150, beats: 8, color: '#ff4d2e' }
+        ];
+        activeLoops2.forEach(loop => {
+            const lx1 = padX + loop.startProgress * overviewW;
+            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+            ctx.fillStyle = hexToRgba(loop.color || '#ff4d2e', 0.35);
+            ctx.fillRect(lx1, d2BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
+        });
+
+        const activeCues2 = (d2 && d2.cues && d2.cues.length > 0) ? d2.cues : [
+            { name: 'Cue 1', num: 1, progress: 0.125, color: '#ff4d2e' },
+            { name: 'Cue 2', num: 2, progress: 0.500, color: '#ffaa33' }
+        ];
+        activeCues2.forEach(cue => {
+            const cx = padX + cue.progress * overviewW;
+            ctx.fillStyle = cue.color || '#ff4d2e';
+            ctx.fillRect(cx - 1, d2BarY + 8, 2, barH - 14);
+            ctx.beginPath();
+            ctx.moveTo(cx, d2BarY + 8);
+            ctx.lineTo(cx - 4, d2BarY + 2);
+            ctx.lineTo(cx + 4, d2BarY + 2);
+            ctx.closePath();
+            ctx.fill();
+        });
 
         // Strip 2 Track Position Needle (Vintage LED Filament Tube)
         const prog2X = padX + prog2 * overviewW;
@@ -926,6 +975,22 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
             ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
             ctx.fillRect(lx1, bar1Y + 18, Math.max(3, lx2 - lx1), barH - 26);
+        });
+
+        const activeCuesSingle = (d1 && d1.cues && d1.cues.length > 0) ? d1.cues : [
+            { name: 'Cue 2', num: 2, progress: 0.02591687, color: '#ef8130' },
+            { name: 'Cue 7', num: 7, progress: 0.97371907, color: '#30c1b9' }
+        ];
+        activeCuesSingle.forEach(cue => {
+            const cx = padX + cue.progress * overviewW;
+            ctx.fillStyle = cue.color || '#ef8130';
+            ctx.fillRect(cx - 1, bar1Y + 12, 2, barH - 20);
+            ctx.beginPath();
+            ctx.moveTo(cx, bar1Y + 12);
+            ctx.lineTo(cx - 5, bar1Y + 4);
+            ctx.lineTo(cx + 5, bar1Y + 4);
+            ctx.closePath();
+            ctx.fill();
         });
 
         const prog1X = padX + prog1 * overviewW;
@@ -1087,6 +1152,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
     // 3C. Center Moving Waveform Playhead: Warm & Homely Vintage Edison Filament Tube
     ctx.save();
+    const playX = width / 2;
     const nowMs2 = performance.now();
     const needleStyle2 = getVintageBulbStyle(getVintageBulbFlicker(nowMs2 * 0.001, (primaryDeck === 2) ? 2.4 : 1.37));
 
