@@ -1,6 +1,6 @@
-# 📋 DJ VFX Studio v2.1.0 — Feature Matrix & Complete Technical Documentation
+# 📋 DJ VFX Studio v2.2.0 — Feature Matrix & Complete Technical Documentation
 
-This document tracks all features, architectural components, lighting integrations, branding engines, and recent enhancements for **DJ VFX Studio v2.1.0**.
+This document tracks all features, architectural components, lighting integrations, branding engines, and recent enhancements for **DJ VFX Studio v2.2.0**.
 
 ---
 
