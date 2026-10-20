@@ -17,6 +17,7 @@ export function setupStageLinqClient({
     onDeckTelemetry,
     onCrossfader,
     onDeckUnloaded,
+    onDecksOffline,
     onSync 
 }) {
     const WS_URL = 'ws://localhost:8080';
@@ -63,6 +64,9 @@ export function setupStageLinqClient({
                         case 'deck_unloaded':
                             if (onDeckUnloaded) onDeckUnloaded(data);
                             break;
+                        case 'decks_offline':
+                            if (onDecksOffline) onDecksOffline(data);
+                            break;
                         case 'deck_waveform':
                             if (onDeckWaveform) onDeckWaveform(data);
                             break;
@@ -103,6 +107,7 @@ export function setupStageLinqClient({
             socket.onclose = () => {
                 isConnected = false;
                 if (onStatusChange) onStatusChange({ connected: false, message: 'Bridge Offline (Audio Fallback)' });
+                if (onDecksOffline) onDecksOffline({ bridgeOffline: true });
                 clearTimeout(reconnectTimeout);
                 reconnectTimeout = setTimeout(connect, 3000);
             };

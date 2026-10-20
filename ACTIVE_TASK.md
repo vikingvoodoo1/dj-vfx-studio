@@ -83,3 +83,65 @@
   - Node syntax check on `server/stagelinq-bridge.js`: PASSED.
   - Node VM execution test on `renderDJDeckHUD`: PASSED across all deck configurations.
   - Chrome tab reloaded with new bundle.
+
+## 7. Hellfire Waveforms (Scene 04) Halloween Relocation, Dynamic Header Swapping, Duplicate Info Elimination & Outgoing Rail Smoke
+- **User Goals:**
+  1. Move the DJ Wave scene into the **Halloween Spooky** scene group and rename it to a badass name fitting the Halloween fire theme (chosen: **"Hellfire Waveforms"** / **"Hellfire Wave"**, icon `🔥`).
+  2. Tweak the scene so when top track waveforms swap over during mixing (crossfader / channel faders), the track info and album art also get updated accordingly to match the lead track, eliminating duplicate info.
+  3. Make realistic convective smoke billow off the outgoing long track wave at the top when fading out and the new lead track takes over.
+- **Implemented Changes:**
+  - **Scene Relocation & Rebranding:**
+    - `src/scene-profiles.js`: Renamed FX 3 to `'Hellfire Waveforms'`, changed `category` to `'spooky'`, `categoryLabel` to `'Halloween Spooky'`, and icon to `'🔥'`.
+    - `index.html`: Moved card 3 to `data-fxcat="spooky"`, updated title to `🔥 04: Hellfire Waveforms`, category badge to `🎃 Spooky Special`, preset button 3 to `data-cat="spooky"`, and label to `🔥 04: Hellfire Wave`.
+    - `src/main.js`: Updated `FX_NAMES[3]` to `'Scene 04: Hellfire Waveforms'`.
+    - `src/ui/scene-thumbnails.js`: Transformed thumbnail preview 3 into a roaring amber/orange Hellfire waveform with glowing ember cursor.
+  - **Duplicate Info Bug Elimination:**
+    - `server/stagelinq-bridge.js`: Fixed `parseDeckNumber(status)` which previously returned `1` for StateMap updates lacking `status.deck`, mistakenly assigning Deck 2 track titles to Deck 1. Now inspects `name`, `path`, `key`, and regex `/(?:Deck|CH|Channel)(\d+)/i`. Added direct StateMap message handlers for `/Engine/Deck(\d+)/Track/SongName` and `ArtistName`.
+    - `src/effects.js`: When a deck's track title changes in `setDeckData`, dynamically resets `artworkImg = null`, `artworkUrl = ''`, and `_artRequested = false` to prevent stale album art. Added `loadDeckArtwork` trigger for Deck 1.
+  - **Dynamic Lead / Outgoing Header Swapping:**
+    - `src/vfx/deck-hud-renderer.js`: Dynamically maps the **Lead / On-Air Track** (matching the top overview waveform rail Y=126) to the prominent **Left Header Card**, and the **Subordinate / Outgoing Track** (matching the lower rail Y=182) to the **Right Header Card**.
+    - Left Card displays `🔥 TOP RAIL: D${leadDeckNum} ● ON AIR`, its artwork, title, artist, BPM, and key.
+    - Right Card displays `D${subDeckNum} ⮂ OUTGOING` (or `INCOMING` / `STANDBY`), its artwork, title, artist, BPM, and key.
+    - `src/main.js`: Synchronized `onCrossfader` and `onDeckTelemetry` to update global title, artist, BPM, and track banner with the active lead deck.
+  - **Hellfire Outgoing Rail Smoke Effect:**
+    - `src/vfx/deck-hud-renderer.js`: Created and exported `drawRailSmoke(ctx, railX, railY, railW, railH, intensity, animTime)`.
+    - Features smoldering ember thermal edge along top rail rim, charred soot overlay on the rail body, 36 volumetric convective smoke plumes rising 85px upwards with turbulent curl noise, and 20 buoyant micro-cinders flickering in the updraft.
+    - Dynamically triggered on the outgoing overview rail as its fader decreases and the new lead track takes over.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 925ms (`dist/index.html`, `dist/assets/index-*.css`, `dist/assets/index-*.js`).
+  - Node syntax check on `server/stagelinq-bridge.js`: PASSED.
+  - Automated Node VM runtime test across all 5 mixing, swapping, single-deck, and unload scenarios: PASSED with zero exceptions.
+  - Active Chrome tab refreshed via AppleScript.
+
+## 8. Decks Offline Waveform Reset, Artwork Removal & Standby State
+- **User Request:**
+  - "If the decks go offline then reset all the wave forms (maybe dont show any) and remove any left over track information/artwork"
+- **Implemented Changes:**
+  - **Inactivity Watchdog & Disconnect Detection (`server/stagelinq-bridge.js`):**
+    - Added `lastHardwarePacketTimestamp = 0`, `isHardwareOnline = false`.
+    - Added `markHardwareActivity(devName)` called on every incoming track, BPM, beat, and StageLinQ StateMap message.
+    - Added 4.5s packet silence watchdog timer (`Date.now() - lastHardwarePacketTimestamp > 4500`): triggers `handleAllDecksOffline()` automatically when Denon Prime or hardware is powered off or disconnected.
+    - `handleAllDecksOffline()` clears `connectedDevices`, `lastTrackData`, `lastDeckLoadedTracks`, `lastDeckWaveforms`, resets all 4 deck states to clean empty standby (`title: ''`, `artist: ''`, `bpm: 0`), and broadcasts `{ type: 'decks_offline' }` and `{ type: 'status', deviceCount: 0 }`.
+  - **Bridge Client Event Plumbing (`src/stagelinq.js`):**
+    - Added `onDecksOffline` callback to `setupStageLinqClient`.
+    - Dispatches on WebSocket `decks_offline` message and on `socket.onclose` disconnect.
+  - **VFX Waveform Dissolution & Standby Reset (`src/effects.js`):**
+    - Added `resetAllDecks()` method to `createVFXScene` return object: resets Deck 1 & 2 data (`samples = null`, `title = ''`, `artist = ''`, `bpm = null`, `artworkUrl = ''`, `artworkImg = null`, `offline = true`, `unloaded = true`).
+    - Immediately sets mixer weights `w1 = 0.0`, `w2 = 0.0` and smoke phases `smoothDeck1SmokePhase = 1.0`, `smoothDeck2SmokePhase = 1.0`, completely dissolving the 3D moving Hellfire waveform into transparent silence.
+    - Updated mixer weight fallback logic so `!deck1Active && !deck2Active` yields `w1 = 0.0, w2 = 0.0`.
+  - **HUD Standby Guide & Artwork Replacement (`src/vfx/deck-hud-renderer.js`):**
+    - Updated `hasD1Track` and `hasD2Track` to check `!d1.offline` and `!d2.offline`.
+    - `drawMiniWaveform`: when offline or unloaded, draws zero synthetic wave bars and displays subtle dashed guide with `[ DECK X OFFLINE — AWAITING HARDWARE LINK ]`.
+    - `drawArtwork`: when offline or unloaded, immediately replaces leftover album art with the procedural burning vinyl disc on fire (`drawBurningRecord`).
+    - Header Cards & Center Pill: displays `HARDWARE DECKS OFFLINE` / `CONNECT HARDWARE • ENGINE OS / PRO DJ LINK`, with needle tags `D1 (OFFLINE)` / `D2 (OFFLINE)`.
+  - **Global Web UI Standby Reset (`src/main.js`):**
+    - Added `handleDecksOffline()` wired to `onDecksOffline` and triggered when bridge disconnects or `status.deviceCount === 0`.
+    - Clears `cachedDeckWaveforms`, resets `trackTitle` to `STANDBY`, `trackArtist` to `Awaiting Decks • Denon / Pioneer / Traktor`, `bpmVal` to `--.-`, sidebar Now Playing pane to empty standby, resets all 4 deck cards to `STANDBY`, and dismisses floating track banner.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.09s (`dist/index.html`, `dist/assets/index-B1a93B16.css`, `dist/assets/index-BztcA9Mo.js`).
+  - Stale bridge process (PID 94923 from Sunday) terminated and updated bridge daemon launched.
+  - Bridge connection message verification: verified that when no decks are connected, only `['status', 'hue_status', 'decks_offline']` are sent; zero `track` or `deck_waveform` packets.
+  - Frontend `isHardwareConnected` gating: verified all incoming metadata, telemetry, and waveform handlers reject packets when `!isHardwareConnected`.
+  - Chrome tab reloaded via AppleScript.
+
+

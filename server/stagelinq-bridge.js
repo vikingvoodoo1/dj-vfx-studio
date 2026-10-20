@@ -55,6 +55,70 @@ function relayToOthers(senderWs, messageObj) {
 }
 
 const lastDeckWaveforms = new Map();
+const lastDeckLoadedTracks = new Map();
+let lastHardwarePacketTimestamp = 0;
+let isHardwareOnline = false;
+
+function markHardwareActivity(devName = 'Denon Prime') {
+    lastHardwarePacketTimestamp = Date.now();
+    if (!isHardwareOnline) {
+        isHardwareOnline = true;
+        connectedDevices.set('denon', devName);
+        console.log(`[Universal Bridge] 🟢 Hardware Decks Online: ${devName}`);
+        handleIncomingStatus({
+            ecosystem: 'stagelinq',
+            connected: true,
+            deviceCount: connectedDevices.size,
+            device: devName,
+            isHardware: true,
+            message: `Denon Hardware Connected: ${devName}`
+        });
+    }
+}
+
+function handleAllDecksOffline() {
+    if (!isHardwareOnline && connectedDevices.size === 0 && !lastTrackData && lastDeckWaveforms.size === 0 && globalSyncState.size === 0) return;
+    console.log('[Universal Bridge] 🔴 Hardware Decks Offline — Resetting all waveforms, metadata and artwork.');
+    isHardwareOnline = false;
+    lastHardwarePacketTimestamp = 0;
+    connectedDevices.clear();
+    lastTrackData = null;
+    lastDeckLoadedTracks.clear();
+    lastDeckWaveforms.clear();
+    globalSyncState.clear();
+
+    // Reset all 4 decks to clean empty standby states
+    for (let d = 1; d <= 4; d++) {
+        deckStatuses.set(d, {
+            deck: d,
+            bpm: 0,
+            play: false,
+            fader: 0,
+            artist: '',
+            title: '',
+            ecosystem: 'none',
+            isHardware: false
+        });
+    }
+
+    broadcast({
+        type: 'decks_offline',
+        isHardware: false,
+        ecosystem: 'stagelinq',
+        message: 'Hardware decks went offline'
+    });
+
+    broadcast({
+        type: 'status',
+        ecosystem: 'stagelinq',
+        connected: true, // Bridge server itself is running
+        deviceCount: 0,
+        device: 'Bridge Standby (Awaiting Decks)',
+        devices: [],
+        isHardware: false,
+        message: 'Hardware Decks Offline'
+    });
+}
 
 // Unified Handlers for Hardware Telemetry
 function handleDeckUnloaded(deckNum) {
@@ -62,7 +126,9 @@ function handleDeckUnloaded(deckNum) {
     currentDeck.artist = '';
     currentDeck.title = '';
     currentDeck.play = false;
-    currentDeck.isHardware = true;
+    currentDeck.bpm = 0;
+    currentDeck.fader = 0;
+    currentDeck.isHardware = false;
     deckStatuses.set(deckNum, currentDeck);
     lastDeckWaveforms.delete(deckNum);
     console.log(`[Universal Bridge] ⏹️ Deck ${deckNum} Unloaded / Disarmed`);
@@ -76,6 +142,9 @@ function handleDeckUnloaded(deckNum) {
 
 function handleIncomingTrack(trackData) {
     const deckNum = trackData.deck || 1;
+    if (trackData.isHardware) {
+        markHardwareActivity(trackData.device || 'Denon Prime');
+    }
     if (trackData.unloaded || !trackData.title || trackData.title === 'No Track Loaded' || trackData.title === '—') {
         handleDeckUnloaded(deckNum);
         return;
@@ -122,6 +191,9 @@ function handleIncomingTrack(trackData) {
 }
 
 function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
+    if (ecosystem === 'stagelinq' || ecosystem === 'pioneer') {
+        markHardwareActivity();
+    }
     if (bpm > 40 && bpm < 300) {
         const currentDeck = deckStatuses.get(deckNum) || { deck: deckNum };
         currentDeck.bpm = bpm;
@@ -146,6 +218,9 @@ function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
 }
 
 function handleIncomingBeat(deckNum, count, ecosystem = 'auto') {
+    if (ecosystem === 'stagelinq' || ecosystem === 'pioneer') {
+        markHardwareActivity();
+    }
     broadcast({
         type: 'beat',
         deck: deckNum || 1,
@@ -647,46 +722,58 @@ wss.on('connection', (ws) => {
         ...hueService.getStatus()
     }));
 
-    if (lastTrackData && (lastTrackData.title || lastTrackData.artist)) {
+    const hasLiveDecks = Boolean(connectedDevices.size > 0 && isHardwareOnline);
+
+    if (hasLiveDecks) {
+        if (lastTrackData && (lastTrackData.title || lastTrackData.artist)) {
+            ws.send(JSON.stringify({
+                type: 'track',
+                isHardware: true,
+                ...lastTrackData
+            }));
+        }
+        if (lastBpm) {
+            ws.send(JSON.stringify({
+                type: 'bpm',
+                bpm: lastBpm,
+                isHardware: true
+            }));
+        }
+        if (lastActiveFX !== null && lastActiveFX !== undefined) {
+            ws.send(JSON.stringify({
+                type: 'set_fx',
+                fx: lastActiveFX
+            }));
+        }
+
+        // Send 4-deck status snapshot
         ws.send(JSON.stringify({
-            type: 'track',
-            isHardware: true,
-            ...lastTrackData
+            type: 'decks_snapshot',
+            decks: Array.from(deckStatuses.values())
+        }));
+
+        // Replay pre-analyzed deck waveforms so freshly loaded or refreshed clients get immediate waveform rendering
+        lastDeckWaveforms.forEach((wfPacket) => {
+            try {
+                ws.send(JSON.stringify(wfPacket));
+            } catch (e) { }
+        });
+
+        // Replay full active state snapshot to the connecting client
+        globalSyncState.forEach((cachedMsg) => {
+            try {
+                ws.send(JSON.stringify(cachedMsg));
+            } catch (e) { }
+        });
+    } else {
+        // Send clean offline notification to new client so it never renders phantom waveforms
+        ws.send(JSON.stringify({
+            type: 'decks_offline',
+            isHardware: false,
+            deviceCount: 0,
+            message: 'No hardware decks connected'
         }));
     }
-    if (lastBpm && connectedDevices.size > 0) {
-        ws.send(JSON.stringify({
-            type: 'bpm',
-            bpm: lastBpm,
-            isHardware: true
-        }));
-    }
-    if (lastActiveFX !== null && lastActiveFX !== undefined) {
-        ws.send(JSON.stringify({
-            type: 'set_fx',
-            fx: lastActiveFX
-        }));
-    }
-
-    // Send 4-deck status snapshot
-    ws.send(JSON.stringify({
-        type: 'decks_snapshot',
-        decks: Array.from(deckStatuses.values())
-    }));
-
-    // Replay pre-analyzed deck waveforms so freshly loaded or refreshed clients get immediate waveform rendering
-    lastDeckWaveforms.forEach((wfPacket) => {
-        try {
-            ws.send(JSON.stringify(wfPacket));
-        } catch (e) { }
-    });
-
-    // Replay full active state snapshot to the connecting client
-    globalSyncState.forEach((cachedMsg) => {
-        try {
-            ws.send(JSON.stringify(cachedMsg));
-        } catch (e) { }
-    });
 
     // Handle Client Messages
     ws.on('message', async (raw) => {
@@ -831,14 +918,12 @@ async function startStageLinq() {
         stagelinqInstance.on('connected', (info) => {
             const devName = info.source || info.software?.name || 'Denon Prime Player';
             console.log(`[StageLinq] 🟢 Hardware Discovered: ${devName}`);
+            markHardwareActivity(devName);
+        });
 
-            connectedDevices.set('denon', devName);
-            handleIncomingStatus({
-                ecosystem: 'stagelinq',
-                connected: true,
-                device: devName,
-                message: `Denon Hardware Connected: ${devName}`
-            });
+        stagelinqInstance.on('disconnected', () => {
+            console.log('[StageLinq] 🔴 Hardware Disconnected (StageLinQ event)');
+            handleAllDecksOffline();
         });
 
         function parseDeckNumber(status) {
@@ -852,13 +937,24 @@ async function startStageLinq() {
                 const m = status.deck.match(/\d+/);
                 if (m) return parseInt(m[0], 10);
             }
+            if (typeof status.deckId === 'number') return status.deckId;
+            if (typeof status.deckIndex === 'number') return status.deckIndex + 1;
+            // Also inspect name, path, key, topic, id if present (e.g. /Engine/Deck2/Track/SongName)
+            const strToCheck = status.name || status.path || status.key || status.topic || status.id || '';
+            if (typeof strToCheck === 'string' && strToCheck.length > 0) {
+                const m = strToCheck.match(/(?:Deck|CH|Channel)(\d+)/i);
+                if (m) return parseInt(m[1], 10);
+                if (strToCheck.includes('Deck2') || strToCheck.includes('Deck 2')) return 2;
+                if (strToCheck.includes('Deck1') || strToCheck.includes('Deck 1')) return 1;
+                if (strToCheck.includes('Deck3') || strToCheck.includes('Deck 3')) return 3;
+                if (strToCheck.includes('Deck4') || strToCheck.includes('Deck 4')) return 4;
+            }
             return 1;
         }
 
-        const lastDeckLoadedTracks = new Map();
-
         stagelinqInstance.on('trackLoaded', (status) => {
             if (!status) return;
+            markHardwareActivity();
             const deckNum = parseDeckNumber(status);
             const deckKey = String(deckNum);
             const artist = status.artist || '';
@@ -908,6 +1004,7 @@ async function startStageLinq() {
 
         stagelinqInstance.on('nowPlaying', (status) => {
             if (!status) return;
+            markHardwareActivity();
             const deckNum = parseDeckNumber(status);
             const effectiveBpm = status.currentBpm || status.masterTempo || lastBpm || 126.0;
             handleIncomingTrack({
@@ -926,6 +1023,7 @@ async function startStageLinq() {
 
         stagelinqInstance.on('stateChanged', (status) => {
             if (!status) return;
+            markHardwareActivity();
             const deckNum = parseDeckNumber(status);
             if (status.currentBpm) {
                 handleIncomingBPM(status.currentBpm, deckNum, 'stagelinq');
@@ -966,6 +1064,7 @@ async function startStageLinq() {
         // Listen for direct StateMap changes (Channel Faders, Crossfader, Deck Play states, Loop states)
         stagelinqInstance.on('message', (info, data) => {
             if (!data || !data.message) return;
+            markHardwareActivity();
             const name = data.message.name;
             const json = data.message.json;
             if (!name || !json) return;
@@ -979,6 +1078,60 @@ async function startStageLinq() {
                     const deckKey = String(d);
                     lastDeckLoadedTracks.delete(deckKey);
                     handleDeckUnloaded(d);
+                }
+            }
+
+            // Direct StateMap Track Title: /Engine/Deck1/Track/SongName or /Engine/Deck2/Track/SongName
+            const songNameMatch = name.match(/Engine\/Deck(\d+)\/Track\/SongName/i);
+            if (songNameMatch) {
+                const d = parseInt(songNameMatch[1], 10);
+                const title = String(json.string || json.value || json.state || '').trim();
+                if (title && title !== '—' && title !== 'No Track Loaded') {
+                    const currentDeck = deckStatuses.get(d) || { deck: d };
+                    if (currentDeck.title !== title) {
+                        currentDeck.title = title;
+                        const deckKey = String(d);
+                        const trackSignature = `${currentDeck.artist || ''} - ${title}`;
+                        lastDeckLoadedTracks.set(deckKey, trackSignature);
+                        console.log(`[StageLinq] 🎵 Direct StateMap Deck ${d} Title: ${title}`);
+                        handleIncomingTrack({
+                            deck: d,
+                            title: title,
+                            artist: currentDeck.artist || '',
+                            bpm: currentDeck.bpm || lastBpm || 126.0,
+                            play: true,
+                            ecosystem: 'stagelinq',
+                            device: 'Denon Prime',
+                            isHardware: true
+                        });
+                    }
+                }
+            }
+
+            // Direct StateMap Track Artist: /Engine/Deck1/Track/ArtistName or /Engine/Deck2/Track/ArtistName
+            const artistNameMatch = name.match(/Engine\/Deck(\d+)\/Track\/ArtistName/i);
+            if (artistNameMatch) {
+                const d = parseInt(artistNameMatch[1], 10);
+                const artist = String(json.string || json.value || json.state || '').trim();
+                if (artist) {
+                    const currentDeck = deckStatuses.get(d) || { deck: d };
+                    if (currentDeck.artist !== artist) {
+                        currentDeck.artist = artist;
+                        const deckKey = String(d);
+                        const trackSignature = `${artist} - ${currentDeck.title || ''}`;
+                        lastDeckLoadedTracks.set(deckKey, trackSignature);
+                        console.log(`[StageLinq] 🎤 Direct StateMap Deck ${d} Artist: ${artist}`);
+                        handleIncomingTrack({
+                            deck: d,
+                            title: currentDeck.title || '',
+                            artist: artist,
+                            bpm: currentDeck.bpm || lastBpm || 126.0,
+                            play: true,
+                            ecosystem: 'stagelinq',
+                            device: 'Denon Prime',
+                            isHardware: true
+                        });
+                    }
                 }
             }
 
@@ -1058,8 +1211,12 @@ async function startStageLinq() {
         });
 
         // Periodic hardware deck heartbeat (every 1.5s) to ensure continuous streaming lock
+        // Watchdog: If hardware decks stop streaming packets for >4.5s (e.g. powered down or unplugged), trigger offline reset
         setInterval(() => {
-            if (connectedDevices.size > 0 || lastTrackData) {
+            const now = Date.now();
+            if (isHardwareOnline && lastHardwarePacketTimestamp > 0 && (now - lastHardwarePacketTimestamp > 4500)) {
+                handleAllDecksOffline();
+            } else if (connectedDevices.size > 0 || lastTrackData) {
                 broadcast({
                     type: 'decks_snapshot',
                     isHardware: connectedDevices.size > 0,
@@ -1071,6 +1228,7 @@ async function startStageLinq() {
 
         stagelinqInstance.on('beatMessage', (info, beatData) => {
             if (!beatData || !beatData.decks) return;
+            markHardwareActivity();
             const nowMs = Date.now();
             beatData.decks.forEach((deckData, idx) => {
                 const deckNum = idx + 1;

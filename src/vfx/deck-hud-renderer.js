@@ -350,6 +350,96 @@ export function drawBurningRecord(ctx, artX, artY, artSize, defaultColor = '#ff6
 // Dynamic Overview Track Bar Animation State (realigns active on-air deck to top track bar)
 let animDeck1BarY = 126.0;
 let animDeck2BarY = 182.0;
+let animDeck1Smoke = 0.0;
+let animDeck2Smoke = 0.0;
+
+/**
+ * Procedural Hellfire Convective Smoke Plumes
+ * Billows realistic rising convective smoke curls and glowing embers off the outgoing overview waveform rail
+ */
+export function drawRailSmoke(ctx, railX, railY, railW, railH, intensity, animTime) {
+    if (intensity < 0.01) return;
+
+    ctx.save();
+
+    // 1. Smoldering Ember Thermal Edge along top rim of rail
+    const rimH = 16;
+    const rimGrad = ctx.createLinearGradient(railX, railY - rimH, railX, railY + 4);
+    rimGrad.addColorStop(0, 'rgba(255, 60, 0, 0.0)');
+    rimGrad.addColorStop(0.60, `rgba(255, 110, 20, ${0.45 * intensity})`);
+    rimGrad.addColorStop(0.88, `rgba(255, 180, 40, ${0.80 * intensity})`);
+    rimGrad.addColorStop(1, `rgba(255, 80, 10, ${0.35 * intensity})`);
+    ctx.fillStyle = rimGrad;
+    ctx.fillRect(railX, railY - rimH, railW, rimH + 4);
+
+    // 2. Charred Soot Overlay on the rail itself to indicate smoldering/dissolution
+    ctx.fillStyle = `rgba(12, 6, 4, ${0.45 * intensity})`;
+    ctx.beginPath();
+    ctx.roundRect(railX, railY, railW, railH, 6);
+    ctx.fill();
+
+    // 3. Volumetric Convective Smoke Plumes (rising 85px upwards off the rail towards the top)
+    const puffCount = 36;
+    for (let i = 0; i < puffCount; i++) {
+        const seed = i * 1.371;
+        const speed = 0.35 + (i % 5) * 0.09;
+        const phase = (i * 0.29 + seed) % 1.0;
+        const prog = (animTime * speed + phase) % 1.0;
+
+        // Base X distributed across rail with turbulent jitter
+        const baseX = railX + 16 + ((i + 0.5) / puffCount) * (railW - 32);
+        const curlX = Math.sin(animTime * 2.8 + seed * 3.1 + prog * 4.5) * (18.0 * prog);
+        const px = baseX + curlX;
+
+        // Rises upwards from railY
+        const riseH = 85.0 * prog;
+        const py = railY - riseH + 6;
+
+        // Radius expands with height (from 9px near rail to 36px high up)
+        const pr = 9.0 + prog * 28.0;
+
+        // Alpha envelope: quick rise, lingers, disperses near apex
+        const alpha = intensity * Math.sin(prog * Math.PI) * 0.52;
+        if (alpha <= 0.01) continue;
+
+        // Radial smoke puff gradient (hot smoldering core -> charcoal body -> transparent plume)
+        const pGrad = ctx.createRadialGradient(px - pr * 0.15, py + pr * 0.1, pr * 0.08, px, py, pr);
+        pGrad.addColorStop(0.0, `rgba(65, 42, 32, ${alpha * 0.85})`);
+        pGrad.addColorStop(0.30, `rgba(42, 28, 22, ${alpha * 0.65})`);
+        pGrad.addColorStop(0.70, `rgba(24, 18, 15, ${alpha * 0.38})`);
+        pGrad.addColorStop(1.0, 'rgba(12, 8, 6, 0.0)');
+
+        ctx.fillStyle = pGrad;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // 4. Floating Micro-Embers / Sparks rising with thermal draft
+    const sparkCount = 20;
+    ctx.save();
+    ctx.shadowBlur = 8;
+    ctx.shadowColor = '#ff6600';
+    for (let s = 0; s < sparkCount; s++) {
+        const sSeed = s * 2.73;
+        const sSpeed = 0.70 + (s % 4) * 0.22;
+        const sProg = (animTime * sSpeed + s * 0.39) % 1.0;
+        const sx = railX + 20 + ((s * 97 + 13) % (railW - 40)) + Math.sin(animTime * 4.2 + sSeed) * 16.0;
+        const sy = railY - (sProg * 95.0);
+        const sAlpha = intensity * (1.0 - sProg) * (0.55 + 0.45 * Math.sin(animTime * 22.0 + s * 4.7));
+
+        if (sAlpha <= 0.02) continue;
+
+        const sparkR = 1.0 + (s % 3) * 0.6;
+        ctx.fillStyle = (s % 2 === 0) ? `rgba(255, 235, 140, ${sAlpha})` : `rgba(255, 120, 30, ${sAlpha})`;
+        ctx.beginPath();
+        ctx.arc(sx, sy, sparkR, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    ctx.restore();
+}
 
 export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, transient, prog1, prog2, d1Weight = 1.0, d2Weight = 0.0, primaryDeck = 1, audio = null) {
     if (typeof d1Weight === 'boolean') {
@@ -567,7 +657,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     }
 
     function drawMiniWaveform(x, topY, w, h, deckObj, profileType, colorScheme) {
-        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded);
+        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded && !deckObj.offline);
         const hasRealSamples = Boolean(hasTrack && Array.isArray(deckObj.samples) && deckObj.samples.length >= 6);
 
         if (!hasRealSamples) {
@@ -596,7 +686,10 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
             ctx.font = 'bold 11px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             ctx.textAlign = 'center';
             ctx.fillStyle = (profileType === 2) ? 'rgba(255, 120, 80, 0.38)' : 'rgba(255, 190, 80, 0.38)';
-            ctx.fillText(`[ ${deckLabel} ARMED — WAITING FOR TRACK ON ENGINE OS ]`, x + w / 2, midRailY - 6);
+            const standbyText = (deckObj && deckObj.offline)
+                ? `[ ${deckLabel} OFFLINE — AWAITING HARDWARE LINK ]`
+                : `[ ${deckLabel} ARMED — WAITING FOR TRACK ON ENGINE OS ]`;
+            ctx.fillText(standbyText, x + w / 2, midRailY - 6);
             ctx.restore();
             return;
         }
@@ -651,25 +744,29 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     }
 
     // Determine dynamic on-air deck status and track loaded validity
-    const hasD1Track = !!(d1 && d1.title && d1.title.trim() !== '' && d1.title !== 'No Track Loaded' && d1.title !== '—' && !d1.unloaded);
-    const hasD2Track = !!(d2 && d2.title && d2.title.trim() !== '' && d2.title !== 'No Track Loaded' && d2.title !== '—' && !d2.unloaded);
+    const hasD1Track = !!(d1 && d1.title && d1.title.trim() !== '' && d1.title !== 'No Track Loaded' && d1.title !== '—' && !d1.unloaded && !d1.offline);
+    const hasD2Track = !!(d2 && d2.title && d2.title.trim() !== '' && d2.title !== 'No Track Loaded' && d2.title !== '—' && !d2.unloaded && !d2.offline);
     const hasD2 = Boolean(d2 !== undefined && d2 !== null);
 
-    const isD2OnAir = hasD2Track && (primaryDeck === 2 || !hasD1Track);
-    const isD1OnAir = hasD1Track && (primaryDeck === 1 || !hasD2Track);
+    const isDeck2Primary = hasD2Track && (!hasD1Track || primaryDeck === 2 || (d2Weight > d1Weight && d2Weight > 0.45));
+    const isD2OnAir = hasD2Track && (isDeck2Primary || !hasD1Track);
+    const isD1OnAir = hasD1Track && (!isDeck2Primary || !hasD2Track);
     const isDualBlend = hasD1Track && hasD2Track && (d1Weight > 0.05 && d2Weight > 0.05);
 
-    const d1Bpm = (d1 && d1.bpm) ? Number(d1.bpm).toFixed(1) : (hasD1Track ? Number(bpm).toFixed(1) : '--.-');
-    const d1Title = hasD1Track ? d1.title.toUpperCase() : 'ARMED - READY';
-    const d1Artist = hasD1Track ? (d1.artist || 'LIVE').toUpperCase() : 'DECK 1 STANDBY • LOAD TRACK ON ENGINE OS';
+    const leadDeckNum = isDeck2Primary ? 2 : 1;
+    const subDeckNum = isDeck2Primary ? 1 : 2;
+
+    const d1Bpm = (d1 && d1.bpm && !d1.offline) ? Number(d1.bpm).toFixed(1) : (hasD1Track ? Number(bpm).toFixed(1) : '--.-');
+    const d1Title = hasD1Track ? d1.title.toUpperCase() : (d1 && d1.offline ? 'STANDBY — OFFLINE' : 'ARMED - READY');
+    const d1Artist = hasD1Track ? (d1.artist || 'LIVE').toUpperCase() : (d1 && d1.offline ? 'DECK 1 OFFLINE • CONNECT HARDWARE' : 'DECK 1 STANDBY • LOAD TRACK ON ENGINE OS');
     const d1Key = hasD1Track ? (d1.key || '9A') : 'STANDBY';
     const totalSec1 = (d1 && d1.duration) ? d1.duration : 364;
     const el1 = prog1 * totalSec1;
     const rem1 = Math.max(0, totalSec1 - el1);
 
-    const d2Bpm = (d2 && d2.bpm) ? Number(d2.bpm).toFixed(1) : (hasD2Track ? Number(bpm).toFixed(1) : '--.-');
-    const d2Title = hasD2Track ? d2.title.toUpperCase() : 'ARMED - READY';
-    const d2Artist = hasD2Track ? (d2.artist || 'LIVE').toUpperCase() : 'DECK 2 STANDBY • LOAD TRACK ON ENGINE OS';
+    const d2Bpm = (d2 && d2.bpm && !d2.offline) ? Number(d2.bpm).toFixed(1) : (hasD2Track ? Number(bpm).toFixed(1) : '--.-');
+    const d2Title = hasD2Track ? d2.title.toUpperCase() : (d2 && d2.offline ? 'STANDBY — OFFLINE' : 'ARMED - READY');
+    const d2Artist = hasD2Track ? (d2.artist || 'LIVE').toUpperCase() : (d2 && d2.offline ? 'DECK 2 OFFLINE • CONNECT HARDWARE' : 'DECK 2 STANDBY • LOAD TRACK ON ENGINE OS');
     const d2Key = hasD2Track ? (d2.key || '8A') : 'STANDBY';
     const totalSec2 = (d2 && d2.duration) ? d2.duration : 360;
     const el2 = prog2 * totalSec2;
@@ -677,6 +774,21 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
     const totalBeats1 = (d1 && d1.totalBeats) || ((totalSec1 / 60.0) * (Number(d1Bpm) || 126.0));
     const totalBeats2 = (d2 && d2.totalBeats) || ((totalSec2 / 60.0) * (Number(d2Bpm) || 126.0));
+
+    const leadObj = (leadDeckNum === 1) ? d1 : d2;
+    const subObj = (subDeckNum === 1) ? d1 : d2;
+    const leadHasTrack = (leadDeckNum === 1) ? hasD1Track : hasD2Track;
+    const subHasTrack = (subDeckNum === 1) ? hasD1Track : hasD2Track;
+    const leadTitle = (leadDeckNum === 1) ? d1Title : d2Title;
+    const subTitle = (subDeckNum === 1) ? d1Title : d2Title;
+    const leadArtist = (leadDeckNum === 1) ? d1Artist : d2Artist;
+    const subArtist = (subDeckNum === 1) ? d1Artist : d2Artist;
+    const leadBpm = (leadDeckNum === 1) ? d1Bpm : d2Bpm;
+    const subBpm = (subDeckNum === 1) ? d1Bpm : d2Bpm;
+    const leadKey = (leadDeckNum === 1) ? d1Key : d2Key;
+    const subKey = (subDeckNum === 1) ? d1Key : d2Key;
+    const leadColor = (leadDeckNum === 1) ? '#ef8130' : '#ff4d2e';
+    const subColor = (subDeckNum === 1) ? '#ef8130' : '#ff4d2e';
 
     // Active deck selection for moving waveform beat grid, loops, and cues
     const pDeck = (primaryDeck === 2 && hasD2Track)
@@ -709,7 +821,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     ctx.fill();
 
     function drawArtwork(artX, artY, artSize, deckObj, defaultVinylColor = '#ff7700') {
-        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded);
+        const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded && !deckObj.offline);
 
         ctx.save();
         ctx.beginPath();
@@ -718,19 +830,17 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         if (hasTrack && deckObj.artworkImg && deckObj.artworkImg.complete && deckObj.artworkImg.naturalWidth > 0) {
             ctx.drawImage(deckObj.artworkImg, artX, artY, artSize, artSize);
-        } else if (hasTrack && deckObj.artworkUrl && !deckObj.artworkImg) {
-            const img = new Image();
-            img.crossOrigin = 'anonymous';
-            img.onload = () => { deckObj.artworkImg = img; };
-            img.src = deckObj.artworkUrl;
+        } else if (hasTrack && deckObj.artworkUrl) {
+            if (!deckObj.artworkImg) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => { deckObj.artworkImg = img; };
+                img.src = deckObj.artworkUrl;
+            }
             drawBurningRecord(ctx, artX, artY, artSize, defaultVinylColor);
         } else {
             // Deck has NO track loaded yet (or track was unloaded):
-            // Replace album art with the requested procedural burning record on fire!
-            if (hasTrack && !deckObj._artRequested && deckObj.title) {
-                deckObj._artRequested = true;
-                loadDeckArtwork(deckObj.title, deckObj.artist, deckObj);
-            }
+            // Replace album art with requested procedural burning record on fire!
             drawBurningRecord(ctx, artX, artY, artSize, defaultVinylColor);
         }
         ctx.restore();
@@ -747,142 +857,153 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         ctx.restore();
     }
 
-    // 1A. DECK 1 (Always on Left)
+    // 1A. PRIMARY / LEAD TRACK HEADER (Always on Left - Exactly mirrors the Top Waveform Rail!)
     const artSize = 76;
     ctx.save();
-    if (isD2OnAir) ctx.globalAlpha = 0.40; // Dim Deck 1 when Deck 2 is on air
-    drawArtwork(padX + 14, 34, artSize, d1, '#ef8130');
+    drawArtwork(padX + 14, 34, artSize, leadObj, leadColor);
 
     const textStartX = padX + 14 + artSize + 18;
     ctx.textAlign = 'left';
     ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = isD2OnAir ? '#b8a692' : '#fff4e2';
+    ctx.fillStyle = (leadDeckNum === 2) ? '#ffeedd' : '#fff4e2';
     const maxTitleLen1 = hasD2 ? 28 : 46;
-    ctx.fillText(d1Title.slice(0, maxTitleLen1), textStartX, 58);
+    ctx.fillText(leadTitle.slice(0, maxTitleLen1), textStartX, 58);
 
     ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = isD2OnAir ? '#8c7d6b' : '#d9c5a5';
-    ctx.fillText(d1Artist.slice(0, hasD2 ? 30 : 44), textStartX, 80);
+    ctx.fillStyle = (leadDeckNum === 2) ? '#d9bda5' : '#d9c5a5';
+    ctx.fillText(leadArtist.slice(0, hasD2 ? 30 : 44), textStartX, 80);
 
-    // Badges Line for Deck 1
+    // Badges Line for Lead Deck
     ctx.font = 'bold 12.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-    ctx.fillStyle = isD2OnAir ? '#9e733b' : '#ffb74d';
-    ctx.fillText(`${d1Bpm} BPM`, textStartX, 103);
+    ctx.fillStyle = (leadDeckNum === 2) ? '#ff7a59' : '#ffb74d';
+    ctx.fillText(`${leadBpm} BPM`, textStartX, 103);
 
     // Key Pill
     const keyPillX = textStartX + 84;
     ctx.beginPath();
     ctx.roundRect(keyPillX, 92, 54, 18, 4);
-    ctx.fillStyle = isD2OnAir ? 'rgba(160, 130, 80, 0.12)' : 'rgba(216, 175, 105, 0.18)';
+    ctx.fillStyle = (leadDeckNum === 2) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(216, 175, 105, 0.18)';
     ctx.fill();
-    ctx.fillStyle = isD2OnAir ? '#b09572' : '#f3d19e';
+    ctx.fillStyle = (leadDeckNum === 2) ? '#ffad99' : '#f3d19e';
     ctx.textAlign = 'center';
-    ctx.fillText(`${d1Key} ♪`, keyPillX + 27, 104);
+    ctx.fillText(`${leadKey} ♪`, keyPillX + 27, 104);
 
-    // Deck 1 Role Pill
-    const d1RoleX = keyPillX + 62;
+    // Lead Deck Role Pill (Indicates Top Overview Rail & Active On-Air state)
+    const leadRoleX = keyPillX + 62;
     ctx.beginPath();
-    ctx.roundRect(d1RoleX, 92, 80, 18, 4);
-    ctx.fillStyle = isD1OnAir ? 'rgba(255, 140, 20, 0.35)' : 'rgba(255, 140, 20, 0.15)';
+    ctx.roundRect(leadRoleX, 92, 104, 18, 4);
+    const leadRoleBg = (leadDeckNum === 2) ? 'rgba(255, 77, 46, 0.35)' : 'rgba(255, 140, 20, 0.35)';
+    const leadRoleBorder = (leadDeckNum === 2) ? 'rgba(255, 100, 60, 0.85)' : 'rgba(255, 170, 30, 0.85)';
+    ctx.fillStyle = leadRoleBg;
     ctx.fill();
-    ctx.strokeStyle = isD1OnAir ? 'rgba(255, 170, 30, 0.85)' : 'rgba(255, 170, 30, 0.35)';
+    ctx.strokeStyle = leadRoleBorder;
     ctx.lineWidth = 0.8;
     ctx.stroke();
-    ctx.fillStyle = hasD1Track ? (isD1OnAir ? '#ffe082' : (isD2OnAir ? '#a08560' : '#ffcf77')) : '#ffaa33';
-    ctx.fillText(hasD1Track ? (isD1OnAir ? 'D1 ● ON AIR' : (isD2OnAir ? 'D1 STANDBY' : 'DECK 1')) : 'D1 STANDBY', d1RoleX + 40, 104);
+    ctx.fillStyle = (leadDeckNum === 2) ? '#ffbca8' : '#ffe082';
+    const leadRoleTag = leadHasTrack ? `🔥 D${leadDeckNum} ● ON AIR` : (leadObj && leadObj.offline ? `D${leadDeckNum} OFFLINE` : `D${leadDeckNum} STANDBY`);
+    ctx.fillText(leadRoleTag, leadRoleX + 52, 104);
     ctx.restore();
 
     if (hasD2) {
         // ---------------------------------------------------------------------
-        // DUAL DECK HEADER: Deck 2 on the Right & On-Air / Sync Badge in Center
+        // DUAL DECK HEADER: Subordinate / Outgoing Deck on the Right & Status Pill in Center
         // ---------------------------------------------------------------------
         // Center: Dual Deck Status Pill
         const centerPillW = 210;
         const centerPillX = width / 2 - centerPillW / 2;
         ctx.beginPath();
         ctx.roundRect(centerPillX, 56, centerPillW, 32, 16);
-        ctx.fillStyle = isD2OnAir ? 'rgba(255, 77, 46, 0.28)' : (isD1OnAir ? 'rgba(255, 140, 20, 0.24)' : 'rgba(255, 120, 20, 0.22)');
+        ctx.fillStyle = (leadDeckNum === 2) ? 'rgba(255, 77, 46, 0.28)' : 'rgba(255, 140, 20, 0.24)';
         ctx.fill();
-        ctx.strokeStyle = isD2OnAir ? 'rgba(255, 90, 50, 0.85)' : (isD1OnAir ? 'rgba(255, 170, 30, 0.85)' : 'rgba(255, 180, 60, 0.65)');
+        ctx.strokeStyle = (leadDeckNum === 2) ? 'rgba(255, 90, 50, 0.85)' : 'rgba(255, 170, 30, 0.85)';
         ctx.lineWidth = 1.2;
         ctx.stroke();
         ctx.fillStyle = '#fffaee';
         ctx.font = 'bold 12px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
         ctx.textAlign = 'center';
         if (hasD1Track && hasD2Track) {
-            if (isD2OnAir) {
-                ctx.fillText('● DECK 2 ON AIR', width / 2, 72);
-                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-                ctx.fillStyle = '#ffad99';
-                ctx.fillText(`MASTER • ${d2Bpm} BPM • ${d2Key}`, width / 2, 84);
-            } else if (isD1OnAir) {
-                ctx.fillText('● DECK 1 ON AIR', width / 2, 72);
-                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-                ctx.fillStyle = '#ffc266';
-                ctx.fillText(`MASTER • ${d1Bpm} BPM • ${d1Key}`, width / 2, 84);
-            } else {
+            if (isDualBlend && (Math.abs(d1Weight - d2Weight) < 0.25)) {
                 ctx.fillText('⮂ DUAL DECK BLEND', width / 2, 72);
                 ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
                 ctx.fillStyle = '#ffc266';
                 ctx.fillText(`BEAT SYNC • ${(Number(d1Bpm) === Number(d2Bpm)) ? 'LOCKED' : `${d1Bpm} / ${d2Bpm}`}`, width / 2, 84);
+            } else {
+                ctx.fillText(`● DECK ${leadDeckNum} ON AIR`, width / 2, 72);
+                ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                ctx.fillStyle = (leadDeckNum === 2) ? '#ffad99' : '#ffc266';
+                ctx.fillText(`MASTER • ${leadBpm} BPM • ${leadKey}`, width / 2, 84);
             }
-        } else if (hasD1Track && !hasD2Track) {
-            ctx.fillText('● DECK 1 ON AIR', width / 2, 72);
+        } else if (leadHasTrack) {
+            ctx.fillText(`● DECK ${leadDeckNum} ON AIR`, width / 2, 72);
             ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.fillStyle = '#ffc266';
-            ctx.fillText(`MASTER • ${d1Bpm} BPM • ${d1Key}`, width / 2, 84);
-        } else if (!hasD1Track && hasD2Track) {
-            ctx.fillText('● DECK 2 ON AIR', width / 2, 72);
-            ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-            ctx.fillStyle = '#ffad99';
-            ctx.fillText(`MASTER • ${d2Bpm} BPM • ${d2Key}`, width / 2, 84);
+            ctx.fillStyle = (leadDeckNum === 2) ? '#ffad99' : '#ffc266';
+            ctx.fillText(`MASTER • ${leadBpm} BPM • ${leadKey}`, width / 2, 84);
         } else {
-            ctx.fillText('ARMED — READY', width / 2, 72);
+            const isAnyOffline = Boolean((d1 && d1.offline) || (d2 && d2.offline));
+            ctx.fillText(isAnyOffline ? 'HARDWARE DECKS OFFLINE' : 'ARMED — READY', width / 2, 72);
             ctx.font = '10px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
             ctx.fillStyle = '#ffb042';
-            ctx.fillText('STANDBY • LOAD TRACK ON ENGINE OS', width / 2, 84);
+            ctx.fillText(isAnyOffline ? 'CONNECT HARDWARE • ENGINE OS / PRO DJ LINK' : 'STANDBY • LOAD TRACK ON ENGINE OS', width / 2, 84);
         }
 
-        // Deck 2 Artwork & Metadata on Far Right
+        // Subordinate / Outgoing Deck Artwork & Metadata on Far Right (Matches Lower Overview Waveform Rail)
         ctx.save();
-        if (isD1OnAir) ctx.globalAlpha = 0.40; // Dim Deck 2 when Deck 1 is on air
-        const d2ArtX = rightX - artSize - 14;
-        drawArtwork(d2ArtX, 34, artSize, d2, '#ff4d2e');
+        const isTransitioning = (d1Weight > 0.05 && d2Weight > 0.05);
+        const subAlpha = isTransitioning ? 0.78 : (subHasTrack ? 0.40 : 0.65);
+        ctx.globalAlpha = subAlpha;
 
-        const d2TextEndX = d2ArtX - 18;
+        const subArtX = rightX - artSize - 14;
+        drawArtwork(subArtX, 34, artSize, subObj, subColor);
+
+        const subTextEndX = subArtX - 18;
         ctx.textAlign = 'right';
         ctx.font = 'bold 20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = isD1OnAir ? '#b8a090' : '#ffeedd';
-        ctx.fillText(d2Title.slice(0, 28), d2TextEndX, 58);
+        ctx.fillStyle = (subDeckNum === 2) ? '#ffeedd' : '#fff4e2';
+        ctx.fillText(subTitle.slice(0, 28), subTextEndX, 58);
 
         ctx.font = '14px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = isD1OnAir ? '#8c7668' : '#d9bda5';
-        ctx.fillText(d2Artist.slice(0, 30), d2TextEndX, 80);
+        ctx.fillStyle = (subDeckNum === 2) ? '#d9bda5' : '#d9c5a5';
+        ctx.fillText(subArtist.slice(0, 30), subTextEndX, 80);
 
-        // Deck 2 Badges
+        // Subordinate Deck Badges
         ctx.font = 'bold 12.5px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-        ctx.fillStyle = isD1OnAir ? '#9e5040' : '#ff7a59';
-        ctx.fillText(`${d2Bpm} BPM`, d2TextEndX, 103);
+        ctx.fillStyle = (subDeckNum === 2) ? '#ff7a59' : '#ffb74d';
+        ctx.fillText(`${subBpm} BPM`, subTextEndX, 103);
 
-        const d2KeyPillX = d2TextEndX - 84 - 54;
+        const subKeyPillX = subTextEndX - 84 - 54;
         ctx.beginPath();
-        ctx.roundRect(d2KeyPillX, 92, 54, 18, 4);
-        ctx.fillStyle = isD1OnAir ? 'rgba(160, 80, 60, 0.12)' : 'rgba(255, 77, 46, 0.22)';
+        ctx.roundRect(subKeyPillX, 92, 54, 18, 4);
+        ctx.fillStyle = (subDeckNum === 2) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(216, 175, 105, 0.18)';
         ctx.fill();
-        ctx.fillStyle = isD1OnAir ? '#b07062' : '#ffad99';
+        ctx.fillStyle = (subDeckNum === 2) ? '#ffad99' : '#f3d19e';
         ctx.textAlign = 'center';
-        ctx.fillText(`${d2Key} ♪`, d2KeyPillX + 27, 104);
+        ctx.fillText(`${subKey} ♪`, subKeyPillX + 27, 104);
 
-        const d2RoleX = d2KeyPillX - 88;
+        const subRoleX = subKeyPillX - 108;
         ctx.beginPath();
-        ctx.roundRect(d2RoleX, 92, 80, 18, 4);
-        ctx.fillStyle = isD2OnAir ? 'rgba(255, 77, 46, 0.35)' : 'rgba(255, 77, 46, 0.15)';
+        ctx.roundRect(subRoleX, 92, 100, 18, 4);
+        const subRoleBg = (subDeckNum === 2) ? 'rgba(255, 77, 46, 0.18)' : 'rgba(255, 140, 20, 0.18)';
+        const subRoleBorder = (subDeckNum === 2) ? 'rgba(255, 100, 60, 0.45)' : 'rgba(255, 170, 30, 0.45)';
+        ctx.fillStyle = subRoleBg;
         ctx.fill();
-        ctx.strokeStyle = isD2OnAir ? 'rgba(255, 100, 60, 0.85)' : 'rgba(255, 100, 60, 0.35)';
+        ctx.strokeStyle = subRoleBorder;
         ctx.lineWidth = 0.8;
         ctx.stroke();
-        ctx.fillStyle = hasD2Track ? (isD2OnAir ? '#ffbca8' : (isD1OnAir ? '#a0685c' : '#ff9980')) : '#ff7a59';
-        ctx.fillText(hasD2Track ? (isD2OnAir ? 'D2 ● ON AIR' : (isD1OnAir ? 'D2 STANDBY' : 'DECK 2')) : 'D2 STANDBY', d2RoleX + 40, 104);
+        ctx.fillStyle = (subDeckNum === 2) ? '#ff9980' : '#ffcf77';
+
+        // Role Tag: Outgoing (if fading), Incoming (if transitioning in), or Standby
+        let subRoleTag = (subObj && subObj.offline) ? `D${subDeckNum} OFFLINE` : `D${subDeckNum} STANDBY`;
+        if (subHasTrack) {
+            const isFadingOut = (subDeckNum === 1 && animDeck1Smoke > 0.15) || (subDeckNum === 2 && animDeck2Smoke > 0.15);
+            if (isFadingOut) {
+                subRoleTag = `D${subDeckNum} ⮂ OUTGOING`;
+            } else if (isTransitioning) {
+                subRoleTag = `D${subDeckNum} INCOMING`;
+            } else {
+                subRoleTag = `D${subDeckNum} STANDBY`;
+            }
+        }
+        ctx.fillText(subRoleTag, subRoleX + 50, 104);
         ctx.restore();
 
     } else {
@@ -954,7 +1075,6 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         const botSlotY = 182;
 
         // Dynamic Realignment: If Deck 2 is primary/on-air, Deck 2 takes top slot (Y=126), Deck 1 takes lower slot (Y=182)
-        const isDeck2Primary = (primaryDeck === 2 || (d2Weight > d1Weight && d2Weight > 0.45));
         const targetD1Y = isDeck2Primary ? botSlotY : topSlotY;
         const targetD2Y = isDeck2Primary ? topSlotY : botSlotY;
 
@@ -964,6 +1084,16 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         const d1BarY = animDeck1BarY;
         const d2BarY = animDeck2BarY;
+
+        // Dynamic Smoke Dissolution:
+        // Outgoing track fading out billows realistic convective Hellfire smoke off its overview rail
+        const isDeck1Outgoing = hasD1Track && isDeck2Primary && (d1Weight < 0.95);
+        const targetD1Smoke = isDeck1Outgoing ? Math.max(0, Math.min(1.0, (d2Weight - d1Weight + 0.45) * 1.5)) : 0.0;
+        animDeck1Smoke += (targetD1Smoke - animDeck1Smoke) * 0.14;
+
+        const isDeck2Outgoing = hasD2Track && !isDeck2Primary && (d2Weight < 0.95 && d1Weight > 0.35);
+        const targetD2Smoke = isDeck2Outgoing ? Math.max(0, Math.min(1.0, (d1Weight - d2Weight + 0.45) * 1.5)) : 0.0;
+        animDeck2Smoke += (targetD2Smoke - animDeck2Smoke) * 0.14;
 
         const isTransitioning = (!isD1OnAir && !isD2OnAir && d1Weight > 0.05 && d2Weight > 0.05);
 
@@ -978,43 +1108,43 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         drawMiniWaveform(padX, d1BarY, overviewW, barH, d1, 1, themeDeck1);
 
-        const rail1Y = d1BarY + barH - 6;
-        drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
+        if (hasD1Track) {
+            const rail1Y = d1BarY + barH - 6;
+            drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
 
-        // Strip 1 Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
-        const activeLoops1 = (hasD1Track && d1 && Array.isArray(d1.loops)) ? d1.loops : [];
-        activeLoops1.forEach(loop => {
-            const lx1 = padX + loop.startProgress * overviewW;
-            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
-            ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
-            ctx.fillRect(lx1, d1BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
-        });
+            // Strip 1 Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
+            const activeLoops1 = (d1 && Array.isArray(d1.loops)) ? d1.loops : [];
+            activeLoops1.forEach(loop => {
+                const lx1 = padX + loop.startProgress * overviewW;
+                const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+                ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
+                ctx.fillRect(lx1, d1BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
+            });
 
-        const activeCues1 = (hasD1Track && d1 && Array.isArray(d1.cues)) ? d1.cues : [];
-        activeCues1.forEach(cue => {
-            const cx = padX + cue.progress * overviewW;
-            ctx.fillStyle = cue.color || '#ef8130';
-            ctx.fillRect(cx - 1, d1BarY + 8, 2, barH - 14);
-            ctx.beginPath();
-            ctx.moveTo(cx, d1BarY + 8);
-            ctx.lineTo(cx - 4, d1BarY + 2);
-            ctx.lineTo(cx + 4, d1BarY + 2);
-            ctx.closePath();
-            ctx.fill();
-        });
+            const activeCues1 = (d1 && Array.isArray(d1.cues)) ? d1.cues : [];
+            activeCues1.forEach(cue => {
+                const cx = padX + cue.progress * overviewW;
+                ctx.fillStyle = cue.color || '#ef8130';
+                ctx.fillRect(cx - 1, d1BarY + 8, 2, barH - 14);
+                ctx.beginPath();
+                ctx.moveTo(cx, d1BarY + 8);
+                ctx.lineTo(cx - 4, d1BarY + 2);
+                ctx.lineTo(cx + 4, d1BarY + 2);
+                ctx.closePath();
+                ctx.fill();
+            });
 
-        // Strip 1 Track Position Needle (Vintage LED Filament Tube)
-        const prog1X = hasD1Track ? (padX + prog1 * overviewW) : (padX + 8);
-        const el1Min = Math.floor(el1 / 60);
-        const el1Sec = Math.floor(el1 % 60);
-        const d1Tag = hasD1Track
-            ? (isD2OnAir 
+            // Strip 1 Track Position Needle (Vintage LED Filament Tube)
+            const prog1X = padX + prog1 * overviewW;
+            const el1Min = Math.floor(el1 / 60);
+            const el1Sec = Math.floor(el1 % 60);
+            const d1Tag = isD2OnAir 
                 ? 'D1 (STANDBY)' 
                 : (isTransitioning 
                     ? `D1 (TRANSITION)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` 
-                    : `D1 (ON AIR)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`))
-            : 'D1 (ARMED)';
-        drawEdisonFilamentNeedle(prog1X, d1BarY + 12, barH - 18, bulbStyle1, 1, '#ffaa18', d1Tag);
+                    : `D1 (ON AIR)  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`);
+            drawEdisonFilamentNeedle(prog1X, d1BarY + 12, barH - 18, bulbStyle1, 1, '#ffaa18', d1Tag);
+        }
         ctx.restore();
 
         // Strip 2 (Deck 2): If Deck 1 is exclusively on air, dim Deck 2 strip; during transition keep full clarity
@@ -1028,44 +1158,53 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         drawMiniWaveform(padX, d2BarY, overviewW, barH, d2, 2, themeDeck2);
 
-        const rail2Y = d2BarY + barH - 6;
-        drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
+        if (hasD2Track) {
+            const rail2Y = d2BarY + barH - 6;
+            drawEdisonFilamentRail(padX, rail2Y, overviewW, prog2, bulbStyle2, '#ff4d2e');
 
-        // Strip 2 Active Hot Cues & Loops (rendered only if Deck 2 has track loaded)
-        const activeLoops2 = (hasD2Track && d2 && Array.isArray(d2.loops)) ? d2.loops : [];
-        activeLoops2.forEach(loop => {
-            const lx1 = padX + loop.startProgress * overviewW;
-            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
-            ctx.fillStyle = hexToRgba(loop.color || '#ff4d2e', 0.35);
-            ctx.fillRect(lx1, d2BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
-        });
+            // Strip 2 Active Hot Cues & Loops (rendered only if Deck 2 has track loaded)
+            const activeLoops2 = (d2 && Array.isArray(d2.loops)) ? d2.loops : [];
+            activeLoops2.forEach(loop => {
+                const lx1 = padX + loop.startProgress * overviewW;
+                const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+                ctx.fillStyle = hexToRgba(loop.color || '#ff4d2e', 0.35);
+                ctx.fillRect(lx1, d2BarY + 14, Math.max(3, lx2 - lx1), barH - 20);
+            });
 
-        const activeCues2 = (hasD2Track && d2 && Array.isArray(d2.cues)) ? d2.cues : [];
-        activeCues2.forEach(cue => {
-            const cx = padX + cue.progress * overviewW;
-            ctx.fillStyle = cue.color || '#ff4d2e';
-            ctx.fillRect(cx - 1, d2BarY + 8, 2, barH - 14);
-            ctx.beginPath();
-            ctx.moveTo(cx, d2BarY + 8);
-            ctx.lineTo(cx - 4, d2BarY + 2);
-            ctx.lineTo(cx + 4, d2BarY + 2);
-            ctx.closePath();
-            ctx.fill();
-        });
+            const activeCues2 = (d2 && Array.isArray(d2.cues)) ? d2.cues : [];
+            activeCues2.forEach(cue => {
+                const cx = padX + cue.progress * overviewW;
+                ctx.fillStyle = cue.color || '#ff4d2e';
+                ctx.fillRect(cx - 1, d2BarY + 8, 2, barH - 14);
+                ctx.beginPath();
+                ctx.moveTo(cx, d2BarY + 8);
+                ctx.lineTo(cx - 4, d2BarY + 2);
+                ctx.lineTo(cx + 4, d2BarY + 2);
+                ctx.closePath();
+                ctx.fill();
+            });
 
-        // Strip 2 Track Position Needle (Vintage LED Filament Tube)
-        const prog2X = hasD2Track ? (padX + prog2 * overviewW) : (padX + 8);
-        const el2Min = Math.floor(el2 / 60);
-        const el2Sec = Math.floor(el2 % 60);
-        const d2Tag = hasD2Track
-            ? (isD1OnAir 
+            // Strip 2 Track Position Needle (Vintage LED Filament Tube)
+            const prog2X = padX + prog2 * overviewW;
+            const el2Min = Math.floor(el2 / 60);
+            const el2Sec = Math.floor(el2 % 60);
+            const d2Tag = isD1OnAir 
                 ? 'D2 (STANDBY)' 
                 : (isTransitioning 
                     ? `D2 (TRANSITION)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}` 
-                    : `D2 (ON AIR)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`))
-            : 'D2 (ARMED)';
-        drawEdisonFilamentNeedle(prog2X, d2BarY + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', d2Tag);
+                    : `D2 (ON AIR)  ${el2Min}:${el2Sec.toString().padStart(2, "0")}`);
+            drawEdisonFilamentNeedle(prog2X, d2BarY + 12, barH - 18, bulbStyle2, 2, '#ff4d2e', d2Tag);
+        }
         ctx.restore();
+
+        // Hellfire Outgoing Waveform Smoke Dissolution
+        // Realistic billowing convective smoke curls & ember sparks rising off the outgoing track rail as it fades
+        if (animDeck1Smoke > 0.01) {
+            drawRailSmoke(ctx, padX, d1BarY, overviewW, barH, animDeck1Smoke, nowMsHUD * 0.001);
+        }
+        if (animDeck2Smoke > 0.01) {
+            drawRailSmoke(ctx, padX, d2BarY, overviewW, barH, animDeck2Smoke, nowMsHUD * 0.001);
+        }
 
         // Active Transition Realignment Guide & Beat Sync Bridge
         if (isTransitioning) {
@@ -1109,41 +1248,47 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
         drawMiniWaveform(padX, bar1Y, overviewW, barH, d1, 1, themeDeck1);
 
-        const rail1Y = bar1Y + barH - 8;
-        drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
+        if (hasD1Track) {
+            const rail1Y = bar1Y + barH - 8;
+            drawEdisonFilamentRail(padX, rail1Y, overviewW, prog1, bulbStyle1, '#ffaa18');
 
-        // Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
-        const activeLoops1 = (hasD1Track && d1 && Array.isArray(d1.loops)) ? d1.loops : [];
-        activeLoops1.forEach(loop => {
-            const lx1 = padX + loop.startProgress * overviewW;
-            const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
-            ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
-            ctx.fillRect(lx1, bar1Y + 18, Math.max(3, lx2 - lx1), barH - 26);
-        });
+            // Active Hot Cues & Loops (rendered only if Deck 1 has track loaded)
+            const activeLoops1 = (d1 && Array.isArray(d1.loops)) ? d1.loops : [];
+            activeLoops1.forEach(loop => {
+                const lx1 = padX + loop.startProgress * overviewW;
+                const lx2 = padX + (loop.endProgress || (loop.startProgress + 0.01)) * overviewW;
+                ctx.fillStyle = hexToRgba(loop.color || '#ef8130', 0.35);
+                ctx.fillRect(lx1, bar1Y + 18, Math.max(3, lx2 - lx1), barH - 26);
+            });
 
-        const activeCuesSingle = (hasD1Track && d1 && Array.isArray(d1.cues)) ? d1.cues : [];
-        activeCuesSingle.forEach(cue => {
-            const cx = padX + cue.progress * overviewW;
-            ctx.fillStyle = cue.color || '#ef8130';
-            ctx.fillRect(cx - 1, bar1Y + 12, 2, barH - 20);
-            ctx.beginPath();
-            ctx.moveTo(cx, bar1Y + 12);
-            ctx.lineTo(cx - 5, bar1Y + 4);
-            ctx.lineTo(cx + 5, bar1Y + 4);
-            ctx.closePath();
-            ctx.fill();
-        });
+            const activeCuesSingle = (d1 && Array.isArray(d1.cues)) ? d1.cues : [];
+            activeCuesSingle.forEach(cue => {
+                const cx = padX + cue.progress * overviewW;
+                ctx.fillStyle = cue.color || '#ef8130';
+                ctx.fillRect(cx - 1, bar1Y + 12, 2, barH - 20);
+                ctx.beginPath();
+                ctx.moveTo(cx, bar1Y + 12);
+                ctx.lineTo(cx - 5, bar1Y + 4);
+                ctx.lineTo(cx + 5, bar1Y + 4);
+                ctx.closePath();
+                ctx.fill();
+            });
 
-        const prog1X = hasD1Track ? (padX + prog1 * overviewW) : (padX + 8);
-        const el1Min = Math.floor(el1 / 60);
-        const el1Sec = Math.floor(el1 % 60);
-        const d1SingleTag = hasD1Track ? `DECK 1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}` : 'DECK 1 (ARMED)';
-        drawEdisonFilamentNeedle(prog1X, bar1Y + 16, barH - 24, bulbStyle1, 1, '#ffaa18', d1SingleTag);
+            const prog1X = padX + prog1 * overviewW;
+            const el1Min = Math.floor(el1 / 60);
+            const el1Sec = Math.floor(el1 % 60);
+            const d1SingleTag = `DECK 1  ${el1Min}:${el1Sec.toString().padStart(2, "0")}`;
+            drawEdisonFilamentNeedle(prog1X, bar1Y + 16, barH - 24, bulbStyle1, 1, '#ffaa18', d1SingleTag);
+        }
     }
 
     // =========================================================================
     // 3. MOVING WAVEFORM GRID OVERLAY (Locked to Active On-Air Deck)
     // =========================================================================
+    // If neither deck is loaded / connected, suppress all moving waveform grids, beat lines, loops, and playhead
+    if (!hasD1Track && !hasD2Track) {
+        return;
+    }
     const waveTopY = 246;
     const waveBottomY = 778;
     const waveBoxH = waveBottomY - waveTopY;

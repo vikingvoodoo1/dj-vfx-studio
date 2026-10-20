@@ -1707,14 +1707,14 @@ export function createVFXScene(container) {
     // Deck state tracking
     let djHistoryHead = 0;
     let djHudFrameCount = 0;
-    let deck1Progress = 0.22;
-    let deck1WireProgress = 0.22;
+    let deck1Progress = 0.0;
+    let deck1WireProgress = 0.0;
     let deck1LoopActive = false;
     let deck1LoopStart = 0.0;
     let deck1LoopEnd = 0.0;
     let deck2Progress = 0.0;
     let deck2WireProgress = 0.0;
-    let deck1Active = true;
+    let deck1Active = false;
     let deck1Playing = false;
     let deck1Fader = null;
     let deck2Active = false;
@@ -1722,12 +1722,12 @@ export function createVFXScene(container) {
     let deck2Fader = null;
     let primaryDeck = 1;
     let manualPrimaryDeck = null;
-    let deck1Weight = 1.0;
+    let deck1Weight = 0.0;
     let deck2Weight = 0.0;
-    let smoothDeck1SmokePhase = 0.0;
+    let smoothDeck1SmokePhase = 1.0;
     let smoothDeck2SmokePhase = 1.0;
-    let deck1Stationary = false;
-    let deck2Stationary = false;
+    let deck1Stationary = true;
+    let deck2Stationary = true;
     let deck1LastBeat = undefined;
     let deck1LastBeatTime = 0;
     let deck2LastBeat = undefined;
@@ -1735,34 +1735,20 @@ export function createVFXScene(container) {
     let deck1HasHardwareWaveform = false;
     let deck2HasHardwareWaveform = false;
     let deck1Data = { 
-        artist: "LP GIOBBI, HOUSE GOSPEL CHOIR", 
-        title: "FIGURE IT OUT (EXTENDED MIX)", 
-        bpm: 128.0, 
-        key: "9A",
-        sync: false,
-        loopActive: false,
-        loopStart: 0.02591687,
-        loopEnd: 0.03621907,
-        cue2: 0.02591687, // Hot Cue 2 (Orange)
-        cue7: 0.97371907, // Hot Cue 7 (Cyan)
-        cues: [
-            { name: "CUE 2", num: 2, progress: 0.02591687, color: "#ef8130" },
-            { name: "CUE 7", num: 7, progress: 0.97371907, color: "#30c1b9" }
-        ],
-        loops: [
-            { name: "Loop 2", num: 2, startProgress: 0.02591687, endProgress: 0.03621907, beats: 8, color: "#ef8130" },
-            { name: "Loop 7", num: 7, startProgress: 0.97371907, endProgress: 0.98402126, beats: 8, color: "#30c1b9" }
-        ],
-        artworkUrl: "https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/74/37/5f/74375fe1-a235-42b8-75b3-b6e189d6bda9/826194706395.png/600x600bb.jpg",
-        artworkImg: null
+        artist: "", 
+        title: "", 
+        bpm: null, 
+        key: "",
+        duration: 0,
+        totalBeats: 0,
+        cues: [],
+        loops: [],
+        artworkUrl: "",
+        artworkImg: null,
+        samples: null,
+        unloaded: true,
+        offline: true
     };
-
-    // Preload track cover art immediately
-    const defaultDeckArtImg = new Image();
-    defaultDeckArtImg.crossOrigin = "anonymous";
-    defaultDeckArtImg.onload = () => { deck1Data.artworkImg = defaultDeckArtImg; };
-    defaultDeckArtImg.src = deck1Data.artworkUrl;
-    loadDeckArtwork(deck1Data.title, deck1Data.artist, deck1Data);
 
     let deck2Data = { 
         artist: "", 
@@ -1775,7 +1761,9 @@ export function createVFXScene(container) {
         loops: [],
         artworkUrl: "",
         artworkImg: null,
-        samples: null
+        samples: null,
+        unloaded: true,
+        offline: true
     };
 
     // Persistent low-pass temporal smoothing state for jitter-free audio reactivity
@@ -1834,7 +1822,7 @@ export function createVFXScene(container) {
         if (!packet) return;
         const dNum = Number(packet.deck);
         const targetDeck = (dNum === 2 || packet.deck === "2" || packet.deck === "B" || dNum === 4 || packet.deck === "4") ? 2 : 1;
-        if (packet.unloaded || !packet.samples || packet.samples.length < 3) {
+        if (packet.unloaded || packet.offline || !packet.samples || packet.samples.length < 3) {
             if (targetDeck === 1) {
                 deck1HasHardwareWaveform = false;
                 deck1Data.samples = null;
@@ -1849,6 +1837,8 @@ export function createVFXScene(container) {
         if (targetDeck === 1) {
             deck1HasHardwareWaveform = true;
             deck1Data.samples = packet.samples;
+            deck1Data.unloaded = false;
+            deck1Data.offline = false;
             if (packet.title) deck1Data.title = packet.title;
             if (packet.artist) deck1Data.artist = packet.artist;
             if (packet.bpm) deck1Data.bpm = packet.bpm;
@@ -1873,6 +1863,8 @@ export function createVFXScene(container) {
         } else {
             deck2HasHardwareWaveform = true;
             deck2Data.samples = packet.samples;
+            deck2Data.unloaded = false;
+            deck2Data.offline = false;
             if (packet.title) deck2Data.title = packet.title;
             if (packet.artist) deck2Data.artist = packet.artist;
             if (packet.bpm) deck2Data.bpm = packet.bpm;
@@ -7471,7 +7463,7 @@ export function createVFXScene(container) {
             const rawTreble = Math.min(1.0, (audio.treble || 0) * 1.25);
             const rawHit = Math.min(1.0, (audio.transientImpulse || 0) * 1.1);
 
-            if (!deck1HasHardwareWaveform) {
+            if (!deck1HasHardwareWaveform && deck1Active && !deck1Data.offline && !deck1Data.unloaded) {
                 const progIdx = Math.floor(deck1Progress * 512) % 512;
                 const d1Offset = progIdx * 4;
                 djAudioHistoryData[d1Offset]     = Math.min(255, Math.floor(rawBass * 255));
@@ -7480,7 +7472,7 @@ export function createVFXScene(container) {
                 djAudioHistoryData[d1Offset + 3] = Math.min(255, Math.floor(rawHit * 255));
                 djAudioHistoryTex.needsUpdate = true;
             }
-            if (!deck2HasHardwareWaveform && deck2Active) {
+            if (!deck2HasHardwareWaveform && deck2Active && !deck2Data.offline && !deck2Data.unloaded) {
                 const progIdx2 = Math.floor(deck2Progress * 512) % 512;
                 const d2Offset = (512 + progIdx2) * 4;
                 djAudioHistoryData[d2Offset]     = Math.min(255, Math.floor(rawBass * 255));
@@ -7679,6 +7671,10 @@ export function createVFXScene(container) {
                         w1 = 0.0;
                         w2 = 1.0;
                         onAirDeck = 2;
+                    } else if (!deck1Active && !deck2Active) {
+                        w1 = 0.0;
+                        w2 = 0.0;
+                        onAirDeck = 1;
                     } else {
                         w1 = 1.0;
                         w2 = deck2Active ? 0.35 : 0.0;
@@ -7767,6 +7763,13 @@ export function createVFXScene(container) {
                 waveSmokeMat.uniforms.uBass.value = effectiveBass;
                 waveSmokeMat.uniforms.uTransient.value = effectiveTransient;
             }
+
+            // Visibility of 3D Hellfire Waveform & Smoke
+            const hasAnyTrack = Boolean((deck1Data.title && !deck1Data.unloaded && !deck1Data.offline) || (deck2Data.title && !deck2Data.unloaded && !deck2Data.offline));
+            const show3DWaveforms = Boolean((d1InPlay || d2InPlay) && (w1 > 0.02 || w2 > 0.02) && hasAnyTrack);
+            if (djWaveMesh) djWaveMesh.visible = show3DWaveforms;
+            if (waveSmokeMesh) waveSmokeMesh.visible = show3DWaveforms;
+
             djWaveMat.uniforms.uTotalBeats.value = primaryTotalBeats;
             djWaveMat.uniforms.uDeck1TotalBeats.value = deck1Data.totalBeats || 776.1085;
             djWaveMat.uniforms.uDeck2TotalBeats.value = deck2Data.totalBeats || 756.0;
@@ -10183,7 +10186,7 @@ export function createVFXScene(container) {
         } catch (err) {
             console.error('[VFX Frame Animation Error]', err);
         }
-        // Camera Recoil: strictly disabled for FX 3 (DJ Deck Waveform), FX 4 (Disco Ball) and FX 16-22
+        // Camera Recoil: strictly disabled for FX 3 (Hellfire Waveforms), FX 4 (Disco Ball) and FX 16-22
         if (audio.isOnset && currentFXIndex !== 3 && currentFXIndex !== 4 && currentFXIndex !== 21 && currentFXIndex !== 22 && (currentFXIndex < 16 || currentFXIndex > 22)) {
             camRecoilZ = -0.32 * audio.bassImpact;
             camRecoilY = (Math.random() - 0.5) * 0.12 * audio.bassImpact;
@@ -10435,7 +10438,14 @@ export function createVFXScene(container) {
                 if (data.title) {
                     const cleanT = String(data.title).trim();
                     if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
+                        if (deck1Data.title !== data.title) {
+                            deck1Data.artworkImg = null;
+                            deck1Data.artworkUrl = '';
+                            deck1Data._artRequested = false;
+                        }
                         deck1Data.title = data.title;
+                        deck1Data.unloaded = false;
+                        deck1Data.offline = false;
                     }
                 }
                 if (data.artist) deck1Data.artist = data.artist;
@@ -10447,6 +10457,9 @@ export function createVFXScene(container) {
                     img.crossOrigin = 'anonymous';
                     img.onload = () => { deck1Data.artworkImg = img; };
                     img.src = data.artworkUrl;
+                } else if (deck1Data.title && !deck1Data._artRequested) {
+                    deck1Data._artRequested = true;
+                    loadDeckArtwork(deck1Data.title, deck1Data.artist, deck1Data);
                 }
                 if (data.duration) deck1Data.duration = Number(data.duration);
                 if (data.totalBeats) deck1Data.totalBeats = Number(data.totalBeats);
@@ -10501,7 +10514,14 @@ export function createVFXScene(container) {
                 if (data.title) {
                     const cleanT = String(data.title).trim();
                     if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
+                        if (deck2Data.title !== data.title) {
+                            deck2Data.artworkImg = null;
+                            deck2Data.artworkUrl = '';
+                            deck2Data._artRequested = false;
+                        }
                         deck2Data.title = data.title;
+                        deck2Data.unloaded = false;
+                        deck2Data.offline = false;
                     }
                 }
                 if (data.artist) deck2Data.artist = data.artist;
@@ -10573,6 +10593,7 @@ export function createVFXScene(container) {
                 deck1Data._artRequested = false;
                 deck1Data.samples = null;
                 deck1Data.loopActive = false;
+                deck1Data.unloaded = true;
                 deck1Progress = 0;
                 deck1WireProgress = 0;
                 deck1Playing = false;
@@ -10592,12 +10613,82 @@ export function createVFXScene(container) {
                 deck2Data._artRequested = false;
                 deck2Data.samples = null;
                 deck2Data.loopActive = false;
+                deck2Data.unloaded = true;
                 deck2Progress = 0;
                 deck2WireProgress = 0;
                 deck2Playing = false;
                 deck2HasHardwareWaveform = false;
                 deck2Active = false;
             }
+        },
+        resetAllDecks: () => {
+            // Unload Deck 1
+            deck1Data.title = '';
+            deck1Data.artist = '';
+            deck1Data.bpm = null;
+            deck1Data.key = '';
+            deck1Data.duration = 0;
+            deck1Data.totalBeats = 0;
+            deck1Data.cues = [];
+            deck1Data.loops = [];
+            deck1Data.artworkUrl = '';
+            deck1Data.artworkImg = null;
+            deck1Data._artRequested = false;
+            deck1Data.samples = null;
+            deck1Data.loopActive = false;
+            deck1Data.unloaded = true;
+            deck1Data.offline = true;
+            deck1Progress = 0;
+            deck1WireProgress = 0;
+            deck1Playing = false;
+            deck1HasHardwareWaveform = false;
+            deck1Active = false;
+
+            // Unload Deck 2
+            deck2Data.title = '';
+            deck2Data.artist = '';
+            deck2Data.bpm = null;
+            deck2Data.key = '';
+            deck2Data.duration = 0;
+            deck2Data.totalBeats = 0;
+            deck2Data.cues = [];
+            deck2Data.loops = [];
+            deck2Data.artworkUrl = '';
+            deck2Data.artworkImg = null;
+            deck2Data._artRequested = false;
+            deck2Data.samples = null;
+            deck2Data.loopActive = false;
+            deck2Data.unloaded = true;
+            deck2Data.offline = true;
+            deck2Progress = 0;
+            deck2WireProgress = 0;
+            deck2Playing = false;
+            deck2HasHardwareWaveform = false;
+            deck2Active = false;
+
+            // Immediately dissolve 3D moving Hellfire waveform
+            deck1Weight = 0.0;
+            deck2Weight = 0.0;
+            smoothDeck1SmokePhase = 1.0;
+            smoothDeck2SmokePhase = 1.0;
+            if (djWaveMat && djWaveMat.uniforms) {
+                djWaveMat.uniforms.uDeck1Weight.value = 0.0;
+                djWaveMat.uniforms.uDeck2Weight.value = 0.0;
+                djWaveMat.uniforms.uDeck1SmokePhase.value = 1.0;
+                djWaveMat.uniforms.uDeck2SmokePhase.value = 1.0;
+            }
+            if (waveSmokeMat && waveSmokeMat.uniforms) {
+                waveSmokeMat.uniforms.uDeck1SmokePhase.value = 1.0;
+                waveSmokeMat.uniforms.uDeck2SmokePhase.value = 1.0;
+            }
+            if (djWaveMesh) djWaveMesh.visible = false;
+            if (waveSmokeMesh) waveSmokeMesh.visible = false;
+            if (djAudioHistoryData) {
+                djAudioHistoryData.fill(0);
+                if (djAudioHistoryTex) djAudioHistoryTex.needsUpdate = true;
+            }
+            primaryDeck = 1;
+            manualPrimaryDeck = 1;
         },
         getDeckData: (deckNum) => (deckNum === 2 ? deck2Data : deck1Data),
         getPrimaryDeck: () => primaryDeck,

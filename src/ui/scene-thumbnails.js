@@ -104,16 +104,20 @@ export function initSceneCardThumbnails() {
                     break;
                 }
                 case 3: {
-                    // 🎚️ DJ Deck Waveforms: 3-band colored waveform + center cursor
+                    // 🔥 Hellfire Waveforms: Roaring fire waveform + center cursor + ember glow
                     const midY = h / 2;
                     for (let x = 0; x < w; x += 2) {
-                        const amp = (Math.sin(x * 0.15 + t * 4) * 0.5 + 0.5) * 14;
-                        ctx.fillStyle = x % 4 === 0 ? '#00ffcc' : (x % 4 === 2 ? '#0088ff' : '#ff0055');
+                        const amp = (Math.sin(x * 0.18 + t * 5) * 0.5 + 0.5) * 15;
+                        const flameCol = x % 6 === 0 ? '#fffae0' : (x % 4 === 0 ? '#ffaa00' : '#ff3300');
+                        ctx.fillStyle = flameCol;
                         ctx.fillRect(x, midY - amp, 1.6, amp * 2);
                     }
-                    // Playhead cursor
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(w / 2, 2, 1.5, h - 4);
+                    // Hellfire Playhead cursor
+                    ctx.fillStyle = '#ffeedd';
+                    ctx.shadowColor = '#ff6600';
+                    ctx.shadowBlur = 6;
+                    ctx.fillRect(w / 2 - 0.75, 2, 1.5, h - 4);
+                    ctx.shadowBlur = 0;
                     break;
                 }
                 case 5: {

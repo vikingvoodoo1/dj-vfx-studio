@@ -27,7 +27,7 @@ window.__DJ_VFX_BUILD__ = {
 };
 
 const FX_NAMES = [
-    'Scene 01: 3D Studio EQ', 'Scene 02: Circular Spectrum', 'Scene 03: Fluid Wave Matrix', 'Scene 04: DJ Deck Waveforms',
+    'Scene 01: 3D Studio EQ', 'Scene 02: Circular Spectrum', 'Scene 03: Fluid Wave Matrix', 'Scene 04: Hellfire Waveforms',
     'Scene 05: Spinning Disco Ball', 'Scene 06: Dual-Bank Lasers', 'Scene 07: Saber Multi-Beams', 'Scene 08: Strobe Rings',
     'Scene 09: Synthwave Grid', 'Scene 10: Synthwave River & Sun', 'Scene 11: Matrix Code Rain', 'Scene 12: Retro Arcade 80s',
     'Scene 13: Warp Starfield', 'Scene 14: Spiral Galaxy Vortex', 'Scene 15: Hyper Particle Stream', 'Scene 16: Time.is Clock',
@@ -9207,9 +9207,61 @@ async function init() {
     updatePhraseUI();
     triggerBeatPulseVisuals(1);
 
+    let isHardwareConnected = false;
+
+    function handleDecksOffline(data = {}) {
+        console.log('[Universal Bridge] 🔴 Decks offline — resetting all waveforms, metadata and artwork');
+        isHardwareConnected = false;
+        cachedDeckWaveforms.clear();
+        if (vfx.resetAllDecks) {
+            vfx.resetAllDecks();
+        } else if (vfx.unloadDeck) {
+            vfx.unloadDeck(1);
+            vfx.unloadDeck(2);
+        }
+
+        // Immediately reset top navigation track & BPM displays
+        if (trackTitle) trackTitle.textContent = 'STANDBY';
+        if (trackArtist) trackArtist.textContent = 'Awaiting Decks • Denon / Pioneer / Traktor';
+        if (bpmVal) bpmVal.textContent = '--.-';
+
+        // Reset Now Playing sidebar pane
+        if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = '—';
+        if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = 'No track active';
+        if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = '—';
+        if (nowplayingPaneBpm) nowplayingPaneBpm.textContent = '--.- BPM';
+
+        // Reset all 4 hardware deck cards
+        deckCards.forEach((dc) => {
+            if (!dc) return;
+            if (dc.card) {
+                dc.card.style.borderColor = 'rgba(255, 255, 255, 0.08)';
+                dc.card.style.background = 'rgba(255, 255, 255, 0.03)';
+            }
+            if (dc.bpm) dc.bpm.textContent = '--.-';
+            if (dc.state) dc.state.textContent = 'STANDBY';
+        });
+
+        // Dismiss floating track banner overlay
+        if (trackBanner) {
+            trackBanner.classList.add('banner-hidden');
+        }
+        if (trackBannerArt) {
+            trackBannerArt.style.display = 'none';
+            trackBannerArt.src = '';
+        }
+
+        isHardwareDeckStreaming = false;
+        lastDisplayedTrackDeck = null;
+    }
+
+    // Immediately trigger offline disarmed standby on boot
+    handleDecksOffline({ initialBoot: true });
+
     // 6. Connect to Universal DJ Hardware & Software Bridge via WebSocket
     stagelinqClient = setupStageLinqClient({
         onSync: (msg) => handleSyncMessage(msg),
+        onDecksOffline: handleDecksOffline,
         onBPM: (bpm, deck, packet = {}) => {
             if (bpm && bpm > 40 && bpm < 300) {
                 if (packet.isHardware) {
@@ -9272,7 +9324,7 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
-            if (!data) return;
+            if (!data || !isHardwareConnected) return;
             notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'DENON STAGELINQ');
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
@@ -9311,6 +9363,7 @@ async function init() {
         },
         onTrack: (trackData) => {
             if (!trackData) return;
+            if (!isHardwareConnected && !trackData.force) return;
             // Ignore simulation packets and hardcoded demo tracks
             if (trackData.ecosystem === 'simulation' || trackData.device === 'Demo Telemetry') return;
             const fakeTitles = ['Astral Echoes', 'Opus (Live Intro Mix)', 'Glue', 'Strobe (Club Edit)', 'Live Track', 'No Track Loaded', '—'];
@@ -9395,7 +9448,7 @@ async function init() {
             }
         },
         onDeckWaveform: (waveformPacket) => {
-            if (!waveformPacket) return;
+            if (!waveformPacket || !isHardwareConnected) return;
             console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);
             cachedDeckWaveforms.set(waveformPacket.deck || 1, waveformPacket);
             if (vfx.setDeckWaveform) {
@@ -9412,7 +9465,7 @@ async function init() {
             }
         },
         onDeckTelemetry: (telemetry) => {
-            if (!telemetry) return;
+            if (!telemetry || !isHardwareConnected) return;
             if (vfx.setDeckData) {
                 vfx.setDeckData(telemetry);
             }
@@ -9420,11 +9473,18 @@ async function init() {
 
             const targetDeck = (telemetry.deck === 2 || telemetry.deck === '2' || telemetry.deck === 'B') ? 2 : 1;
 
-            // Automatically switch on-air track banner when transitioning decks on mixer or playback
+            // Automatically switch on-air track banner and titles when transitioning decks on mixer or playback
             const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : targetDeck;
             if (pDeck !== lastDisplayedTrackDeck) {
                 const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                 if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                    lastDisplayedTrackDeck = pDeck;
+                    if (trackTitle) trackTitle.textContent = deckInfo.title;
+                    if (trackArtist) trackArtist.textContent = `${deckInfo.artist || 'LIVE'} • Deck ${pDeck}`;
+                    if (bpmVal && deckInfo.bpm) bpmVal.textContent = Number(deckInfo.bpm).toFixed(1);
+                    if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = deckInfo.title;
+                    if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = deckInfo.artist || 'LIVE';
+                    if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = `DECK ${pDeck}`;
                     showTrackBanner({
                         title: deckInfo.title,
                         artist: deckInfo.artist,
@@ -9450,8 +9510,30 @@ async function init() {
         },
         onCrossfader: (xfVal) => {
             if (vfx.setCrossfader) vfx.setCrossfader(xfVal);
+            const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
+            if (pDeck !== lastDisplayedTrackDeck) {
+                const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
+                if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                    lastDisplayedTrackDeck = pDeck;
+                    if (trackTitle) trackTitle.textContent = deckInfo.title;
+                    if (trackArtist) trackArtist.textContent = `${deckInfo.artist || 'LIVE'} • Deck ${pDeck}`;
+                    if (bpmVal && deckInfo.bpm) bpmVal.textContent = Number(deckInfo.bpm).toFixed(1);
+                    if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = deckInfo.title;
+                    if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = deckInfo.artist || 'LIVE';
+                    if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = `DECK ${pDeck}`;
+                    showTrackBanner({
+                        title: deckInfo.title,
+                        artist: deckInfo.artist,
+                        deck: pDeck,
+                        bpm: deckInfo.bpm,
+                        key: deckInfo.key,
+                        artworkUrl: deckInfo.artworkUrl
+                    }, { force: true });
+                }
+            }
         },
         onDecksSnapshot: (decks) => {
+            if (!isHardwareConnected) return;
             if (Array.isArray(decks) && decks.length > 0) {
                 const hasActivePlaying = decks.some(d => d.play && d.isHardware);
                 if (hasActivePlaying) {
@@ -9492,15 +9574,20 @@ async function init() {
             }
         },
         onStatusChange: (status) => {
+            const devCount = Number(status.deviceCount) || 0;
+            isHardwareConnected = Boolean(status.connected && devCount > 0);
             if (status.connected) {
                 if (djHardwareStatusText) {
-                    djHardwareStatusText.textContent = (status.deviceCount > 0 && status.device)
+                    djHardwareStatusText.textContent = (devCount > 0 && status.device)
                         ? status.device.toUpperCase()
                         : 'BRIDGE READY (SCANNING FOR HARDWARE DECKS)';
                 }
                 if (djHardwareLed) {
-                    djHardwareLed.style.background = status.deviceCount > 0 ? '#00ff88' : '#ffaa00';
-                    djHardwareLed.style.boxShadow = status.deviceCount > 0 ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
+                    djHardwareLed.style.background = devCount > 0 ? '#00ff88' : '#ffaa00';
+                    djHardwareLed.style.boxShadow = devCount > 0 ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
+                }
+                if (!isHardwareConnected) {
+                    handleDecksOffline(status);
                 }
                 if (phraseSyncSource) {
                     if (isHardwareDeckStreaming && lastHardwareSource) {
@@ -9514,13 +9601,17 @@ async function init() {
                         phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                     }
                 }
-                broadcastSync({ type: 'request_state' });
+                if (isHardwareConnected) {
+                    broadcastSync({ type: 'request_state' });
+                }
             } else {
+                isHardwareConnected = false;
                 if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
                 if (djHardwareLed) {
                     djHardwareLed.style.background = '#ffaa00';
                     djHardwareLed.style.boxShadow = '0 0 6px #ffaa00';
                 }
+                handleDecksOffline({ bridgeOffline: true });
                 if (phraseSyncSource) {
                     phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
                     phraseSyncSource.style.color = '#00ff88';
@@ -10252,6 +10343,8 @@ async function init() {
             if (now - lastHardwarePacketTimestamp > 15000) {
                 // Deck stream timed out / disconnected (>15s without hardware packets)
                 isHardwareDeckStreaming = false;
+                isHardwareConnected = false;
+                handleDecksOffline();
                 if (cdj3000View) cdj3000View.style.display = 'none';
                 const audioMeterView = document.getElementById('audio-meter-view');
                 if (audioMeterView) audioMeterView.style.display = 'block';

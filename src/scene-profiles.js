@@ -118,15 +118,15 @@ export const SCENE_METADATA = [
     },
     {
         id: 3,
-        name: 'DJ Deck Waveforms',
+        name: 'Hellfire Waveforms',
         hotkey: '4',
-        category: 'eq',
-        categoryLabel: 'Equalizers & Decks',
-        icon: '🎚️',
+        category: 'spooky',
+        categoryLabel: 'Halloween Spooky',
+        icon: '🔥',
         reactiveTags: ['direct_deck', 'audio_fft', 'transients', 'bpm_sync'],
         requirements: { audio: false, deck: true, internet: false, strictDeck: true },
-        summary: 'Direct player telemetry, fire waveform & smoke dissolution',
-        description: 'Full dual-deck hybrid engine: Reads direct Denon StageLinQ telemetry (track position, platter motion, BPM, fader weights, cue points). Decks realign dynamically on crossfades. Inactive/stopped decks cool to charcoal and phase out in smoke. Central baseline roars into flame with 520 tumbling embers and flickering candlelight on kick drums.'
+        summary: 'Direct player telemetry, roaring inferno fire waveforms & smoke dissolution',
+        description: 'Halloween dual-deck inferno engine: Reads direct Denon StageLinQ telemetry (track position, platter motion, BPM, fader weights, cue points). Decks realign dynamically on crossfades with billowing smoke plumes pouring off outgoing tracks. Central baseline roars into Hellfire flame with 520 tumbling embers and flickering candlelight on kick drums.'
     },
     {
         id: 4,
