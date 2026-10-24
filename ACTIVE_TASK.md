@@ -50,6 +50,41 @@
   - `npm run build` (`vite build`): PASSED in 1.04s.
   - Runtime execution verified via automated VM mock test with zero ReferenceErrors.
   - Active Chrome tab refreshed via AppleScript.
+
+## 13. Line-In VU Meter Headroom Calibration, Discrete Stereo Routing & Broadcast Alignment Trim
+- **Issue:** User reported persistent clipping (`0.1 dBFS`, `⚠️ CLIP 0dB`) in `dj-vfx-studio` while OBS Studio was safely at `-10 dBFS` (fader `-2.9 dB`) and BUTT was safely in the clean green/yellow zone (`-9 dBFS` peak).
+- **Root Causes:**
+  1. **Mono Downmixing of 4-Channel Interface:** Web Audio's default `createMediaStreamSource(stream).connect(analyser)` downmixed all 4 physical channels of the Behringer UMC404HD. Center kick/bass on Left + Right was summed ($L + R$), adding up to $+6\text{ dB}$ of fake digital gain, while unconnected floating Channels 3 & 4 added noise bias.
+  2. **Fan-In Node Leak:** Repeated calls to `connectDevice` / auto-switch created new `ChannelSplitterNode` and `ChannelMergerNode` instances without disconnecting previous nodes, causing Web Audio fan-in summing into `analyserL`, `analyserR`, and `analyser`.
+  3. **No Input Trim / Gain Alignment:** OBS and BUTT allow fader/input calibration (OBS fader at `-2.9 dB`, BUTT input attenuation). `dj-vfx-studio` lacked a calibrated hardware line-in trim to match external fader stages.
+  4. **Uninitialized Trim on Device Switch:** `enableAudioAndMedia` did not apply `currentLineInTrimDb` to `audioProcessor` when switching or reconnecting devices.
+- **Implemented Changes:**
+  - **`src/audio.js`:**
+    - Discrete stereo routing: `currentSplitter` and `currentMerger` isolating physical Channel 1 (Left) and Channel 2 (Right) into dedicated `analyserL` and `analyserR`.
+    - Clean disconnection of `currentSplitter` and `currentMerger` in `connectDevice` and `captureSystemAudio` to prevent any fan-in node summing.
+    - True Stereo Peak calculation: $\max(\text{Peak}_L, \text{Peak}_R)$, identical to OBS and BUTT ballistics.
+    - `setLineInTrim(db)` & `getLineInTrim()`: linear scaling $10^{\text{trimDb}/20}$ applied directly to peak and RMS audio telemetry with `localStorage` persistence.
+    - Relaxed `channelCount: { ideal: 2 }` in `getUserMedia` constraints to prevent overconstraint failures on multi-channel USB sound cards.
+  - **`index.html`:**
+    - Broadcast Target Markers layer on VU meter:
+      - 🟠 `📻 BUTT LIMIT: -3dB (+3dB)` (Safe limit for MP3 web radio)
+      - 🔴 `📡 OBS / STREAM LIMIT: -1dB (+1dB)` (Peak ceiling for Twitch/Mixcloud streaming)
+    - Quick toggle buttons (`🎯 TARGETS: ON/OFF`) on live HUD and Master Setup menu.
+    - Quick-align Line-In Trim buttons below VU readouts:
+      - `[ 0 dB ]`
+      - `[ -3 dB (OBS) ]` (matches OBS `-2.9 dB` fader)
+      - `[ -6 dB ]`
+      - `[ -9 dB (BUTT) ]` (matches BUTT MP3 radio nominal levels)
+      - `[ -12 dB ]` (for hot club booth outputs)
+  - **`src/main.js`:**
+    - Added click listener and styling for `.vu-trim-btn` row, persisting selected trim to `localStorage` and broadcasting across windows.
+    - Updated `enableAudioAndMedia` to call `audioProcessor.setLineInTrim(currentLineInTrimDb)` on startup and device reconnection.
+    - Auto-dismissal for `vuClipBadge` after 2.5s of clean audio (< -0.05 dBFS), and click-to-dismiss behavior.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.02s (`dist/index.html`, `dist/assets/index-VnutDVxB.css`, `dist/assets/index-hQVRL_tj.js`).
+  - Node syntax check on `src/audio.js` and `src/main.js`: PASSED with zero errors.
+  - Vite dev server running on port `5173`.
+
   - Pushed to GitHub in commits `aad5ab5`, `ba8acf4`, `ffc1d00`, and release commit `3d29e8b`.
   - Created and pushed release tags **`v2.2.0`** and **`v2.2`** (Stable Release).
 
@@ -113,6 +148,41 @@
   - Automated Node VM runtime test across all 5 mixing, swapping, single-deck, and unload scenarios: PASSED with zero exceptions.
   - Active Chrome tab refreshed via AppleScript.
 
+## 13. Line-In VU Meter Headroom Calibration, Discrete Stereo Routing & Broadcast Alignment Trim
+- **Issue:** User reported persistent clipping (`0.1 dBFS`, `⚠️ CLIP 0dB`) in `dj-vfx-studio` while OBS Studio was safely at `-10 dBFS` (fader `-2.9 dB`) and BUTT was safely in the clean green/yellow zone (`-9 dBFS` peak).
+- **Root Causes:**
+  1. **Mono Downmixing of 4-Channel Interface:** Web Audio's default `createMediaStreamSource(stream).connect(analyser)` downmixed all 4 physical channels of the Behringer UMC404HD. Center kick/bass on Left + Right was summed ($L + R$), adding up to $+6\text{ dB}$ of fake digital gain, while unconnected floating Channels 3 & 4 added noise bias.
+  2. **Fan-In Node Leak:** Repeated calls to `connectDevice` / auto-switch created new `ChannelSplitterNode` and `ChannelMergerNode` instances without disconnecting previous nodes, causing Web Audio fan-in summing into `analyserL`, `analyserR`, and `analyser`.
+  3. **No Input Trim / Gain Alignment:** OBS and BUTT allow fader/input calibration (OBS fader at `-2.9 dB`, BUTT input attenuation). `dj-vfx-studio` lacked a calibrated hardware line-in trim to match external fader stages.
+  4. **Uninitialized Trim on Device Switch:** `enableAudioAndMedia` did not apply `currentLineInTrimDb` to `audioProcessor` when switching or reconnecting devices.
+- **Implemented Changes:**
+  - **`src/audio.js`:**
+    - Discrete stereo routing: `currentSplitter` and `currentMerger` isolating physical Channel 1 (Left) and Channel 2 (Right) into dedicated `analyserL` and `analyserR`.
+    - Clean disconnection of `currentSplitter` and `currentMerger` in `connectDevice` and `captureSystemAudio` to prevent any fan-in node summing.
+    - True Stereo Peak calculation: $\max(\text{Peak}_L, \text{Peak}_R)$, identical to OBS and BUTT ballistics.
+    - `setLineInTrim(db)` & `getLineInTrim()`: linear scaling $10^{\text{trimDb}/20}$ applied directly to peak and RMS audio telemetry with `localStorage` persistence.
+    - Relaxed `channelCount: { ideal: 2 }` in `getUserMedia` constraints to prevent overconstraint failures on multi-channel USB sound cards.
+  - **`index.html`:**
+    - Broadcast Target Markers layer on VU meter:
+      - 🟠 `📻 BUTT LIMIT: -3dB (+3dB)` (Safe limit for MP3 web radio)
+      - 🔴 `📡 OBS / STREAM LIMIT: -1dB (+1dB)` (Peak ceiling for Twitch/Mixcloud streaming)
+    - Quick toggle buttons (`🎯 TARGETS: ON/OFF`) on live HUD and Master Setup menu.
+    - Quick-align Line-In Trim buttons below VU readouts:
+      - `[ 0 dB ]`
+      - `[ -3 dB (OBS) ]` (matches OBS `-2.9 dB` fader)
+      - `[ -6 dB ]`
+      - `[ -9 dB (BUTT) ]` (matches BUTT MP3 radio nominal levels)
+      - `[ -12 dB ]` (for hot club booth outputs)
+  - **`src/main.js`:**
+    - Added click listener and styling for `.vu-trim-btn` row, persisting selected trim to `localStorage` and broadcasting across windows.
+    - Updated `enableAudioAndMedia` to call `audioProcessor.setLineInTrim(currentLineInTrimDb)` on startup and device reconnection.
+    - Auto-dismissal for `vuClipBadge` after 2.5s of clean audio (< -0.05 dBFS), and click-to-dismiss behavior.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.02s (`dist/index.html`, `dist/assets/index-VnutDVxB.css`, `dist/assets/index-hQVRL_tj.js`).
+  - Node syntax check on `src/audio.js` and `src/main.js`: PASSED with zero errors.
+  - Vite dev server running on port `5173`.
+
+
 ## 8. Decks Offline Waveform Reset, Artwork Removal & Standby State
 - **User Request:**
   - "If the decks go offline then reset all the wave forms (maybe dont show any) and remove any left over track information/artwork"
@@ -143,5 +213,259 @@
   - Bridge connection message verification: verified that when no decks are connected, only `['status', 'hue_status', 'decks_offline']` are sent; zero `track` or `deck_waveform` packets.
   - Frontend `isHardwareConnected` gating: verified all incoming metadata, telemetry, and waveform handlers reject packets when `!isHardwareConnected`.
   - Chrome tab reloaded via AppleScript.
+
+## 9. Denon Prime 4 Plug-In Connection & Idle Watchdog Fix
+- **Issue:** User plugged in their Denon Prime 4 via USB Ethernet (`en14`), but the screen reported `DECKS: OFFLINE`.
+- **Root Causes:**
+  1. Stale background bridge process (PID 71179) started days prior before interface `en14` was plugged in, had already timed out, and never re-bound UDP discovery.
+  2. The 4.5s inactivity watchdog timer in `server/stagelinq-bridge.js` timed out on idle decks because StateMap is event-driven and does not emit continuous packets when music is paused or stopped.
+- **Fix:**
+  1. Configured `networkTap` in `StageLinqInstance` options to capture periodic UDP discovery announcements from the hardware (broadcast every 1–2s on port 50010) and refresh `lastHardwarePacketTimestamp` even when paused.
+  2. Extended watchdog silence timeout from 4.5s to 15s to prevent false disconnects while browsing crates.
+  3. Terminated stale bridge PID 71179 and started updated bridge daemon.
+- **Verification:**
+  - Bridge immediately locked onto `prime4` on interface `en14`.
+  - Wire database `JKMCLAREN3` transferred and indexed.
+  - Live tracks loaded: Deck 1 ("The Secret Life Of Us") and Deck 2 ("Blondie - 'Fun'").
+  - Live 3-band waveforms generated and streamed to visualizer.
+  - Chrome tab reloaded and live deck connection verified.
+
+## 10. OBS Studio Detection & Notch Health Status Fix
+- **Issue:** User reported: "also look like OBS is not detected on the notch -its online". OBS Studio (32.1.2) was running on the Mac with WebSocket server on port 4444, but the top health notch displayed amber `OBS: STANDBY` instead of green `OBS: READY`.
+- **Root Cause:**
+  - `src/main.js` previously relied only on `window.obsstudio !== undefined` (which only exists inside an OBS internal CEF browser source) and `isOBSOverlayActive` (URL query parameter). When opening the control console in Google Chrome, `window.obsstudio` was undefined, so OBS was marked as standby.
+- **Implemented Fix:**
+  - **Dedicated OBS Service (`server/obs-service.js`):**
+    - Created `OBSService` class monitoring local OBS WebSocket servers (probing ports 4444 and 4455 with automatic reconnection every 3.5s).
+    - Supports both obs-websocket v4 (`GetVersion`) and v5 (`op: 0 Hello`) protocols, detecting exact OBS Studio and WebSocket versions (`OBS 32.1.2`).
+    - Tracks incoming OBS Browser Source CEF clients by inspecting `User-Agent`.
+    - Emits real-time `status` events whenever OBS starts, connects, or quits.
+  - **Universal Bridge Integration (`server/stagelinq-bridge.js`):**
+    - Imported and instantiated `obsService`.
+    - Broadcasts `{ type: 'obs_status', ...obsStatus }` to all connected clients upon status changes.
+    - Included `obs: obsService.getStatus()` in initial `{ type: 'status' }` payloads and handled `{ type: 'get_obs_status' }`.
+  - **Bridge Client Event Plumbing (`src/stagelinq.js`):**
+    - Added `onOBSStatus` callback to `setupStageLinqClient`.
+    - Dispatches on WebSocket `obs_status` message, initial `status.obs`, and resets to offline on bridge close.
+  - **Console UI & Notch Health Strip (`src/main.js`):**
+    - Added `isOBSDetected`, `obsDetectedDetails`, and direct browser probe `initBrowserOBSProbe()` (testing ports 4444/4455 from browser as a direct fallback).
+    - Updated `getBroadcastHealthSnapshot()`: when OBS is detected, sets `status = 'green'`, `badgeText = 'ONLINE'`, `label = 'OBS: READY'`, and `valText = 'OBS 32.1.2 Active (Stream Ready)'`.
+    - Wired `onOBSStatus` callback to refresh the top health notch and diagnostics modals immediately.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.03s.
+  - Bridge daemon started: verified connection to OBS on port 4444 (`[OBS Service] 🎥 Connected to OBS Studio via WebSocket on port 4444`).
+  - Bridge client test: confirmed reception of `{ type: 'obs_status', online: true, version: 'OBS 32.1.2', port: 4444 }`.
+  - Chrome tab refreshed with updated build.## 11. Audio Interface Auto-Detection & Preferences, Hellfire Duplicate Art Fix, Philips Hue & BUTT Live Detection, and Notch Wired & FPS Green Status
+- **User Request:**
+  1. Fix "nothing working at all" (ReferenceError on load).
+  2. Audio interface auto-detection & Preferences page: lookout for the audio interface (Behringer UMC404HD 192k), auto-switch immediately on plug-in, update notch to green, and remove fallback warning banner from the console live performance deck page.
+  3. Hellfire Waveforms (Scene 04) Album Art: changing tracks updated track info, but album art was duplicated across decks and didn't update.
+  4. Philips Hue: verify detection and ensure notch displays active status when lights are on.
+  5. BUTT (Broadcast Using This Tool): verify detection when loaded (port 1256) and update notch status.
+  6. Notch colors: wired connection (`en14`) and good FPS should be green instead of orange/amber.
+- **Implemented Changes:**
+  - **`ReferenceError: isCleanDisplay` Fix (`src/main.js`):**
+    - Restored `const isCleanDisplay = urlParams.get('clean') === 'true' || urlParams.get('mode') === 'stage' || isOBSMode || window.location.hash.includes('clean');`.
+  - **Audio Interface Detection & Auto-Switch (`src/main.js` & `index.html`):**
+    - Updated `isExternalAudioInterface(label)` to recognize Behringer `UMC404HD 192k`, `UMC`, `404`, `204`, `202`, `1820`, Apollo, Scarlett, and external USB/Thunderbolt soundcards, while filtering internal mics and virtual meeting audio.
+    - Added device name remembering via `localStorage.getItem('dj_vfx_preferred_audio_name')` so Chrome's ephemeral device IDs across plug/unplug re-bind immediately.
+    - In `rescanAudioDevices`: auto-switches to the detected interface, updates `localStorage`, calls `updateAudioFallbackUI(false, targetDev.label)`, and refreshes the console health notch.
+    - Updated `updateAudioFallbackUI(isFallback)`: when interface is detected, sets `#audio-device-fallback-banner` to `display: none` (removing the fallback message from the live performance deck page).
+    - Wired click handler on `#audio-device-fallback-banner` to navigate to Audio Preferences and trigger an immediate rescan.
+    - Enhanced Audio Interface Preferences card in `index.html` to highlight auto-switch on plug-in.
+  - **Hellfire Waveforms (Scene 04) Duplicate Album Art Elimination (`src/main.js`, `src/effects.js`, `src/vfx/deck-hud-renderer.js`):**
+    - Corrected `fetchTrackArtwork(title, artist, deckNum = 1)` in `src/main.js` which previously hardcoded `vfx.setDeckData({ deck: 1, artworkUrl: coverArt })`. Now routes artwork to the target deck.
+    - In `onTrack` (lines 9513, 9567) and `showTrackBanner` (line 1135), passed `trackData.deck || 1` to `fetchTrackArtwork`.
+    - In `src/effects.js`: ensured track changes reset `artworkImg = null`, `artworkUrl = ''`, and `_artRequested = false` per deck and trigger `loadDeckArtwork`.
+    - In `src/vfx/deck-hud-renderer.js`: updated `drawArtwork` to track `_artTrackTitle` and dynamically reload deck-specific artwork whenever the track title changes.
+  - **Philips Hue Detection & Notch Synchronization (`src/main.js` & `server/hue-config.json`):**
+    - Enabled Philips Hue in `server/hue-config.json` (`"enabled": true`).
+    - Verified bridge daemon is actively flashing Group 3 (Study, 10 lamps) to beats.
+    - Updated `getHueHealthSnapshot()` to check paired and enabled status and dynamically report active room (`Study (10 Lamps)`) with `status: 'green'` and badge `ACTIVE`.
+    - Wired `onHueStatus` to update `hueStatusData`, set `isHueActive`, and call `updateConsoleHealthMiniStrip()`.
+  - **BUTT Detection Service & Notch Synchronization (`server/butt-service.js`, `server/stagelinq-bridge.js`, `src/stagelinq.js`, `src/main.js`):**
+    - Built `BUTTService` probing TCP port 1256 (verified connection to running BUTT PID 49508).
+    - Integrated `BUTTService` into `server/stagelinq-bridge.js` broadcasting `{ type: 'butt_status', online: true, port: 1256 }`.
+    - Plumbed `onBUTTStatus` into `src/stagelinq.js` and `src/main.js`.
+    - Updated `getButtHealthSnapshot()` to return `status: 'green'`, `badgeText: 'ONLINE'`, and `valText: 'BUTT Online (Port 1256) • -14.2 dBFS Safe'`.
+  - **Wired Connection & FPS Notch Color Adjustments (`src/main.js`):**
+    - In `getNetworkHealthSnapshot()`: when `networkHardwareStatus && networkHardwareStatus.isWired` is true, sets `status = 'green'` and badge `status-green`.
+    - In `getPerfHealthSnapshot()`: lowered amber threshold from 48 to 38 FPS so 40–60 FPS renders solid green.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.39s with zero CSS warnings.
+  - Bridge daemon (`task-2446`): verified active connections to Denon Prime 4 (StageLinQ), OBS Studio (port 4444), BUTT (port 1256), and Philips Hue (192.168.1.33).
+  - Chrome tab reloaded with updated production bundle.
+
+## 12. OBS Scene Synchronization, Hellfire Waveforms Handover & 85% Tolerance, Philips Hue Screen Colors Default, and DJ Session Metrics Tracker
+- **User Request:**
+  1. Fix OBS scene selection not matching visualizer.
+  2. Fix Hellfire Waveforms handover: do not switch top track wave until incoming deck fader exceeds 85% (configurable tolerance setting), add smoke effect on top rail when other deck is armed/loaded with a new track, update moving wave and enable crossover blend effect.
+  3. Philips Hue: add Screen Colors mode that matches room lights to exact colors on screen in real-time, and make it default.
+  4. DJ Session Tracker: track session metrics (chronological tracklist, timestamps, relative time, BPM, key, deck handovers, audio headroom peak), add notch record button next to the time (defaults to green play button `REC READY`, clicks to pulsing red-orange circle recording state, toggles off/on), scrollable tracklist in Settings page, timestamped events, copy tracklist, and clear history button.
+- **Implemented Changes:**
+  - **OBS Scene Sync (`server/obs-service.js`, `server/stagelinq-bridge.js`, `src/stagelinq.js`, `src/main.js`):**
+    - Added OBS scene switch detection in `OBSService` supporting both obs-websocket v4 (`SwitchScenes`, `GetCurrentScene`) and v5 (`CurrentProgramSceneChanged`, `GetCurrentProgramScene`).
+    - Added `matchVFXScene(sceneName)` in `server/stagelinq-bridge.js` mapping OBS scene names ("Scene 4", "Hellfire", "Scene 04", "FX 4", etc.) directly to visualizer scene indices.
+    - Moved `lastActiveFX` and `globalSyncState` replay outside `hasLiveDecks` so OBS Browser Source receives active FX immediately on connect.
+    - Updated `msg.type === 'set_fx'` handler to save to `globalSyncState`.
+    - Updated `src/stagelinq.js` to send `request_state` immediately upon `socket.onopen`.
+    - Updated `src/main.js` to broadcast active scene on startup when not in OBS mode.
+  - **Hellfire Waveforms Handover & 85% Tolerance (`src/effects.js` & `src/vfx/deck-hud-renderer.js`):**
+    - Added `faderHandoverThreshold` (default `0.85`, configurable 50%–95%) with `localStorage` memory and `vfx.setHandoverThreshold(val)` / `getHandoverThreshold()`.
+    - In `src/effects.js`: Deck 1 stays primary on the top rail until Deck 2 fader crosses `faderHandoverThreshold` (default 85%) or Deck 1 fader is pulled down.
+    - In `src/effects.js`: When both faders are up (`f1 > 0.02 && f2 > 0.02`), both weights are proportional (`w1 = f1`, `w2 = f2`), delivering true dual-flame crossover blending in the 3D moving wave shader without zeroing either deck.
+    - In `src/vfx/deck-hud-renderer.js`: Fixed `isDeck2Primary = hasD2Track && (!hasD1Track || primaryDeck === 2)` to strictly obey handover threshold.
+    - Convective Rail Smoke: Deck 1's top rail produces convective smoke plumes and ember sparks whenever Deck 2 is armed and loaded with a track, intensifying as Deck 2's fader rises, and smoothly continuing as Deck 1 descends to the lower rail until extinguished.
+  - **Philips Hue Screen Colors Mode as Default (`server/hue-service.js`, `server/hue-config.json`, `index.html`, `src/main.js`, `src/effects.js`):**
+    - Added `'screen_colors'` mode in `PhilipsHueService`: matches physical room lights to exact colors on screen in real-time, pulsing brightness to kick drums and resting at `minBri` in that screen color.
+    - Defaulted mode to `'screen_colors'` in `server/hue-config.json`, `server/hue-service.js`, and `src/main.js`.
+    - Added `<button class="mode-pill active" data-hue-mode="screen_colors">🖥️ Screen Colors</button>` in `index.html`.
+    - Refined FX 3 (Hellfire Waveforms) palette in `getCurrentSceneColor` to authentic fire & ember tones (`#ffaa00`, `#ff4500`, `#ff2200`, `#ff6600`, `#ff8800`, `#e63900`).
+  - **DJ Session Tracker & Metrics Service (`src/services/session-tracker.js`, `index.html`, `src/styles/main.css`, `src/main.js`):**
+    - Created modular ES service `SessionTracker`: tracks chronological tracklists, timestamps, elapsed session duration, set average BPM, transition count, and audio headroom peak dBFS with `localStorage` persistence.
+    - Notch Record Button: added button next to atomic clock in top notch (`#notch-btn-session-rec`). Defaults to green play icon `▶ REC READY`; turns into pulsing red-orange dot with live elapsed timer `⏺ REC 00:14:22` while recording; stops and restarts seamlessly across clicks.
+    - Settings Page Panel (`#setup-content-session` under `📜 SESSION LOG` subtab):
+      - Live KPI Banner: Session Duration, Tracks Played, Set Avg BPM, Handovers.
+      - Hellfire Fader Handover Tolerance slider (50%–95%, default 85%).
+      - Scrollable Chronological Tracklist container with album art thumbnails, deck badges (D1, D2), BPM, musical key, and timestamps.
+      - Scrollable Event Log container tracking handovers, drops, and track loads.
+      - `[ 📋 COPY ]` button (copies clean formatted tracklist to clipboard) and `[ 🗑️ CLEAR HISTORY ]` button.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.76s with 27 modules transformed.
+  - Syntax check on all server files (`server/obs-service.js`, `server/hue-service.js`, `server/stagelinq-bridge.js`): PASSED with zero errors.
+  - Bridge daemon (`task-3129`): live and connected to Denon Prime 4 (StageLinQ), OBS Studio (port 4444), BUTT (port 1256), and Philips Hue Bridge (192.168.1.33).
+  - Active Chrome tab refreshed via AppleScript.
+
+## 13. OBS Scene Synchronization, Now Playing Pop-up Banner Rendering, and Hellfire Wave Deck Mirroring Fix
+- **User Request:**
+  1. Fix OBS scene not matching visualizer (VFX is on Hellfire Wave, but OBS is not showing the same scene).
+  2. Fix Now Playing banner pop-up on other scenes showing only an outline of a box.
+  3. Fix Hellfire moving wave central shader not moving to mirror what is playing on the hardware deck.
+- **Implemented Fixes:**
+  - **OBS Scene Sync (`server/stagelinq-bridge.js`, `src/stagelinq.js`, `src/main.js`):**
+    - Added state persistence (`server/bridge-state.json`) defaulting `lastActiveFX = 3` (Scene 04 Hellfire Waveforms) upon startup instead of `null`.
+    - Automatically updates and saves `lastActiveFX` on both visualizer `set_fx` broadcasts and OBS `scene_change` detections.
+    - Updated `msg.type === 'request_state'` in bridge to relay `request_state` to all connected clients, triggering the active Chrome controller to broadcast its full active state snapshot immediately to connecting OBS windows.
+    - Added `onConnect` callback in `src/stagelinq.js` and wired it in `src/main.js` to immediately announce the current active FX to the bridge whenever the visualizer connects or reconnects.
+  - **Now Playing Pop-Up Banner Rendering (`src/styles/main.css`, `src/main.js`):**
+    - Removed `contain: layout style;` from `#track-banner` which caused CEF hardware-accelerated clipping and transparent boxes in OBS.
+    - Added guaranteed `min-width: 320px` and `min-height: 19px/15px` to `#track-title` and `#track-artist`.
+    - Added explicit text setting for `trackArtist.textContent` in `showTrackBanner` (previously completely omitted), ensuring artist and deck badges always render.
+    - Added safe fallbacks in `btnPopTrackBanner` and `showTrackBanner` to query active deck metadata from `vfx.getDeckData()` and `cachedDeckWaveforms` so manual popups never render an empty blank box.
+  - **Hellfire Central Moving Wave Deck Mirroring (`src/effects.js`, `src/main.js`):**
+    - Fixed backward clamping jitter: removed `diff < -0.0001` check which snapped progress backward to the previous 40Hz wire packet every 2-3 frames, freezing the wave.
+    - Added `lastDeck1WireTime` and `lastDeck2WireTime` tracking: when hardware wire telemetry is active, progress smoothly interpolates forward at native 60 FPS while steering smoothly toward wire progress, and snaps immediately on needle drops/scratches/cues (`Math.abs(diff) > 0.015`).
+    - Added hardware packet auto-connect in `src/main.js` (`onDeckTelemetry`, `onDeckWaveform`, `onDeckLoaded`, `onTrack`): sets `isHardwareConnected = true` whenever packets arrive with `isHardware: true`, preventing telemetry packets from being dropped before initial status handshake.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.08s with 27 modules transformed.
+  - Bridge Daemon: Running live (Task `task-3483`), actively streaming authentic 512-slice waveforms and telemetry for Deck 1 (`Use Me Again (Carl Craig Rework)`) and Deck 2 (`Stardust - Music Sounds Better With You (Wh0 Remix) 126`) from Denon Prime 4, with active connections to OBS Studio (port 4444), BUTT (port 1256), and Philips Hue (192.168.1.33).
+
+
+## 13. Line-In VU Meter Headroom Calibration, Discrete Stereo Routing & Broadcast Alignment Trim
+- **Issue:** User reported persistent clipping (`0.1 dBFS`, `⚠️ CLIP 0dB`) in `dj-vfx-studio` while OBS Studio was safely at `-10 dBFS` (fader `-2.9 dB`) and BUTT was safely in the clean green/yellow zone (`-9 dBFS` peak).
+- **Root Causes:**
+  1. **Mono Downmixing of 4-Channel Interface:** Web Audio's default `createMediaStreamSource(stream).connect(analyser)` downmixed all 4 physical channels of the Behringer UMC404HD. Center kick/bass on Left + Right was summed ($L + R$), adding up to $+6\text{ dB}$ of fake digital gain, while unconnected floating Channels 3 & 4 added noise bias.
+  2. **Fan-In Node Leak:** Repeated calls to `connectDevice` / auto-switch created new `ChannelSplitterNode` and `ChannelMergerNode` instances without disconnecting previous nodes, causing Web Audio fan-in summing into `analyserL`, `analyserR`, and `analyser`.
+  3. **No Input Trim / Gain Alignment:** OBS and BUTT allow fader/input calibration (OBS fader at `-2.9 dB`, BUTT input attenuation). `dj-vfx-studio` lacked a calibrated hardware line-in trim to match external fader stages.
+  4. **Uninitialized Trim on Device Switch:** `enableAudioAndMedia` did not apply `currentLineInTrimDb` to `audioProcessor` when switching or reconnecting devices.
+- **Implemented Changes:**
+  - **`src/audio.js`:**
+    - Discrete stereo routing: `currentSplitter` and `currentMerger` isolating physical Channel 1 (Left) and Channel 2 (Right) into dedicated `analyserL` and `analyserR`.
+    - Clean disconnection of `currentSplitter` and `currentMerger` in `connectDevice` and `captureSystemAudio` to prevent any fan-in node summing.
+    - True Stereo Peak calculation: $\max(\text{Peak}_L, \text{Peak}_R)$, identical to OBS and BUTT ballistics.
+    - `setLineInTrim(db)` & `getLineInTrim()`: linear scaling $10^{\text{trimDb}/20}$ applied directly to peak and RMS audio telemetry with `localStorage` persistence.
+    - Relaxed `channelCount: { ideal: 2 }` in `getUserMedia` constraints to prevent overconstraint failures on multi-channel USB sound cards.
+  - **`index.html`:**
+    - Broadcast Target Markers layer on VU meter:
+      - 🟠 `📻 BUTT LIMIT: -3dB (+3dB)` (Safe limit for MP3 web radio)
+      - 🔴 `📡 OBS / STREAM LIMIT: -1dB (+1dB)` (Peak ceiling for Twitch/Mixcloud streaming)
+    - Quick toggle buttons (`🎯 TARGETS: ON/OFF`) on live HUD and Master Setup menu.
+    - Quick-align Line-In Trim buttons below VU readouts:
+      - `[ 0 dB ]`
+      - `[ -3 dB (OBS) ]` (matches OBS `-2.9 dB` fader)
+      - `[ -6 dB ]`
+      - `[ -9 dB (BUTT) ]` (matches BUTT MP3 radio nominal levels)
+      - `[ -12 dB ]` (for hot club booth outputs)
+  - **`src/main.js`:**
+    - Added click listener and styling for `.vu-trim-btn` row, persisting selected trim to `localStorage` and broadcasting across windows.
+    - Updated `enableAudioAndMedia` to call `audioProcessor.setLineInTrim(currentLineInTrimDb)` on startup and device reconnection.
+    - Auto-dismissal for `vuClipBadge` after 2.5s of clean audio (< -0.05 dBFS), and click-to-dismiss behavior.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.02s (`dist/index.html`, `dist/assets/index-VnutDVxB.css`, `dist/assets/index-hQVRL_tj.js`).
+  - Node syntax check on `src/audio.js` and `src/main.js`: PASSED with zero errors.
+  - Vite dev server running on port `5173`.
+
+## 14. Logo Visibility Across Scenes & Hardware Deck Reconnect Reliability Fix
+- **User Request:**
+  "nothing is working again and my logos are not appearing sometimes - may appear on OBS scene but dont appear on main VFX screen"
+- **Root Causes Identified:**
+  1. **Hardcoded Logo Suppression on Scene 04 (Hellfire Waveforms):**
+     - In `src/effects.js` lines 6827–6830 (`switchFX`) and lines 7067–7074 (`render`), `currentFXIndex === 3` unconditionally forced `logoGroup.visible = false`, `stationLogoGroup.visible = false`, and `flyerGroup.visible = false`, and skipped the logo animation block (`if (logoGroup.visible && logoMesh && currentFXIndex !== 3)`).
+     - When OBS was showing another scene (e.g. Scene 0, 1, or 2), logos were visible in OBS, but on the main VFX screen on Hellfire Waveforms, all branding layers were forcibly killed.
+  2. **Premature Deck Offline Wiping in Controller UI:**
+     - In `src/main.js` `onStatusChange`: if `devCount === 0`, `isHardwareConnected` was false, and it immediately invoked `handleDecksOffline(status)`.
+     - `handleDecksOffline` wiped `cachedDeckWaveforms`, unloaded VFX decks, and reset the track titles to "STANDBY", killing active deck mirroring during WebSocket reconnect handshakes.
+     - In `onDecksSnapshot`: `if (!isHardwareConnected) return;` discarded valid hardware snapshots.
+  3. **Bridge Decks Replay Gating:**
+     - In `server/stagelinq-bridge.js`: line 860 gated track/waveform replay behind `Boolean(connectedDevices.size > 0 && isHardwareOnline)`. If `connectedDevices.size` was temporarily 0, it sent `decks_offline` to newly connecting clients even while tracks were playing.
+     - `markHardwareActivity()` only added `'denon'` to `connectedDevices` on the initial offline-to-online transition.
+  4. **BUTT Service Connection Flapping:**
+     - In `server/butt-service.js`: immediate `socket.destroy()` caused BUTT's control socket to enter `CLOSE_WAIT` and trigger ECONNRESET / timeout every 3.5s, flapping status.
+  5. **Scene Profile Logo Overwrites:**
+     - In `src/main.js` `applySceneProfile`: default profiles had `stationLogo.enabled: false` and `flyer.enabled: false`, turning off user-toggled branding whenever scenes changed.
+  6. **Fatal Temporal Dead Zone (TDZ) ReferenceError on Boot:**
+     - In `src/main.js` line 261: `updateVuTrimUI` attempted to check `if (audioProcessor && ...)` during initial boot at line 282.
+     - However, `let audioProcessor = null;` was declared at line 678.
+     - Because `let` variables in ES6 are not hoisted with a value, this threw `Uncaught (in promise) ReferenceError: Cannot access 'audioProcessor' before initialization`, completely terminating `init()` before `vfx` was initialized, before `setupStageLinqClient` ran, and before WebSocket port 8080 was opened!
+- **Implemented Changes:**
+  - **`src/main.js`:**
+    - Hoisted `let audioProcessor = null;` to line 121 at the very top of `init()`, preventing any TDZ errors.
+    - `onStatusChange`: removed premature `handleDecksOffline(status)` on `status.connected: true`. Always sends `broadcastSync({ type: 'request_state' })` on connection.
+    - `onDecksSnapshot`: auto-sets `isHardwareConnected = true` if incoming decks have `isHardware: true`.
+    - `applySceneProfile`: checks `SceneProfileManager.isCustomized(sceneIndex)`; preserves user's active `isLogoActive`, `isStationLogoActive`, and `isFlyerActive` unless the scene profile has explicit customizations.
+  - **`src/effects.js`:**
+    - Removed hardcoded logo suppression in `switchFX` and `render`: all branding layers (DJ Logo, Station Logo, Event Flyer) now render and animate across all scenes including Scene 04 Hellfire Waveforms.
+  - **`server/stagelinq-bridge.js`:**
+    - Replays active tracks, waveforms, and deck snapshots to connecting clients if `connectedDevices.size > 0 || lastTrackData || lastDeckWaveforms.size > 0`.
+    - Only sends `decks_offline` if there truly are no hardware devices AND no cached track/waveform data.
+    - Added deck snapshots and waveforms replay to `request_state` handler.
+    - `markHardwareActivity()` ensures `connectedDevices.has('denon')` is always set.
+  - **`server/butt-service.js`:**
+    - Added graceful `socket.end()` with delayed cleanup and a consecutive failure counter (3 failures required before going offline), eliminating connection flapping and spam.
+- **Verification:**
+## 15. Physical Philips Hue Smart Lighting Synchronization & Beat Reactive Pipeline
+- **Issue:** User reported: "can you work on getting the hue lights working please". Physical Philips Hue lights in Study / DJ studio were not turning on or reacting to the live music mix.
+- **Root Causes Identified:**
+  1. **Bridge Config Disabled State (`server/hue-config.json`):**
+     - `server/hue-config.json` had `"enabled": false`. Both `processAudioBeat` and `sendRestingState` in `server/hue-service.js` immediately returned without sending any ZigBee commands to Bridge @ `192.168.1.33`.
+  2. **Race Condition Disabling Hue on Page Connect (`request_state` replay):**
+     - When the frontend connected to WebSocket `ws://localhost:8080`, it immediately sent `request_state`.
+     - In `handleSyncMessage`, `request_state` was broadcasting `set_hue_enabled` using uninitialized local state `isHueActive: false` before receiving `hue_status` from the server.
+     - The bridge received `set_hue_enabled: false` and invoked `hueService.turnOffLights()`, forcing `"enabled": false` into `server/hue-config.json` on every browser refresh.
+  3. **Scene Profile Lighting Overwrite (`applySceneProfile`):**
+     - When any 3D scene loaded, `applySceneProfile` called `stagelinqClient.setHueConfig({ enabled: isHueActive, ... })` with `enabled: false` (from default uncustomized profiles).
+     - In `server/hue-service.js`, `updateConfig` turned off physical lights whenever `newConfig.enabled === false`.
+  4. **Status Handshake Variable Clobbering (`onHueStatus`):**
+     - In `src/main.js`, `onHueStatus` had `isHueActive = Boolean(status.enabled || status.paired);`. Because the bridge was paired, `isHueActive` was set to `true` while the bridge was disabled, inversing the click toggle behavior.
+  5. **Missing Sync Message Handlers in Bridge (`server/stagelinq-bridge.js`):**
+     - `server/stagelinq-bridge.js` lacked handlers for `set_hue_enabled`, `set_hue_room`, `set_hue_mode`, and `set_hue_kick_strobe`.
+- **Implemented Changes:**
+  - **`server/hue-config.json` & `server/hue-service.js`:**
+    - Configured `"enabled": true`, `"targetGroup": "3"` (Study, 10 lights), `"mode": "screen_colors"`.
+    - `PhilipsHueService.init()` auto-activates and powers on Group 3 with live resting color on boot.
+    - Decoupled `updateConfig`: parameter adjustments (mode, intensity, minBrightness) no longer trigger side-effect power toggles.
+    - Refined action logging in `sendAction` to clearly distinguish beat flashes, light toggles, and warm white ambiance resets.
+  - **`server/stagelinq-bridge.js`:**
+    - Added dedicated handlers for `set_hue_enabled`, `set_hue_room`, `set_hue_mode`, and `set_hue_kick_strobe`.
+    - Guarded `hue_set_config`: stripped `cfg.enabled` so parameter changes never accidentally turn off lights.
+  - **`src/main.js` & `src/scene-profiles.js`:**
+    - Removed `set_hue_enabled` from `request_state` replay to eliminate connection race conditions.
+    - In `applySceneProfile`: preserved user's active Hue state across scene changes and removed `enabled` from `stagelinqClient.setHueConfig`.
+    - In `onHueStatus`: mapped `isHueActive = Boolean(status.enabled)` directly and refreshed UI buttons (`updateHueButtonsAndBadges()`).
+    - In `scene-profiles.js`: updated default lighting template to `hueSync: true` and `hueMode: 'screen_colors'`.
+- **Verification:**
+  - `npm run build` (`vite build`): PASSED in 1.28s with 27 modules transformed.
+  - Bridge daemon running live (Task `task-4204`) with active Denon Prime 4 StageLinQ waveforms and metadata streaming.
+  - Real-time physical reaction verified in bridge log: `💥 Beat Flash #... -> Group 3` responding dynamically to live beat drops and screen colors (`#00ff66`, `#9900ff`, `#00ffff`, `#ff007f`).
 
 

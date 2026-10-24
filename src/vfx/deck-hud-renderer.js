@@ -748,7 +748,7 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     const hasD2Track = !!(d2 && d2.title && d2.title.trim() !== '' && d2.title !== 'No Track Loaded' && d2.title !== '—' && !d2.unloaded && !d2.offline);
     const hasD2 = Boolean(d2 !== undefined && d2 !== null);
 
-    const isDeck2Primary = hasD2Track && (!hasD1Track || primaryDeck === 2 || (d2Weight > d1Weight && d2Weight > 0.45));
+    const isDeck2Primary = hasD2Track && (!hasD1Track || primaryDeck === 2);
     const isD2OnAir = hasD2Track && (isDeck2Primary || !hasD1Track);
     const isD1OnAir = hasD1Track && (!isDeck2Primary || !hasD2Track);
     const isDualBlend = hasD1Track && hasD2Track && (d1Weight > 0.05 && d2Weight > 0.05);
@@ -822,6 +822,14 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
 
     function drawArtwork(artX, artY, artSize, deckObj, defaultVinylColor = '#ff7700') {
         const hasTrack = Boolean(deckObj && deckObj.title && deckObj.title.trim() !== '' && deckObj.title !== 'No Track Loaded' && deckObj.title !== '—' && !deckObj.unloaded && !deckObj.offline);
+
+        if (hasTrack && deckObj._artTrackTitle !== deckObj.title) {
+            deckObj._artTrackTitle = deckObj.title;
+            deckObj.artworkImg = null;
+            if (deckObj.title && !deckObj.offline && !deckObj.unloaded) {
+                loadDeckArtwork(deckObj.title, deckObj.artist, deckObj);
+            }
+        }
 
         ctx.save();
         ctx.beginPath();
@@ -1086,13 +1094,33 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
         const d2BarY = animDeck2BarY;
 
         // Dynamic Smoke Dissolution:
-        // Outgoing track fading out billows realistic convective Hellfire smoke off its overview rail
-        const isDeck1Outgoing = hasD1Track && isDeck2Primary && (d1Weight < 0.95);
-        const targetD1Smoke = isDeck1Outgoing ? Math.max(0, Math.min(1.0, (d2Weight - d1Weight + 0.45) * 1.5)) : 0.0;
+        // When other deck is armed and loaded with a new track, or blending in, top rail billows convective Hellfire smoke
+        let targetD1Smoke = 0.0;
+        if (hasD1Track) {
+            if (!isDeck2Primary) {
+                // Deck 1 is on top rail: billows smoke when Deck 2 is armed and loaded with a track, intensifying as Deck 2 fader rises
+                if (hasD2Track) {
+                    targetD1Smoke = Math.min(1.0, 0.35 + d2Weight * 0.65);
+                }
+            } else {
+                // Deck 1 handed over and is now outgoing on the lower rail: continue billowing smoke as it fades down
+                targetD1Smoke = (d1Weight < 0.98) ? Math.max(0.25, Math.min(1.0, (1.0 - d1Weight + 0.30) * 1.25)) : 0.0;
+            }
+        }
         animDeck1Smoke += (targetD1Smoke - animDeck1Smoke) * 0.14;
 
-        const isDeck2Outgoing = hasD2Track && !isDeck2Primary && (d2Weight < 0.95 && d1Weight > 0.35);
-        const targetD2Smoke = isDeck2Outgoing ? Math.max(0, Math.min(1.0, (d1Weight - d2Weight + 0.45) * 1.5)) : 0.0;
+        let targetD2Smoke = 0.0;
+        if (hasD2Track) {
+            if (isDeck2Primary) {
+                // Deck 2 is on top rail: billows smoke when Deck 1 is armed and loaded with a track, intensifying as Deck 1 fader rises
+                if (hasD1Track) {
+                    targetD2Smoke = Math.min(1.0, 0.35 + d1Weight * 0.65);
+                }
+            } else {
+                // Deck 2 handed over and is now outgoing on the lower rail
+                targetD2Smoke = (d2Weight < 0.98 && d1Weight > 0.30) ? Math.max(0.25, Math.min(1.0, (1.0 - d2Weight + 0.30) * 1.25)) : 0.0;
+            }
+        }
         animDeck2Smoke += (targetD2Smoke - animDeck2Smoke) * 0.14;
 
         const isTransitioning = (!isD1OnAir && !isD2OnAir && d1Weight > 0.05 && d2Weight > 0.05);

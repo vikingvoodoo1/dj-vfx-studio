@@ -1709,11 +1709,13 @@ export function createVFXScene(container) {
     let djHudFrameCount = 0;
     let deck1Progress = 0.0;
     let deck1WireProgress = 0.0;
+    let lastDeck1WireTime = 0;
     let deck1LoopActive = false;
     let deck1LoopStart = 0.0;
     let deck1LoopEnd = 0.0;
     let deck2Progress = 0.0;
     let deck2WireProgress = 0.0;
+    let lastDeck2WireTime = 0;
     let deck1Active = false;
     let deck1Playing = false;
     let deck1Fader = null;
@@ -1722,6 +1724,14 @@ export function createVFXScene(container) {
     let deck2Fader = null;
     let primaryDeck = 1;
     let manualPrimaryDeck = null;
+    let faderHandoverThreshold = 0.85;
+    try {
+        const savedThresh = localStorage.getItem('dj_vfx_handover_threshold');
+        if (savedThresh !== null) {
+            const parsed = parseFloat(savedThresh);
+            if (!isNaN(parsed) && parsed >= 0.40 && parsed <= 0.99) faderHandoverThreshold = parsed;
+        }
+    } catch (e) {}
     let deck1Weight = 0.0;
     let deck2Weight = 0.0;
     let smoothDeck1SmokePhase = 1.0;
@@ -1839,7 +1849,15 @@ export function createVFXScene(container) {
             deck1Data.samples = packet.samples;
             deck1Data.unloaded = false;
             deck1Data.offline = false;
-            if (packet.title) deck1Data.title = packet.title;
+            if (packet.title) {
+                if (deck1Data.title !== packet.title) {
+                    deck1Data.artworkImg = null;
+                    deck1Data.artworkUrl = '';
+                    deck1Data._artRequested = false;
+                    loadDeckArtwork(packet.title, packet.artist || deck1Data.artist, deck1Data);
+                }
+                deck1Data.title = packet.title;
+            }
             if (packet.artist) deck1Data.artist = packet.artist;
             if (packet.bpm) deck1Data.bpm = packet.bpm;
             if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck1Data.cues = packet.cues;
@@ -1865,7 +1883,15 @@ export function createVFXScene(container) {
             deck2Data.samples = packet.samples;
             deck2Data.unloaded = false;
             deck2Data.offline = false;
-            if (packet.title) deck2Data.title = packet.title;
+            if (packet.title) {
+                if (deck2Data.title !== packet.title) {
+                    deck2Data.artworkImg = null;
+                    deck2Data.artworkUrl = '';
+                    deck2Data._artRequested = false;
+                    loadDeckArtwork(packet.title, packet.artist || deck2Data.artist, deck2Data);
+                }
+                deck2Data.title = packet.title;
+            }
             if (packet.artist) deck2Data.artist = packet.artist;
             if (packet.bpm) deck2Data.bpm = packet.bpm;
             if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck2Data.cues = packet.cues;
@@ -6798,18 +6824,12 @@ export function createVFXScene(container) {
                 grp.visible = (idx === index);
             });
             currentFXIndex = index;
-            if (index === 3) {
-                logoGroup.visible = false;
-                stationLogoGroup.visible = false;
-                flyerGroup.visible = false;
-            } else {
-                logoGroup.visible = logoVisible && logoTransition.state !== 'hidden';
-                stationLogoGroup.visible = stationLogoVisible && stationLogoTransition.state !== 'hidden';
-                flyerGroup.visible = flyerVisible && flyerTransition.state !== 'hidden';
-                if (edisonBulbs && edisonBulbs.length > 0) {
-                    for (let b = 0; b < edisonBulbs.length; b++) {
-                        edisonBulbs[b].light.intensity = 0.0;
-                    }
+            logoGroup.visible = logoVisible && logoTransition.state !== 'hidden';
+            stationLogoGroup.visible = stationLogoVisible && stationLogoTransition.state !== 'hidden';
+            flyerGroup.visible = flyerVisible && flyerTransition.state !== 'hidden';
+            if (index !== 3 && edisonBulbs && edisonBulbs.length > 0) {
+                for (let b = 0; b < edisonBulbs.length; b++) {
+                    edisonBulbs[b].light.intensity = 0.0;
                 }
             }
             nightclubPass.uniforms.uAberration.value = 0.3;
@@ -7038,14 +7058,8 @@ export function createVFXScene(container) {
         updateTransitionState(stationLogoTransition, stationLogoGroup, delta);
         updateTransitionState(flyerTransition, flyerGroup, delta);
 
-        if (currentFXIndex === 3) {
-            logoGroup.visible = false;
-            stationLogoGroup.visible = false;
-            flyerGroup.visible = false;
-        }
-
         // 1. Animate Logo Layer
-        if (logoGroup.visible && logoMesh && currentFXIndex !== 3) {
+        if (logoGroup.visible && logoMesh) {
             const trans = computeTransitionTransforms(logoTransition);
             logoShaderMat.uniforms.uOpacity.value = logoBaseOpacity * trans.opacity;
 
@@ -7614,71 +7628,64 @@ export function createVFXScene(container) {
                 const fader1Up = f1 > 0.02;
                 const fader2Up = f2 > 0.02;
 
-                if (fader2Up && !fader1Up) {
-                    // Deck 2 is on air, Deck 1 fader is down (0)
-                    w1 = 0.0;
-                    w2 = Math.min(1.0, Math.max(0.7, f2));
-                    onAirDeck = 2;
-                } else if (fader1Up && !fader2Up) {
-                    // Deck 1 is on air, Deck 2 fader is down (0)
-                    w1 = Math.min(1.0, Math.max(0.7, f1));
-                    w2 = 0.0;
-                    onAirDeck = 1;
-                } else if (fader1Up && fader2Up) {
-                    // Both faders are up:
-                    // If one deck is paused/stopped or stationary, the playing deck is on air
-                    if (d2IsMoving && !d1IsMoving) {
-                        w1 = 0.0;
-                        w2 = Math.min(1.0, f2);
-                        onAirDeck = 2;
-                    } else if (d1IsMoving && !d2IsMoving) {
-                        w1 = Math.min(1.0, f1);
-                        w2 = 0.0;
-                        onAirDeck = 1;
-                    } else if (deck2Playing && !deck1Playing) {
-                        w1 = 0.0;
-                        w2 = Math.min(1.0, f2);
-                        onAirDeck = 2;
-                    } else if (deck1Playing && !deck2Playing) {
-                        w1 = Math.min(1.0, f1);
-                        w2 = 0.0;
-                        onAirDeck = 1;
-                    } else {
-                        // True dual deck blend
-                        w1 = Math.min(1.0, f1);
-                        w2 = Math.min(1.0, f2);
-                        onAirDeck = (f2 > f1 * 1.15) ? 2 : ((f1 > f2 * 1.15) ? 1 : (primaryDeck || 1));
+                const hasD1 = !!(deck1Data && deck1Data.title && deck1Data.title.trim() !== '' && deck1Data.title !== 'No Track Loaded' && deck1Data.title !== '—' && !deck1Data.unloaded && !deck1Data.offline);
+                const hasD2 = !!(deck2Data && deck2Data.title && deck2Data.title.trim() !== '' && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—' && !deck2Data.unloaded && !deck2Data.offline);
+
+                // --- 1. Handover Decision (Lead / On-Air Deck on Top Rail) ---
+                // Deck 1 remains primary until Deck 2 fader crosses faderHandoverThreshold (default 0.85 / 85%) or Deck 1 is pulled down
+                let nextPrimary = primaryDeck || 1;
+                if (!hasD1 && hasD2) {
+                    nextPrimary = 2;
+                } else if (!hasD2 && hasD1) {
+                    nextPrimary = 1;
+                } else if (hasD1 && hasD2) {
+                    if (primaryDeck === 1) {
+                        if (f2 >= faderHandoverThreshold || (!fader1Up && fader2Up)) {
+                            nextPrimary = 2;
+                        }
+                    } else if (primaryDeck === 2) {
+                        if (f1 >= faderHandoverThreshold || (!fader2Up && fader1Up)) {
+                            nextPrimary = 1;
+                        }
                     }
+                }
+                onAirDeck = nextPrimary;
+
+                // --- 2. True Dual-Deck Crossover Blend (3D Moving Waveform Weights) ---
+                if (fader1Up && fader2Up) {
+                    w1 = Math.min(1.0, f1);
+                    w2 = Math.min(1.0, f2);
+                } else if (fader1Up && !fader2Up) {
+                    w1 = Math.min(1.0, f1);
+                    w2 = 0.0;
+                } else if (!fader1Up && fader2Up) {
+                    w1 = 0.0;
+                    w2 = Math.min(1.0, f2);
                 } else {
-                    // Neither fader explicitly up, fallback to playback motion
-                    if (d2IsMoving && !d1IsMoving) {
-                        w1 = 0.0;
-                        w2 = 1.0;
-                        onAirDeck = 2;
-                    } else if (d1IsMoving && !d2IsMoving) {
+                    if (d1IsMoving && !d2IsMoving) {
                         w1 = 1.0;
                         w2 = 0.0;
-                        onAirDeck = 1;
-                    } else if (deck2Playing && !deck1Playing) {
+                    } else if (d2IsMoving && !d1IsMoving) {
                         w1 = 0.0;
                         w2 = 1.0;
-                        onAirDeck = 2;
                     } else if (deck1Playing && !deck2Playing) {
                         w1 = 1.0;
                         w2 = 0.0;
-                        onAirDeck = 1;
-                    } else if (deck2Active && !deck1Active) {
+                    } else if (deck2Playing && !deck1Playing) {
                         w1 = 0.0;
                         w2 = 1.0;
-                        onAirDeck = 2;
-                    } else if (!deck1Active && !deck2Active) {
+                    } else if (hasD1 && hasD2) {
+                        w1 = (onAirDeck === 1) ? 1.0 : 0.35;
+                        w2 = (onAirDeck === 2) ? 1.0 : 0.35;
+                    } else if (hasD1) {
+                        w1 = 1.0;
+                        w2 = 0.0;
+                    } else if (hasD2) {
+                        w1 = 0.0;
+                        w2 = 1.0;
+                    } else {
                         w1 = 0.0;
                         w2 = 0.0;
-                        onAirDeck = 1;
-                    } else {
-                        w1 = 1.0;
-                        w2 = deck2Active ? 0.35 : 0.0;
-                        onAirDeck = 1;
                     }
                 }
             }
@@ -7690,27 +7697,31 @@ export function createVFXScene(container) {
             // Advance track progress: directly locked to hardware deck wire telemetry
             const trackSec1 = deck1Data.duration || 364;
             const progressDelta1 = delta / trackSec1;
-            if (deck1WireProgress !== undefined && !isNaN(deck1WireProgress)) {
+            const hasRecentWire1 = (nowTime - lastDeck1WireTime < 1500) && (deck1WireProgress !== undefined && !isNaN(deck1WireProgress));
+            if (hasRecentWire1) {
                 const diff1 = deck1WireProgress - deck1Progress;
-                if (diff1 < -0.0001 || Math.abs(diff1) > 0.002) {
+                // If DJ seeks / drops needle / cues / loops (large jump > 0.015), snap instantly
+                if (Math.abs(diff1) > 0.015) {
                     deck1Progress = deck1WireProgress;
                 } else {
-                    deck1Progress += progressDelta1 + diff1 * Math.min(1.0, delta * 24.0);
+                    // Smoothly follow wire progress while advancing forward at native frame rate
+                    deck1Progress += progressDelta1 + diff1 * Math.min(1.0, delta * 12.0);
                 }
-            } else if (deck1Playing || w1 > 0.01) {
+            } else if (deck1Playing || d1IsMoving || w1 > 0.01) {
                 deck1Progress = (deck1Progress + progressDelta1) % 1.0;
             }
 
             const trackSec2 = deck2Data.duration || 360;
             const progressDelta2 = delta / trackSec2;
-            if (deck2WireProgress !== undefined && !isNaN(deck2WireProgress)) {
+            const hasRecentWire2 = (nowTime - lastDeck2WireTime < 1500) && (deck2WireProgress !== undefined && !isNaN(deck2WireProgress));
+            if (hasRecentWire2) {
                 const diff2 = deck2WireProgress - deck2Progress;
-                if (diff2 < -0.0001 || Math.abs(diff2) > 0.002) {
+                if (Math.abs(diff2) > 0.015) {
                     deck2Progress = deck2WireProgress;
                 } else {
-                    deck2Progress += progressDelta2 + diff2 * Math.min(1.0, delta * 24.0);
+                    deck2Progress += progressDelta2 + diff2 * Math.min(1.0, delta * 12.0);
                 }
-            } else if (deck2Playing || w2 > 0.01) {
+            } else if (deck2Playing || d2IsMoving || w2 > 0.01) {
                 deck2Progress = (deck2Progress + progressDelta2) % 1.0;
             }
 
@@ -10496,10 +10507,11 @@ export function createVFXScene(container) {
 
                 if (data.progress !== undefined) {
                     const newProg = Number(data.progress);
-                    if (newProg < deck1Progress - 0.0001 || Math.abs(newProg - deck1Progress) > 0.002) {
+                    if (Math.abs(newProg - deck1Progress) > 0.015) {
                         deck1Progress = newProg;
                     }
                     deck1WireProgress = newProg;
+                    lastDeck1WireTime = performance.now();
                 }
 
                 const hasValidTrack1 = !!(deck1Data.title && deck1Data.title !== 'No Track Loaded' && deck1Data.title !== '—');
@@ -10566,10 +10578,11 @@ export function createVFXScene(container) {
 
                 if (data.progress !== undefined) {
                     const newProg2 = Number(data.progress);
-                    if (newProg2 < deck2Progress - 0.0001 || Math.abs(newProg2 - deck2Progress) > 0.002) {
+                    if (Math.abs(newProg2 - deck2Progress) > 0.015) {
                         deck2Progress = newProg2;
                     }
                     deck2WireProgress = newProg2;
+                    lastDeck2WireTime = performance.now();
                 }
 
                 // Deck 2 is active whenever Track 2 is loaded in the player
@@ -10741,6 +10754,14 @@ export function createVFXScene(container) {
                 deck1Active = true;
             }
         },
+        setHandoverThreshold: (val) => {
+            const num = parseFloat(val);
+            if (!isNaN(num) && num >= 0.40 && num <= 0.99) {
+                faderHandoverThreshold = num;
+                try { localStorage.setItem('dj_vfx_handover_threshold', String(num)); } catch (e) {}
+            }
+        },
+        getHandoverThreshold: () => faderHandoverThreshold,
         setCrossfader: (xfVal) => {
             const val = Math.max(0.0, Math.min(1.0, Number(xfVal)));
             // val: 0.0 = Deck 1, 1.0 = Deck 2, 0.5 = center blend
@@ -10885,7 +10906,7 @@ export function createVFXScene(container) {
                 0: ['#00ffff', '#ff007f', '#00ff66', '#ffaa00', '#9900ff', '#ff0033'],
                 1: ['#ff007f', '#00ffff', '#ffaa00', '#ff0033', '#9900ff', '#00ff66'],
                 2: ['#00ffcc', '#0077ff', '#ff00aa', '#00ff66', '#ffcc00', '#ff0055'],
-                3: ['#ffaa00', '#ff3300', '#00e5ff', '#ff007f', '#00ff66', '#9900ff'],
+                3: ['#ffaa00', '#ff4500', '#ff2200', '#ff6600', '#ff8800', '#e63900'],
                 4: ['#ffd700', '#ff00ff', '#00ffff', '#ff0055', '#00ffaa', '#9900ff'],
                 5: ['#ff007f', '#00ffff', '#ffee00', '#00ff66', '#ff00aa', '#0088ff']
             };

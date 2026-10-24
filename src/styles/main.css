@@ -1621,16 +1621,8 @@ button:not(.activity-tab):not(.card-delete-btn):active,
 }
 
 .flash-btn:active {
-    transform: translateY(1.5px);
-    box-shadow: inset 0 3px 6px rgba(0,0,0,0.9);
-}
-    white-space: nowrap;
-    transition: all 0.1s ease;
-}
-
-.flash-btn:active {
-    transform: scale(0.95);
-    box-shadow: 0 0 20px rgba(255, 255, 255, 0.9);
+    transform: translateY(1.5px) scale(0.97);
+    box-shadow: inset 0 3px 6px rgba(0,0,0,0.9), 0 0 15px rgba(255, 255, 255, 0.8);
 }
 
 /* High-Impact Stream & Nightclub Track Banner Overlay */
@@ -1661,8 +1653,8 @@ button:not(.activity-tab):not(.card-delete-btn):active,
     transition: opacity 0.4s cubic-bezier(0.16, 1, 0.3, 1), transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
     opacity: 1;
     pointer-events: auto;
+    min-width: 320px;
     max-width: 520px;
-    contain: layout style;
 }
 
 #track-banner.banner-hidden,
@@ -1782,6 +1774,8 @@ button:not(.activity-tab):not(.card-delete-btn):active,
     gap: 3px;
     text-align: left;
     overflow: hidden;
+    min-width: 220px;
+    flex: 1;
 }
 
 .track-header-row {
@@ -1826,23 +1820,29 @@ button:not(.activity-tab):not(.card-delete-btn):active,
 .track-title {
     font-size: 15px;
     font-weight: 800;
-    color: #ffffff;
+    color: #ffffff !important;
     letter-spacing: 0.4px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 360px;
+    min-height: 19px;
+    line-height: 1.25;
+    display: block;
     text-shadow: 0 2px 8px rgba(0, 0, 0, 0.8);
 }
 
 .track-artist {
     font-size: 12px;
-    color: rgba(255, 255, 255, 0.82);
-    font-weight: 500;
+    color: rgba(255, 255, 255, 0.85) !important;
+    font-weight: 600;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 360px;
+    min-height: 15px;
+    line-height: 1.25;
+    display: block;
 }
 
 /* Vintage Edison LED Filament Track Position Bar in Banner */
@@ -2738,6 +2738,139 @@ html.obs-mode #hud-top-notch,
 .notch-clock-tz {
     color: rgba(0, 255, 204, 0.8);
     font-size: 7.5px;
+}
+
+/* DJ Session Record Button in Notch Pill */
+.notch-record-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 7px;
+    border-radius: 4px;
+    font-size: 8.5px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+    outline: none;
+    user-select: none;
+}
+
+.notch-record-btn.ready {
+    background: rgba(0, 255, 136, 0.12);
+    border: 1px solid rgba(0, 255, 136, 0.45);
+    color: #00ff88;
+    box-shadow: 0 0 8px rgba(0, 255, 136, 0.15);
+}
+
+.notch-record-btn.ready:hover {
+    background: rgba(0, 255, 136, 0.24);
+    border-color: #00ff88;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
+    transform: translateY(-1px);
+}
+
+.notch-record-btn.recording {
+    background: linear-gradient(135deg, rgba(255, 68, 0, 0.25) 0%, rgba(255, 136, 0, 0.20) 100%);
+    border: 1px solid #ff4400;
+    color: #ffaa33;
+    animation: notchRecGlowPulse 1.4s infinite ease-in-out;
+}
+
+.notch-record-btn.recording .notch-rec-icon {
+    color: #ff3300;
+    animation: notchRecBlink 1.0s infinite ease-in-out;
+    display: inline-block;
+    filter: drop-shadow(0 0 5px #ff2200);
+}
+
+.notch-record-btn.recording .notch-rec-label {
+    color: #ffffff;
+    font-weight: 900;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 8px rgba(255, 68, 0, 0.8);
+}
+
+.notch-record-btn.recording:hover {
+    background: rgba(255, 68, 0, 0.35);
+    border-color: #ff6622;
+    transform: translateY(-1px);
+}
+
+@keyframes notchRecGlowPulse {
+    0%, 100% {
+        box-shadow: 0 0 6px rgba(255, 68, 0, 0.4), inset 0 0 4px rgba(255, 100, 0, 0.2);
+    }
+    50% {
+        box-shadow: 0 0 16px rgba(255, 68, 0, 0.85), inset 0 0 8px rgba(255, 100, 0, 0.45);
+    }
+}
+
+@keyframes notchRecBlink {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.25; transform: scale(1.15); }
+}
+
+/* Session Scroll Box & Custom Scrollbar */
+.session-scroll-box::-webkit-scrollbar {
+    width: 4px;
+}
+.session-scroll-box::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 2px;
+}
+.session-scroll-box::-webkit-scrollbar-thumb {
+    background: rgba(255, 170, 0, 0.4);
+    border-radius: 2px;
+}
+.session-scroll-box::-webkit-scrollbar-thumb:hover {
+    background: #ffaa00;
+}
+
+/* Session Track Card in Tracklist */
+.session-track-card {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 4px;
+    padding: 5px 8px;
+    transition: background 0.15s ease;
+}
+.session-track-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: rgba(255, 170, 0, 0.3);
+}
+.session-track-card .deck-badge {
+    font-size: 8px;
+    font-weight: 800;
+    padding: 2px 5px;
+    border-radius: 3px;
+    font-family: 'JetBrains Mono', monospace;
+    white-space: nowrap;
+}
+.session-track-card .deck-badge.d1 {
+    background: rgba(0, 255, 204, 0.15);
+    border: 1px solid rgba(0, 255, 204, 0.4);
+    color: #00ffcc;
+}
+.session-track-card .deck-badge.d2 {
+    background: rgba(255, 102, 0, 0.15);
+    border: 1px solid rgba(255, 102, 0, 0.4);
+    color: #ff8833;
+}
+.session-track-card .deck-badge.d3 {
+    background: rgba(187, 136, 255, 0.15);
+    border: 1px solid rgba(187, 136, 255, 0.4);
+    color: #bb88ff;
+}
+.session-track-card .deck-badge.d4 {
+    background: rgba(0, 255, 136, 0.15);
+    border: 1px solid rgba(0, 255, 136, 0.4);
+    color: #00ff88;
 }
 
 .notch-glanceable-items {

@@ -5,8 +5,12 @@
 export async function setupAudio(onDeviceListChange) {
     let audioCtx = null;
     let analyser = null;
+    let analyserL = null;
+    let analyserR = null;
     let currentStream = null;
     let currentSource = null;
+    let currentSplitter = null;
+    let currentMerger = null;
     let currentDeviceId = 'default';
     let currentDeviceLabel = 'Default Audio Input';
 
@@ -18,12 +22,29 @@ export async function setupAudio(onDeviceListChange) {
     let beatThreshold = 1.30;
     let decayRate = 0.91; // Smooth gradual decay
 
+    // Calibrated Line-In Trim (in dB) to align with external mixers, OBS faders & BUTT gains
+    let lineInTrimDb = -3.0; // Defaults to -3.0 dB to align with standard broadcast line-in & OBS faders
+    try {
+        const savedTrim = localStorage.getItem('dj_vfx_linein_trim_db');
+        if (savedTrim !== null) {
+            lineInTrimDb = parseFloat(savedTrim) || -3.0;
+        }
+    } catch (e) {}
+
     function initAudioContext() {
         if (!audioCtx) {
             audioCtx = new (window.AudioContext || window.webkitAudioContext)();
             analyser = audioCtx.createAnalyser();
             analyser.fftSize = 512;
             analyser.smoothingTimeConstant = 0.86;
+
+            analyserL = audioCtx.createAnalyser();
+            analyserL.fftSize = 512;
+            analyserL.smoothingTimeConstant = 0.86;
+
+            analyserR = audioCtx.createAnalyser();
+            analyserR.fftSize = 512;
+            analyserR.smoothingTimeConstant = 0.86;
 
             // Persistent background keep-alive node to prevent OS/Browser background suspension
             try {
@@ -99,6 +120,14 @@ export async function setupAudio(onDeviceListChange) {
             try { currentSource.disconnect(); } catch (e) {}
             currentSource = null;
         }
+        if (currentSplitter) {
+            try { currentSplitter.disconnect(); } catch (e) {}
+            currentSplitter = null;
+        }
+        if (currentMerger) {
+            try { currentMerger.disconnect(); } catch (e) {}
+            currentMerger = null;
+        }
 
         let stream = null;
         let lastError = null;
@@ -112,7 +141,7 @@ export async function setupAudio(onDeviceListChange) {
                         echoCancellation: false,
                         noiseSuppression: false,
                         autoGainControl: false,
-                        channelCount: 2
+                        channelCount: { ideal: 2 }
                     },
                     video: false
                 });
@@ -187,7 +216,23 @@ export async function setupAudio(onDeviceListChange) {
             }
 
             currentSource = audioCtx.createMediaStreamSource(stream);
-            currentSource.connect(analyser);
+
+            // True Stereo Discrete Routing for Multi-Channel Interfaces (e.g. Behringer UMC404HD):
+            // Splits physical channels so Channel 1 (Left) and Channel 2 (Right) are independently measured,
+            // completely ignoring unconnected floating Channels 3 & 4.
+            const chCount = Math.max(2, currentSource.channelCount || 2);
+            currentSplitter = audioCtx.createChannelSplitter(chCount);
+            currentSource.connect(currentSplitter);
+
+            if (analyserL && analyserR) {
+                currentSplitter.connect(analyserL, 0);
+                currentSplitter.connect(analyserR, Math.min(1, chCount - 1));
+            }
+
+            currentMerger = audioCtx.createChannelMerger(2);
+            currentSplitter.connect(currentMerger, 0, 0);
+            currentSplitter.connect(currentMerger, Math.min(1, chCount - 1), 1);
+            currentMerger.connect(analyser);
 
             if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 await audioCtx.resume();
@@ -306,7 +351,20 @@ export async function setupAudio(onDeviceListChange) {
             };
 
             currentSource = audioCtx.createMediaStreamSource(audioOnlyStream);
-            currentSource.connect(analyser);
+
+            const chCount = Math.max(2, currentSource.channelCount || 2);
+            currentSplitter = audioCtx.createChannelSplitter(chCount);
+            currentSource.connect(currentSplitter);
+
+            if (analyserL && analyserR) {
+                currentSplitter.connect(analyserL, 0);
+                currentSplitter.connect(analyserR, Math.min(1, chCount - 1));
+            }
+
+            currentMerger = audioCtx.createChannelMerger(2);
+            currentSplitter.connect(currentMerger, 0, 0);
+            currentSplitter.connect(currentMerger, Math.min(1, chCount - 1), 1);
+            currentMerger.connect(analyser);
 
             if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 await audioCtx.resume();
@@ -349,6 +407,8 @@ export async function setupAudio(onDeviceListChange) {
 
     const dataArray = new Uint8Array(analyser ? analyser.frequencyBinCount : 256);
     const timeDomainBuffer = new Float32Array(analyser ? analyser.fftSize : 512);
+    const timeDomainBufferL = new Float32Array(512);
+    const timeDomainBufferR = new Float32Array(512);
 
     // Dynamic Transient Detection State
     const historyLength = 24;
@@ -387,6 +447,8 @@ export async function setupAudio(onDeviceListChange) {
         setGain: (val) => { gainMultiplier = Math.max(0.1, Math.min(4.0, Number(val))); },
         setBassSensitivity: (val) => { bassSensitivity = Math.max(0.1, Math.min(4.0, Number(val))); },
         setBeatThreshold: (val) => { beatThreshold = Math.max(1.05, Math.min(2.5, Number(val))); },
+        setLineInTrim: (db) => { lineInTrimDb = Math.max(-24.0, Math.min(12.0, Number(db))); },
+        getLineInTrim: () => lineInTrimDb,
 
         getAudioData: () => {
             const now = performance.now();
@@ -452,33 +514,58 @@ export async function setupAudio(onDeviceListChange) {
 
                 const combinedBassImpact = Math.min(1.0, smoothedBass * 0.7 + transientImpulse * 0.35);
 
-                // 5. High-Precision Time-Domain Line-In VU & Loudness Analysis (Peak dBFS & LUFS)
-                let instantPeak = 0.0;
-                let sumSquares = 0.0;
+                // 5. High-Precision Discrete Stereo Time-Domain VU & Loudness Analysis (True Peak dBFS & LUFS)
+                let peakL = 0.0;
+                let peakR = 0.0;
+                let sumSquaresL = 0.0;
+                let sumSquaresR = 0.0;
+                const bufLen = timeDomainBufferL ? timeDomainBufferL.length : 512;
+
                 try {
-                    analyser.getFloatTimeDomainData(timeDomainBuffer);
-                    const bufLen = timeDomainBuffer.length;
-                    for (let i = 0; i < bufLen; i++) {
-                        const sample = Math.abs(timeDomainBuffer[i]);
-                        if (sample > instantPeak) instantPeak = sample;
-                        sumSquares += sample * sample;
+                    if (analyserL && analyserR && timeDomainBufferL && timeDomainBufferR) {
+                        analyserL.getFloatTimeDomainData(timeDomainBufferL);
+                        analyserR.getFloatTimeDomainData(timeDomainBufferR);
+
+                        for (let i = 0; i < bufLen; i++) {
+                            const sL = Math.abs(timeDomainBufferL[i]);
+                            const sR = Math.abs(timeDomainBufferR[i]);
+                            if (sL > peakL) peakL = sL;
+                            if (sR > peakR) peakR = sR;
+                            sumSquaresL += sL * sL;
+                            sumSquaresR += sR * sR;
+                        }
+                    } else if (analyser && timeDomainBuffer) {
+                        analyser.getFloatTimeDomainData(timeDomainBuffer);
+                        for (let i = 0; i < bufLen; i++) {
+                            const s = Math.abs(timeDomainBuffer[i]);
+                            if (s > peakL) peakL = s;
+                            sumSquaresL += s * s;
+                        }
+                        peakR = peakL;
+                        sumSquaresR = sumSquaresL;
                     }
                 } catch (e) {
-                    instantPeak = Math.max(rawBass, rawMid, rawTreble);
-                    sumSquares = instantPeak * instantPeak * 512;
+                    peakL = Math.max(rawBass, rawMid, rawTreble);
+                    peakR = peakL;
+                    sumSquaresL = peakL * peakL * bufLen;
+                    sumSquaresR = sumSquaresL;
                 }
 
-                const rms = Math.sqrt(sumSquares / (timeDomainBuffer.length || 512));
-                smoothedRms = smoothedRms * 0.85 + rms * 0.15;
+                // True Stereo Peak: max(Left, Right) - identical to OBS and BUTT ballistics!
+                // Eliminates mono summing doubling error that caused premature clipping.
+                const instantPeak = Math.max(peakL, peakR);
+                const rms = Math.sqrt(Math.max(sumSquaresL, sumSquaresR) / bufLen);
 
-                // Scale with user gain multiplier
-                const scaledPeak = Math.min(2.0, instantPeak * gainMultiplier);
-                const scaledRms = Math.min(2.0, smoothedRms * gainMultiplier);
+                // Calibrated Line-In Trim: scales level to align with OBS fader (-2.9dB) & BUTT input gain
+                const trimLinear = Math.pow(10, lineInTrimDb / 20);
+                const calibratedPeak = instantPeak * trimLinear;
+                const calibratedRms = rms * trimLinear;
+                smoothedRms = smoothedRms * 0.85 + calibratedRms * 0.15;
 
-                // Calculate dBFS (0 dBFS digital ceiling)
-                const peakDb = scaledPeak > 0.0001 ? Math.max(-60, 20 * Math.log10(scaledPeak)) : -60;
+                // Calibrated hardware dBFS line-in level
+                const peakDb = calibratedPeak > 0.0001 ? Math.max(-60, 20 * Math.log10(calibratedPeak)) : -60;
                 // ITU-R BS.1770 / EBU R128 K-weighting approximation (-0.691 offset from RMS)
-                const lufs = scaledRms > 0.0001 ? Math.max(-60, 10 * Math.log10(scaledRms * scaledRms) - 0.691) : -60;
+                const lufs = smoothedRms > 0.0001 ? Math.max(-60, 10 * Math.log10(smoothedRms * smoothedRms) - 0.691) : -60;
 
                 // Peak Hold needle logic
                 if (peakDb > peakHoldDb) {
@@ -489,7 +576,7 @@ export async function setupAudio(onDeviceListChange) {
                     peakHoldDb = Math.max(peakDb, peakHoldDb - 0.4);
                 }
 
-                const isClipping = scaledPeak >= 0.99 || peakDb >= -0.05;
+                const isClipping = calibratedPeak >= 0.99 || peakDb >= -0.05;
                 const headroomDb = Math.max(0, -peakDb);
 
                 // Logarithmic VU meter percentage for -48dB to 0dB range

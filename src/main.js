@@ -5,6 +5,7 @@ import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS, REQUIREM
 import { renderParticleSpectrumEQ } from './ui/particle-eq-2d.js';
 import { MediaDB } from './services/media-db.js';
 import { initSceneCardThumbnails } from './ui/scene-thumbnails.js';
+import { sessionTracker } from './services/session-tracker.js';
 
 // DJ VFX Studio Build Metadata
 const BUILD_VERSION = 'v2.8.5';
@@ -118,6 +119,8 @@ async function init() {
         { card: document.getElementById('deck-card-4'), bpm: document.getElementById('deck-bpm-4'), state: document.getElementById('deck-state-4') }
     ];
 
+    let audioProcessor = null;
+
     // Real-Time Multi-Band Particle Spectrum EQ Canvas Engine
     const particleEqCanvas = document.getElementById('particle-spectrum-eq-canvas');
     const particleEqCtx = particleEqCanvas ? particleEqCanvas.getContext('2d') : null;
@@ -133,6 +136,7 @@ async function init() {
     const vuClipBadge = document.getElementById('vu-clip-badge');
     const vuMonitorSourceBadge = document.getElementById('vu-monitor-source-badge');
     const eqMonitorSourceBadge = document.getElementById('eq-monitor-source-badge');
+    let lastClipWarningTime = 0;
 
     if (vuClipBadge) {
         vuClipBadge.addEventListener('click', () => {
@@ -229,6 +233,55 @@ async function init() {
 
     // Apply initial state
     updateVuMarkersUI(isVuMarkersEnabled);
+
+    // Line-In Hardware Alignment & Calibration Trim
+    const vuTrimButtons = document.querySelectorAll('.vu-trim-btn');
+    let currentLineInTrimDb = -3.0;
+    try {
+        const savedTrim = localStorage.getItem('dj_vfx_linein_trim_db');
+        if (savedTrim !== null) {
+            currentLineInTrimDb = parseFloat(savedTrim) || -3.0;
+        }
+    } catch (e) {}
+
+    function updateVuTrimUI(trimDb) {
+        currentLineInTrimDb = Number(trimDb);
+        vuTrimButtons.forEach(btn => {
+            const btnTrim = parseFloat(btn.getAttribute('data-trim'));
+            const isMatch = Math.abs(btnTrim - currentLineInTrimDb) < 0.2;
+            btn.classList.toggle('active', isMatch);
+            if (isMatch) {
+                btn.style.background = 'rgba(0,255,204,0.18)';
+                btn.style.borderColor = '#00ffcc';
+                btn.style.color = '#00ffcc';
+            } else {
+                btn.style.background = 'rgba(255,255,255,0.06)';
+                btn.style.borderColor = 'rgba(255,255,255,0.2)';
+                btn.style.color = '#d8dbe2';
+            }
+        });
+        if (audioProcessor && typeof audioProcessor.setLineInTrim === 'function') {
+            audioProcessor.setLineInTrim(currentLineInTrimDb);
+        }
+        try {
+            localStorage.setItem('dj_vfx_linein_trim_db', String(currentLineInTrimDb));
+        } catch (e) {}
+        if (vuClipBadge) {
+            vuClipBadge.style.display = 'none';
+        }
+    }
+
+    vuTrimButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const val = parseFloat(btn.getAttribute('data-trim')) || 0.0;
+            updateVuTrimUI(val);
+            if (typeof broadcastSync === 'function') {
+                broadcastSync({ type: 'set_linein_trim', trimDb: val });
+            }
+        });
+    });
+
+    updateVuTrimUI(currentLineInTrimDb);
 
     // Now Playing Track Banner Stream Overlay Elements & State
     const btnToggleTrackBanner = document.getElementById('btn-toggle-track-banner');
@@ -350,10 +403,10 @@ async function init() {
 
     let isHueActive = false;
     let isHueKickStrobeActive = false;
-    let hueCurrentMode = 'scene_sync';
+    let hueCurrentMode = 'screen_colors';
     let hueCurrentIntensity = 1.0;
     let hueCurrentMinBri = 0.05;
-    let hueTargetGroup = 'all';
+    let hueTargetGroup = '3';
     let lastHueBeatSentTime = 0;
 
     // Calibration Sliders
@@ -624,7 +677,6 @@ async function init() {
     vfx.loadFlyerMedia(currentFlyerUrl, false);
     vfx.setFlyerVisible(false);
 
-    let audioProcessor = null;
     let isLogoActive = true;
     let isAutoVJ = false;
     let autoVJBeatCounter = 0;
@@ -674,7 +726,8 @@ async function init() {
         master: document.getElementById('setup-content-master'),
         obs: document.getElementById('setup-content-obs'),
         hue: document.getElementById('setup-content-hue'),
-        bridge: document.getElementById('setup-content-bridge')
+        bridge: document.getElementById('setup-content-bridge'),
+        session: document.getElementById('setup-content-session')
     };
 
     function switchSetupSubtab(subtabId) {
@@ -873,6 +926,12 @@ async function init() {
     const isOBSMode = urlParams.get('mode') === 'obs' || window.location.hash.includes('obs');
     const isCleanDisplay = urlParams.get('clean') === 'true' || urlParams.get('mode') === 'stage' || isOBSMode || window.location.hash.includes('clean');
     let isOBSOverlayActive = urlParams.get('overlay') === 'true' || window.location.hash.includes('overlay');
+    let isOBSDetected = false;
+    let obsDetectedDetails = '';
+    let isDirectObsConnected = false;
+    let isButtDetected = false;
+    let buttDetectedDetails = '';
+    let hueStatusData = null;
 
     if (isOBSOverlayActive) {
         document.documentElement.classList.add('obs-transparent-mode');
@@ -962,14 +1021,18 @@ async function init() {
         };
     }
 
-    async function fetchTrackArtwork(title, artist) {
+    async function fetchTrackArtwork(title, artist, deckNum = 1) {
         const cleanTitle = (title || '').trim();
         const cleanArtist = (artist || '').trim();
         if (!cleanTitle && !cleanArtist) return null;
 
         const cacheKey = `${cleanArtist.toLowerCase()}:::${cleanTitle.toLowerCase()}`;
         if (artworkClientCache.has(cacheKey)) {
-            return artworkClientCache.get(cacheKey);
+            const cachedArt = artworkClientCache.get(cacheKey);
+            if (vfx && vfx.setDeckData && deckNum) {
+                vfx.setDeckData({ deck: deckNum, artworkUrl: cachedArt });
+            }
+            return cachedArt;
         }
 
         let coverArt = null;
@@ -1003,7 +1066,7 @@ async function init() {
         if (coverArt) {
             artworkClientCache.set(cacheKey, coverArt);
             if (vfx && vfx.setDeckData) {
-                vfx.setDeckData({ deck: 1, artworkUrl: coverArt });
+                vfx.setDeckData({ deck: deckNum || 1, artworkUrl: coverArt });
             }
             return coverArt;
         }
@@ -1037,14 +1100,27 @@ async function init() {
 
 
 
-        const title = trackData?.title || (force ? (trackTitle ? trackTitle.textContent : '') : '');
-        const artist = trackData?.artist || (force ? (trackArtist ? trackArtist.textContent.split(' • ')[0] : '') : '');
+        let title = trackData?.title;
+        let artist = trackData?.artist;
         const rawDeck = trackData?.deck !== undefined ? trackData.deck : (lastDisplayedTrackDeck || 1);
         const deckLabel = String(rawDeck).toUpperCase().startsWith('DECK') ? String(rawDeck).toUpperCase() : `DECK ${rawDeck}`;
 
+        if (!title && force) {
+            const activeDeck = (vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : rawDeck);
+            const deckInfo = (vfx.getDeckData ? vfx.getDeckData(activeDeck) : null) || (cachedDeckWaveforms.get(activeDeck) || {});
+            title = deckInfo.title || (trackTitle && trackTitle.textContent !== 'STANDBY' ? trackTitle.textContent : 'Live Performance');
+            artist = artist || deckInfo.artist || (trackArtist ? trackArtist.textContent.split(' • ')[0] : 'DJ Set');
+        }
+        if (!title || title.trim() === '' || title === '—') {
+            title = 'Live Performance';
+        }
+        if (!artist || artist.trim() === '') {
+            artist = 'Live DJ Set';
+        }
+
         // If not explicitly forced by user action (e.g. manual injection or Shazam acceptance)
         // AND not actively receiving real hardware deck packets on the wire with valid title, do not show!
-        if (!force && (!title || title.trim() === '' || title === 'Live Track' || title === 'No Track Loaded' || title === 'Opus (Live Intro Mix)' || title === '—')) {
+        if (!force && (!title || title.trim() === '' || title === 'No Track Loaded' || title === 'Opus (Live Intro Mix)' || title === '—')) {
             // If Deck 2 is in standby or has no track, do not dismiss Deck 1's currently visible banner!
             if (rawDeck === 2 || rawDeck === '2' || rawDeck === 'B') {
                 return;
@@ -1076,6 +1152,7 @@ async function init() {
 
         // Update DOM elements on HUD, Banner and Now Playing Pane
         if (trackTitle) trackTitle.textContent = title;
+        if (trackArtist) trackArtist.textContent = `${artist} • ${deckLabel}`;
         if (trackDeckBadge) {
             trackDeckBadge.textContent = deckLabel;
             if (rawDeck === 2 || rawDeck === '2' || rawDeck === 'B') {
@@ -1122,7 +1199,7 @@ async function init() {
 
             // Asynchronously resolve high-res album cover art
             const targetKey = trackKey;
-            fetchTrackArtwork(title, artist).then((artUrl) => {
+            fetchTrackArtwork(title, artist, trackData?.deck || 1).then((artUrl) => {
                 if (artUrl && currentDisplayedTrackKey === targetKey) {
                     setTrackBannerArtwork(artUrl);
                     if (trackData) trackData.coverart = artUrl;
@@ -1703,12 +1780,14 @@ async function init() {
 
     if (btnPopTrackBanner) {
         btnPopTrackBanner.addEventListener('click', () => {
+            const activeDeck = (vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : (lastDisplayedTrackDeck || 1));
+            const deckInfo = (vfx.getDeckData ? vfx.getDeckData(activeDeck) : null) || (cachedDeckWaveforms.get(activeDeck) || {});
             const currentTrack = {
-                title: trackTitle ? trackTitle.textContent : 'Live Track',
-                artist: trackArtist ? trackArtist.textContent.split(' • ')[0] : '',
-                coverart: lastDisplayedCoverArt || '',
-                deck: lastDisplayedTrackDeck || 1,
-                bpm: Number(bpmVal?.textContent) || 126.0
+                title: deckInfo.title || (trackTitle && trackTitle.textContent !== 'STANDBY' ? trackTitle.textContent : 'Live Performance'),
+                artist: deckInfo.artist || (trackArtist ? trackArtist.textContent.split(' • ')[0] : 'DJ Set'),
+                coverart: deckInfo.artworkUrl || lastDisplayedCoverArt || '',
+                deck: activeDeck,
+                bpm: Number(deckInfo.bpm || bpmVal?.textContent) || 126.0
             };
             showTrackBanner(currentTrack, { force: true, immediate: true, duration: trackDurationSec, manualPop: true });
             showToast('🎛️ Popped Track Banner on Stream');
@@ -2253,9 +2332,22 @@ async function init() {
                 broadcastSync({ type: 'set_track_banner_scale', scale: trackBannerScale });
                 broadcastSync({ type: 'set_track_delay', delay: trackDelaySec });
                 broadcastSync({ type: 'set_track_duration', duration: trackDurationSec });
-                broadcastSync({ type: 'set_hue_kick_strobe', active: isHueKickStrobeActive });
                 broadcastSync({ type: 'set_vu_markers_enabled', enabled: isVuMarkersEnabled });
             }
+        } else if (msg.type === 'set_hue_enabled') {
+            isHueActive = !!msg.enabled;
+            updateHueButtonsAndBadges();
+            updateConsoleHealthMiniStrip();
+        } else if (msg.type === 'set_hue_room') {
+            hueTargetGroup = msg.room;
+            if (hueRoomSelect) hueRoomSelect.value = msg.room;
+            updateConsoleHealthMiniStrip();
+        } else if (msg.type === 'set_hue_mode') {
+            hueCurrentMode = msg.mode;
+            if (hueModePills) {
+                hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === msg.mode));
+            }
+            updateConsoleHealthMiniStrip();
         } else if (msg.type === 'set_hue_kick_strobe') {
             isHueKickStrobeActive = !!msg.active;
             updateKickStrobeBtnState();
@@ -2288,15 +2380,38 @@ async function init() {
     function isExternalAudioInterface(label) {
         if (!label) return false;
         const lower = label.toLowerCase();
-        if (lower.includes('built-in') || lower.includes('macbook') || lower.includes('internal') || lower.includes('facetime') || lower.includes('iphone')) {
+        // Disqualify internal laptop/monitor microphones, iOS/iPad, and virtual meeting devices
+        if (lower.includes('built-in') || lower.includes('macbook') || lower.includes('internal') || 
+            lower.includes('facetime') || lower.includes('iphone') || lower.includes('ipad') || 
+            lower.includes('display audio') || lower.includes('imac') || lower.includes('mac mini') ||
+            lower.includes('airpods') || lower.includes('virtual') || lower.includes('zoom') ||
+            lower.includes('teams') || lower.includes('webex')) {
             return false;
         }
-        return lower.includes('scarlett') || lower.includes('focusrite') || lower.includes('pioneer') ||
-            lower.includes('denon') || lower.includes('usb') || lower.includes('interface') ||
-            lower.includes('line') || lower.includes('audiobox') || lower.includes('behringer') ||
-            lower.includes('motu') || lower.includes('rme') || lower.includes('komplete') ||
-            lower.includes('volt') || lower.includes('apollo') || lower.includes('universal audio') ||
-            lower.includes('rode') || lower.includes('traktor') || lower.includes('soundcard');
+
+        let preferredName = '';
+        try { preferredName = localStorage.getItem('dj_vfx_preferred_audio_name') || ''; } catch (e) {}
+        if (preferredName && lower.includes(preferredName.toLowerCase())) {
+            return true;
+        }
+
+        // Comprehensive hardware interface patterns (Behringer UMC404HD, Focusrite Scarlett, UA Apollo, Pioneer DJM, etc.)
+        return lower.includes('umc') || lower.includes('404') || lower.includes('204') || lower.includes('202') ||
+            lower.includes('1820') || lower.includes('behringer') || lower.includes('scarlett') ||
+            lower.includes('focusrite') || lower.includes('pioneer') || lower.includes('djm') ||
+            lower.includes('denon') || lower.includes('prime') || lower.includes('usb') ||
+            lower.includes('interface') || lower.includes('line') || lower.includes('audiobox') ||
+            lower.includes('motu') || lower.includes('rme') || lower.includes('babyface') ||
+            lower.includes('komplete') || lower.includes('volt') || lower.includes('apollo') ||
+            lower.includes('universal audio') || lower.includes('rode') || lower.includes('traktor') ||
+            lower.includes('soundcard') || lower.includes('presonus') || lower.includes('steinberg') ||
+            lower.includes('ur22') || lower.includes('ur242') || lower.includes('audient') ||
+            lower.includes('evo') || lower.includes('id4') || lower.includes('id14') ||
+            lower.includes('solid state logic') || lower.includes('ssl') || lower.includes('mackie') ||
+            lower.includes('zoom') || lower.includes('tascam') || lower.includes('arturia') ||
+            lower.includes('minifuse') || lower.includes('yamaha') || lower.includes('ag03') ||
+            lower.includes('ag06') || lower.includes('mg') || lower.includes('allen & heath') ||
+            lower.includes('xone') || lower.includes('external');
     }
 
     function updateAudioFallbackUI(isFallback, deviceName = '') {
@@ -2405,17 +2520,27 @@ async function init() {
                 devs = allDevs.filter(d => d.kind === 'audioinput');
             }
 
-            // Check for external audio interfaces
-            const externalDev = devs.find(d => isExternalAudioInterface(d.label));
+            // Check for saved preferred audio interface or any external studio interface
+            let preferredName = '';
+            try { preferredName = localStorage.getItem('dj_vfx_preferred_audio_name') || ''; } catch (e) {}
+
+            let targetDev = null;
+            if (preferredName) {
+                targetDev = devs.find(d => d.label && d.label.toLowerCase().includes(preferredName.toLowerCase()));
+            }
+            if (!targetDev) {
+                targetDev = devs.find(d => isExternalAudioInterface(d.label));
+            }
             
-            if (preferredAudioMode === 'auto') {
-                if (externalDev) {
-                    if (currentSelectedDeviceId !== externalDev.deviceId) {
-                        console.log('[Audio Preference] 🔌 External interface detected! Auto-switching to:', externalDev.label);
-                        await enableAudioAndMedia(externalDev.deviceId);
+            if (preferredAudioMode === 'auto' || targetDev) {
+                if (targetDev) {
+                    if (currentSelectedDeviceId !== targetDev.deviceId) {
+                        console.log('[Audio Preference] 🔌 External interface detected! Auto-switching to:', targetDev.label);
+                        await enableAudioAndMedia(targetDev.deviceId);
                     }
-                    updateAudioFallbackUI(false, externalDev.label);
-                } else {
+                    try { localStorage.setItem('dj_vfx_preferred_audio_name', targetDev.label); } catch (e) {}
+                    updateAudioFallbackUI(false, targetDev.label);
+                } else if (preferredAudioMode === 'auto') {
                     updateAudioFallbackUI(true);
                 }
             } else if (preferredAudioMode !== 'default' && preferredAudioMode !== 'auto') {
@@ -2426,6 +2551,10 @@ async function init() {
                 } else if (!hasExplicit) {
                     updateAudioFallbackUI(true);
                 }
+            }
+
+            if (typeof updateConsoleHealthMiniStrip === 'function') {
+                updateConsoleHealthMiniStrip();
             }
 
             const currentActiveId = audioProcessor ? audioProcessor.getCurrentDevice().id : currentSelectedDeviceId;
@@ -2487,6 +2616,9 @@ async function init() {
 
             if (sliderGain) audioProcessor.setGain(sliderGain.value);
             if (sliderSens) audioProcessor.setBassSensitivity(sliderSens.value);
+            if (typeof audioProcessor.setLineInTrim === 'function') {
+                audioProcessor.setLineInTrim(currentLineInTrimDb);
+            }
         } else if (targetDeviceId !== null && targetDeviceId !== 'system-tab-audio') {
             currentSelectedDeviceId = targetDeviceId;
             try { localStorage.setItem('dj_vfx_audio_device_id', targetDeviceId); } catch (e) {}
@@ -2543,10 +2675,31 @@ async function init() {
         btnSetupRescanAudio.addEventListener('click', () => rescanAudioDevices(true));
     }
 
+    if (audioDeviceFallbackBanner) {
+        audioDeviceFallbackBanner.addEventListener('click', () => {
+            const setupTab = document.querySelector('.activity-tab[data-tab="setup"]');
+            if (setupTab) setupTab.click();
+            const masterSubtab = document.getElementById('subtab-btn-master');
+            if (masterSubtab) masterSubtab.click();
+            if (setupPreferredAudioDevice) {
+                setupPreferredAudioDevice.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+            rescanAudioDevices(true);
+        });
+    }
+
     if (setupPreferredAudioDevice) {
         setupPreferredAudioDevice.addEventListener('change', async (e) => {
             preferredAudioMode = e.target.value;
-            try { localStorage.setItem('dj_vfx_preferred_audio_device', preferredAudioMode); } catch (err) {}
+            try { 
+                localStorage.setItem('dj_vfx_preferred_audio_device', preferredAudioMode);
+                if (e.target.selectedOptions && e.target.selectedOptions[0]) {
+                    const optText = e.target.selectedOptions[0].textContent.replace(/^[🔌🎙️⚡]\s*/, '');
+                    if (preferredAudioMode !== 'auto' && preferredAudioMode !== 'default') {
+                        localStorage.setItem('dj_vfx_preferred_audio_name', optText);
+                    }
+                }
+            } catch (err) {}
             showToast(`🎙️ Audio Preference Updated: ${preferredAudioMode === 'auto' ? 'Auto-Prioritize External Interface' : 'Explicit Device'}`);
             await rescanAudioDevices(false);
         });
@@ -2555,7 +2708,14 @@ async function init() {
     if (audioDeviceSelect) {
         audioDeviceSelect.addEventListener('change', async (e) => {
             if (e.target.value === 'system-tab-audio') return;
+            if (e.target.selectedOptions && e.target.selectedOptions[0]) {
+                const optText = e.target.selectedOptions[0].textContent.replace(/^[🔌🎙️⚡🟢🖥️]\s*/, '');
+                if (e.target.value !== 'default' && e.target.value !== 'deck-live') {
+                    try { localStorage.setItem('dj_vfx_preferred_audio_name', optText); } catch (err) {}
+                }
+            }
             await enableAudioAndMedia(e.target.value);
+            if (typeof updateConsoleHealthMiniStrip === 'function') updateConsoleHealthMiniStrip();
         });
     }
 
@@ -5952,6 +6112,9 @@ async function init() {
                 applySceneProfile(0);
             }
         }
+        if (!isOBSMode && typeof broadcastSync === 'function') {
+            broadcastSync({ type: 'set_fx', fx: vfx.getCurrentFX() });
+        }
     } catch (e) {
         if (typeof applySceneProfile === 'function') {
             applySceneProfile(0);
@@ -6112,6 +6275,154 @@ async function init() {
 
     // Initialize the live thumbnails
     initSceneCardThumbnails();
+
+    // Initialize DJ Session Tracker & Performance Metrics
+    function initSessionTrackerUI() {
+        const notchBtnRec = document.getElementById('notch-btn-session-rec');
+        const notchRecIcon = document.getElementById('notch-rec-icon');
+        const notchRecLabel = document.getElementById('notch-rec-label');
+
+        const btnSessionRec = document.getElementById('btn-session-toggle-rec');
+        const sessionRecIcon = document.getElementById('session-rec-icon');
+        const sessionRecLabel = document.getElementById('session-rec-label');
+
+        const kpiDuration = document.getElementById('session-kpi-duration');
+        const kpiTracks = document.getElementById('session-kpi-tracks');
+        const kpiAvgBpm = document.getElementById('session-kpi-avgbpm');
+        const kpiHandovers = document.getElementById('session-kpi-handovers');
+
+        const sliderTolerance = document.getElementById('slider-handover-tolerance');
+        const labelToleranceVal = document.getElementById('label-handover-tolerance-val');
+
+        const tracklistContainer = document.getElementById('session-tracklist-container');
+        const eventsContainer = document.getElementById('session-events-container');
+        const eventsCountBadge = document.getElementById('session-events-count-badge');
+
+        const btnCopy = document.getElementById('btn-session-copy-tracklist');
+        const btnClear = document.getElementById('btn-session-clear-history');
+
+        // Initialize Handover Tolerance Slider from vfx/localStorage
+        if (sliderTolerance && labelToleranceVal) {
+            const initialThresh = Math.round((vfx.getHandoverThreshold ? vfx.getHandoverThreshold() : 0.85) * 100);
+            sliderTolerance.value = initialThresh;
+            labelToleranceVal.textContent = `${initialThresh}% (Fader Threshold)`;
+
+            sliderTolerance.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value, 10);
+                labelToleranceVal.textContent = `${val}% (Fader Threshold)`;
+                if (vfx.setHandoverThreshold) vfx.setHandoverThreshold(val / 100.0);
+                try { localStorage.setItem('dj_vfx_handover_threshold', String(val / 100.0)); } catch (err) {}
+            });
+        }
+
+        function renderSession(metrics) {
+            // 1. Update Notch Record Button State
+            if (notchBtnRec) {
+                notchBtnRec.classList.toggle('recording', metrics.isRecording);
+                notchBtnRec.classList.toggle('ready', !metrics.isRecording);
+                if (notchRecIcon) notchRecIcon.textContent = metrics.isRecording ? '⏺' : '▶';
+                if (notchRecLabel) notchRecLabel.textContent = metrics.isRecording ? `REC ${metrics.durationFormatted}` : 'REC READY';
+            }
+
+            // 2. Update Settings Panel Record Button State
+            if (btnSessionRec) {
+                btnSessionRec.classList.toggle('recording', metrics.isRecording);
+                btnSessionRec.classList.toggle('ready', !metrics.isRecording);
+                if (sessionRecIcon) sessionRecIcon.textContent = metrics.isRecording ? '⏺' : '▶';
+                if (sessionRecLabel) sessionRecLabel.textContent = metrics.isRecording ? `STOP (${metrics.durationFormatted})` : 'REC READY';
+            }
+
+            // 3. Update KPI Banner
+            if (kpiDuration) kpiDuration.textContent = metrics.durationFormatted;
+            if (kpiTracks) kpiTracks.textContent = metrics.totalTracks;
+            if (kpiAvgBpm) kpiAvgBpm.textContent = metrics.avgBpm;
+            if (kpiHandovers) kpiHandovers.textContent = metrics.handoverCount;
+
+            // 4. Render Chronological Tracklist Cards
+            if (tracklistContainer) {
+                if (metrics.tracks.length === 0) {
+                    tracklistContainer.innerHTML = `
+                        <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
+                            No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
+                        </div>
+                    `;
+                } else {
+                    tracklistContainer.innerHTML = metrics.tracks.map((t, i) => `
+                        <div class="session-track-card">
+                            <span style="font-size:8px; color:#ffaa00; font-family:'JetBrains Mono',monospace; min-width:20px;">#${i + 1}</span>
+                            <span class="deck-badge d${t.deck}">DECK ${t.deck}</span>
+                            ${t.artwork ? `<img src="${t.artwork}" alt="" style="width:22px; height:22px; border-radius:2px; object-fit:cover; border:1px solid rgba(255,255,255,0.15);" />` : `<span style="font-size:12px;">🎵</span>`}
+                            <div style="flex:1; min-width:0;">
+                                <div style="font-size:9.5px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
+                                <div style="font-size:8px; color:#8c909e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.artist}</div>
+                            </div>
+                            <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:8px; white-space:nowrap;">
+                                <div style="color:#00ffcc; font-weight:800;">${t.bpm} BPM</div>
+                                <div style="color:#8c909e;">${t.timeStr} (${t.relativeTime})</div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // 5. Render Chronological Events
+            if (eventsContainer) {
+                if (eventsCountBadge) eventsCountBadge.textContent = `${metrics.events.length} EVENTS`;
+                if (metrics.events.length === 0) {
+                    eventsContainer.innerHTML = `
+                        <div style="padding:10px; text-align:center; color:#6c7080; font-size:8px; font-style:italic;">
+                            Awaiting session events...
+                        </div>
+                    `;
+                } else {
+                    eventsContainer.innerHTML = metrics.events.slice(-50).map(e => `
+                        <div style="display:flex; align-items:center; gap:6px; color:#b0b4c2; padding:2px 4px; border-bottom:1px solid rgba(255,255,255,0.03);">
+                            <span style="color:#ffaa00; font-size:7.5px;">[${e.timeStr}]</span>
+                            <span style="color:#00ffcc; font-size:7px;">(${e.relativeTime})</span>
+                            <span style="flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${e.text}</span>
+                        </div>
+                    `).join('');
+                }
+            }
+        }
+
+        // Toggle recording on notch button or settings button
+        const handleRecToggle = () => {
+            const isRec = sessionTracker.toggleRecording();
+            showToast(isRec ? '⏺ DJ Session Recording Started' : '⏹ DJ Session Recording Stopped & Saved');
+        };
+
+        if (notchBtnRec) notchBtnRec.addEventListener('click', handleRecToggle);
+        if (btnSessionRec) btnSessionRec.addEventListener('click', handleRecToggle);
+
+        // Copy tracklist to clipboard
+        if (btnCopy) {
+            btnCopy.addEventListener('click', () => {
+                const txt = sessionTracker.exportTracklistText();
+                navigator.clipboard.writeText(txt).then(() => {
+                    showToast('📋 Session Tracklist Copied to Clipboard!');
+                }).catch(() => {
+                    showToast('📋 Tracklist: ' + txt.substring(0, 40) + '...');
+                });
+            });
+        }
+
+        // Clear history
+        if (btnClear) {
+            btnClear.addEventListener('click', () => {
+                if (confirm('Clear all session tracklist and event history?')) {
+                    sessionTracker.clearHistory();
+                    showToast('🗑️ Session History Cleared');
+                }
+            });
+        }
+
+        // Subscribe to session updates
+        sessionTracker.addListener(renderSession);
+        renderSession(sessionTracker.getMetrics());
+    }
+
+    initSessionTrackerUI();
 
     // Bottom Bar Category Tabs Filtering
     const fxPresetsRowEl = document.getElementById('fx-presets-row');
@@ -6551,11 +6862,21 @@ async function init() {
         isApplyingSceneProfile = true;
 
         try {
+            const isSceneCustomized = (typeof SceneProfileManager !== 'undefined' && typeof SceneProfileManager.isCustomized === 'function')
+                ? SceneProfileManager.isCustomized(sceneIndex)
+                : false;
+
             // 1. DJ Logo
             if (profile.djLogo) {
-                updateLogoVisibility(profile.djLogo.enabled, false);
+                if (isSceneCustomized && profile.djLogo.enabled !== undefined) {
+                    updateLogoVisibility(profile.djLogo.enabled, false);
+                } else {
+                    updateLogoVisibility(isLogoActive, false);
+                }
                 if (profile.djLogo.url) {
                     selectDjLogo(profile.djLogo.url, profile.djLogo.title, profile.djLogo.isVideo, false);
+                } else if (currentDjLogoUrl) {
+                    vfx.setLogoVisible(isLogoActive);
                 }
                 if (profile.djLogo.position) {
                     posPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-pos') === profile.djLogo.position));
@@ -6603,9 +6924,15 @@ async function init() {
 
             // 2. Station Logo
             if (profile.stationLogo) {
-                updateStationLogoVisibility(profile.stationLogo.enabled, false);
+                if (isSceneCustomized && profile.stationLogo.enabled !== undefined) {
+                    updateStationLogoVisibility(profile.stationLogo.enabled, false);
+                } else {
+                    updateStationLogoVisibility(isStationLogoActive, false);
+                }
                 if (profile.stationLogo.url) {
                     selectStationLogo(profile.stationLogo.url, profile.stationLogo.title, profile.stationLogo.isVideo, false);
+                } else if (currentStationLogoUrl) {
+                    vfx.setStationLogoVisible(isStationLogoActive);
                 }
                 if (profile.stationLogo.position) {
                     stationPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-st-pos') === profile.stationLogo.position));
@@ -6630,9 +6957,15 @@ async function init() {
 
             // 3. Event Flyer
             if (profile.flyer) {
-                updateFlyerVisibility(profile.flyer.enabled, false);
+                if (isSceneCustomized && profile.flyer.enabled !== undefined) {
+                    updateFlyerVisibility(profile.flyer.enabled, false);
+                } else {
+                    updateFlyerVisibility(isFlyerActive, false);
+                }
                 if (profile.flyer.url) {
                     selectFlyer(profile.flyer.url, profile.flyer.title, profile.flyer.isVideo, false);
+                } else if (currentFlyerUrl) {
+                    vfx.setFlyerVisible(isFlyerActive);
                 }
                 if (profile.flyer.position) {
                     flyerPosPills.forEach(p => p.classList.toggle('active', p.getAttribute('data-fl-pos') === profile.flyer.position));
@@ -6699,11 +7032,10 @@ async function init() {
 
             // 5. Lighting (Hue / DMX)
             if (profile.lighting) {
-                isHueActive = !!profile.lighting.hueSync;
-                if (btnHueToggle) {
-                    btnHueToggle.classList.toggle('active', isHueActive);
-                    btnHueToggle.textContent = isHueActive ? '💡 HUE: ON' : '💡 HUE: OFF';
+                if (isSceneCustomized && profile.lighting.hueSync !== undefined) {
+                    isHueActive = !!profile.lighting.hueSync;
                 }
+                updateHueButtonsAndBadges();
                 if (profile.lighting.hueMode && hueModePills) {
                     hueCurrentMode = profile.lighting.hueMode;
                     hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === profile.lighting.hueMode));
@@ -6722,9 +7054,8 @@ async function init() {
                     isHueKickStrobeActive = !!profile.lighting.hueKickStrobe;
                     if (btnHueKickStrobe) btnHueKickStrobe.classList.toggle('active', isHueKickStrobeActive);
                 }
-                if (stagelinqClient && stagelinqClient.setHueConfig) {
+                if (stagelinqClient && stagelinqClient.setHueConfig && isSceneCustomized) {
                     stagelinqClient.setHueConfig({
-                        enabled: isHueActive,
                         mode: hueCurrentMode,
                         intensity: hueCurrentIntensity,
                         minBrightness: hueCurrentMinBri,
@@ -7455,25 +7786,26 @@ async function init() {
             };
         }
 
+        const isWired = Boolean(networkHardwareStatus && networkHardwareStatus.isWired);
         let status = 'green';
         let rttLabel = `${networkPingMs}ms`;
-        if (networkPingMs >= 220 || networkPingState === 'red') {
+        if (networkPingMs >= 350 || networkPingState === 'red') {
             status = 'red';
             rttLabel = `${networkPingMs}ms HIGH`;
-        } else if (networkPingMs >= 70 || networkPingState === 'amber') {
+        } else if (!isWired && (networkPingMs >= 100 || networkPingState === 'amber')) {
             status = 'amber';
             rttLabel = `${networkPingMs}ms`;
         }
 
         let mediumIcon = '🔌';
-        let mediumText = 'Wired Gigabit Ethernet (en13 • USB LAN)';
-        let speedText = '1000 Mbps Full Duplex (IP: 192.168.1.194)';
+        let mediumText = 'Wired Gigabit Ethernet (en14 • USB LAN)';
+        let speedText = '1000 Mbps Full Duplex (IP: 192.168.1.167)';
         let timeisText = '±0.002s (NIST Synchronized)';
 
         if (networkHardwareStatus && networkHardwareStatus.isWired) {
             mediumIcon = '🔌';
             mediumText = `Wired Gigabit Ethernet (${networkHardwareStatus.activeInterface} • ${networkHardwareStatus.hardwarePort || 'USB LAN'})`;
-            speedText = `1000 Mbps Full Duplex (IP: ${networkHardwareStatus.activeIp || '192.168.1.194'})`;
+            speedText = `1000 Mbps Full Duplex (IP: ${networkHardwareStatus.activeIp || '192.168.1.167'})`;
             const wifiNotice = networkHardwareStatus.wifiSsid ? `Wi-Fi: "${networkHardwareStatus.wifiSsid}" (${networkHardwareStatus.wifiIp || 'en0'})` : 'Wi-Fi Secondary';
             timeisText = `±0.002s (NIST) • ${wifiNotice}`;
         } else if (networkHardwareStatus && networkHardwareStatus.wifiSsid) {
@@ -7483,7 +7815,7 @@ async function init() {
             timeisText = '±0.002s (Synchronized NIST)';
         }
 
-        const miniLabel = networkHardwareStatus.isWired ? `Wired (${networkHardwareStatus.activeInterface}) • ${rttLabel}` : `NET: ${rttLabel}`;
+        const miniLabel = isWired ? `Wired (${networkHardwareStatus ? networkHardwareStatus.activeInterface : 'LAN'}) • ${rttLabel}` : `NET: ${rttLabel}`;
 
         return {
             status,
@@ -7507,8 +7839,8 @@ async function init() {
         }
 
         let status = 'green';
-        if (currentRenderFps < 30) status = 'red';
-        else if (currentRenderFps < 48) status = 'amber';
+        if (currentRenderFps < 28) status = 'red';
+        else if (currentRenderFps < 38) status = 'amber';
 
         const currentFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0;
         const meta = SCENE_METADATA.find(s => s.id === currentFx);
@@ -7527,15 +7859,30 @@ async function init() {
     }
 
     function getHueHealthSnapshot() {
+        const isPaired = Boolean(hueStatusData && hueStatusData.paired);
+        const isEnabled = Boolean(isHueActive || (hueStatusData && hueStatusData.enabled));
+        const active = isPaired && isEnabled;
+        const bridgeIp = (hueStatusData && hueStatusData.bridgeIp) || (inputHueIp && inputHueIp.value) || '192.168.1.33';
+        
+        let roomDesc = 'All Lamps Bound';
+        if (hueStatusData && Array.isArray(hueStatusData.rooms)) {
+            const activeRoom = hueStatusData.rooms.find(r => r.id === (hueTargetGroup || hueStatusData.targetGroup));
+            if (activeRoom) {
+                roomDesc = `${activeRoom.name} (${activeRoom.lightCount} Lamps)`;
+            } else if (hueStatusData.rooms.length > 0) {
+                roomDesc = `${hueStatusData.rooms[0].name} (${hueStatusData.rooms[0].lightCount} Lamps)`;
+            }
+        }
+
         return {
-            status: isHueActive ? 'green' : 'amber',
-            badgeClass: isHueActive ? 'status-green' : 'status-amber',
-            label: isHueActive ? 'HUE: ACTIVE' : 'HUE: STANDBY',
-            ipText: (inputHueIp && inputHueIp.value) ? `${inputHueIp.value} (Hue Bridge v2)` : '192.168.1.185 (Hue Bridge v2)',
+            status: active ? 'green' : (isPaired ? 'amber' : 'amber'),
+            badgeClass: active ? 'status-green' : 'status-amber',
+            label: active ? 'HUE: ACTIVE' : (isPaired ? 'HUE: READY' : 'HUE: STANDBY'),
+            ipText: `${bridgeIp} (Hue Bridge v2)`,
             modeText: hueCurrentMode === 'kick_strobe' ? 'Kick Drum Strobe + Flash' : 'Scene Palette Sync + Strobe',
-            lightsText: '3 Color Ambiance Bulbs Bound',
+            lightsText: roomDesc,
             queueText: '10 Hz Throttle (ZigBee 3.0)',
-            meterPct: isHueActive ? 95 : 30
+            meterPct: active ? 95 : 30
         };
     }
 
@@ -7552,18 +7899,78 @@ async function init() {
         };
     }
 
+    function initBrowserOBSProbe() {
+        if (typeof window === 'undefined' || window.obsstudio !== undefined) return;
+        const ports = [4444, 4455];
+        let portIdx = 0;
+        let probeWs = null;
+
+        function probe() {
+            if (isOBSDetected || isDirectObsConnected) return;
+            const port = ports[portIdx];
+            portIdx = (portIdx + 1) % ports.length;
+            try {
+                probeWs = new WebSocket(`ws://127.0.0.1:${port}`);
+                probeWs.onopen = () => {
+                    isDirectObsConnected = true;
+                    if (!obsDetectedDetails) obsDetectedDetails = `OBS (Port ${port})`;
+                    updateConsoleHealthMiniStrip();
+                    try {
+                        probeWs.send(JSON.stringify({ 'request-type': 'GetVersion', 'message-id': 'browser-obs' }));
+                    } catch (e) {}
+                };
+                probeWs.onmessage = (evt) => {
+                    try {
+                        const data = JSON.parse(evt.data);
+                        if (data['obs-studio-version']) {
+                            obsDetectedDetails = `OBS ${data['obs-studio-version']}`;
+                            updateConsoleHealthMiniStrip();
+                        } else if (data.d && data.d.obsWebSocketVersion) {
+                            obsDetectedDetails = `OBS (v5 ${data.d.obsWebSocketVersion})`;
+                            updateConsoleHealthMiniStrip();
+                        }
+                    } catch (e) {}
+                };
+                const cleanup = () => {
+                    if (probeWs) {
+                        try { probeWs.close(); } catch (e) {}
+                        probeWs = null;
+                    }
+                    isDirectObsConnected = false;
+                    setTimeout(probe, 5000);
+                };
+                probeWs.onerror = () => cleanup();
+                probeWs.onclose = () => cleanup();
+            } catch (e) {
+                setTimeout(probe, 5000);
+            }
+        }
+        probe();
+    }
+
     function getBroadcastHealthSnapshot(latestAudio) {
         const isClipping = !!(latestAudio && latestAudio.isClipping);
         const peakDb = (latestAudio && latestAudio.peakDb !== undefined) ? latestAudio.peakDb : -14.2;
 
-        const isObsConnected = (typeof window !== 'undefined' && (window.obsstudio !== undefined || isOBSOverlayActive));
+        const isObsConnected = Boolean(
+            typeof window !== 'undefined' && (
+                window.obsstudio !== undefined ||
+                isOBSOverlayActive ||
+                isOBSDetected ||
+                isDirectObsConnected
+            )
+        );
         const feedText = isObsConnected 
-            ? (isOBSOverlayActive ? 'Transparent Alpha Overlay (1080p60 Live)' : 'Solid Visual Stage (1080p60 Live)')
+            ? (isOBSOverlayActive 
+                ? 'Transparent Alpha Overlay (1080p60 Live)' 
+                : (obsDetectedDetails ? `Solid Visual Stage (${obsDetectedDetails} Live)` : 'Solid Visual Stage (1080p60 Live)'))
             : 'STANDBY (No active OBS connection)';
 
         let status = 'amber';
         let badgeText = 'STANDBY';
-        let valText = isObsConnected ? 'OBS Active (1080p60 Browser Source)' : 'OBS Standby • Popout Feed Ready';
+        let valText = isObsConnected 
+            ? (obsDetectedDetails ? `${obsDetectedDetails} Active (Stream Ready)` : 'OBS Active (1080p60 Browser Source)') 
+            : 'OBS Standby • Popout Feed Ready';
         let subText = 'Twitch / YouTube / Mixcloud Target: -1.0 dBFS Peak Ceiling (AAC)';
 
         if (!isOBSOutputLive) {
@@ -7573,12 +7980,16 @@ async function init() {
             subText = 'Stage Visuals Blanked • Click [⚫ BLACKOUT] or [Alt+B] to Restore';
         } else if (isObsConnected) {
             status = 'green';
-            badgeText = 'LIVE 1080p60';
-            valText = isOBSOverlayActive ? 'OBS Transparent Alpha Overlay Active' : 'OBS Solid Visual Stage Active (1080p60)';
+            badgeText = 'ONLINE';
+            valText = isOBSOverlayActive 
+                ? 'OBS Transparent Alpha Overlay Active' 
+                : (obsDetectedDetails ? `${obsDetectedDetails} Active • Visual Stage Ready` : 'OBS Solid Visual Stage Active (1080p60)');
             subText = 'Twitch / Mixcloud Broadcast Standard • 60 FPS Metal';
         }
 
-        const label = !isOBSOutputLive ? 'OBS: BLACKOUT' : (isObsConnected ? 'OBS: LIVE 1080p' : 'OBS: STANDBY');
+        const label = !isOBSOutputLive 
+            ? 'OBS: BLACKOUT' 
+            : (isObsConnected ? (isOBSOverlayActive ? 'OBS: OVERLAY' : 'OBS: READY') : 'OBS: STANDBY');
 
         return {
             status,
@@ -7607,6 +8018,25 @@ async function init() {
                 badgeText: 'CLIPPING! ⚠️',
                 valText: `⚠️ ${peakDb.toFixed(1)} dBFS Peak • ${lufs.toFixed(1)} LUFS`,
                 subText: 'HARD DIGITAL CLIPPING! Reduce DJ mixer Booth Out immediately'
+            };
+        }
+
+        if (isButtDetected) {
+            if (peakDb > -3.0) {
+                return {
+                    status: 'amber',
+                    badgeClass: 'status-amber',
+                    badgeText: 'HOT (> -3dB)',
+                    valText: `BUTT Online (Port 1256) • ${peakDb.toFixed(1)} dBFS Peak`,
+                    subText: 'Safe for Twitch AAC, but exceeds -3.0 dBFS target for MP3 web radio'
+                };
+            }
+            return {
+                status: 'green',
+                badgeClass: 'status-green',
+                badgeText: 'ONLINE',
+                valText: `BUTT Online (Port 1256) • ${peakDb.toFixed(1)} dBFS Safe`,
+                subText: 'Compliant with -3.0 dBFS Safe Web Radio Standard • Zero MP3 Clipping'
             };
         }
 
@@ -7688,6 +8118,7 @@ async function init() {
         // Live Audio Headroom Peak Mini VU Meter in Notch Pill
         if (notchVuBars && notchVuBars.length === 6) {
             const peakDb = (latestAudio && latestAudio.peakDb !== undefined) ? latestAudio.peakDb : -40;
+            if (latestAudio && sessionTracker) sessionTracker.recordAudioPeak(peakDb);
             const thresholds = [-36, -24, -16, -8, -3.0, -0.5];
             notchVuBars.forEach((bar, idx) => {
                 if (!bar) return;
@@ -9324,7 +9755,9 @@ async function init() {
             }
         },
         onDeckLoaded: (data) => {
-            if (!data || !isHardwareConnected) return;
+            if (!data) return;
+            if (data.isHardware) isHardwareConnected = true;
+            if (!isHardwareConnected) return;
             notifyHardwareDeckPacket(data.ecosystem ? data.ecosystem.toUpperCase() : 'DENON STAGELINQ');
             const dIdx = (parseInt(data.deck, 10) || 1) - 1;
             if (deckCards[dIdx]) {
@@ -9334,11 +9767,15 @@ async function init() {
 
             // Immediately pipe loaded deck metadata to 3D visualizer and DJ Deck Waveforms scene (FX 3)
             if (vfx.setDeckData) vfx.setDeckData(data);
+            if (sessionTracker && data.title) {
+                sessionTracker.recordTrack(data.deck || 1, data.title, data.artist, data.bpm, data.key, data.artworkUrl || data.coverart, data.duration);
+            }
 
             if (data.title && (!data.artworkUrl && !data.coverart)) {
-                fetchTrackArtwork(data.title, data.artist).then((artUrl) => {
+                fetchTrackArtwork(data.title, data.artist, data.deck || 1).then((artUrl) => {
                     if (artUrl && vfx.setDeckData) {
                         vfx.setDeckData({ deck: data.deck || 1, artworkUrl: artUrl });
+                        if (sessionTracker) sessionTracker.recordTrack(data.deck || 1, data.title, data.artist, data.bpm, data.key, artUrl, data.duration);
                     }
                 });
             }
@@ -9363,6 +9800,7 @@ async function init() {
         },
         onTrack: (trackData) => {
             if (!trackData) return;
+            if (trackData.isHardware) isHardwareConnected = true;
             if (!isHardwareConnected && !trackData.force) return;
             // Ignore simulation packets and hardcoded demo tracks
             if (trackData.ecosystem === 'simulation' || trackData.device === 'Demo Telemetry') return;
@@ -9388,11 +9826,15 @@ async function init() {
             if (nowplayingPaneBpm && trackData.bpm) nowplayingPaneBpm.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
+            if (sessionTracker && trackData.title) {
+                sessionTracker.recordTrack(trackData.deck || 1, trackData.title, trackData.artist, trackData.bpm, trackData.key, trackData.artworkUrl || trackData.coverart, trackData.duration);
+            }
 
             if (trackData.title && (!trackData.artworkUrl && !trackData.coverart)) {
-                fetchTrackArtwork(trackData.title, trackData.artist).then((artUrl) => {
+                fetchTrackArtwork(trackData.title, trackData.artist, trackData.deck || 1).then((artUrl) => {
                     if (artUrl && vfx.setDeckData) {
                         vfx.setDeckData({ deck: trackData.deck || 1, artworkUrl: artUrl });
+                        if (sessionTracker) sessionTracker.recordTrack(trackData.deck || 1, trackData.title, trackData.artist, trackData.bpm, trackData.key, artUrl, trackData.duration);
                     }
                 });
             }
@@ -9448,7 +9890,9 @@ async function init() {
             }
         },
         onDeckWaveform: (waveformPacket) => {
-            if (!waveformPacket || !isHardwareConnected) return;
+            if (!waveformPacket) return;
+            if (waveformPacket.isHardware) isHardwareConnected = true;
+            if (!isHardwareConnected) return;
             console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);
             cachedDeckWaveforms.set(waveformPacket.deck || 1, waveformPacket);
             if (vfx.setDeckWaveform) {
@@ -9465,7 +9909,9 @@ async function init() {
             }
         },
         onDeckTelemetry: (telemetry) => {
-            if (!telemetry || !isHardwareConnected) return;
+            if (!telemetry) return;
+            if (telemetry.isHardware) isHardwareConnected = true;
+            if (!isHardwareConnected) return;
             if (vfx.setDeckData) {
                 vfx.setDeckData(telemetry);
             }
@@ -9476,6 +9922,9 @@ async function init() {
             // Automatically switch on-air track banner and titles when transitioning decks on mixer or playback
             const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : targetDeck;
             if (pDeck !== lastDisplayedTrackDeck) {
+                if (sessionTracker && lastDisplayedTrackDeck) {
+                    sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, telemetry.fader ?? 0.85);
+                }
                 const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                 if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
                     lastDisplayedTrackDeck = pDeck;
@@ -9512,6 +9961,9 @@ async function init() {
             if (vfx.setCrossfader) vfx.setCrossfader(xfVal);
             const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
             if (pDeck !== lastDisplayedTrackDeck) {
+                if (sessionTracker && lastDisplayedTrackDeck) {
+                    sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, xfVal);
+                }
                 const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                 if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
                     lastDisplayedTrackDeck = pDeck;
@@ -9533,8 +9985,8 @@ async function init() {
             }
         },
         onDecksSnapshot: (decks) => {
-            if (!isHardwareConnected) return;
             if (Array.isArray(decks) && decks.length > 0) {
+                if (decks.some(d => d.isHardware)) isHardwareConnected = true;
                 const hasActivePlaying = decks.some(d => d.play && d.isHardware);
                 if (hasActivePlaying) {
                     const activeDeck = decks.find(d => d.play && d.isHardware);
@@ -9573,10 +10025,20 @@ async function init() {
                 }
             }
         },
+        onConnect: () => {
+            if (!isOBSMode && !isCleanDisplay) {
+                const curFX = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 3;
+                broadcastSync({ type: 'set_fx', fx: curFX });
+            }
+        },
         onStatusChange: (status) => {
             const devCount = Number(status.deviceCount) || 0;
-            isHardwareConnected = Boolean(status.connected && devCount > 0);
+            isHardwareConnected = Boolean((status.connected && devCount > 0) || isHardwareDeckStreaming);
             if (status.connected) {
+                if (!isOBSMode && !isCleanDisplay) {
+                    const curFX = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 3;
+                    broadcastSync({ type: 'set_fx', fx: curFX });
+                }
                 if (djHardwareStatusText) {
                     djHardwareStatusText.textContent = (devCount > 0 && status.device)
                         ? status.device.toUpperCase()
@@ -9585,9 +10047,6 @@ async function init() {
                 if (djHardwareLed) {
                     djHardwareLed.style.background = devCount > 0 ? '#00ff88' : '#ffaa00';
                     djHardwareLed.style.boxShadow = devCount > 0 ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
-                }
-                if (!isHardwareConnected) {
-                    handleDecksOffline(status);
                 }
                 if (phraseSyncSource) {
                     if (isHardwareDeckStreaming && lastHardwareSource) {
@@ -9601,9 +10060,7 @@ async function init() {
                         phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                     }
                 }
-                if (isHardwareConnected) {
-                    broadcastSync({ type: 'request_state' });
-                }
+                broadcastSync({ type: 'request_state' });
             } else {
                 isHardwareConnected = false;
                 if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
@@ -9625,7 +10082,7 @@ async function init() {
         },
         onHueStatus: (status) => {
             isHueActive = !!status.enabled;
-            hueCurrentMode = status.mode || 'scene_sync';
+            hueCurrentMode = status.mode || 'screen_colors';
             hueCurrentIntensity = status.intensity ?? 0.85;
             hueCurrentMinBri = status.minBrightness ?? 0.15;
             hueTargetGroup = status.targetGroup || 'all';
@@ -9686,6 +10143,11 @@ async function init() {
                 updateKickStrobeBtnState();
             }
 
+            hueStatusData = status;
+            isHueActive = Boolean(status.enabled);
+            updateHueButtonsAndBadges();
+            updateConsoleHealthMiniStrip();
+
             hueModePills.forEach(p => p.classList.toggle('active', p.getAttribute('data-hue-mode') === hueCurrentMode));
         },
         onHuePairingStatus: (pairStatus) => {
@@ -9702,8 +10164,35 @@ async function init() {
                     huePairStatusMsg.innerHTML = `<span style="color:#ff3366">⚠️ ${pairStatus.message || 'Pairing error'}</span>`;
                 }
             }
+        },
+        onOBSStatus: (obs) => {
+            if (!obs) return;
+            isOBSDetected = Boolean(obs.online || obs.connected);
+            if (obs.version && obs.version !== 'Offline') {
+                obsDetectedDetails = obs.version;
+            }
+            updateConsoleHealthMiniStrip();
+            if (studioAdvisorModalBackdrop && studioAdvisorModalBackdrop.classList.contains('active')) {
+                updateStageAdvisorModalUI();
+            }
+            if (studioHealthModalBackdrop && studioHealthModalBackdrop.classList.contains('active')) {
+                updateHealthDiagnosticsModalUI();
+            }
+        },
+        onBUTTStatus: (butt) => {
+            if (!butt) return;
+            isButtDetected = Boolean(butt.online || butt.connected);
+            if (butt.details) {
+                buttDetectedDetails = butt.details;
+            }
+            updateConsoleHealthMiniStrip();
+            if (studioHealthModalBackdrop && studioHealthModalBackdrop.classList.contains('active')) {
+                updateHealthDiagnosticsModalUI();
+            }
         }
     });
+
+    initBrowserOBSProbe();
 
     function updateHueButtonsAndBadges() {
         if (btnHueToggle) {
@@ -10263,9 +10752,12 @@ async function init() {
             }
         }
 
-        // Clip Alert Warning Indicator
+        // Clip Alert Warning Indicator (auto-resets after 2.5s of clean audio)
         if (data.isClipping && vuClipBadge) {
             vuClipBadge.style.display = 'inline-block';
+            lastClipWarningTime = now;
+        } else if (vuClipBadge && vuClipBadge.style.display !== 'none' && (now - lastClipWarningTime > 2500)) {
+            vuClipBadge.style.display = 'none';
         }
 
         // Update Explicit Monitor Source Badges across console UI

@@ -18,6 +18,9 @@ export function setupStageLinqClient({
     onCrossfader,
     onDeckUnloaded,
     onDecksOffline,
+    onOBSStatus,
+    onBUTTStatus,
+    onConnect,
     onSync 
 }) {
     const WS_URL = 'ws://localhost:8080';
@@ -43,6 +46,8 @@ export function setupStageLinqClient({
                 isConnected = true;
                 console.log('[Universal DJ Bridge Client] Connected to Bridge on localhost:8080');
                 if (onStatusChange) onStatusChange({ connected: true, message: 'Bridge Connected' });
+                sendJson({ type: 'request_state' });
+                if (onConnect) onConnect();
             };
 
             socket.onmessage = (event) => {
@@ -83,7 +88,15 @@ export function setupStageLinqClient({
                             if (onEcosystemChange) onEcosystemChange(data.ecosystem);
                             break;
                         case 'status':
+                            if (data.obs && onOBSStatus) onOBSStatus(data.obs);
+                            if (data.butt && onBUTTStatus) onBUTTStatus(data.butt);
                             if (onStatusChange) onStatusChange(data);
+                            break;
+                        case 'obs_status':
+                            if (onOBSStatus) onOBSStatus(data);
+                            break;
+                        case 'butt_status':
+                            if (onBUTTStatus) onBUTTStatus(data);
                             break;
                         case 'hue_status':
                             if (onHueStatus) onHueStatus(data);
@@ -108,6 +121,8 @@ export function setupStageLinqClient({
                 isConnected = false;
                 if (onStatusChange) onStatusChange({ connected: false, message: 'Bridge Offline (Audio Fallback)' });
                 if (onDecksOffline) onDecksOffline({ bridgeOffline: true });
+                if (onOBSStatus) onOBSStatus({ connected: false, online: false });
+                if (onBUTTStatus) onBUTTStatus({ connected: false, online: false });
                 clearTimeout(reconnectTimeout);
                 reconnectTimeout = setTimeout(connect, 3000);
             };

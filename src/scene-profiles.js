@@ -423,8 +423,8 @@ export const DEFAULT_SCENE_PROFILE = {
         bloom: 0.35
     },
     lighting: {
-        hueSync: false,
-        hueMode: 'scene_sync',
+        hueSync: true,
+        hueMode: 'screen_colors',
         hueIntensity: 100,
         hueMinBri: 5,
         hueKickStrobe: false,

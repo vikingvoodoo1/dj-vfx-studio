@@ -1,10 +1,18 @@
 import { WebSocketServer } from 'ws';
 import http from 'http';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 import { PhilipsHueService } from './hue-service.js';
 import { PioneerDJService } from './pioneer-service.js';
 import { TraktorService } from './traktor-service.js';
 import { NowPlayingService } from './nowplaying-api.js';
 import { WaveformService } from './waveform-service.js';
+import { OBSService } from './obs-service.js';
+import { BUTTService } from './butt-service.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Configuration
 const PORT = process.env.STAGELINQ_PORT || 8080;
@@ -20,7 +28,23 @@ const waveformService = new WaveformService();
 
 let lastTrackData = null;
 let lastBpm = 126.0;
-let lastActiveFX = null;
+const BRIDGE_STATE_PATH = path.join(__dirname, 'bridge-state.json');
+let lastActiveFX = 3; // Default to Scene 04 Hellfire Waveforms
+try {
+    if (fs.existsSync(BRIDGE_STATE_PATH)) {
+        const rawState = JSON.parse(fs.readFileSync(BRIDGE_STATE_PATH, 'utf-8'));
+        if (rawState && typeof rawState.lastActiveFX === 'number') {
+            lastActiveFX = rawState.lastActiveFX;
+        }
+    }
+} catch (e) {}
+
+function saveBridgeState() {
+    try {
+        fs.writeFileSync(BRIDGE_STATE_PATH, JSON.stringify({ lastActiveFX }, null, 2));
+    } catch (e) {}
+}
+
 let activeEcosystem = 'auto'; // 'auto', 'stagelinq', 'pioneer', 'traktor', 'link'
 const globalSyncState = new Map();
 const connectedDevices = new Map();
@@ -73,6 +97,8 @@ function markHardwareActivity(devName = 'Denon Prime') {
             isHardware: true,
             message: `Denon Hardware Connected: ${devName}`
         });
+    } else if (!connectedDevices.has('denon')) {
+        connectedDevices.set('denon', devName);
     }
 }
 
@@ -268,8 +294,6 @@ const nowPlayingService = new NowPlayingService({
 });
 nowPlayingService.init();
 
-import fs from 'fs';
-import path from 'path';
 import os from 'os';
 import { execSync, exec } from 'child_process';
 import { recognizeAudio } from './shazam-service.js';
@@ -703,8 +727,92 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocketServer({ server });
 
-wss.on('connection', (ws) => {
+// Helper to match OBS scene names to VFX Studio scene indices
+function matchVFXScene(sceneName) {
+    if (!sceneName || typeof sceneName !== 'string') return null;
+    const s = sceneName.trim().toLowerCase();
+
+    // Check direct scene number patterns: "scene 4", "scene 04", "scene_4", "fx 4", "fx04", "fx-4", "vfx 4", "04: hellfire"
+    const numMatch = s.match(/(?:scene|fx|vfx)[\s_-]*0?(\d+)/i) || s.match(/^0?(\d+)[:\s_-]/);
+    if (numMatch) {
+        const num = parseInt(numMatch[1], 10);
+        if (num >= 1 && num <= 24) return num - 1;
+        if (num === 0) return 0;
+    }
+
+    const keywords = [
+        { idx: 0, keys: ['neon', 'grid', 'synthwave'] },
+        { idx: 1, keys: ['radial', 'particle', 'ring'] },
+        { idx: 2, keys: ['fluid', 'wave matrix', 'water'] },
+        { idx: 3, keys: ['hellfire', 'inferno', 'deck wave', 'fire wave', 'flame wave'] },
+        { idx: 4, keys: ['disco', 'ball', 'mirror'] },
+        { idx: 5, keys: ['laser', 'dual bank'] },
+        { idx: 6, keys: ['saber', 'multi-beam', 'beam'] },
+        { idx: 7, keys: ['tunnel', 'portal', 'infinite'] },
+        { idx: 8, keys: ['kaleidoscope', 'crystal'] },
+        { idx: 9, keys: ['equalizer', 'vertical bar', 'eq bar'] },
+        { idx: 10, keys: ['cosmic', 'nebula', 'galaxy'] },
+        { idx: 11, keys: ['strobe', 'lightning', 'thunder'] },
+        { idx: 12, keys: ['matrix', 'digital rain', 'code'] },
+        { idx: 13, keys: ['solar', 'flare', 'sun'] },
+        { idx: 14, keys: ['hyperspace', 'warp', 'starfield'] },
+        { idx: 15, keys: ['waveform ribbon', 'ribbon'] },
+        { idx: 16, keys: ['frequency field', 'freq'] },
+        { idx: 17, keys: ['aurora', 'borealis'] },
+        { idx: 18, keys: ['plasma', 'vortex'] },
+        { idx: 19, keys: ['cyber', 'city', 'cyberpunk'] },
+        { idx: 20, keys: ['quantum', 'string'] },
+        { idx: 21, keys: ['haunted', 'manor', 'spooky', 'halloween'] },
+        { idx: 22, keys: ['cinema', 'video', 'video cinema'] },
+        { idx: 23, keys: ['retro', 'cassette', 'tape'] }
+    ];
+    for (const item of keywords) {
+        if (item.keys.some(k => s.includes(k))) {
+            return item.idx;
+        }
+    }
+    return null;
+}
+
+// Initialize OBS Studio Detection & Telemetry Service
+const obsService = new OBSService();
+obsService.on('status', (obsStatus) => {
+    broadcast({
+        type: 'obs_status',
+        ...obsStatus
+    });
+});
+obsService.on('scene_change', (sceneName) => {
+    const matchedFX = matchVFXScene(sceneName);
+    if (matchedFX !== null) {
+        console.log(`[OBS Service] 🔄 OBS Scene "${sceneName}" mapped to VFX FX Index ${matchedFX}`);
+        lastActiveFX = matchedFX;
+        saveBridgeState();
+        globalSyncState.set('set_fx', { type: 'set_fx', fx: matchedFX, source: 'obs', sceneName });
+        broadcast({
+            type: 'set_fx',
+            fx: matchedFX,
+            source: 'obs',
+            sceneName
+        });
+    }
+});
+obsService.start();
+
+// Initialize BUTT Broadcast Tool Detection Service
+const buttService = new BUTTService();
+buttService.on('status', (buttStatus) => {
+    broadcast({
+        type: 'butt_status',
+        ...buttStatus
+    });
+});
+buttService.start();
+
+wss.on('connection', (ws, req) => {
     console.log('[WebSocket] Client connected to Universal Bridge (OBS / Browser Studio)');
+    const userAgent = (req && req.headers && req.headers['user-agent']) || '';
+    obsService.trackBrowserClient(ws, userAgent);
 
     // Send immediate initial status
     ws.send(JSON.stringify({
@@ -713,7 +821,9 @@ wss.on('connection', (ws) => {
         deviceCount: connectedDevices.size,
         device: connectedDevices.size > 0 ? Array.from(connectedDevices.values()).join(' • ') : 'Bridge Online (Ready for Denon, Pioneer & Traktor)',
         devices: Array.from(connectedDevices.entries()).map(([k, v]) => ({ ecosystem: k, name: v })),
-        activeEcosystem
+        activeEcosystem,
+        obs: obsService.getStatus(),
+        butt: buttService.getStatus()
     }));
 
     // Send immediate Philips Hue Status & Room List
@@ -722,7 +832,34 @@ wss.on('connection', (ws) => {
         ...hueService.getStatus()
     }));
 
-    const hasLiveDecks = Boolean(connectedDevices.size > 0 && isHardwareOnline);
+    // Send immediate OBS Studio Status
+    ws.send(JSON.stringify({
+        type: 'obs_status',
+        ...obsService.getStatus()
+    }));
+
+    // Send immediate BUTT Broadcast Tool Status
+    ws.send(JSON.stringify({
+        type: 'butt_status',
+        ...buttService.getStatus()
+    }));
+
+    // Send active scene and global parameters to connecting client immediately (OBS Browser Source / 2nd screen / popout)
+    if (lastActiveFX !== null && lastActiveFX !== undefined) {
+        ws.send(JSON.stringify({
+            type: 'set_fx',
+            fx: lastActiveFX
+        }));
+    }
+
+    // Replay full active state snapshot to the connecting client
+    globalSyncState.forEach((cachedMsg) => {
+        try {
+            ws.send(JSON.stringify(cachedMsg));
+        } catch (e) { }
+    });
+
+    const hasLiveDecks = Boolean((connectedDevices.size > 0 && isHardwareOnline) || lastTrackData || lastDeckWaveforms.size > 0);
 
     if (hasLiveDecks) {
         if (lastTrackData && (lastTrackData.title || lastTrackData.artist)) {
@@ -739,16 +876,11 @@ wss.on('connection', (ws) => {
                 isHardware: true
             }));
         }
-        if (lastActiveFX !== null && lastActiveFX !== undefined) {
-            ws.send(JSON.stringify({
-                type: 'set_fx',
-                fx: lastActiveFX
-            }));
-        }
 
         // Send 4-deck status snapshot
         ws.send(JSON.stringify({
             type: 'decks_snapshot',
+            isHardware: true,
             decks: Array.from(deckStatuses.values())
         }));
 
@@ -758,27 +890,25 @@ wss.on('connection', (ws) => {
                 ws.send(JSON.stringify(wfPacket));
             } catch (e) { }
         });
-
-        // Replay full active state snapshot to the connecting client
-        globalSyncState.forEach((cachedMsg) => {
-            try {
-                ws.send(JSON.stringify(cachedMsg));
-            } catch (e) { }
-        });
     } else {
-        // Send clean offline notification to new client so it never renders phantom waveforms
-        ws.send(JSON.stringify({
-            type: 'decks_offline',
-            isHardware: false,
-            deviceCount: 0,
-            message: 'No hardware decks connected'
-        }));
+        if (connectedDevices.size === 0 && !lastTrackData && lastDeckWaveforms.size === 0) {
+            // Send clean offline notification only if there truly are no hardware decks or cached data
+            ws.send(JSON.stringify({
+                type: 'decks_offline',
+                isHardware: false,
+                deviceCount: 0,
+                message: 'No hardware decks connected'
+            }));
+        }
     }
 
     // Handle Client Messages
     ws.on('message', async (raw) => {
         try {
             const msg = JSON.parse(raw);
+            if (msg.type?.includes('hue') || msg.type === 'set_hue_enabled') {
+                console.log(`[Bridge WS Debug] Received Hue message: type="${msg.type}", payload=`, JSON.stringify(msg));
+            }
             if (msg.type === 'set_ecosystem') {
                 activeEcosystem = msg.ecosystem || 'auto';
                 console.log(`[Bridge] 🎛️ Active DJ Ecosystem set to: ${activeEcosystem.toUpperCase()}`);
@@ -811,12 +941,47 @@ wss.on('connection', (ws) => {
                 });
             } else if (msg.type === 'hue_set_config') {
                 if (msg.config) {
-                    hueService.updateConfig(msg.config);
+                    const cfg = { ...msg.config };
+                    delete cfg.enabled; // Master power state is controlled only via explicit power toggle
+                    hueService.updateConfig(cfg);
                     broadcast({
                         type: 'hue_status',
                         ...hueService.getStatus()
                     });
                 }
+            } else if (msg.type === 'set_hue_enabled') {
+                hueService.updateConfig({ enabled: !!msg.enabled });
+                if (msg.enabled) {
+                    await hueService.turnOnLights(hueService.config.targetGroup || '3');
+                } else {
+                    await hueService.turnOffLights(hueService.config.targetGroup || '3');
+                }
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
+            } else if (msg.type === 'set_hue_room') {
+                if (msg.room) {
+                    hueService.updateConfig({ targetGroup: String(msg.room) });
+                    broadcast({
+                        type: 'hue_status',
+                        ...hueService.getStatus()
+                    });
+                }
+            } else if (msg.type === 'set_hue_mode') {
+                if (msg.mode) {
+                    hueService.updateConfig({ mode: msg.mode });
+                    broadcast({
+                        type: 'hue_status',
+                        ...hueService.getStatus()
+                    });
+                }
+            } else if (msg.type === 'set_hue_kick_strobe') {
+                hueService.updateConfig({ kickStrobeEnabled: !!msg.active, kickStrobe: !!msg.active });
+                broadcast({
+                    type: 'hue_status',
+                    ...hueService.getStatus()
+                });
             } else if (msg.type === 'hue_turn_off') {
                 await hueService.turnOffLights(msg.groupId);
                 hueService.updateConfig({ enabled: false });
@@ -841,12 +1006,24 @@ wss.on('connection', (ws) => {
                 if (msg.data) {
                     hueService.processAudioBeat(msg.data);
                 }
+            } else if (msg.type === 'get_obs_status') {
+                ws.send(JSON.stringify({
+                    type: 'obs_status',
+                    ...obsService.getStatus()
+                }));
+            } else if (msg.type === 'get_butt_status') {
+                ws.send(JSON.stringify({
+                    type: 'butt_status',
+                    ...buttService.getStatus()
+                }));
             }
             // Multi-Window & OBS Studio Real-Time Sync Relay
             else if (msg.type === 'audio_frame') {
                 relayToOthers(ws, msg);
             } else if (msg.type === 'set_fx') {
                 lastActiveFX = msg.fx;
+                saveBridgeState();
+                globalSyncState.set('set_fx', msg);
                 relayToOthers(ws, msg);
             } else if (msg.type === 'set_bpm') {
                 lastBpm = msg.bpm;
@@ -855,12 +1032,17 @@ wss.on('connection', (ws) => {
                 lastTrackData = msg;
                 relayToOthers(ws, msg);
             } else if (msg.type === 'request_state') {
-                if (lastTrackData) ws.send(JSON.stringify({ type: 'track', ...lastTrackData }));
-                if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm }));
+                if (lastTrackData) ws.send(JSON.stringify({ type: 'track', isHardware: true, ...lastTrackData }));
+                if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm, isHardware: true }));
                 if (lastActiveFX !== null && lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
+                ws.send(JSON.stringify({ type: 'decks_snapshot', isHardware: Boolean(connectedDevices.size > 0 || isHardwareOnline), decks: Array.from(deckStatuses.values()) }));
+                lastDeckWaveforms.forEach((wfPacket) => {
+                    try { ws.send(JSON.stringify(wfPacket)); } catch (e) { }
+                });
                 globalSyncState.forEach((cachedMsg) => {
                     try { ws.send(JSON.stringify(cachedMsg)); } catch (e) { }
                 });
+                relayToOthers(ws, msg);
             } else if (msg.type === 'sync_relay' && msg.payload) {
                 if (msg.payload.type?.startsWith('set_')) {
                     globalSyncState.set(msg.payload.type, msg.payload);
@@ -902,7 +1084,12 @@ async function startStageLinq() {
         stagelinqInstance = new StageLinqInstance({
             actingAs: ActingAsDevice?.NowPlaying || 'NowPlaying',
             downloadDbSources: true,
-            enableFileTranfer: true
+            enableFileTranfer: true,
+            networkTap: (packet) => {
+                if (packet && packet.direction === 'discovery' && packet.address && packet.address !== '127.0.0.1') {
+                    markHardwareActivity('Denon Prime');
+                }
+            }
         });
 
         // When StageLinQ transfers the m.db SQLite database from the USB inserted in the deck, index it immediately
@@ -1211,10 +1398,10 @@ async function startStageLinq() {
         });
 
         // Periodic hardware deck heartbeat (every 1.5s) to ensure continuous streaming lock
-        // Watchdog: If hardware decks stop streaming packets for >4.5s (e.g. powered down or unplugged), trigger offline reset
+        // Watchdog: If hardware decks stop streaming packets and stop announcing for >15s (powered down or unplugged), trigger offline reset
         setInterval(() => {
             const now = Date.now();
-            if (isHardwareOnline && lastHardwarePacketTimestamp > 0 && (now - lastHardwarePacketTimestamp > 4500)) {
+            if (isHardwareOnline && lastHardwarePacketTimestamp > 0 && (now - lastHardwarePacketTimestamp > 15000)) {
                 handleAllDecksOffline();
             } else if (connectedDevices.size > 0 || lastTrackData) {
                 broadcast({

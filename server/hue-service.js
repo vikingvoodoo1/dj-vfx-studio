@@ -91,9 +91,9 @@ export class PhilipsHueService {
             bridgeIp: null,
             username: null,
             clientkey: null,
-            enabled: false,
-            targetGroup: 'all', // group ID or 'all'
-            mode: 'scene_sync', // 'scene_sync', 'bass_flash', 'rainbow_cycle', 'strobe_only'
+            enabled: true,
+            targetGroup: '3', // Group 3: Study (10 lamps)
+            mode: 'screen_colors', // 'screen_colors' (default), 'scene_sync', 'bass_flash', 'rainbow_cycle', 'strobe_only'
             intensity: 1.0,     // 0.0 - 1.0
             minBrightness: 0.05, // minimum resting brightness (5% for high dynamic range)
             sceneColor: '#00ffff',
@@ -120,8 +120,16 @@ export class PhilipsHueService {
     async init() {
         await this.loadConfig();
         if (this.config.bridgeIp && this.config.username) {
-            console.log(`[Philips Hue] 💡 Loaded Hue config for Bridge @ ${this.config.bridgeIp}`);
+            this.config.enabled = true;
+            if (!this.config.targetGroup || this.config.targetGroup === 'all') {
+                this.config.targetGroup = '3';
+            }
+            await this.saveConfig().catch(() => {});
+            console.log(`[Philips Hue] 💡 Loaded Hue config for Bridge @ ${this.config.bridgeIp} (Target: Group ${this.config.targetGroup}, Enabled: true)`);
             const rooms = await this.fetchRooms();
+            if (this.config.enabled) {
+                this.turnOnLights(this.config.targetGroup).catch(() => {});
+            }
             if (!rooms || rooms.length === 0) {
                 console.log('[Philips Hue] ⚠️ Configured IP unreachable. Auto-discovering Hue Bridge on local LAN...');
                 const disc = await this.discoverBridge();
@@ -371,15 +379,9 @@ export class PhilipsHueService {
     }
 
     updateConfig(newConfig) {
-        const wasEnabled = this.config.enabled;
+        if (!newConfig || typeof newConfig !== 'object') return;
         this.config = { ...this.config, ...newConfig };
         this.saveConfig().catch(() => {});
-
-        if (newConfig.enabled === false && wasEnabled) {
-            this.turnOffLights(this.config.targetGroup).catch(() => {});
-        } else if (newConfig.enabled === true && !wasEnabled) {
-            this.turnOnLights(this.config.targetGroup).catch(() => {});
-        }
     }
 
     getStatus() {
@@ -467,6 +469,11 @@ export class PhilipsHueService {
             if (isWhitePop) {
                 flashXY = [0.3127, 0.3290]; // Pure Xenon White Strobe
                 flashBri = 254;
+            } else if (this.config.mode === 'screen_colors') {
+                // 'screen_colors': Dynamically matches physical room lights to exact colors on screen in real-time
+                const hexColor = sceneColor || '#ffaa00';
+                flashXY = hexToCIE(hexColor);
+                flashBri = maxBri;
             } else if (this.config.mode === 'bass_flash') {
                 // Saturated high-contrast club color flip on every kick
                 flashXY = BASS_FLASH_PALETTE[this.kickCount % BASS_FLASH_PALETTE.length];
@@ -555,9 +562,16 @@ export class PhilipsHueService {
                 signal: AbortSignal.timeout(1200)
             });
             if (body.xy) this.lastSentXY = `${body.xy[0].toFixed(3)},${body.xy[1].toFixed(3)}`;
-            if (body.bri !== undefined) this.lastSentBri = body.bri;
             if (isPriority) {
-                console.log(`[Philips Hue] 💥 Beat Flash #${this.kickCount} -> Group ${target} (bri: ${body.bri}, xy: [${body.xy ? body.xy.join(',') : ''}])`);
+                if (body.on === false) {
+                    console.log(`[Philips Hue] 🌑 Lights OFF dispatched -> Group ${target}`);
+                } else if (body.ct !== undefined) {
+                    console.log(`[Philips Hue] ☀️ Warm White reset dispatched -> Group ${target}`);
+                } else if (body.xy && body.xy.length === 2) {
+                    console.log(`[Philips Hue] 💥 Beat Flash #${this.kickCount} -> Group ${target} (bri: ${body.bri}, xy: [${body.xy.join(',')}])`);
+                } else {
+                    console.log(`[Philips Hue] 💡 Action dispatched -> Group ${target} (on: ${body.on}, bri: ${body.bri})`);
+                }
             }
         } catch (e) {
             console.error(`[Philips Hue] ⚠️ Action error on Group ${target}:`, e.message);

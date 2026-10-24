@@ -37,3 +37,4 @@ scratch/
 
 # Local hardware state & configuration
 server/hue-config.json
+server/bridge-state.json

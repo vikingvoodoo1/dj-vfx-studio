@@ -59,6 +59,12 @@
                 <span class="notch-clock-tz" id="notch-clock-tz">BST</span>
             </div>
 
+            <!-- DJ Session Recording Button in Notch (Defaults to Green Play REC READY; Pulsing Red-Orange Circle when active) -->
+            <button class="notch-record-btn ready" id="notch-btn-session-rec" type="button" title="DJ Session Tracker: Click to start recording tracklist & performance metrics">
+                <span class="notch-rec-icon" id="notch-rec-icon">▶</span>
+                <span class="notch-rec-label" id="notch-rec-label">REC READY</span>
+            </button>
+
             <!-- Live Audio Headroom Peak Mini VU Meter in Notch Pill -->
             <div class="notch-mini-vu" id="notch-pill-vu" title="Live Master Audio Peak Headroom VU">
                 <div class="notch-vu-bar" id="notch-vu-1"></div>
@@ -549,9 +555,10 @@
                         <span class="hud-label">AUDIO INPUT</span>
                         <span class="hud-val" id="audio-status"><span class="click-prompt">Click to Enable Audio</span></span>
                     </div>
-                    <div id="audio-device-fallback-banner" class="audio-fallback-banner" style="display:none;" title="Audio interface not detected. Line-in falling back to MacBook internal mic.">
+                    <div id="audio-device-fallback-banner" class="audio-fallback-banner" style="display:none; cursor:pointer;" title="Audio interface not detected. Click to open Audio Preferences or plug in your USB interface.">
                         <span>⚠️</span>
-                        <span style="flex:1;">Fallback: MacBook Built-in Mic (Audio interface not detected)</span>
+                        <span style="flex:1;">Fallback: Built-in Mic (Audio Interface Not Detected)</span>
+                        <span style="font-size:7.5px; font-weight:800; padding:2px 6px; border-radius:3px; background:rgba(255,170,0,0.25); border:1px solid rgba(255,170,0,0.6); color:#ffcc00;">⚙️ PREFS</span>
                     </div>
                     <select id="audio-device-select" class="hud-select" title="Select DJ Deck Sound Card / USB Audio / Line-In">
                         <option value="default">Default Audio Input</option>
@@ -637,6 +644,18 @@
                         <div style="background:#131418; border:1px solid #282a34; border-radius:4px; padding:3px 2px;">
                             <div style="font-size:7.5px; color:#8c909e; text-transform:uppercase;">HEADROOM</div>
                             <div id="vu-val-headroom" style="font-size:10.5px; font-weight:800; color:#10b981;">+11.4 dB</div>
+                        </div>
+                    </div>
+
+                    <!-- Line-In Calibration & Alignment Trim -->
+                    <div style="margin-top:5px; background:rgba(0,0,0,0.45); border:1px solid #23252e; border-radius:4px; padding:3px 6px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                        <span style="font-size:7.5px; font-family:'JetBrains Mono',monospace; color:#8c909e; text-transform:uppercase;">TRIM / ALIGN:</span>
+                        <div id="vu-trim-buttons" style="display:flex; gap:3px;">
+                            <button class="vu-trim-btn" data-trim="0" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#d8dbe2; font-size:7.5px; padding:2px 4px; border-radius:3px; cursor:pointer; font-family:'JetBrains Mono',monospace;">0 dB</button>
+                            <button class="vu-trim-btn" data-trim="-3" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#d8dbe2; font-size:7.5px; padding:2px 4px; border-radius:3px; cursor:pointer; font-family:'JetBrains Mono',monospace;" title="Matches OBS -2.9dB fader for exact alignment">-3 dB (OBS)</button>
+                            <button class="vu-trim-btn" data-trim="-6" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#d8dbe2; font-size:7.5px; padding:2px 4px; border-radius:3px; cursor:pointer; font-family:'JetBrains Mono',monospace;">-6 dB</button>
+                            <button class="vu-trim-btn" data-trim="-9" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#d8dbe2; font-size:7.5px; padding:2px 4px; border-radius:3px; cursor:pointer; font-family:'JetBrains Mono',monospace;" title="Matches BUTT MP3 web radio nominal -9dB level">-9 dB (BUTT)</button>
+                            <button class="vu-trim-btn" data-trim="-12" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:#d8dbe2; font-size:7.5px; padding:2px 4px; border-radius:3px; cursor:pointer; font-family:'JetBrains Mono',monospace;" title="High-output booth attenuation">-12 dB</button>
                         </div>
                     </div>
                 </div>
@@ -2340,6 +2359,10 @@
                         <span class="tab-led"></span>
                         <span>🎧 DECKS</span>
                     </button>
+                    <button class="setup-nav-tab" id="subtab-btn-session" data-setuptab="session" title="DJ Session Metrics, Chronological Tracklist & Handover Settings">
+                        <span class="tab-led"></span>
+                        <span>📜 SESSION LOG</span>
+                    </button>
                 </div>
 
                 <!-- SUB-DRAWER 0: MASTER SYSTEM CONSOLE & 2ND SCREEN -->
@@ -2389,7 +2412,7 @@
                                 <span id="setup-audio-mode-badge" class="hud-badge" style="border-color: #00ffcc; color: #00ffcc; font-size: 7.5px;">AUTO-INTERFACE</span>
                             </div>
                             <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Auto-prioritize connects to any external USB / Thunderbolt audio interface (Focusrite, Pioneer, Denon) immediately upon plug-in. If unplugged, sound safely defaults to MacBook internal mic.
+                                Auto-prioritizes and connects to your USB / Thunderbolt audio interface (Behringer UMC, Focusrite Scarlett, Pioneer, Denon) immediately upon plug-in. Remembers your preferred device name across disconnects.
                             </p>
                             <div style="display: flex; flex-direction: column; gap: 6px;">
                                 <select id="setup-preferred-audio-device" class="hud-select" style="width: 100%; font-size: 9.5px; padding: 5px 8px;">
@@ -2493,7 +2516,8 @@
                     <!-- Reaction Mode Selector -->
                     <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">LIGHTING REACTION MODE:</div>
                     <div class="mode-pills" id="hue-mode-pills" style="margin-bottom:6px; flex-wrap:wrap;">
-                        <button class="mode-pill active" data-hue-mode="scene_sync" title="Match room light colors to active visualizer theme">🪩 Scene Sync</button>
+                        <button class="mode-pill active" data-hue-mode="screen_colors" title="Dynamically match room lights to the exact colors on screen in real-time (Default)">🖥️ Screen Colors</button>
+                        <button class="mode-pill" data-hue-mode="scene_sync" title="Harmonic scene palette cycle on every beat">🪩 Scene Sync</button>
                         <button class="mode-pill" data-hue-mode="bass_flash" title="Deep club mood with saturated drop flash">⚡ Bass Drop</button>
                         <button class="mode-pill" data-hue-mode="rainbow_cycle" title="Chromatic rainbow sweep timed to BPM">🌈 Rainbow</button>
                         <button class="mode-pill" data-hue-mode="strobe_only" title="Strobes on breakdown drops & spacebar">🚨 Strobe</button>
@@ -2577,6 +2601,102 @@
                             <div style="font-size:8px; font-weight:800; color:#8c909e; font-family:'JetBrains Mono',monospace;">DECK 4 (D)</div>
                             <div class="deck-bpm" id="deck-bpm-4" style="font-size:10px; font-weight:800; color:#8c909e; margin:1px 0;">---</div>
                             <div class="deck-status-tag" id="deck-state-4" style="font-size:7px; color:#8c909e;">STANDBY</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-DRAWER 4: DJ SESSION METRICS & TRACK HISTORY LOG -->
+                <div id="setup-content-session" class="setup-subcontent" style="display:none;">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <!-- Session Control Card & KPI Banner -->
+                        <div style="background: linear-gradient(135deg, rgba(255, 68, 0, 0.12) 0%, rgba(20, 22, 30, 0.95) 100%); border: 1px solid rgba(255, 100, 30, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:15px;">📜</span>
+                                    <div>
+                                        <div style="font-size:11px; font-weight:800; color:#ffffff; letter-spacing:0.4px;">DJ SESSION METRICS & TRACK LOG</div>
+                                        <div style="font-size:8px; color:#ff8844;">Real-time tracklist history, transitions, and audio headroom tracking</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <button class="notch-record-btn ready" id="btn-session-toggle-rec" type="button" style="font-size:9.5px; padding:4px 10px;">
+                                        <span class="notch-rec-icon" id="session-rec-icon">▶</span>
+                                        <span class="notch-rec-label" id="session-rec-label">REC READY</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Live Session KPIs -->
+                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:8px;">
+                                <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:6px 8px; text-align:center;">
+                                    <div style="font-size:7.5px; color:#8c909e; font-weight:700; text-transform:uppercase;">Duration</div>
+                                    <div id="session-kpi-duration" style="font-size:12px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace;">00:00</div>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:6px 8px; text-align:center;">
+                                    <div style="font-size:7.5px; color:#8c909e; font-weight:700; text-transform:uppercase;">Tracks Played</div>
+                                    <div id="session-kpi-tracks" style="font-size:12px; font-weight:800; color:#ffaa00; font-family:'JetBrains Mono',monospace;">0</div>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:6px 8px; text-align:center;">
+                                    <div style="font-size:7.5px; color:#8c909e; font-weight:700; text-transform:uppercase;">Set Avg BPM</div>
+                                    <div id="session-kpi-avgbpm" style="font-size:12px; font-weight:800; color:#00ff88; font-family:'JetBrains Mono',monospace;">--.-</div>
+                                </div>
+                                <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:6px 8px; text-align:center;">
+                                    <div style="font-size:7.5px; color:#8c909e; font-weight:700; text-transform:uppercase;">Handovers</div>
+                                    <div id="session-kpi-handovers" style="font-size:12px; font-weight:800; color:#bb88ff; font-family:'JetBrains Mono',monospace;">0</div>
+                                </div>
+                            </div>
+
+                            <!-- Fader Handover Tolerance Slider -->
+                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:4px; padding:6px 8px; margin-bottom:8px;">
+                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+                                    <span style="font-size:9px; font-weight:700; color:#e0e4ee;">🎚️ HELLFIRE FADER HANDOVER TOLERANCE</span>
+                                    <span id="label-handover-tolerance-val" style="font-size:9px; font-weight:800; color:#ffaa00; font-family:'JetBrains Mono',monospace;">85% (Fader Threshold)</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:8px;">
+                                    <span style="font-size:8px; color:#8c909e;">50%</span>
+                                    <input type="range" id="slider-handover-tolerance" min="50" max="95" value="85" step="1" style="flex:1; cursor:pointer; accent-color:#ffaa00;">
+                                    <span style="font-size:8px; color:#8c909e;">95%</span>
+                                </div>
+                                <div style="font-size:7.5px; color:#8c909e; margin-top:3px;">
+                                    The incoming deck channel fader must reach this level before the top track waveform handover switches over.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Scrollable Tracklist Box -->
+                        <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:11px;">📋</span>
+                                    <span style="font-size:9.5px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST & TIMESTAMPS</span>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:3px 7px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
+                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:3px 7px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR HISTORY</button>
+                                </div>
+                            </div>
+
+                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:4px;">
+                                <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
+                                    No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Timestamped Events Log Box -->
+                        <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:11px;">⏱️</span>
+                                    <span style="font-size:9.5px; font-weight:800; color:#bb88ff; letter-spacing:0.3px;">SESSION EVENT LOG & TRANSITIONS</span>
+                                </div>
+                                <span class="hud-badge" id="session-events-count-badge" style="font-size:7.5px;">0 EVENTS</span>
+                            </div>
+                            <div id="session-events-container" class="session-scroll-box" style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; padding-right:4px; font-family:'JetBrains Mono',monospace; font-size:8px;">
+                                <div style="padding:10px; text-align:center; color:#6c7080; font-size:8px; font-style:italic;">
+                                    Awaiting session start...
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
