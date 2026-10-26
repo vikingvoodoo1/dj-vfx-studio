@@ -82,7 +82,7 @@ export function setupStageLinqClient({
                             if (onCrossfader) onCrossfader(data.value, data);
                             break;
                         case 'decks_snapshot':
-                            if (onDecksSnapshot) onDecksSnapshot(data.decks);
+                            if (onDecksSnapshot) onDecksSnapshot(data.decks, data);
                             break;
                         case 'ecosystem_changed':
                             if (onEcosystemChange) onEcosystemChange(data.ecosystem);

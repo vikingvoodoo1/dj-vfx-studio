@@ -11,6 +11,7 @@ export async function setupAudio(onDeviceListChange) {
     let currentSource = null;
     let currentSplitter = null;
     let currentMerger = null;
+    let currentDrainNode = null;
     let currentDeviceId = 'default';
     let currentDeviceLabel = 'Default Audio Input';
 
@@ -129,6 +130,22 @@ export async function setupAudio(onDeviceListChange) {
             currentMerger = null;
         }
 
+        if (analyserL) {
+            try { analyserL.disconnect(); } catch (e) {}
+        }
+        if (analyserR) {
+            try { analyserR.disconnect(); } catch (e) {}
+        }
+
+        if (deviceId === 'deck-live') {
+            isConnecting = false;
+            isConnected = false;
+            currentDeviceId = 'deck-live';
+            currentDeviceLabel = 'StageLinQ Telemetry (Hardware Direct)';
+            console.log('[Audio Engine] 🎛️ Switched to StageLinQ Telemetry (Microphone/Line-In Disconnected)');
+            return { success: true };
+        }
+
         let stream = null;
         let lastError = null;
 
@@ -209,7 +226,7 @@ export async function setupAudio(onDeviceListChange) {
                     console.warn('[Audio Engine] Track muted by OS, attempting resume...');
                     setTimeout(() => {
                         if (audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
-                            audioCtx.resume();
+                            audioCtx.resume().catch(() => {});
                         }
                     }, 300);
                 };
@@ -233,6 +250,29 @@ export async function setupAudio(onDeviceListChange) {
             currentSplitter.connect(currentMerger, 0, 0);
             currentSplitter.connect(currentMerger, Math.min(1, chCount - 1), 1);
             currentMerger.connect(analyser);
+
+            // Inaudible drain node connected to destination: ensures hardware DAC/clock pulls and drains
+            // incoming MediaStream PCM audio packets from CoreAudio, preventing Chromium's internal
+            // AudioFIFO from accumulating gigabytes of uncompressed audio in native RAM.
+            // NOTE: Gain must be non-zero (0.000001 = -120 dB) because Chromium's WebAudio engine
+            // applies a silence-propagation optimization when gain == 0.0 that completely skips Pull() calls!
+            if (!currentDrainNode) {
+                currentDrainNode = audioCtx.createGain();
+                currentDrainNode.gain.value = 0.000001;
+                currentDrainNode.connect(audioCtx.destination);
+            }
+            try { currentSource.disconnect(currentDrainNode); } catch (e) {}
+            currentSource.connect(currentDrainNode);
+            try { analyser.disconnect(currentDrainNode); } catch (e) {}
+            analyser.connect(currentDrainNode);
+            if (analyserL) {
+                try { analyserL.disconnect(currentDrainNode); } catch (e) {}
+                analyserL.connect(currentDrainNode);
+            }
+            if (analyserR) {
+                try { analyserR.disconnect(currentDrainNode); } catch (e) {}
+                analyserR.connect(currentDrainNode);
+            }
 
             if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 await audioCtx.resume();
@@ -366,6 +406,24 @@ export async function setupAudio(onDeviceListChange) {
             currentSplitter.connect(currentMerger, Math.min(1, chCount - 1), 1);
             currentMerger.connect(analyser);
 
+            if (!currentDrainNode) {
+                currentDrainNode = audioCtx.createGain();
+                currentDrainNode.gain.value = 0.000001;
+                currentDrainNode.connect(audioCtx.destination);
+            }
+            try { currentSource.disconnect(currentDrainNode); } catch (e) {}
+            currentSource.connect(currentDrainNode);
+            try { analyser.disconnect(currentDrainNode); } catch (e) {}
+            analyser.connect(currentDrainNode);
+            if (analyserL) {
+                try { analyserL.disconnect(currentDrainNode); } catch (e) {}
+                analyserL.connect(currentDrainNode);
+            }
+            if (analyserR) {
+                try { analyserR.disconnect(currentDrainNode); } catch (e) {}
+                analyserR.connect(currentDrainNode);
+            }
+
             if (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted') {
                 await audioCtx.resume();
             }
@@ -452,10 +510,6 @@ export async function setupAudio(onDeviceListChange) {
 
         getAudioData: () => {
             const now = performance.now();
-
-            if (isConnected && audioCtx && (audioCtx.state === 'suspended' || audioCtx.state === 'interrupted')) {
-                audioCtx.resume().catch(() => {});
-            }
 
             if (isConnected && analyser) {
                 analyser.getByteFrequencyData(dataArray);

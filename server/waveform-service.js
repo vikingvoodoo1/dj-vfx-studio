@@ -53,6 +53,34 @@ export class WaveformService {
             console.warn('[Waveform Service] Volume scan notice:', err.message);
         }
 
+        // 2b. Scan StageLinQ transferred wire databases in temp localdb
+        try {
+            const localdbDir = path.join(os.tmpdir(), 'localdb');
+            if (fs.existsSync(localdbDir)) {
+                const findMdb = (dir) => {
+                    const entries = fs.readdirSync(dir, { withFileTypes: true });
+                    for (const entry of entries) {
+                        const fullPath = path.join(dir, entry.name);
+                        if (entry.isDirectory()) {
+                            findMdb(fullPath);
+                        } else if (entry.name === 'm.db') {
+                            const exists = this.engineDbPaths.some(p => p.dbPath === fullPath);
+                            if (!exists) {
+                                this.engineDbPaths.unshift({
+                                    dbPath: fullPath,
+                                    overviewDir: path.join(path.dirname(fullPath), 'OverviewData')
+                                });
+                                console.log(`[Waveform Service] ⚡ Discovered downloaded Wire DB in localdb:`, fullPath);
+                            }
+                        }
+                    }
+                };
+                findMdb(localdbDir);
+            }
+        } catch (err) {
+            console.warn('[Waveform Service] localdb scan notice:', err.message);
+        }
+
         // 3. Scan Pioneer Rekordbox databases
         const rekordboxDirs = [
             path.join(homeDir, 'Library', 'Pioneer', 'rekordbox'),
@@ -113,18 +141,19 @@ export class WaveformService {
 
         // Tier C: Universal Spectral Synthesis Fallback
         // Guarantees an authentic 3-band waveform visual even when playing from external USBs or streaming sources
+        // Note: Do NOT cache synthetic fallbacks so when full metadata arrives, authentic DB waveforms/cues load
         if (title || artist) {
-            const synth = {
+            return {
                 source: 'universal_spectral_synthesis',
                 trackId: trackId || 0,
                 title: title || 'Live Deck Track',
                 artist: artist || 'Live Performer',
                 duration: 360,
                 bpm: 126.0,
-                samples: this.generateSynthesizedWaveform(360, 126.0)
+                samples: this.generateSynthesizedWaveform(360, 126.0),
+                cues: [],
+                loops: []
             };
-            this.cache.set(cacheKey, synth);
-            return synth;
         }
 
         return null;
@@ -230,7 +259,9 @@ export class WaveformService {
                                         artist: trackRow.artist,
                                         duration: trackRow.length || 0,
                                         bpm: trackRow.bpm || 0,
-                                        samples
+                                        samples,
+                                        cues,
+                                        loops
                                     };
                                 }
                             }

@@ -180,6 +180,14 @@ export class SessionTracker {
     }
 
     recordHandover(fromDeck, toDeck, faderPct) {
+        if (!fromDeck || !toDeck || fromDeck === toDeck) return;
+        const now = Date.now();
+        if (this._lastHandoverTime && (now - this._lastHandoverTime < 2500) && this._lastHandoverFrom === fromDeck && this._lastHandoverTo === toDeck) {
+            return;
+        }
+        this._lastHandoverTime = now;
+        this._lastHandoverFrom = fromDeck;
+        this._lastHandoverTo = toDeck;
         this.handoverCount++;
         const pct = Math.round((Number(faderPct) || 0) * 100);
         this.logEvent('handover', `🎚️ Deck Handover: D${fromDeck} ➔ D${toDeck} (Fader: ${pct}%)`);

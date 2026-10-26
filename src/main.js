@@ -7055,12 +7055,16 @@ async function init() {
                     if (btnHueKickStrobe) btnHueKickStrobe.classList.toggle('active', isHueKickStrobeActive);
                 }
                 if (stagelinqClient && stagelinqClient.setHueConfig && isSceneCustomized) {
-                    stagelinqClient.setHueConfig({
-                        mode: hueCurrentMode,
-                        intensity: hueCurrentIntensity,
-                        minBrightness: hueCurrentMinBri,
-                        kickStrobe: isHueKickStrobeActive
-                    });
+                    const newHueSig = `${hueCurrentMode}_${hueCurrentIntensity}_${hueCurrentMinBri}_${isHueKickStrobeActive}`;
+                    if (window._lastSentHueSig !== newHueSig) {
+                        window._lastSentHueSig = newHueSig;
+                        stagelinqClient.setHueConfig({
+                            mode: hueCurrentMode,
+                            intensity: hueCurrentIntensity,
+                            minBrightness: hueCurrentMinBri,
+                            kickStrobe: isHueKickStrobeActive
+                        });
+                    }
                 }
             }
         } catch (err) {
@@ -7631,17 +7635,31 @@ async function init() {
 
         const start = performance.now();
         try {
-            await fetch('/manifest.json?_ping=' + Date.now(), { method: 'HEAD', cache: 'no-store' });
-            const rtt = Math.max(1, Math.round(performance.now() - start));
-            networkPingMs = rtt;
-            if (rtt < 60) networkPingState = 'green';
-            else if (rtt < 220) networkPingState = 'amber';
-            else networkPingState = 'red';
+            const pingRes = await fetch('http://localhost:8080/api/ping?_t=' + Date.now(), { 
+                method: 'GET', 
+                cache: 'no-store',
+                signal: AbortSignal.timeout(1200)
+            });
+            if (pingRes.ok) {
+                const rtt = Math.max(1, Math.round(performance.now() - start));
+                networkPingMs = rtt;
+                if (rtt < 30) networkPingState = 'green';
+                else if (rtt < 100) networkPingState = 'amber';
+                else networkPingState = 'red';
+            }
         } catch (e) {
-            if (typeof navigator !== 'undefined' && !navigator.onLine) {
-                networkPingState = 'red';
-            } else {
-                networkPingState = 'amber';
+            try {
+                const fbStart = performance.now();
+                await fetch('/?_ping=' + Date.now(), { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(1200) });
+                const rtt = Math.max(1, Math.round(performance.now() - fbStart));
+                networkPingMs = rtt;
+                networkPingState = rtt < 60 ? 'green' : (rtt < 220 ? 'amber' : 'red');
+            } catch (fbErr) {
+                if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                    networkPingState = 'red';
+                } else {
+                    networkPingState = 'amber';
+                }
             }
         }
 
@@ -9401,6 +9419,13 @@ async function init() {
 
     setPhraseDisplayMode(activePhraseDisplayMode);
 
+    const _lastBarUIRendered = {
+        deck: null,
+        beatInt: null,
+        bar: null,
+        loopActive: null
+    };
+
     function updateDenonStageBarUI(telemetry) {
         if (!telemetry || telemetry.beat === undefined) return;
 
@@ -9411,13 +9436,27 @@ async function init() {
         const beat = Number(telemetry.beat);
         const totalBeats = Number(telemetry.totalBeats) || 776;
         const currentBeatInt = Math.floor(beat);
+        const currentBar = Math.floor(beat / 4) + 1;
+        const totalBars = Math.floor(totalBeats / 4);
+        const isLoop = !!(telemetry.loopActive && telemetry.loopEnd > telemetry.loopStart);
+
+        // Skip heavy DOM updates if beat, bar, and loop state have not changed (reduces DOM thrashing by 95%)
+        if (targetDeck === _lastBarUIRendered.deck &&
+            currentBeatInt === _lastBarUIRendered.beatInt &&
+            currentBar === _lastBarUIRendered.bar &&
+            isLoop === _lastBarUIRendered.loopActive) {
+            return;
+        }
+
+        _lastBarUIRendered.deck = targetDeck;
+        _lastBarUIRendered.beatInt = currentBeatInt;
+        _lastBarUIRendered.bar = currentBar;
+        _lastBarUIRendered.loopActive = isLoop;
+
         const beatInBar = ((currentBeatInt % 4) + 4) % 4 + 1;
         currentBeatInBar = beatInBar;
 
         triggerBeatPulseVisuals(beatInBar);
-
-        const currentBar = Math.floor(beat / 4) + 1;
-        const totalBars = Math.floor(totalBeats / 4);
 
         if (telemetry.loopActive && telemetry.loopEnd > telemetry.loopStart) {
             const startBeat = Math.round(telemetry.loopStart * totalBeats);
@@ -9891,21 +9930,23 @@ async function init() {
         },
         onDeckWaveform: (waveformPacket) => {
             if (!waveformPacket) return;
-            if (waveformPacket.isHardware) isHardwareConnected = true;
-            if (!isHardwareConnected) return;
+            if (waveformPacket.isHardware || waveformPacket.source?.startsWith('denon')) isHardwareConnected = true;
             console.log(`[Universal Bridge] 🌊 Received pre-analyzed 3-band waveform for [Deck ${waveformPacket.deck || 1}]: "${waveformPacket.title}" (${waveformPacket.source})`);
             cachedDeckWaveforms.set(waveformPacket.deck || 1, waveformPacket);
             if (vfx.setDeckWaveform) {
                 vfx.setDeckWaveform(waveformPacket);
             }
-            if (waveformPacket.cues || waveformPacket.loops) {
-                if (vfx.setDeckData) {
-                    vfx.setDeckData({
-                        deck: waveformPacket.deck || 1,
-                        cues: waveformPacket.cues,
-                        loops: waveformPacket.loops
-                    });
-                }
+            if (vfx.setDeckData) {
+                vfx.setDeckData({
+                    deck: waveformPacket.deck || 1,
+                    title: waveformPacket.title,
+                    artist: waveformPacket.artist,
+                    bpm: waveformPacket.bpm,
+                    duration: waveformPacket.duration,
+                    samples: waveformPacket.samples,
+                    cues: waveformPacket.cues || [],
+                    loops: waveformPacket.loops || []
+                });
             }
         },
         onDeckTelemetry: (telemetry) => {
@@ -9922,11 +9963,11 @@ async function init() {
             // Automatically switch on-air track banner and titles when transitioning decks on mixer or playback
             const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : targetDeck;
             if (pDeck !== lastDisplayedTrackDeck) {
-                if (sessionTracker && lastDisplayedTrackDeck) {
-                    sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, telemetry.fader ?? 0.85);
-                }
                 const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                 if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                    if (sessionTracker && lastDisplayedTrackDeck) {
+                        sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, telemetry.fader ?? 0.85);
+                    }
                     lastDisplayedTrackDeck = pDeck;
                     if (trackTitle) trackTitle.textContent = deckInfo.title;
                     if (trackArtist) trackArtist.textContent = `${deckInfo.artist || 'LIVE'} • Deck ${pDeck}`;
@@ -9961,11 +10002,11 @@ async function init() {
             if (vfx.setCrossfader) vfx.setCrossfader(xfVal);
             const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
             if (pDeck !== lastDisplayedTrackDeck) {
-                if (sessionTracker && lastDisplayedTrackDeck) {
-                    sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, xfVal);
-                }
                 const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                 if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
+                    if (sessionTracker && lastDisplayedTrackDeck) {
+                        sessionTracker.recordHandover(lastDisplayedTrackDeck, pDeck, xfVal);
+                    }
                     lastDisplayedTrackDeck = pDeck;
                     if (trackTitle) trackTitle.textContent = deckInfo.title;
                     if (trackArtist) trackArtist.textContent = `${deckInfo.artist || 'LIVE'} • Deck ${pDeck}`;
@@ -9984,12 +10025,16 @@ async function init() {
                 }
             }
         },
-        onDecksSnapshot: (decks) => {
+        onDecksSnapshot: (decks, packet = {}) => {
             if (Array.isArray(decks) && decks.length > 0) {
-                if (decks.some(d => d.isHardware)) isHardwareConnected = true;
-                const hasActivePlaying = decks.some(d => d.play && d.isHardware);
+                const isHw = Boolean(packet.isHardware || decks.some(d => d.isHardware));
+                if (isHw) {
+                    isHardwareConnected = true;
+                    notifyHardwareDeckPacket('DENON STAGELINQ');
+                }
+                const hasActivePlaying = decks.some(d => d.play && (d.isHardware || isHw));
                 if (hasActivePlaying) {
-                    const activeDeck = decks.find(d => d.play && d.isHardware);
+                    const activeDeck = decks.find(d => d.play && (d.isHardware || isHw));
                     const eco = activeDeck?.ecosystem ? activeDeck.ecosystem.toUpperCase() : 'DENON STAGELINQ';
                     notifyHardwareDeckPacket(eco);
                 }
@@ -9997,8 +10042,8 @@ async function init() {
                     const idx = (parseInt(deckData.deck, 10) || 1) - 1;
                     if (deckCards[idx]) {
                         if (deckCards[idx].bpm && deckData.bpm) deckCards[idx].bpm.textContent = Number(deckData.bpm).toFixed(1);
-                        if (deckCards[idx].state) deckCards[idx].state.textContent = deckData.play ? '● ACTIVE' : 'STANDBY';
-                        if (deckData.play) {
+                        if (deckCards[idx].state) deckCards[idx].state.textContent = deckData.play ? '● ACTIVE' : (deckData.title ? 'PAUSED' : 'STANDBY');
+                        if (deckData.play || deckData.title) {
                             const deckCol = (idx === 1) ? '#ff4d2e' : '#ffaa00';
                             const deckBg = (idx === 1) ? 'rgba(255, 77, 46, 0.22)' : 'rgba(255, 170, 0, 0.22)';
                             deckCards[idx].card.style.borderColor = deckCol;
@@ -10008,8 +10053,22 @@ async function init() {
                     if (vfx.setDeckData) vfx.setDeckData(deckData);
                 });
 
-                // Check if on-air deck changed after snapshot processing
+                // Restore primary deck track info if loaded
                 const pDeck = vfx.getPrimaryDeck ? vfx.getPrimaryDeck() : 1;
+                const primaryDeckData = decks.find(d => (parseInt(d.deck, 10) || 1) === pDeck) || decks[0];
+                if (primaryDeckData && primaryDeckData.title && primaryDeckData.title !== '—' && primaryDeckData.title !== 'No Track Loaded') {
+                    if (trackTitle && trackTitle.textContent !== primaryDeckData.title) {
+                        trackTitle.textContent = primaryDeckData.title.toUpperCase();
+                    }
+                    if (trackArtist && primaryDeckData.artist && trackArtist.textContent !== primaryDeckData.artist) {
+                        trackArtist.textContent = primaryDeckData.artist;
+                    }
+                    if (bpmVal && primaryDeckData.bpm) {
+                        bpmVal.textContent = Number(primaryDeckData.bpm).toFixed(1);
+                    }
+                }
+
+                // Check if on-air deck changed after snapshot processing
                 if (pDeck !== lastDisplayedTrackDeck) {
                     const deckInfo = vfx.getDeckData ? vfx.getDeckData(pDeck) : (cachedDeckWaveforms.get(pDeck) || null);
                     if (deckInfo && deckInfo.title && deckInfo.title !== 'No Track Loaded' && deckInfo.title !== '—') {
@@ -10033,7 +10092,11 @@ async function init() {
         },
         onStatusChange: (status) => {
             const devCount = Number(status.deviceCount) || 0;
-            isHardwareConnected = Boolean((status.connected && devCount > 0) || isHardwareDeckStreaming);
+            const isHw = Boolean(status.isHardware || devCount > 0 || isHardwareDeckStreaming);
+            if (isHw) {
+                isHardwareConnected = true;
+                notifyHardwareDeckPacket(status.ecosystem ? status.ecosystem.toUpperCase() : 'DENON STAGELINQ');
+            }
             if (status.connected) {
                 if (!isOBSMode && !isCleanDisplay) {
                     const curFX = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 3;
@@ -10042,25 +10105,26 @@ async function init() {
                 if (djHardwareStatusText) {
                     djHardwareStatusText.textContent = (devCount > 0 && status.device)
                         ? status.device.toUpperCase()
-                        : 'BRIDGE READY (SCANNING FOR HARDWARE DECKS)';
+                        : (isHw ? 'DENON PRIME 4 (CONNECTED)' : 'BRIDGE READY (SCANNING FOR HARDWARE DECKS)');
                 }
                 if (djHardwareLed) {
-                    djHardwareLed.style.background = devCount > 0 ? '#00ff88' : '#ffaa00';
-                    djHardwareLed.style.boxShadow = devCount > 0 ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
+                    djHardwareLed.style.background = (devCount > 0 || isHw) ? '#00ff88' : '#ffaa00';
+                    djHardwareLed.style.boxShadow = (devCount > 0 || isHw) ? '0 0 8px #00ff88' : '0 0 6px #ffaa00';
                 }
                 if (phraseSyncSource) {
                     if (isHardwareDeckStreaming && lastHardwareSource) {
                         phraseSyncSource.textContent = `SOURCE: ${lastHardwareSource} (LIVE HARDWARE)`;
                         phraseSyncSource.style.color = '#00ffcc';
                         phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
+                    } else if (isHw) {
+                        phraseSyncSource.textContent = 'SOURCE: DENON STAGELINQ (LIVE HARDWARE)';
+                        phraseSyncSource.style.color = '#00ffcc';
+                        phraseSyncSource.style.borderColor = 'rgba(0, 255, 204, 0.45)';
                     } else {
                         phraseSyncSource.textContent = 'SOURCE: AUDIO SAMPLED';
                         phraseSyncSource.style.color = '#00ff88';
-                        phraseSyncSource.style.borderColor = 'rgba(0, 255, 136, 0.45)';
-                        phraseSyncSource.title = 'BPM analyzed from live line-in audio input';
                     }
                 }
-                broadcastSync({ type: 'request_state' });
             } else {
                 isHardwareConnected = false;
                 if (djHardwareStatusText) djHardwareStatusText.textContent = 'BRIDGE OFFLINE (AUDIO FALLBACK)';
@@ -10585,27 +10649,34 @@ async function init() {
         if (audioProcessor && audioProcessor.isConnected()) {
             audioDevInfo = audioProcessor.getCurrentDevice();
             realAudio = audioProcessor.getAudioData();
-            if (realAudio && (realAudio.overall > 0.005 || realAudio.bass > 0.005 || (realAudio.peakDb !== undefined && realAudio.peakDb > -58.0))) {
+            // A genuine music acoustic signal has peakDb > -44.0 dBFS, or bass > 0.04 with overall > 0.02.
+            // Ambient room noise floor / microphone hum is typically -58 to -55 dBFS and must NEVER block StageLinQ!
+            const isDeckLiveSelected = currentSelectedDeviceId === 'deck-live';
+            if (!isDeckLiveSelected && realAudio && (
+                (realAudio.peakDb !== undefined && realAudio.peakDb > -44.0) ||
+                (realAudio.bass > 0.04 && realAudio.overall > 0.02)
+            )) {
                 isRealAudioActive = true;
             }
         }
 
-        // 1. If physical audio input is active, prioritize REAL AUDIO for acoustic reactivity
+        // 1. If physical audio input is genuinely producing sound (music), prioritize it
         if (isRealAudioActive && realAudio) {
             data = realAudio;
             data.sourceType = 'audio_interface';
             data.sourceLabel = (audioDevInfo && audioDevInfo.label) ? audioDevInfo.label : 'Audio Interface';
         }
-        // 2. Fall back to Deck Wire Live Audio if deck-live is selected (or hardware is streaming)
-        else if ((currentSelectedDeviceId === 'deck-live' || isHardwareDeckStreaming) && vfx.getLiveDeckAudioData) {
-            data = vfx.getLiveDeckAudioData();
-            if (data) {
+        // 2. Fall back to Deck Wire Live Audio if physical audio is quiet/silent or if hardware is streaming
+        else if (vfx.getLiveDeckAudioData) {
+            const deckAudio = vfx.getLiveDeckAudioData();
+            if (deckAudio) {
+                data = deckAudio;
                 data.sourceType = 'deck_metrics';
-                data.sourceLabel = 'StageLinQ Telemetry';
+                data.sourceLabel = lastHardwareSource ? `${lastHardwareSource} (LIVE TELEMETRY)` : 'StageLinQ Telemetry';
             }
         }
-        // 3. Or use connected physical audio even if currently silent/quiet
-        else if (realAudio) {
+        // 3. Or use connected physical audio even if currently quiet
+        if (!data && realAudio) {
             data = realAudio;
             data.sourceType = 'audio_interface';
             data.sourceLabel = (audioDevInfo && audioDevInfo.label) ? audioDevInfo.label : 'Audio Interface';
@@ -10629,11 +10700,13 @@ async function init() {
             }
         }
 
-        // Relay live audio frame over BroadcastChannel & WebSocket to OBS / 2nd Screen (~50 FPS)
-        if (!isCleanDisplay && data && (now - lastAudioBroadcastTime >= 18)) {
+        // Relay live audio frame over BroadcastChannel & WebSocket to OBS / 2nd Screen (~20 FPS)
+        // Guarded: only broadcast when an external window/client is listening, eliminating ~30 IPC calls/sec when idle
+        const hasExternalListeners = isOBSDetected || isOBSMode || isOBSOverlayActive || (window._hasRemoteAudioSubscribers === true);
+        if (!isCleanDisplay && data && hasExternalListeners && (now - lastAudioBroadcastTime >= 50)) {
             lastAudioBroadcastTime = now;
             const bins = (data.dataArray && data.dataArray.length > 0)
-                ? Array.from(data.dataArray.slice(0, 64))
+                ? Array.from(data.dataArray.slice(0, 32))
                 : [];
             broadcastSync({
                 type: 'audio_frame',
@@ -10678,11 +10751,11 @@ async function init() {
         }
 
         // Render Real-Time Multi-Band Particle Spectrum EQ across all frequency bands
-        if (particleEqCanvas && particleEqCtx) {
+        if (!isCleanDisplay && particleEqCanvas && particleEqCtx) {
             renderParticleSpectrumEQ(particleEqCtx, particleEqCanvas.width, particleEqCanvas.height, data);
         }
 
-        if (eqEnergyBadge) {
+        if (!isCleanDisplay && eqEnergyBadge) {
             const isAudioActive = (data.bass > 0.04 || (data.smoothedMid || data.mid || 0) > 0.04 || (data.smoothedTreble || data.treble || 0) > 0.04 || (data.overall || 0) > 0.03);
             if (!isAudioActive) {
                 eqEnergyBadge.textContent = 'STANDBY';
@@ -10708,47 +10781,45 @@ async function init() {
         }
 
         // High-Precision Line-In VU & Loudness Meter Updates
-        if (vuPeakFill && data.vuPercent !== undefined) {
-            vuPeakFill.style.width = `${data.vuPercent}%`;
-        }
-        if (vuRmsFill && data.vuRmsPercent !== undefined) {
-            vuRmsFill.style.width = `${data.vuRmsPercent}%`;
-        }
-        if (vuPeakHoldNeedle && data.vuPeakHoldPercent !== undefined) {
-            vuPeakHoldNeedle.style.left = `calc(${Math.min(99, data.vuPeakHoldPercent)}% - 1px)`;
-        }
-
-        if (vuValPeak && data.peakDb !== undefined) {
-            vuValPeak.textContent = `${data.peakDb.toFixed(1)} dBFS`;
-            if (data.peakDb > -0.5) {
-                vuValPeak.style.color = '#ff0055';
-            } else if (data.peakDb > -3.0) {
-                vuValPeak.style.color = '#ffaa00';
-            } else {
-                vuValPeak.style.color = '#00ffcc';
+        if (!isCleanDisplay && vuPeakFill) {
+            if (data.vuPercent !== undefined) {
+                vuPeakFill.style.width = `${data.vuPercent}%`;
             }
-        }
+            if (vuRmsFill && data.vuRmsPercent !== undefined) {
+                vuRmsFill.style.width = `${data.vuRmsPercent}%`;
+            }
+            if (vuPeakHoldNeedle && data.vuPeakHoldPercent !== undefined) {
+                vuPeakHoldNeedle.style.left = `calc(${Math.min(99, data.vuPeakHoldPercent)}% - 1px)`;
+            }
 
-        if (vuValLufs && data.lufs !== undefined) {
-            vuValLufs.textContent = `${data.lufs.toFixed(1)} LUFS`;
-        }
-
-        if (vuValHeadroom && data.headroomDb !== undefined) {
-            vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
-            if (isVuMarkersEnabled) {
-                // Precision broadcast headroom coloring:
-                // >= 3.0 dB: Safe for Web Radio / BUTT (MP3) & Twitch / OBS (Emerald Green)
-                // 1.0 dB to 2.9 dB: Safe for Twitch / OBS (AAC), but hot for Web Radio MP3 (Amber Warning)
-                // < 1.0 dB: Danger / near digital clip for all streaming destinations (Red Alert)
-                if (data.headroomDb < 1.0) {
-                    vuValHeadroom.style.color = '#ff0055';
-                } else if (data.headroomDb < 3.0) {
-                    vuValHeadroom.style.color = '#ffaa00';
+            if (vuValPeak && data.peakDb !== undefined) {
+                vuValPeak.textContent = `${data.peakDb.toFixed(1)} dBFS`;
+                if (data.peakDb > -0.5) {
+                    vuValPeak.style.color = '#ff0055';
+                } else if (data.peakDb > -3.0) {
+                    vuValPeak.style.color = '#ffaa00';
                 } else {
-                    vuValHeadroom.style.color = '#00ff88';
+                    vuValPeak.style.color = '#00ffcc';
                 }
-            } else {
-                vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+            }
+
+            if (vuValLufs && data.lufs !== undefined) {
+                vuValLufs.textContent = `${data.lufs.toFixed(1)} LUFS`;
+            }
+
+            if (vuValHeadroom && data.headroomDb !== undefined) {
+                vuValHeadroom.textContent = `+${data.headroomDb.toFixed(1)} dB`;
+                if (isVuMarkersEnabled) {
+                    if (data.headroomDb < 1.0) {
+                        vuValHeadroom.style.color = '#ff0055';
+                    } else if (data.headroomDb < 3.0) {
+                        vuValHeadroom.style.color = '#ffaa00';
+                    } else {
+                        vuValHeadroom.style.color = '#00ff88';
+                    }
+                } else {
+                    vuValHeadroom.style.color = data.headroomDb < 1.0 ? '#ffaa00' : '#00ff88';
+                }
             }
         }
 
@@ -10801,7 +10872,7 @@ async function init() {
             const isKickDrop = isOnset || transient > 0.10 || (rawBass > (data.smoothedBass * 1.05) && rawBass > 0.04);
             const now = performance.now();
 
-            if (isKickDrop || (now - lastHueBeatSentTime > 120)) {
+            if ((isKickDrop && (now - lastHueBeatSentTime >= 70)) || (now - lastHueBeatSentTime > 160)) {
                 lastHueBeatSentTime = now;
                 try {
                     const rawMid = data.mid || 0;
@@ -10832,10 +10903,9 @@ async function init() {
 
         // Live Deck Telemetry vs Auto-BPM Audio Detection
         if (isHardwareDeckStreaming) {
-            if (now - lastHardwarePacketTimestamp > 15000) {
+            if (!isHardwareConnected && (now - lastHardwarePacketTimestamp > 15000)) {
                 // Deck stream timed out / disconnected (>15s without hardware packets)
                 isHardwareDeckStreaming = false;
-                isHardwareConnected = false;
                 handleDecksOffline();
                 if (cdj3000View) cdj3000View.style.display = 'none';
                 const audioMeterView = document.getElementById('audio-meter-view');

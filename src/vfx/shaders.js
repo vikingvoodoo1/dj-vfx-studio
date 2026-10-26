@@ -180,18 +180,20 @@ export const SaberBeamBladeShader = {
 
         void main() {
             float dist = abs(vUv.x - 0.5) * 2.0;
-            float blade = pow(clamp(1.0 - dist, 0.0, 1.0), 5.5);
-            float core = pow(clamp(1.0 - dist, 0.0, 1.0), 24.0) * uCoreBoost;
-            float lengthFade = smoothstep(0.0, 0.025, vUv.y) * smoothstep(1.0, 0.88, vUv.y);
-            float shimmer = sin(vUv.y * 40.0 - uTime * 30.0) * 0.1 + 0.9;
+            float safeEdge = clamp(1.0 - dist, 0.0, 1.0);
+            float edge2 = safeEdge * safeEdge;
+            float blade = edge2 * edge2; // safeEdge^4
+            float core = blade * blade * blade * blade * uCoreBoost; // safeEdge^16
+            
+            float lengthFade = smoothstep(0.0, 0.03, vUv.y) * smoothstep(1.0, 0.85, vUv.y);
+            float shimmer = sin(vUv.y * 50.0 - uTime * 35.0) * 0.15 + 0.85;
             
             vec3 col = uColor * (1.2 + uIntensity * 1.5);
-            if (core > 0.90) {
-                col = mix(col, vec3(1.0, 1.0, 1.0), 0.25);
+            if (core > 0.85) {
+                col = mix(col, vec3(1.0, 1.0, 1.0), clamp((core - 0.85) * 2.0, 0.0, 0.95));
             }
 
-            float alpha = (blade * 1.2 + core * 1.6) * lengthFade * shimmer * uIntensity;
-            if (alpha < 0.005) discard;
+            float alpha = (blade * 1.4 + core * 2.2) * lengthFade * shimmer * uIntensity;
             gl_FragColor = vec4(col * alpha, alpha);
         }
     `
@@ -2462,7 +2464,10 @@ export const DJDeckWaveformShader = {
         ) {
             if (weight <= 0.002 || smokePhase >= 0.998) return vec4(0.0);
 
-            vec4 audioSlice = texture2D(uAudioHistory, vec2(fract(texU), vRow));
+            if (texU < 0.0 || texU > 1.0) {
+                return vec4(0.0);
+            }
+            vec4 audioSlice = texture2D(uAudioHistory, vec2(texU, vRow));
             float rawBass = audioSlice.r;
             float rawMid  = audioSlice.g;
             float rawHigh = audioSlice.b;
@@ -2627,17 +2632,17 @@ export const DJDeckWaveformShader = {
             if (abs(uv.y - waveCenterY) <= waveHalfH) {
                 float normDeckY = (uv.y - waveCenterY) / waveHalfH;
                 float absDeckY = abs(normDeckY);
-                float zoomFactor = uZoom;
-
-                // Deck 1 UV & Beats
+                // Deck 1 UV & Beats (Fixed 32-beat hardware window matching Denon Prime 4 display)
                 float bpmVal1 = uBPM;
                 float totalTrackBeats1 = (uDeck1TotalBeats > 10.0) ? uDeck1TotalBeats : ((364.0 / 60.0) * bpmVal1);
-                float texU1 = fract(uDeck1Progress + (uv.x - 0.5) * zoomFactor);
+                float zoomU1 = 32.0 / max(32.0, totalTrackBeats1);
+                float texU1 = uDeck1Progress + (uv.x - 0.5) * zoomU1;
 
                 // Deck 2 UV & Beats
                 float bpmVal2 = (uDeck2BPM > 40.0) ? uDeck2BPM : uBPM;
                 float totalTrackBeats2 = (uDeck2TotalBeats > 10.0) ? uDeck2TotalBeats : ((360.0 / 60.0) * bpmVal2);
-                float texU2 = fract(uDeck2Progress + (uv.x - 0.5) * zoomFactor);
+                float zoomU2 = 32.0 / max(32.0, totalTrackBeats2);
+                float texU2 = uDeck2Progress + (uv.x - 0.5) * zoomU2;
 
                 // Deck 1 Caribbean Bonfire Fire Palette (Solar White Core -> Blazing Amber -> Roaring Scarlet -> Burnt Ruby Ember)
                 vec3 cCore1     = vec3(1.00, 0.96, 0.78);

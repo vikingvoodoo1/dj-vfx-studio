@@ -379,9 +379,18 @@ export class PhilipsHueService {
     }
 
     updateConfig(newConfig) {
-        if (!newConfig || typeof newConfig !== 'object') return;
-        this.config = { ...this.config, ...newConfig };
-        this.saveConfig().catch(() => {});
+        if (!newConfig || typeof newConfig !== 'object') return false;
+        let changed = false;
+        for (const [k, v] of Object.entries(newConfig)) {
+            if (this.config[k] !== v) {
+                this.config[k] = v;
+                changed = true;
+            }
+        }
+        if (changed) {
+            this.saveConfig().catch(() => {});
+        }
+        return changed;
     }
 
     getStatus() {

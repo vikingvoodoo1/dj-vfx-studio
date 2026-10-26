@@ -30,21 +30,6 @@ let lastTrackData = null;
 let lastBpm = 126.0;
 const BRIDGE_STATE_PATH = path.join(__dirname, 'bridge-state.json');
 let lastActiveFX = 3; // Default to Scene 04 Hellfire Waveforms
-try {
-    if (fs.existsSync(BRIDGE_STATE_PATH)) {
-        const rawState = JSON.parse(fs.readFileSync(BRIDGE_STATE_PATH, 'utf-8'));
-        if (rawState && typeof rawState.lastActiveFX === 'number') {
-            lastActiveFX = rawState.lastActiveFX;
-        }
-    }
-} catch (e) {}
-
-function saveBridgeState() {
-    try {
-        fs.writeFileSync(BRIDGE_STATE_PATH, JSON.stringify({ lastActiveFX }, null, 2));
-    } catch (e) {}
-}
-
 let activeEcosystem = 'auto'; // 'auto', 'stagelinq', 'pioneer', 'traktor', 'link'
 const globalSyncState = new Map();
 const connectedDevices = new Map();
@@ -54,6 +39,52 @@ const deckStatuses = new Map([
     [3, { deck: 3, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }],
     [4, { deck: 4, bpm: 0, play: false, artist: '', title: '', ecosystem: 'none', isHardware: false }]
 ]);
+const lastDeckWaveforms = new Map();
+const lastDeckLoadedTracks = new Map();
+let lastHardwarePacketTimestamp = 0;
+let isHardwareOnline = false;
+
+try {
+    if (fs.existsSync(BRIDGE_STATE_PATH)) {
+        const rawState = JSON.parse(fs.readFileSync(BRIDGE_STATE_PATH, 'utf-8'));
+        if (rawState) {
+            if (typeof rawState.lastActiveFX === 'number') lastActiveFX = rawState.lastActiveFX;
+            if (typeof rawState.lastBpm === 'number') lastBpm = rawState.lastBpm;
+            if (rawState.lastTrackData) lastTrackData = rawState.lastTrackData;
+            if (Array.isArray(rawState.deckStatuses)) {
+                rawState.deckStatuses.forEach(d => {
+                    if (d && d.deck) {
+                        deckStatuses.set(d.deck, { ...d, play: false });
+                    }
+                });
+            }
+            if (Array.isArray(rawState.deckWaveforms)) {
+                rawState.deckWaveforms.forEach(wf => {
+                    if (wf && wf.deck) {
+                        lastDeckWaveforms.set(wf.deck, wf);
+                    }
+                });
+            }
+            if (Array.isArray(rawState.deckStatuses) && rawState.deckStatuses.some(d => d.title)) {
+                isHardwareOnline = true;
+                connectedDevices.set('denon', 'Denon Prime 4');
+            }
+        }
+    }
+} catch (e) {}
+
+function saveBridgeState() {
+    try {
+        const stateToSave = {
+            lastActiveFX,
+            lastBpm,
+            lastTrackData,
+            deckStatuses: Array.from(deckStatuses.values()),
+            deckWaveforms: Array.from(lastDeckWaveforms.values())
+        };
+        fs.writeFileSync(BRIDGE_STATE_PATH, JSON.stringify(stateToSave, null, 2));
+    } catch (e) {}
+}
 
 // Initialize Philips Hue Lighting Service
 const hueService = new PhilipsHueService();
@@ -77,11 +108,6 @@ function relayToOthers(senderWs, messageObj) {
         }
     });
 }
-
-const lastDeckWaveforms = new Map();
-const lastDeckLoadedTracks = new Map();
-let lastHardwarePacketTimestamp = 0;
-let isHardwareOnline = false;
 
 function markHardwareActivity(devName = 'Denon Prime') {
     lastHardwarePacketTimestamp = Date.now();
@@ -157,6 +183,7 @@ function handleDeckUnloaded(deckNum) {
     currentDeck.isHardware = false;
     deckStatuses.set(deckNum, currentDeck);
     lastDeckWaveforms.delete(deckNum);
+    saveBridgeState();
     console.log(`[Universal Bridge] ⏹️ Deck ${deckNum} Unloaded / Disarmed`);
     broadcast({
         type: 'deck_unloaded',
@@ -187,6 +214,7 @@ function handleIncomingTrack(trackData) {
     currentDeck.ecosystem = trackData.ecosystem || 'auto';
     currentDeck.isHardware = true;
     deckStatuses.set(deckNum, currentDeck);
+    saveBridgeState();
 
     broadcast({
         type: 'track',
@@ -208,9 +236,11 @@ function handleIncomingTrack(trackData) {
                 bpm: wf.bpm,
                 samples: wf.samples,
                 cues: wf.cues || [],
-                loops: wf.loops || []
+                loops: wf.loops || [],
+                isHardware: true
             };
             lastDeckWaveforms.set(deckNum, wfPacket);
+            saveBridgeState();
             broadcast(wfPacket);
         }
     }).catch(err => console.warn('[Universal Bridge] Waveform lookup notice:', err.message));
@@ -225,6 +255,7 @@ function handleIncomingBPM(bpm, deckNum = 1, ecosystem = 'auto') {
         currentDeck.bpm = bpm;
         currentDeck.isHardware = true;
         deckStatuses.set(deckNum, currentDeck);
+        saveBridgeState();
 
         // Only update master console BPM if this deck is actively playing, or if no other deck is playing
         const otherPlaying = Array.from(deckStatuses.values()).some(d => d.deck !== deckNum && d.play && (d.fader === undefined || d.fader > 0.5));
@@ -644,7 +675,18 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // Handle Live macOS Network Routing & Telemetry Endpoint
+    // Ultra-Fast Zero-Overhead Ping Endpoint for Live RTT Latency Monitoring
+    if (reqUrl.pathname === '/api/ping') {
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'Cache-Control': 'no-store'
+        });
+        res.end('{"pong":true}');
+        return;
+    }
+
+    // Handle Live macOS Network Routing & Telemetry Endpoint (Cached for 60s to prevent blocking execSync)
     if (reqUrl.pathname === '/api/network-status') {
         if (req.method === 'OPTIONS') {
             res.writeHead(204, {
@@ -653,6 +695,16 @@ const server = http.createServer((req, res) => {
                 'Access-Control-Allow-Headers': 'Content-Type'
             });
             res.end();
+            return;
+        }
+
+        const nowNetTime = Date.now();
+        if (global._cachedNetworkStatus && (nowNetTime - (global._lastNetworkStatusTime || 0) < 60000)) {
+            res.writeHead(200, {
+                'Content-Type': 'application/json',
+                'Access-Control-Allow-Origin': '*'
+            });
+            res.end(JSON.stringify(global._cachedNetworkStatus));
             return;
         }
 
@@ -695,11 +747,7 @@ const server = http.createServer((req, res) => {
             console.warn('[Network Telemetry Error]', e.message);
         }
 
-        res.writeHead(200, {
-            'Content-Type': 'application/json',
-            'Access-Control-Allow-Origin': '*'
-        });
-        res.end(JSON.stringify({
+        global._cachedNetworkStatus = {
             success: true,
             isWired,
             activeInterface,
@@ -708,7 +756,14 @@ const server = http.createServer((req, res) => {
             gateway,
             wifiSsid,
             wifiIp
-        }));
+        };
+        global._lastNetworkStatusTime = nowNetTime;
+
+        res.writeHead(200, {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*'
+        });
+        res.end(JSON.stringify(global._cachedNetworkStatus));
         return;
     }
 
@@ -906,7 +961,7 @@ wss.on('connection', (ws, req) => {
     ws.on('message', async (raw) => {
         try {
             const msg = JSON.parse(raw);
-            if (msg.type?.includes('hue') || msg.type === 'set_hue_enabled') {
+            if ((msg.type?.includes('hue') && msg.type !== 'hue_beat') || msg.type === 'set_hue_enabled') {
                 console.log(`[Bridge WS Debug] Received Hue message: type="${msg.type}", payload=`, JSON.stringify(msg));
             }
             if (msg.type === 'set_ecosystem') {
@@ -943,11 +998,13 @@ wss.on('connection', (ws, req) => {
                 if (msg.config) {
                     const cfg = { ...msg.config };
                     delete cfg.enabled; // Master power state is controlled only via explicit power toggle
-                    hueService.updateConfig(cfg);
-                    broadcast({
-                        type: 'hue_status',
-                        ...hueService.getStatus()
-                    });
+                    const changed = hueService.updateConfig(cfg);
+                    if (changed) {
+                        broadcast({
+                            type: 'hue_status',
+                            ...hueService.getStatus()
+                        });
+                    }
                 }
             } else if (msg.type === 'set_hue_enabled') {
                 hueService.updateConfig({ enabled: !!msg.enabled });
@@ -1032,17 +1089,68 @@ wss.on('connection', (ws, req) => {
                 lastTrackData = msg;
                 relayToOthers(ws, msg);
             } else if (msg.type === 'request_state') {
-                if (lastTrackData) ws.send(JSON.stringify({ type: 'track', isHardware: true, ...lastTrackData }));
-                if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm, isHardware: true }));
+                const now = Date.now();
+                if (ws._lastRequestState && (now - ws._lastRequestState < 1000)) {
+                    // Throttle client re-requests to at most 1 per second
+                    return;
+                }
+                ws._lastRequestState = now;
+
+                const isHw = Boolean(connectedDevices.size > 0 || isHardwareOnline || Array.from(deckStatuses.values()).some(d => d.title && d.isHardware));
+                const devName = connectedDevices.get('denon') || connectedDevices.values().next().value || (isHw ? 'Denon Prime 4' : 'Awaiting Decks');
+                
+                // 1. Send status message with connected devices
+                ws.send(JSON.stringify({
+                    type: 'status',
+                    ecosystem: 'stagelinq',
+                    connected: true,
+                    deviceCount: isHw ? Math.max(1, connectedDevices.size) : 0,
+                    device: devName,
+                    devices: Array.from(connectedDevices.entries()).map(([k, v]) => ({ ecosystem: k, name: v })),
+                    isHardware: isHw,
+                    message: isHw ? `Connected: ${devName}` : 'Bridge Standby (Awaiting Decks)'
+                }));
+
+                // 2. Replay deck_loaded for each loaded deck
+                deckStatuses.forEach((d) => {
+                    if (d.title) {
+                        ws.send(JSON.stringify({
+                            type: 'deck_loaded',
+                            deck: d.deck,
+                            title: d.title,
+                            artist: d.artist || '',
+                            bpm: d.bpm || lastBpm || 126.0,
+                            play: Boolean(d.play),
+                            fader: d.fader !== undefined ? d.fader : 1.0,
+                            isHardware: isHw || Boolean(d.isHardware),
+                            ecosystem: d.ecosystem || 'stagelinq'
+                        }));
+                    }
+                });
+
+                if (lastTrackData) ws.send(JSON.stringify({ type: 'track', isHardware: isHw, ...lastTrackData }));
+                if (lastBpm) ws.send(JSON.stringify({ type: 'bpm', bpm: lastBpm, isHardware: isHw }));
                 if (lastActiveFX !== null && lastActiveFX !== undefined) ws.send(JSON.stringify({ type: 'set_fx', fx: lastActiveFX }));
-                ws.send(JSON.stringify({ type: 'decks_snapshot', isHardware: Boolean(connectedDevices.size > 0 || isHardwareOnline), decks: Array.from(deckStatuses.values()) }));
+                ws.send(JSON.stringify({
+                    type: 'decks_snapshot',
+                    isHardware: isHw,
+                    ecosystem: 'stagelinq',
+                    decks: Array.from(deckStatuses.values()).map(d => ({
+                        ...d,
+                        isHardware: isHw || Boolean(d.isHardware)
+                    }))
+                }));
                 lastDeckWaveforms.forEach((wfPacket) => {
-                    try { ws.send(JSON.stringify(wfPacket)); } catch (e) { }
+                    try {
+                        ws.send(JSON.stringify({
+                            ...wfPacket,
+                            isHardware: isHw || Boolean(wfPacket.isHardware)
+                        }));
+                    } catch (e) { }
                 });
                 globalSyncState.forEach((cachedMsg) => {
                     try { ws.send(JSON.stringify(cachedMsg)); } catch (e) { }
                 });
-                relayToOthers(ws, msg);
             } else if (msg.type === 'sync_relay' && msg.payload) {
                 if (msg.payload.type?.startsWith('set_')) {
                     globalSyncState.set(msg.payload.type, msg.payload);
@@ -1277,14 +1385,15 @@ async function startStageLinq() {
                     const currentDeck = deckStatuses.get(d) || { deck: d };
                     if (currentDeck.title !== title) {
                         currentDeck.title = title;
+                        currentDeck.artist = ''; // Clear previous track's artist so waveform search doesn't mismatch
                         const deckKey = String(d);
-                        const trackSignature = `${currentDeck.artist || ''} - ${title}`;
+                        const trackSignature = `${title}`;
                         lastDeckLoadedTracks.set(deckKey, trackSignature);
                         console.log(`[StageLinq] 🎵 Direct StateMap Deck ${d} Title: ${title}`);
                         handleIncomingTrack({
                             deck: d,
                             title: title,
-                            artist: currentDeck.artist || '',
+                            artist: '',
                             bpm: currentDeck.bpm || lastBpm || 126.0,
                             play: true,
                             ecosystem: 'stagelinq',
@@ -1398,17 +1507,17 @@ async function startStageLinq() {
         });
 
         // Periodic hardware deck heartbeat (every 1.5s) to ensure continuous streaming lock
-        // Watchdog: If hardware decks stop streaming packets and stop announcing for >15s (powered down or unplugged), trigger offline reset
         setInterval(() => {
-            const now = Date.now();
-            if (isHardwareOnline && lastHardwarePacketTimestamp > 0 && (now - lastHardwarePacketTimestamp > 15000)) {
-                handleAllDecksOffline();
-            } else if (connectedDevices.size > 0 || lastTrackData) {
+            const isHw = Boolean(connectedDevices.size > 0 || isHardwareOnline || Array.from(deckStatuses.values()).some(d => d.title && d.isHardware));
+            if (isHw || lastTrackData || Array.from(deckStatuses.values()).some(d => d.title)) {
                 broadcast({
                     type: 'decks_snapshot',
-                    isHardware: connectedDevices.size > 0,
+                    isHardware: isHw,
                     ecosystem: 'stagelinq',
-                    decks: Array.from(deckStatuses.values())
+                    decks: Array.from(deckStatuses.values()).map(d => ({
+                        ...d,
+                        isHardware: isHw || Boolean(d.isHardware)
+                    }))
                 });
             }
         }, 1500);

@@ -120,8 +120,7 @@ export function createVFXScene(container) {
         }
         const maxDim = Math.max(window.innerWidth, window.innerHeight);
         if (maxDim >= 2560) return Math.min(dpr, 1.25);
-        if (maxDim >= 1920) return Math.min(dpr, 1.5);
-        return Math.min(dpr, 2.0);
+        return Math.min(dpr, 1.5);
     }
 
     const renderer = new THREE.WebGLRenderer({
@@ -1570,6 +1569,7 @@ export function createVFXScene(container) {
             uDeck1SmokePhase: { value: 0.0 },
             uDeck2SmokePhase: { value: 1.0 },
             uPrimaryDeck: { value: 1.0 },
+            uTransitionBlend: { value: 0.0 },
             uZoom: { value: 0.08 },
             uTime: { value: 0.0 },
             uBass: { value: 0.0 },
@@ -1597,12 +1597,13 @@ export function createVFXScene(container) {
             uniform float uDeck1SmokePhase;
             uniform float uDeck2SmokePhase;
             uniform float uPrimaryDeck;
+            uniform float uTransitionBlend;
             uniform float uZoom;
             uniform float uTime;
             uniform float uBass;
             uniform float uTransient;
 
-            // Ultra-fast silky procedural smoke turbulence matching atmospheric fog
+            // Ultra-realistic multi-octave convective smoke vorticity matching theatrical club fog
             float waveSmokeTurbulence(vec3 p) {
                 float w1 = sin(p.x * 1.35 + p.y * 0.95 + sin(p.z * 1.15 + p.x * 0.65)) * 0.5 + 0.5;
                 float w2 = sin(p.y * 2.10 - p.z * 1.65 + sin(p.x * 1.85 + p.y * 0.45)) * 0.5 + 0.5;
@@ -1613,55 +1614,71 @@ export function createVFXScene(container) {
             void main() {
                 // 1. Audio wave lobe sampling at this X coordinate
                 float headPos = uTrackProgress;
-                float texU = fract(headPos + (vUv.x - 0.5) * uZoom);
-                vec4 audioSlice = texture2D(uAudioHistory, vec2(texU, 0.25));
+                float sampleU = clamp(headPos + (vUv.x - 0.5) * uZoom, 0.0, 1.0);
+                vec4 audioSlice = texture2D(uAudioHistory, vec2(sampleU, 0.25));
                 float waveAmp = (audioSlice.r * 0.55 + audioSlice.g * 0.30 + audioSlice.b * 0.15);
 
-                // 2. Procedural convective curling turbulence rising vertically
-                vec3 p1 = vec3(vWorldPos.x * 0.14, vWorldPos.y * 0.18 - uTime * 0.11, uTime * 0.04);
-                p1.x += sin(uTime * 0.08 + vWorldPos.y * 0.25) * 0.35;
+                // 2. High-fidelity rolling fluid smoke vortices rising from wave spine
+                float t = uTime;
+                vec3 p1 = vec3(vWorldPos.x * 0.12, vWorldPos.y * 0.16 - t * 0.12, t * 0.05);
+                p1.x += sin(t * 0.10 + vWorldPos.y * 0.30) * 0.40;
                 float n1 = waveSmokeTurbulence(p1);
 
-                vec3 p2 = vec3(vWorldPos.x * 0.28 + 2.3, vWorldPos.y * 0.32 - uTime * 0.17, uTime * 0.07 + 1.8);
+                vec3 p2 = vec3(vWorldPos.x * 0.25 + 3.1, vWorldPos.y * 0.28 - t * 0.18, t * 0.08 + 2.4);
+                p2.x += cos(t * 0.14 - vWorldPos.y * 0.22) * 0.30;
                 float n2 = waveSmokeTurbulence(p2);
 
-                float curl = n1 * 0.65 + n2 * 0.35;
+                vec3 p3 = vec3(vWorldPos.x * 0.52 - 1.7, vWorldPos.y * 0.50 - t * 0.26, t * 0.12);
+                float n3 = waveSmokeTurbulence(p3);
 
-                // 3. Smoke emission envelope (rising off the wave lobes into the air)
-                float waveLobeY = 0.46 + waveAmp * 0.24;
-                float bottomOrigin = smoothstep(0.18, 0.38, vUv.y);
-                float upwardFade = 1.0 - smoothstep(0.60, 0.95, vUv.y);
-                float waveEmanation = smoothstep(0.20, waveLobeY, vUv.y) * upwardFade * bottomOrigin;
+                float curl = n1 * 0.50 + n2 * 0.32 + n3 * 0.18;
 
-                // Soft horizontal boundary edge falloff
-                float horizontalFade = smoothstep(0.02, 0.15, vUv.x) * smoothstep(0.98, 0.85, vUv.x);
+                // 3. Smoke emission envelope: rising off waveform lobes
+                float waveLobeY = 0.46 + waveAmp * 0.26;
+                float bottomOrigin = smoothstep(0.14, 0.36, vUv.y);
+                float upwardFade = 1.0 - smoothstep(0.62, 0.98, vUv.y);
+                float waveEmanation = smoothstep(0.18, waveLobeY, vUv.y) * upwardFade * bottomOrigin;
 
-                // 4. Subtle ambient smoke density on playing wave
-                float rawDensity = smoothstep(0.20, 0.75, curl);
-                float audioReact = 0.65 + uBass * 0.40 + waveAmp * 0.45 + uTransient * 0.30;
-                float ambientSmoke = rawDensity * waveEmanation * horizontalFade * audioReact * 0.18;
+                // Soft horizontal edge fade to avoid rectangular boundary lines
+                float horizontalFade = smoothstep(0.01, 0.12, vUv.x) * smoothstep(0.99, 0.88, vUv.x);
 
-                // 5. Billowing Dissolution Smoke FX when a deck is not in play
-                // Thick plumes of curling smoke erupt over the inactive/phasing deck to make it disappear
-                float billow1 = smoothstep(0.01, 0.45, uDeck1SmokePhase) * (1.0 - smoothstep(0.68, 1.0, uDeck1SmokePhase * 0.96));
-                float billow2 = smoothstep(0.01, 0.45, uDeck2SmokePhase) * (1.0 - smoothstep(0.68, 1.0, uDeck2SmokePhase * 0.96));
-                float activeBillow = max(billow1, billow2);
+                // 4. Subtle ambient smoke on playing wave
+                float rawDensity = smoothstep(0.18, 0.72, curl);
+                float audioReact = 0.65 + uBass * 0.45 + waveAmp * 0.40 + uTransient * 0.35;
+                float ambientSmoke = rawDensity * waveEmanation * horizontalFade * audioReact * 0.16;
 
-                // Lingering subtle wisps of smoke when completely phased out
-                float lingeringSmoke = max(uDeck1SmokePhase, uDeck2SmokePhase) * 0.10;
+                // 5. DRAMATIC REALISTIC VOLUMETRIC TRANSITION BLEND SMOKE
+                // A. Active crossfade transition plume: surges when both faders are up / blending
+                float crossfadeStrength = clamp(min(uDeck1Weight, uDeck2Weight) * 3.6, 0.0, 1.0);
+                float transitionPlume = max(crossfadeStrength, uTransitionBlend);
 
-                // Plume envelops the entire waveform height during phase-out
-                float phaseHeightMask = smoothstep(0.10, 0.28, vUv.y) * (1.0 - smoothstep(0.70, 0.98, vUv.y));
-                float phaseBillowSmoke = smoothstep(0.14, 0.68, curl) * (activeBillow * 0.76 + lingeringSmoke * 0.35) * horizontalFade * phaseHeightMask;
+                // B. Outgoing deck dissolution smoke: billows as outgoing track is pulled down
+                float billow1 = smoothstep(0.02, 0.48, uDeck1SmokePhase) * (1.0 - smoothstep(0.72, 1.0, uDeck1SmokePhase * 0.96));
+                float billow2 = smoothstep(0.02, 0.48, uDeck2SmokePhase) * (1.0 - smoothstep(0.72, 1.0, uDeck2SmokePhase * 0.96));
+                float activeDissolveBillow = max(billow1, billow2);
 
-                float totalDensity = ambientSmoke + phaseBillowSmoke;
+                // Combined transition smoke plume strength
+                float transitionFog = clamp(transitionPlume * 1.35 + activeDissolveBillow * 0.90, 0.0, 1.0);
 
-                // 6. Smoldering ash and smoke color palette
-                vec3 ambientColor = mix(vec3(0.96, 0.72, 0.42), vec3(0.48, 0.36, 0.25), curl * 0.45);
-                vec3 ashSmokeColor = mix(vec3(0.58, 0.46, 0.38), vec3(0.32, 0.26, 0.22), curl * 0.60);
-                vec3 finalSmokeCol = mix(ambientColor, ashSmokeColor, clamp(activeBillow * 1.4 + lingeringSmoke, 0.0, 1.0));
+                // Plume envelops the entire moving waveform height during transitions
+                float plumeHeightMask = smoothstep(0.08, 0.26, vUv.y) * (1.0 - smoothstep(0.74, 0.98, vUv.y));
+                float rollingBillow = smoothstep(0.12, 0.65, curl + transitionPlume * 0.15);
+                float transitionSmokeDense = rollingBillow * transitionFog * horizontalFade * plumeHeightMask * 0.85;
 
-                gl_FragColor = vec4(finalSmokeCol, clamp(totalDensity, 0.0, 0.88));
+                // Lingering subtle atmospheric mist
+                float lingeringMist = max(uDeck1SmokePhase, uDeck2SmokePhase) * 0.08 * horizontalFade * plumeHeightMask;
+
+                float totalDensity = ambientSmoke + transitionSmokeDense + lingeringMist;
+
+                // 6. Realistic Theatrical Fog Color Palette:
+                // Core: back-lit warm amber & fire glow from the active burning waveform underneath
+                vec3 fireGlowAmber = (uPrimaryDeck == 2.0) ? vec3(1.0, 0.45, 0.12) : vec3(1.0, 0.60, 0.15);
+                vec3 smokeIvory = vec3(0.76, 0.72, 0.66);
+                vec3 smokeShadow = vec3(0.25, 0.20, 0.17);
+                vec3 mistHighlight = mix(smokeIvory, fireGlowAmber, 0.35 + uBass * 0.25);
+                vec3 finalSmokeCol = mix(mistHighlight, smokeShadow, curl * 0.65);
+
+                gl_FragColor = vec4(finalSmokeCol, clamp(totalDensity, 0.0, 0.92));
             }
         `
     };
@@ -1707,6 +1724,8 @@ export function createVFXScene(container) {
     // Deck state tracking
     let djHistoryHead = 0;
     let djHudFrameCount = 0;
+    let lastDjHudUpdateTime = 0;
+    const liveSynthAudioArray = new Uint8Array(128);
     let deck1Progress = 0.0;
     let deck1WireProgress = 0.0;
     let lastDeck1WireTime = 0;
@@ -1734,8 +1753,11 @@ export function createVFXScene(container) {
     } catch (e) {}
     let deck1Weight = 0.0;
     let deck2Weight = 0.0;
+    let deck1VisibleInScene = false;
+    let deck2VisibleInScene = false;
     let smoothDeck1SmokePhase = 1.0;
     let smoothDeck2SmokePhase = 1.0;
+    let smoothTransitionSmoke = 0.0;
     let deck1Stationary = true;
     let deck2Stationary = true;
     let deck1LastBeat = undefined;
@@ -1783,15 +1805,93 @@ export function createVFXScene(container) {
     let wireSmoothHit = 0.0;
     const wireSmoothBins = new Float32Array(128);
     let deck1BeatInBar = 1;
+    let deck2BeatInBar = 1;
+
+    function sampleActiveDeckWaveformSlice() {
+        const activeWaveformDeck = (primaryDeck === 2 && deck2HasHardwareWaveform) 
+            ? 2 
+            : (deck1HasHardwareWaveform ? 1 : (deck2HasHardwareWaveform ? 2 : (deck1Active ? 1 : (deck2Active ? 2 : (deck2Data?.title ? 2 : 1)))));
+
+        const hasWaveform = (activeWaveformDeck === 2) ? deck2HasHardwareWaveform : deck1HasHardwareWaveform;
+        if (hasWaveform) {
+            const progToSample = (activeWaveformDeck === 2) ? deck2Progress : deck1Progress;
+            const offset = (activeWaveformDeck === 2) ? 512 : 0;
+            const floatIdx = (progToSample * 512) % 512;
+            const i0 = Math.floor(floatIdx);
+            const i1 = (i0 + 1) % 512;
+            const f = floatIdx - i0;
+
+            const rawR = (djAudioHistoryData[(offset + i0) * 4] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4] * f) / 255.0;
+            const rawG = (djAudioHistoryData[(offset + i0) * 4 + 1] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 1] * f) / 255.0;
+            const rawB = (djAudioHistoryData[(offset + i0) * 4 + 2] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 2] * f) / 255.0;
+            const rawHit = (djAudioHistoryData[(offset + i0) * 4 + 3] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 3] * f) / 255.0;
+
+            wireSmoothBass += (rawR - wireSmoothBass) * 0.16;
+            wireSmoothMid += (rawG - wireSmoothMid) * 0.16;
+            wireSmoothTreble += (rawB - wireSmoothTreble) * 0.16;
+            wireSmoothHit += (rawHit - wireSmoothHit) * 0.22;
+        } else if (beatTriggerPulse > 0.05) {
+            wireSmoothBass += (beatTriggerPulse * 0.85 - wireSmoothBass) * 0.25;
+            wireSmoothMid += (beatTriggerPulse * 0.60 - wireSmoothMid) * 0.25;
+            wireSmoothTreble += (beatTriggerPulse * 0.40 - wireSmoothTreble) * 0.25;
+            wireSmoothHit += (beatTriggerPulse * 0.90 - wireSmoothHit) * 0.30;
+        } else {
+            wireSmoothBass *= 0.92;
+            wireSmoothMid *= 0.92;
+            wireSmoothTreble *= 0.92;
+            wireSmoothHit *= 0.90;
+        }
+    }
+
+    function advanceDeckPlaybackProgress(delta) {
+        const nowTime = performance.now();
+        const d1IsMoving = !deck1Stationary && (deck1Playing || (nowTime - deck1LastBeatTime < 500));
+        const d2IsMoving = !deck2Stationary && (deck2Playing || (nowTime - deck2LastBeatTime < 500));
+
+        // Advance track progress: directly locked to hardware deck wire telemetry
+        const trackSec1 = deck1Data.duration || 364;
+        const progressDelta1 = delta / trackSec1;
+        const hasRecentWire1 = (nowTime - lastDeck1WireTime < 1500) && (deck1WireProgress !== undefined && !isNaN(deck1WireProgress));
+        if (hasRecentWire1) {
+            const diff1 = deck1WireProgress - deck1Progress;
+            if (Math.abs(diff1) > 0.015) {
+                deck1Progress = deck1WireProgress;
+            } else {
+                deck1Progress += progressDelta1 + diff1 * Math.min(1.0, delta * 12.0);
+            }
+        } else if (deck1Playing || d1IsMoving || (primaryDeck === 1)) {
+            deck1Progress = (deck1Progress + progressDelta1) % 1.0;
+        }
+
+        const trackSec2 = deck2Data.duration || 360;
+        const progressDelta2 = delta / trackSec2;
+        const hasRecentWire2 = (nowTime - lastDeck2WireTime < 1500) && (deck2WireProgress !== undefined && !isNaN(deck2WireProgress));
+        if (hasRecentWire2) {
+            const diff2 = deck2WireProgress - deck2Progress;
+            if (Math.abs(diff2) > 0.015) {
+                deck2Progress = deck2WireProgress;
+            } else {
+                deck2Progress += progressDelta2 + diff2 * Math.min(1.0, delta * 12.0);
+            }
+        } else if (deck2Playing || d2IsMoving || (primaryDeck === 2)) {
+            deck2Progress = (deck2Progress + progressDelta2) % 1.0;
+        }
+    }
 
     function updateSynthesizedDeckSpectrum() {
-        if (!deck1HasHardwareWaveform && !deck1Active) return;
+        const hasAnyDeck = deck1HasHardwareWaveform || deck1Active || deck2HasHardwareWaveform || deck2Active || (deck1Data && deck1Data.title) || (deck2Data && deck2Data.title) || (beatTriggerPulse > 0.02);
+        if (!hasAnyDeck) return;
+
+        sampleActiveDeckWaveformSlice();
+
+        const activeDeckNum = (primaryDeck === 2 && (deck2HasHardwareWaveform || deck2Active)) ? 2 : 1;
+        const currentBeatInBar = (activeDeckNum === 2) ? (deck2BeatInBar || 1) : (deck1BeatInBar || 1);
 
         // Dynamic transient impulses
-        const kickPulse = beatTriggerPulse; // Pulses 1.0 on every true downbeat and decays naturally
-        const isBackBeat = (deck1BeatInBar === 2 || deck1BeatInBar === 4);
+        const kickPulse = Math.max(beatTriggerPulse, wireSmoothHit);
+        const isBackBeat = (currentBeatInBar === 2 || currentBeatInBar === 4);
         const snarePulse = isBackBeat ? (kickPulse * 0.85) : (kickPulse * 0.20);
-        const hatPulse = (1.0 - kickPulse) * 0.65; // Hat sizzles between kicks
+        const hatPulse = (1.0 - Math.min(1.0, kickPulse)) * 0.65; // Hat sizzles between kicks
 
         const liveBass = Math.min(1.0, wireSmoothBass * 0.55 + kickPulse * 0.75 + wireSmoothHit * 0.25);
         const liveMid = Math.min(1.0, wireSmoothMid * 0.65 + snarePulse * 0.45 + wireSmoothHit * 0.15);
@@ -1854,14 +1954,16 @@ export function createVFXScene(container) {
                     deck1Data.artworkImg = null;
                     deck1Data.artworkUrl = '';
                     deck1Data._artRequested = false;
+                    deck1Data.cues = [];
+                    deck1Data.loops = [];
                     loadDeckArtwork(packet.title, packet.artist || deck1Data.artist, deck1Data);
                 }
                 deck1Data.title = packet.title;
             }
             if (packet.artist) deck1Data.artist = packet.artist;
             if (packet.bpm) deck1Data.bpm = packet.bpm;
-            if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck1Data.cues = packet.cues;
-            if (packet.loops && Array.isArray(packet.loops) && packet.loops.length > 0) deck1Data.loops = packet.loops;
+            if (packet.cues && Array.isArray(packet.cues)) deck1Data.cues = packet.cues;
+            if (packet.loops && Array.isArray(packet.loops)) deck1Data.loops = packet.loops;
             if (packet.totalBeats) deck1Data.totalBeats = Number(packet.totalBeats);
 
             for (let i = 0; i < 512; i++) {
@@ -1888,14 +1990,16 @@ export function createVFXScene(container) {
                     deck2Data.artworkImg = null;
                     deck2Data.artworkUrl = '';
                     deck2Data._artRequested = false;
+                    deck2Data.cues = [];
+                    deck2Data.loops = [];
                     loadDeckArtwork(packet.title, packet.artist || deck2Data.artist, deck2Data);
                 }
                 deck2Data.title = packet.title;
             }
             if (packet.artist) deck2Data.artist = packet.artist;
             if (packet.bpm) deck2Data.bpm = packet.bpm;
-            if (packet.cues && Array.isArray(packet.cues) && packet.cues.length > 0) deck2Data.cues = packet.cues;
-            if (packet.loops && Array.isArray(packet.loops) && packet.loops.length > 0) deck2Data.loops = packet.loops;
+            if (packet.cues && Array.isArray(packet.cues)) deck2Data.cues = packet.cues;
+            if (packet.loops && Array.isArray(packet.loops)) deck2Data.loops = packet.loops;
             if (packet.totalBeats) deck2Data.totalBeats = Number(packet.totalBeats);
 
             for (let i = 0; i < 512; i++) {
@@ -2801,9 +2905,13 @@ export function createVFXScene(container) {
     ];
 
     const saberBladeHues = [0x00ffff, 0xff0055, 0x00ff88, 0xffaa00, 0xffffff, 0x9900ff, 0x00e5ff, 0xff007f];
-    const saberBladeGeo = new THREE.CylinderGeometry(0.014, 0.22, 52.0, 8, 1, true);
-    saberBladeGeo.translate(0, 26.0, 0);
+    const saberBladeGeo = new THREE.CylinderGeometry(0.016, 0.26, 44.0, 8, 1, true);
+    saberBladeGeo.translate(0, 22.0, 0);
     saberBladeGeo.rotateX(Math.PI / 2);
+
+    const saberLensGeo = new THREE.CylinderGeometry(0.55, 0.65, 0.40, 16);
+    saberLensGeo.rotateX(Math.PI / 2);
+    const saberHousingMat = new THREE.MeshStandardMaterial({ color: 0x14161c, roughness: 0.35, metalness: 0.85 });
 
     saberPodPositions.forEach((podCfg, pIdx) => {
         const podGroup = new THREE.Group();
@@ -2812,6 +2920,9 @@ export function createVFXScene(container) {
 
         const podRotatingHead = new THREE.Group();
         podGroup.add(podRotatingHead);
+
+        const lensHousing = new THREE.Mesh(saberLensGeo, saberHousingMat);
+        podRotatingHead.add(lensHousing);
 
         const blades = [];
         for (let b = 0; b < 8; b++) {
@@ -2829,7 +2940,7 @@ export function createVFXScene(container) {
                 fragmentShader: SaberBeamBladeShader.fragmentShader,
                 transparent: true,
                 blending: THREE.AdditiveBlending,
-                side: THREE.DoubleSide,
+                side: THREE.FrontSide,
                 depthWrite: false
             });
             const bladeMesh = new THREE.Mesh(saberBladeGeo, bladeMat);
@@ -7023,6 +7134,10 @@ export function createVFXScene(container) {
         const delta = Math.min(clock.getDelta(), 0.1);
         const elapsedTime = clock.getElapsedTime();
 
+        // Update continuous StageLinQ hardware deck waveform synthesis across all scenes
+        advanceDeckPlaybackProgress(delta);
+        updateSynthesizedDeckSpectrum();
+
         let audio = null;
         if (typeof getAudioDataFn === 'function') {
             try {
@@ -7499,34 +7614,13 @@ export function createVFXScene(container) {
             const isAudioActive = (rawBass > 0.04 || (audio.smoothedMid || 0) > 0.04 || (audio.smoothedTreble || 0) > 0.04 || (audio.overall || 0) > 0.03);
 
             // Sample live wire audio slice from deck waveform with fractional bilinear interpolation & temporal smoothing
-            let wireAmpBands = null;
-            const activeWaveformDeck = (primaryDeck === 2 && deck2HasHardwareWaveform) ? 2 : (deck1HasHardwareWaveform ? 1 : (deck2HasHardwareWaveform ? 2 : null));
-            if (activeWaveformDeck) {
-                const progToSample = (activeWaveformDeck === 2) ? deck2Progress : deck1Progress;
-                const offset = (activeWaveformDeck === 2) ? 512 : 0;
-                const floatIdx = (progToSample * 512) % 512;
-                const i0 = Math.floor(floatIdx);
-                const i1 = (i0 + 1) % 512;
-                const f = floatIdx - i0;
-
-                const rawR = (djAudioHistoryData[(offset + i0) * 4] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4] * f) / 255.0;
-                const rawG = (djAudioHistoryData[(offset + i0) * 4 + 1] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 1] * f) / 255.0;
-                const rawB = (djAudioHistoryData[(offset + i0) * 4 + 2] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 2] * f) / 255.0;
-                const rawHit = (djAudioHistoryData[(offset + i0) * 4 + 3] * (1.0 - f) + djAudioHistoryData[(offset + i1) * 4 + 3] * f) / 255.0;
-
-                // Organic exponential decay smoothing (prevents abrupt jumping between discrete buckets)
-                wireSmoothBass += (rawR - wireSmoothBass) * 0.16;
-                wireSmoothMid += (rawG - wireSmoothMid) * 0.16;
-                wireSmoothTreble += (rawB - wireSmoothTreble) * 0.16;
-                wireSmoothHit += (rawHit - wireSmoothHit) * 0.22;
-
-                wireAmpBands = { 
-                    wR: wireSmoothBass, 
-                    wG: wireSmoothMid, 
-                    wB: wireSmoothTreble, 
-                    wHit: wireSmoothHit 
-                };
-            }
+            sampleActiveDeckWaveformSlice();
+            const wireAmpBands = { 
+                wR: wireSmoothBass, 
+                wG: wireSmoothMid, 
+                wB: wireSmoothTreble, 
+                wHit: wireSmoothHit 
+            };
 
             const beatSecFX = 60.0 / Math.max(60, currentBPM || 128);
             const timeSecFX = performance.now() / 1000.0;
@@ -7625,67 +7719,54 @@ export function createVFXScene(container) {
                 const f1 = (deck1Fader !== null && deck1Fader !== undefined) ? deck1Fader : (deck1Playing ? 1.0 : (d1IsMoving ? 1.0 : 0.0));
                 const f2 = (deck2Fader !== null && deck2Fader !== undefined) ? deck2Fader : (deck2Playing ? 1.0 : (d2IsMoving ? 1.0 : 0.0));
 
-                const fader1Up = f1 > 0.02;
-                const fader2Up = f2 > 0.02;
-
                 const hasD1 = !!(deck1Data && deck1Data.title && deck1Data.title.trim() !== '' && deck1Data.title !== 'No Track Loaded' && deck1Data.title !== '—' && !deck1Data.unloaded && !deck1Data.offline);
                 const hasD2 = !!(deck2Data && deck2Data.title && deck2Data.title.trim() !== '' && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—' && !deck2Data.unloaded && !deck2Data.offline);
 
-                // --- 1. Handover Decision (Lead / On-Air Deck on Top Rail) ---
-                // Deck 1 remains primary until Deck 2 fader crosses faderHandoverThreshold (default 0.85 / 85%) or Deck 1 is pulled down
-                let nextPrimary = primaryDeck || 1;
-                if (!hasD1 && hasD2) {
-                    nextPrimary = 2;
-                } else if (!hasD2 && hasD1) {
-                    nextPrimary = 1;
-                } else if (hasD1 && hasD2) {
-                    if (primaryDeck === 1) {
-                        if (f2 >= faderHandoverThreshold || (!fader1Up && fader2Up)) {
-                            nextPrimary = 2;
-                        }
-                    } else if (primaryDeck === 2) {
-                        if (f1 >= faderHandoverThreshold || (!fader2Up && fader1Up)) {
-                            nextPrimary = 1;
-                        }
-                    }
-                }
-                onAirDeck = nextPrimary;
-
-                // --- 2. True Dual-Deck Crossover Blend (3D Moving Waveform Weights) ---
-                if (fader1Up && fader2Up) {
-                    w1 = Math.min(1.0, f1);
-                    w2 = Math.min(1.0, f2);
-                } else if (fader1Up && !fader2Up) {
-                    w1 = Math.min(1.0, f1);
-                    w2 = 0.0;
-                } else if (!fader1Up && fader2Up) {
+                // --- Scene Visibility & Fader Blending Rule ---
+                // When bringing any fader down to 0 (<= 0.02) - remove that track from the scene completely.
+                // When fader is brought up (> 0.02) - blend that track into the scene with smooth fader weight.
+                if (!hasD1 || f1 <= 0.02) {
+                    deck1VisibleInScene = false;
                     w1 = 0.0;
-                    w2 = Math.min(1.0, f2);
                 } else {
-                    if (d1IsMoving && !d2IsMoving) {
-                        w1 = 1.0;
-                        w2 = 0.0;
-                    } else if (d2IsMoving && !d1IsMoving) {
-                        w1 = 0.0;
-                        w2 = 1.0;
-                    } else if (deck1Playing && !deck2Playing) {
-                        w1 = 1.0;
-                        w2 = 0.0;
-                    } else if (deck2Playing && !deck1Playing) {
-                        w1 = 0.0;
-                        w2 = 1.0;
-                    } else if (hasD1 && hasD2) {
-                        w1 = (onAirDeck === 1) ? 1.0 : 0.35;
-                        w2 = (onAirDeck === 2) ? 1.0 : 0.35;
-                    } else if (hasD1) {
-                        w1 = 1.0;
-                        w2 = 0.0;
-                    } else if (hasD2) {
-                        w1 = 0.0;
-                        w2 = 1.0;
+                    deck1VisibleInScene = true;
+                    w1 = Math.min(1.0, f1);
+                }
+
+                if (!hasD2 || f2 <= 0.02) {
+                    deck2VisibleInScene = false;
+                    w2 = 0.0;
+                } else {
+                    deck2VisibleInScene = true;
+                    w2 = Math.min(1.0, f2);
+                }
+
+                // Determine active on-air deck:
+                if (deck1VisibleInScene && !deck2VisibleInScene) {
+                    onAirDeck = 1;
+                } else if (deck2VisibleInScene && !deck1VisibleInScene) {
+                    onAirDeck = 2;
+                } else if (deck1VisibleInScene && deck2VisibleInScene) {
+                    // Both tracks visible during blend: Handover occurs when incoming fader takes clear lead
+                    if (primaryDeck === 1 && f2 > f1 + 0.08) {
+                        onAirDeck = 2;
+                    } else if (primaryDeck === 2 && f1 > f2 + 0.08) {
+                        onAirDeck = 1;
                     } else {
-                        w1 = 0.0;
-                        w2 = 0.0;
+                        onAirDeck = primaryDeck || (deck2Playing && !deck1Playing ? 2 : 1);
+                    }
+                } else {
+                    // Standby / cueing: follow active playing deck or loaded deck
+                    if (deck2Playing && !deck1Playing && hasD2) {
+                        onAirDeck = 2;
+                    } else if (deck1Playing && !deck2Playing && hasD1) {
+                        onAirDeck = 1;
+                    } else if (hasD1) {
+                        onAirDeck = 1;
+                    } else if (hasD2) {
+                        onAirDeck = 2;
+                    } else {
+                        onAirDeck = primaryDeck || 1;
                     }
                 }
             }
@@ -7725,21 +7806,53 @@ export function createVFXScene(container) {
                 deck2Progress = (deck2Progress + progressDelta2) % 1.0;
             }
 
+            // Smoothly advance hardware-locked beats between StageLinQ telemetry updates
+            const bpm1 = deck1Data.bpm || currentBPM || 124.0;
+            const beatDelta1 = (bpm1 / 60.0) * delta;
+            if (deck1Data.wireBeat !== undefined && !isNaN(deck1Data.wireBeat)) {
+                const bDiff1 = deck1Data.wireBeat - (deck1Data.beat || 0);
+                if (Math.abs(bDiff1) > 0.5) {
+                    deck1Data.beat = deck1Data.wireBeat;
+                } else if (deck1Playing || d1IsMoving || w1 > 0.01) {
+                    deck1Data.beat = (deck1Data.beat || 0) + beatDelta1 + bDiff1 * Math.min(1.0, delta * 12.0);
+                }
+            } else if (deck1Playing || d1IsMoving || w1 > 0.01) {
+                deck1Data.beat = (deck1Data.beat || 0) + beatDelta1;
+            }
+
+            const bpm2 = deck2Data.bpm || currentBPM || 126.0;
+            const beatDelta2 = (bpm2 / 60.0) * delta;
+            if (deck2Data.wireBeat !== undefined && !isNaN(deck2Data.wireBeat)) {
+                const bDiff2 = deck2Data.wireBeat - (deck2Data.beat || 0);
+                if (Math.abs(bDiff2) > 0.5) {
+                    deck2Data.beat = deck2Data.wireBeat;
+                } else if (deck2Playing || d2IsMoving || w2 > 0.01) {
+                    deck2Data.beat = (deck2Data.beat || 0) + beatDelta2 + bDiff2 * Math.min(1.0, delta * 12.0);
+                }
+            } else if (deck2Playing || d2IsMoving || w2 > 0.01) {
+                deck2Data.beat = (deck2Data.beat || 0) + beatDelta2;
+            }
+
             const primaryProg = (primaryDeck === 2) ? deck2Progress : deck1Progress;
             const primaryBpm = (primaryDeck === 2) ? (deck2Data.bpm || currentBPM) : (deck1Data.bpm || currentBPM);
             const primaryTotalBeats = (primaryDeck === 2) ? (deck2Data.totalBeats || 756.0) : (deck1Data.totalBeats || 776.1085);
             const beatPhaseVal = (elapsedTime * (primaryBpm / 60.0)) % 1.0;
 
-            // Smooth smoke phase-out for inactive decks
-            // A deck is in play when actively playing/moving or loaded and its mixer weight is up
-            const d1InPlay = (deck1Active || deck1Playing || d1IsMoving || deck1HasHardwareWaveform) && (w1 > 0.02);
-            const d2InPlay = (deck2Active || deck2Playing || d2IsMoving || deck2HasHardwareWaveform) && (w2 > 0.02);
+            // Realistic Volumetric Transition Smoke FX during deck blending
+            const d1InPlay = deck1VisibleInScene && (deck1Active || deck1Playing || d1IsMoving || deck1HasHardwareWaveform) && (w1 > 0.02);
+            const d2InPlay = deck2VisibleInScene && (deck2Active || deck2Playing || d2IsMoving || deck2HasHardwareWaveform) && (w2 > 0.02);
 
-            const targetD1Smoke = d1InPlay ? 0.0 : 1.0;
-            const targetD2Smoke = d2InPlay ? 0.0 : 1.0;
+            // Active crossfade transition plume: peaks when both tracks are blending on mixer
+            const blendOverlap = Math.min(w1, w2);
+            const targetTransitionSmoke = (blendOverlap > 0.02) ? Math.min(1.0, blendOverlap * 3.4) : 0.0;
+            smoothTransitionSmoke = THREE.MathUtils.damp(smoothTransitionSmoke, targetTransitionSmoke, 4.0, delta);
 
-            smoothDeck1SmokePhase = THREE.MathUtils.damp(smoothDeck1SmokePhase, targetD1Smoke, 3.2, delta);
-            smoothDeck2SmokePhase = THREE.MathUtils.damp(smoothDeck2SmokePhase, targetD2Smoke, 3.2, delta);
+            // Outgoing deck dissolution smoke: billows as a track is faded down
+            const d1FadeSmoke = (deck1VisibleInScene && w1 < 0.95 && w2 > 0.04) ? Math.min(1.0, (1.0 - w1) * 1.4) : (!d1InPlay ? 1.0 : 0.0);
+            const d2FadeSmoke = (deck2VisibleInScene && w2 < 0.95 && w1 > 0.04) ? Math.min(1.0, (1.0 - w2) * 1.4) : (!d2InPlay ? 1.0 : 0.0);
+
+            smoothDeck1SmokePhase = THREE.MathUtils.damp(smoothDeck1SmokePhase, d1FadeSmoke, 3.5, delta);
+            smoothDeck2SmokePhase = THREE.MathUtils.damp(smoothDeck2SmokePhase, d2FadeSmoke, 3.5, delta);
 
             // Feed live audio or StageLinQ beat pulses & hardware track slices to shader
             const effectiveBass = Math.max(audio ? (audio.smoothedBass || audio.bass || 0) : 0, (wireSmoothBass || 0) * 0.85 + (combinedBeatPulse || 0) * 0.40);
@@ -7770,14 +7883,15 @@ export function createVFXScene(container) {
                 waveSmokeMat.uniforms.uDeck1SmokePhase.value = smoothDeck1SmokePhase;
                 waveSmokeMat.uniforms.uDeck2SmokePhase.value = smoothDeck2SmokePhase;
                 waveSmokeMat.uniforms.uPrimaryDeck.value = primaryDeck;
+                waveSmokeMat.uniforms.uTransitionBlend.value = smoothTransitionSmoke;
                 waveSmokeMat.uniforms.uZoom.value = 0.08;
                 waveSmokeMat.uniforms.uBass.value = effectiveBass;
                 waveSmokeMat.uniforms.uTransient.value = effectiveTransient;
             }
 
             // Visibility of 3D Hellfire Waveform & Smoke
-            const hasAnyTrack = Boolean((deck1Data.title && !deck1Data.unloaded && !deck1Data.offline) || (deck2Data.title && !deck2Data.unloaded && !deck2Data.offline));
-            const show3DWaveforms = Boolean((d1InPlay || d2InPlay) && (w1 > 0.02 || w2 > 0.02) && hasAnyTrack);
+            const hasAnyVisibleTrack = Boolean((deck1VisibleInScene && hasD1) || (deck2VisibleInScene && hasD2));
+            const show3DWaveforms = Boolean(hasAnyVisibleTrack && (w1 > 0.02 || w2 > 0.02 || smoothTransitionSmoke > 0.02));
             if (djWaveMesh) djWaveMesh.visible = show3DWaveforms;
             if (waveSmokeMesh) waveSmokeMesh.visible = show3DWaveforms;
 
@@ -7812,17 +7926,21 @@ export function createVFXScene(container) {
             deck1Data.loopStart = deck1LoopStart;
             deck1Data.loopEnd = deck1LoopEnd;
 
-            // Update HUD Canvas texture every frame for ultra-smooth beat grid, needle & time readouts
-            renderDJDeckHUD(
-                djHudCtx, 2048, 1024, 
-                deck1Data, deck2Data, 
-                primaryBpm, beatPhaseVal, 
-                audio.transientImpulse || 0, 
-                deck1Progress, deck2Progress, 
-                w1, w2, primaryDeck, 
-                audio
-            );
-            djHudTex.needsUpdate = true;
+            // Update HUD Canvas texture at cinematic 30 FPS (every 33ms) to prevent Metal GPU texture queue bloat
+            if (nowTime - lastDjHudUpdateTime >= 33) {
+                lastDjHudUpdateTime = nowTime;
+                renderDJDeckHUD(
+                    djHudCtx, 2048, 1024, 
+                    deck1Data, deck2Data, 
+                    primaryBpm, beatPhaseVal, 
+                    audio.transientImpulse || 0, 
+                    deck1Progress, deck2Progress, 
+                    w1, w2, primaryDeck, 
+                    audio,
+                    deck1VisibleInScene, deck2VisibleInScene
+                );
+                djHudTex.needsUpdate = true;
+            }
 
             // 💡 3D Woven Wicker Basket Lanterns - Pirates of the Caribbean / Castaway Candlelight
             if (edisonBulbs && edisonBulbs.length > 0) {
@@ -8030,18 +8148,37 @@ export function createVFXScene(container) {
         // FX 7: 💥 Saber Multi-Beam DJ Fixtures
         // ---------------------------------------------------------------------
         else if (currentFXIndex === 6) {
+            const beatSec = 60.0 / Math.max(60, currentBPM || 126.0);
+            const liveBps = (currentBPM || 126.0) / 60.0;
+
+            // Coordinated arena sweeps (snappy, energetic, musical)
+            const sweepPan = Math.sin(elapsedTime * (Math.PI / (beatSec * 2.0))) * 0.75;
+            const sweepTilt = Math.cos(elapsedTime * (Math.PI / (beatSec * 4.0))) * 0.55;
+
+            // Musical fan aperture: breathes between wide aerial spread and tight cluster
+            const fanSpreadMod = 0.70 + Math.sin(elapsedTime * 2.4) * 0.35 + (bassPop * 0.40);
+
             saberPods.forEach((pod, pIdx) => {
                 const dir = pod.cfg.rotDir;
-                pod.head.rotation.z += speed * (0.35 + pIdx * 0.06) * dir;
-                pod.head.rotation.x = Math.sin(elapsedTime * 0.4 + pIdx * 1.2) * 0.45;
-                pod.head.rotation.y = Math.cos(elapsedTime * 0.35 + pIdx * 0.9) * 0.40;
+                // Lively continuous head rotation synchronized with musical rhythm
+                pod.head.rotation.z += (speed * 1.8 + 0.016) * dir;
+                
+                const podPhase = pIdx * (Math.PI * 0.5);
+                pod.head.rotation.x = Math.sin(elapsedTime * 1.4 + podPhase) * 0.52 + sweepTilt * 0.35;
+                pod.head.rotation.y = Math.cos(elapsedTime * 1.2 + podPhase) * 0.48 + (pIdx % 2 === 0 ? sweepPan : -sweepPan);
 
                 pod.blades.forEach((blade, bIdx) => {
                     blade.mat.uniforms.uTime.value = elapsedTime;
-                    const bladeAudio = (transient * 0.8) + (bassPop * 0.4);
-                    blade.mat.uniforms.uIntensity.value = 0.9 + bladeAudio * 1.1;
-                    blade.mat.uniforms.uCoreBoost.value = 2.4 + (transient * 1.2);
-                    blade.mesh.rotation.y = blade.baseAngle + Math.sin(elapsedTime * 0.5 + bIdx * 0.4) * 0.08;
+                    const bladeAudio = (transient * 1.4) + (bassPop * 0.8) + (beatTriggerPulse * 0.6);
+                    blade.mat.uniforms.uIntensity.value = 1.0 + bladeAudio * 1.5;
+                    blade.mat.uniforms.uCoreBoost.value = 2.8 + (transient * 2.5);
+
+                    // Dynamic fan aperture breathing (wide fan to focused cluster)
+                    blade.mesh.rotation.y = blade.baseAngle * fanSpreadMod;
+
+                    // Beat-reactive color chase across the 8 beams
+                    const colorStep = Math.floor(elapsedTime * (liveBps * 2.0) + bIdx + pIdx * 2) % saberBladeHues.length;
+                    blade.mat.uniforms.uColor.value.setHex(saberBladeHues[colorStep]);
                 });
             });
         }
@@ -10314,6 +10451,9 @@ export function createVFXScene(container) {
 
     return {
         animate,
+        renderer,
+        scene,
+        camera,
         onResize,
         triggerResize: onResize,
         switchFX,
@@ -10453,6 +10593,18 @@ export function createVFXScene(container) {
                             deck1Data.artworkImg = null;
                             deck1Data.artworkUrl = '';
                             deck1Data._artRequested = false;
+                            deck1Data.cues = [];
+                            deck1Data.loops = [];
+                            deck1Data.samples = null;
+                            deck1Progress = 0.0;
+                            deck1WireProgress = 0.0;
+                            deck1Data.beat = 0.0;
+                            deck1Data.wireBeat = 0.0;
+                            deck1LastBeat = undefined;
+                            deck1HasHardwareWaveform = false;
+                            // Immediately wipe old track waveform slices so old waveform never lingers
+                            djAudioHistoryData.subarray(0, 512 * 4).fill(0);
+                            djAudioHistoryTex.needsUpdate = true;
                         }
                         deck1Data.title = data.title;
                         deck1Data.unloaded = false;
@@ -10483,7 +10635,10 @@ export function createVFXScene(container) {
                         deck1Stationary = true;
                     }
                     deck1LastBeat = b;
-                    deck1Data.beat = b;
+                    deck1Data.wireBeat = b;
+                    if (deck1Data.beat === undefined || Math.abs(deck1Data.beat - b) > 1.0) {
+                        deck1Data.beat = b;
+                    }
                     deck1BeatInBar = ((Math.floor(b) % 4) + 4) % 4 + 1;
                 } else if (data.count !== undefined) {
                     deck1BeatInBar = data.count;
@@ -10501,8 +10656,8 @@ export function createVFXScene(container) {
                     }
                 }
                 if (data.sync !== undefined) deck1Data.sync = Boolean(data.sync);
-                if (data.cues && Array.isArray(data.cues) && data.cues.length > 0) deck1Data.cues = data.cues;
-                if (data.loops && Array.isArray(data.loops) && data.loops.length > 0) deck1Data.loops = data.loops;
+                if (data.cues && Array.isArray(data.cues)) deck1Data.cues = data.cues;
+                if (data.loops && Array.isArray(data.loops)) deck1Data.loops = data.loops;
                 if (data.samples && Array.isArray(data.samples)) deck1Data.samples = data.samples;
 
                 if (data.progress !== undefined) {
@@ -10530,6 +10685,18 @@ export function createVFXScene(container) {
                             deck2Data.artworkImg = null;
                             deck2Data.artworkUrl = '';
                             deck2Data._artRequested = false;
+                            deck2Data.cues = [];
+                            deck2Data.loops = [];
+                            deck2Data.samples = null;
+                            deck2Progress = 0.0;
+                            deck2WireProgress = 0.0;
+                            deck2Data.beat = 0.0;
+                            deck2Data.wireBeat = 0.0;
+                            deck2LastBeat = undefined;
+                            deck2HasHardwareWaveform = false;
+                            // Immediately wipe old track waveform slices so old waveform never lingers
+                            djAudioHistoryData.subarray(512 * 4, 1024 * 4).fill(0);
+                            djAudioHistoryTex.needsUpdate = true;
                         }
                         deck2Data.title = data.title;
                         deck2Data.unloaded = false;
@@ -10560,7 +10727,13 @@ export function createVFXScene(container) {
                         deck2Stationary = true;
                     }
                     deck2LastBeat = b2;
-                    deck2Data.beat = b2;
+                    deck2Data.wireBeat = b2;
+                    if (deck2Data.beat === undefined || Math.abs(deck2Data.beat - b2) > 1.0) {
+                        deck2Data.beat = b2;
+                    }
+                    deck2BeatInBar = ((Math.floor(b2) % 4) + 4) % 4 + 1;
+                } else if (data.count !== undefined) {
+                    deck2BeatInBar = data.count;
                 }
                 if (data.loopActive !== undefined) {
                     deck2Data.loopActive = Boolean(data.loopActive);
@@ -10572,8 +10745,8 @@ export function createVFXScene(container) {
                     }
                 }
                 if (data.sync !== undefined) deck2Data.sync = Boolean(data.sync);
-                if (data.cues && Array.isArray(data.cues) && data.cues.length > 0) deck2Data.cues = data.cues;
-                if (data.loops && Array.isArray(data.loops) && data.loops.length > 0) deck2Data.loops = data.loops;
+                if (data.cues && Array.isArray(data.cues)) deck2Data.cues = data.cues;
+                if (data.loops && Array.isArray(data.loops)) deck2Data.loops = data.loops;
                 if (data.samples && Array.isArray(data.samples)) deck2Data.samples = data.samples;
 
                 if (data.progress !== undefined) {
@@ -10684,6 +10857,7 @@ export function createVFXScene(container) {
             deck2Weight = 0.0;
             smoothDeck1SmokePhase = 1.0;
             smoothDeck2SmokePhase = 1.0;
+            smoothTransitionSmoke = 0.0;
             if (djWaveMat && djWaveMat.uniforms) {
                 djWaveMat.uniforms.uDeck1Weight.value = 0.0;
                 djWaveMat.uniforms.uDeck2Weight.value = 0.0;
@@ -10693,6 +10867,7 @@ export function createVFXScene(container) {
             if (waveSmokeMat && waveSmokeMat.uniforms) {
                 waveSmokeMat.uniforms.uDeck1SmokePhase.value = 1.0;
                 waveSmokeMat.uniforms.uDeck2SmokePhase.value = 1.0;
+                waveSmokeMat.uniforms.uTransitionBlend.value = 0.0;
             }
             if (djWaveMesh) djWaveMesh.visible = false;
             if (waveSmokeMesh) waveSmokeMesh.visible = false;
@@ -10785,23 +10960,23 @@ export function createVFXScene(container) {
             setDeckWaveform(waveformPacket);
         },
         getLiveDeckAudioData: () => {
-            if (!deck1HasHardwareWaveform && !deck1Active) return null;
+            const hasAnyDeck = deck1HasHardwareWaveform || deck1Active || deck2HasHardwareWaveform || deck2Active || (deck1Data && deck1Data.title) || (deck2Data && deck2Data.title) || (beatTriggerPulse > 0.02);
+            if (!hasAnyDeck) return null;
 
             updateSynthesizedDeckSpectrum();
 
-            const kickPulse = beatTriggerPulse;
-            const liveBass = wireSmoothBins[4] / 255.0;
-            const liveMid = wireSmoothBins[32] / 255.0;
-            const liveTreble = wireSmoothBins[90] / 255.0;
+            const kickPulse = Math.max(beatTriggerPulse, wireSmoothHit);
+            const liveBass = Math.max(0.01, wireSmoothBins[4] / 255.0);
+            const liveMid = Math.max(0.01, wireSmoothBins[32] / 255.0);
+            const liveTreble = Math.max(0.01, wireSmoothBins[90] / 255.0);
             const overall = Math.min(1.0, liveBass * 0.60 + liveMid * 0.35 + liveTreble * 0.20);
 
-            const synthArray = new Uint8Array(128);
             for (let i = 0; i < 128; i++) {
-                synthArray[i] = Math.min(255, Math.max(0, Math.floor(wireSmoothBins[i])));
+                liveSynthAudioArray[i] = Math.min(255, Math.max(0, Math.floor(wireSmoothBins[i])));
             }
 
-            const peakDb = -0.5 + kickPulse * 0.4;
-            const lufs = -8.5 + liveBass * 3.0;
+            const peakDb = -18.0 + (liveBass * 14.0) + (kickPulse * 3.5);
+            const lufs = -20.0 + (overall * 12.0);
 
             return {
                 bass: liveBass,
@@ -10814,15 +10989,15 @@ export function createVFXScene(container) {
                 smoothedTreble: liveTreble,
                 overall: overall,
                 isOnset: kickPulse > 0.55,
-                dataArray: synthArray,
+                dataArray: liveSynthAudioArray,
                 peakDb: peakDb,
-                peakHoldDb: 0.0,
+                peakHoldDb: Math.min(0.0, peakDb + 1.5),
                 lufs: lufs,
-                headroomDb: 0.5,
+                headroomDb: Math.max(0.1, -peakDb),
                 vuPercent: Math.min(100, Math.round(overall * 100)),
                 vuRmsPercent: Math.min(100, Math.round((liveBass * 0.6 + liveMid * 0.4) * 85)),
                 vuPeakHoldPercent: Math.min(100, Math.round(overall * 100)),
-                isClipping: false
+                isClipping: peakDb >= -0.05
             };
         },
         getCurrentFX: () => currentFXIndex,

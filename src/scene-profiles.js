@@ -400,8 +400,8 @@ export const DEFAULT_SCENE_PROFILE = {
     },
     flyer: {
         enabled: false,
-        url: '/images/flyers/4tm-flyer-example.jpg',
-        title: 'Club Event Promo',
+        url: '/images/flyers/neon_odyssey_flyer.jpg',
+        title: 'Neon Odyssey Live',
         isVideo: false,
         layerMode: 'overlay',
         blend: 0,
