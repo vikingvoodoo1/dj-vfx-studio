@@ -293,6 +293,18 @@
                     <span class="act-dot" id="dot-nowplaying"></span>
                 </button>
 
+                <button class="activity-tab" data-tab="tracklist" title="📜 Live Session Tracklist & Denon Preview Waveforms [Alt+9]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="8" y1="6" x2="21" y2="6" />
+                        <line x1="8" y1="12" x2="21" y2="12" />
+                        <line x1="8" y1="18" x2="21" y2="18" />
+                        <line x1="3" y1="6" x2="3.01" y2="6" />
+                        <line x1="3" y1="12" x2="3.01" y2="12" />
+                        <line x1="3" y1="18" x2="3.01" y2="18" />
+                    </svg>
+                    <span class="act-dot" id="dot-tracklist"></span>
+                </button>
+
                 <button class="activity-tab" data-tab="lighting" title="💡 Venue & Stage Lighting (Philips Hue & DMX512) [Alt+8]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 18h6" />
@@ -384,7 +396,7 @@
                     <div class="active-scene-banner-actions">
                         <button class="btn-micro" id="btn-open-video-manager" style="display:none; padding:2px 6px; font-size:7.5px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:3px; cursor:pointer;" title="Open 10-Bank Video Loops &amp; Library Console">📁 VIDEOS</button>
                         <button class="btn-micro" id="btn-active-scene-fxbank" style="padding:2px 6px; font-size:7.5px; font-weight:700; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#d8dbe4; border-radius:3px; cursor:pointer;" title="Open Visual FX Bank to browse all 23 scenes [Alt+2]">✨ FX</button>
-                        <button class="active-scene-cog-btn" id="btn-active-scene-cog" type="button" title="Configure Active Scene Settings (Speed, Branding Memory, Macro &amp; Lighting)">⚙️</button>
+                        <button class="active-scene-cog-btn" id="btn-active-scene-cog" type="button" onclick="event.stopPropagation(); if(window.openSceneConfigModal) window.openSceneConfigModal();" title="Configure Active Scene Settings (Speed, Branding Memory, Macro &amp; Lighting)">⚙️</button>
                     </div>
                 </div>
 
@@ -502,12 +514,28 @@
                     </div>
                 </div>
 
-                <!-- 🎧 Shazam Feedback & Candidate Section in Live Performance Deck -->
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; margin-top:2px;">
-                    <span style="font-size:7.5px; font-weight:800; color:#8c909e; letter-spacing:0.5px;">ACOUSTIC FINGERPRINTING</span>
-                    <button class="btn-mini" id="btn-deck-shazam-listen" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#ffffff; cursor:pointer; border-radius:3px; display:flex; align-items:center; gap:4px; box-shadow:0 1px 6px rgba(0,136,255,0.3);" title="Listen and detect playing track with Shazam">
-                        <span>🔍 SHAZAM TRACK</span>
-                    </button>
+                <!-- 🎧 Now Playing Track Artwork / Info & Shazam Section in Live Performance Deck -->
+                <div class="perform-nowplaying-strip" id="perform-nowplaying-strip" style="display:flex; align-items:center; justify-content:space-between; gap:8px; background:linear-gradient(180deg, #12151f 0%, #0b0d14 100%); border:1px solid #24293a; border-radius:6px; padding:6px 8px; margin-bottom:8px; margin-top:2px;">
+                    <div style="display:flex; align-items:center; gap:8px; min-width:0; flex:1;">
+                        <div id="perform-track-art-wrap" style="width:36px; height:36px; border-radius:5px; overflow:hidden; flex-shrink:0; background:#181b26; border:1px solid rgba(0,229,255,0.35); display:flex; align-items:center; justify-content:center; position:relative; box-shadow:0 2px 6px rgba(0,0,0,0.5);">
+                            <img id="perform-track-art" src="" alt="Track Art" style="width:100%; height:100%; object-fit:cover; display:none;" />
+                            <span id="perform-track-art-fallback" style="font-size:16px; line-height:1;">💿</span>
+                        </div>
+                        <div style="min-width:0; flex:1; display:flex; flex-direction:column; gap:1px;">
+                            <div style="display:flex; align-items:center; gap:5px; min-width:0;">
+                                <span id="perform-track-deck-badge" style="font-size:7px; font-weight:800; padding:1px 4px; border-radius:3px; background:rgba(0,255,204,0.14); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; font-family:'JetBrains Mono',monospace; flex-shrink:0;">ON AIR</span>
+                                <span id="perform-track-key-badge" style="font-size:7.5px; font-weight:800; color:#8f7cff; font-family:'JetBrains Mono',monospace; flex-shrink:0; display:none;">--</span>
+                                <span id="perform-track-bpm-badge" style="font-size:7.5px; font-weight:800; color:#00e5ff; font-family:'JetBrains Mono',monospace; flex-shrink:0; display:none;">-- BPM</span>
+                            </div>
+                            <div id="perform-track-title" style="font-size:10px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Current Playing Track Title">Awaiting Track...</div>
+                            <div id="perform-track-artist" style="font-size:8.5px; font-weight:600; color:#9aa4b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="Current Playing Track Artist &amp; Album">Connect Decks or Click Shazam</div>
+                        </div>
+                    </div>
+                    <div style="display:flex; flex-direction:column; align-items:flex-end; gap:3px; flex-shrink:0;">
+                        <button class="btn-mini" id="btn-deck-shazam-listen" style="font-size:8px; font-weight:800; padding:5px 8px; background:linear-gradient(180deg, #0088ff 0%, #0055cc 100%); border:1px solid #00bbff; color:#ffffff; cursor:pointer; border-radius:4px; display:flex; align-items:center; gap:4px; box-shadow:0 1px 6px rgba(0,136,255,0.3); white-space:nowrap;" title="Listen and detect playing track with Shazam">
+                            <span>🔍 SHAZAM</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- 1. Active Listening / Radar Animation Box in Deck (Hidden until triggered) -->
@@ -2529,10 +2557,6 @@
                         <span class="tab-led"></span>
                         <span>📊 SESSION METRICS</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-tracklist" data-setuptab="tracklist" title="Chronological Tracklist, Album Art, Denon Beat Grid &amp; Timestamps">
-                        <span class="tab-led"></span>
-                        <span>📜 TRACKLIST</span>
-                    </button>
                 </div>
 
                 <!-- SUB-DRAWER 0A: MASTER CONTROLLER CONSOLE -->
@@ -2750,53 +2774,6 @@
                     </div>
                 </div>
 
-                <!-- SUB-DRAWER 5: CHRONOLOGICAL TRACKLIST & TIMESTAMPS -->
-                <div id="setup-content-tracklist" class="setup-subcontent" style="display:none;">
-                    <div style="display:flex; flex-direction:column; gap:8px;">
-                        <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:10px 12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span style="font-size:13px;">📜</span>
-                                    <div>
-                                        <div style="font-size:10px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST &amp; DENON BEAT GRID</div>
-                                        <div style="font-size:7.5px; color:#8c909e;" id="tracklist-rec-status-sub">Album Art • 3-Band Denon Waveform • Key • BPM • Length • Album • Genre</div>
-                                    </div>
-                                </div>
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:4px 7px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
-                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:4px 7px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR</button>
-                                </div>
-                            </div>
-
-                            <!-- Tracklist Recording Transport Controls (Record / Pause / Stop) & Configurable Idle Auto-Standby -->
-                            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; background:#0b0c10; border:1px solid #222634; border-radius:5px; padding:6px 8px; margin-bottom:8px;">
-                                <div style="display:flex; align-items:center; gap:4px;">
-                                    <button type="button" class="btn-mini" id="btn-tracklist-rec" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,0,85,0.18); border:1px solid #ff0055; color:#ff4d88; border-radius:4px; cursor:pointer;" title="Start or Resume Tracklist &amp; Session Recording">⏺ REC</button>
-                                    <button type="button" class="btn-mini" id="btn-tracklist-pause" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,170,0,0.15); border:1px solid rgba(255,170,0,0.45); color:#ffaa00; border-radius:4px; cursor:pointer;" title="Pause / Standby Tracklist Recording">⏸ PAUSE</button>
-                                    <button type="button" class="btn-mini" id="btn-tracklist-stop" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.2); color:#cfd6e6; border-radius:4px; cursor:pointer;" title="Stop Tracklist Recording">⏹ STOP</button>
-                                </div>
-                                <div style="display:flex; align-items:center; gap:5px;">
-                                    <span style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace; white-space:nowrap;">IDLE STANDBY:</span>
-                                    <select id="select-session-inactivity-timeout" class="hud-select" style="width:auto; font-size:8px; padding:3px 6px; background:#14161e; border:1px solid #2b3042; color:#00ffcc; border-radius:4px;" title="Automatically pause/standby recording when decks are offline or inactive">
-                                        <option value="5">5 Min Idle</option>
-                                        <option value="10">10 Min Idle</option>
-                                        <option value="15" selected>15 Min (Default)</option>
-                                        <option value="30">30 Min Idle</option>
-                                        <option value="60">60 Min Idle</option>
-                                        <option value="0">Never (Always On)</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;">
-                                <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
-                                    No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
                 <!-- ===================================================================== -->
                 <!-- PERSISTENT FOOTER BELOW ALL SETUP TABS: BACKUP / RESTORE & RESET      -->
                 <!-- ===================================================================== -->
@@ -2839,6 +2816,60 @@
                         <button type="button" class="btn-mini danger" id="btn-setup-reset-all" style="width: 100%; font-size: 9.5px; font-weight: 800; padding: 6px 10px; background: linear-gradient(180deg, #ff0055 0%, #990033 100%); border: 1px solid #ff0055; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,85,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
                             ↺ RESET ALL PARAMETERS &amp; SCENE PROFILES
                         </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================================= -->
+            <!-- PANE TRACKLIST: LIVE SESSION TRACKLIST & DENON PREVIEW WAVEFORMS [Alt+9]  -->
+            <!-- ========================================================================= -->
+            <div class="ide-tab-pane" id="pane-tracklist">
+                <div class="pane-section-title">
+                    <span>📜 Live Session Tracklist</span>
+                    <span class="hud-badge" style="border-color:#00ffcc; color:#00ffcc;">ENGINE OS PREVIEW</span>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:8px;">
+                    <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:6px;">
+                                <span style="font-size:13px;">💿</span>
+                                <div>
+                                    <div style="font-size:10px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST &amp; DENON WAVEFORM</div>
+                                    <div style="font-size:7.5px; color:#8c909e;" id="tracklist-rec-status-sub">Art • Preview • Key • BPM • Length • Title • Artist • Album</div>
+                                </div>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:4px 7px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
+                                <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:4px 7px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR</button>
+                            </div>
+                        </div>
+
+                        <!-- Tracklist Recording Transport Controls (Record / Pause / Stop) & Configurable Idle Auto-Standby -->
+                        <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; background:#0b0c10; border:1px solid #222634; border-radius:5px; padding:6px 8px; margin-bottom:8px;">
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <button type="button" class="btn-mini" id="btn-tracklist-rec" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,0,85,0.18); border:1px solid #ff0055; color:#ff4d88; border-radius:4px; cursor:pointer;" title="Start or Resume Tracklist &amp; Session Recording">⏺ REC</button>
+                                <button type="button" class="btn-mini" id="btn-tracklist-pause" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,170,0,0.15); border:1px solid rgba(255,170,0,0.45); color:#ffaa00; border-radius:4px; cursor:pointer;" title="Pause / Standby Tracklist Recording">⏸ PAUSE</button>
+                                <button type="button" class="btn-mini" id="btn-tracklist-stop" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.2); color:#cfd6e6; border-radius:4px; cursor:pointer;" title="Stop Tracklist Recording">⏹ STOP</button>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:5px;">
+                                <span style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace; white-space:nowrap;">IDLE STANDBY:</span>
+                                <select id="select-session-inactivity-timeout" class="hud-select" style="width:auto; font-size:8px; padding:3px 6px; background:#14161e; border:1px solid #2b3042; color:#00ffcc; border-radius:4px;" title="Automatically pause/standby recording when decks are offline or inactive">
+                                    <option value="5">5 Min Idle</option>
+                                    <option value="10">10 Min Idle</option>
+                                    <option value="15" selected>15 Min (Default)</option>
+                                    <option value="30">30 Min Idle</option>
+                                    <option value="60">60 Min Idle</option>
+                                    <option value="0">Never (Always On)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div id="session-tracklist-container" class="session-scroll-box" style="max-height:calc(100vh - 210px); min-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:2px; padding-right:2px;">
+                            <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
+                                No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3038,6 +3069,15 @@
 
     <!-- 3D Canvas -->
     <div id="canvas-container"></div>
+
+    <!-- Hellfire Waveforms (Scene 04) Decks Offline Center Screen Overlay -->
+    <div id="hellfire-decks-offline-overlay" style="display:none; position:fixed; inset:0; z-index:9500; pointer-events:none; align-items:center; justify-content:center;">
+        <div class="hellfire-offline-banner-box">
+            <div class="hellfire-offline-icon">🔥</div>
+            <div class="hellfire-offline-title">TURN ON DECKS TO ACTIVATE THIS SCENE</div>
+            <div class="hellfire-offline-sub">AWAITING DENON STAGELINQ / PIONEER PRO DJ LINK HARDWARE TELEMETRY</div>
+        </div>
+    </div>
 
     <!-- Blackout Curtain for OBS Feed & Stage Display -->
     <div id="obs-blackout-curtain"></div>

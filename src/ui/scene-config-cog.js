@@ -69,6 +69,7 @@ export function initSceneConfigCogController({
                 cogBtn.dataset.fxCog = String(fxId);
                 cogBtn.title = `Configure Scene ${String(fxId + 1).padStart(2, '0')} Settings (Speed, Branding Memory, Macro & Lighting)`;
                 cogBtn.innerHTML = '⚙️';
+                cogBtn.setAttribute('onclick', `event.stopPropagation(); event.preventDefault(); if(window.openSceneConfigModal) window.openSceneConfigModal(${fxId});`);
                 cogBtn.addEventListener('click', (e) => {
                     e.stopPropagation();
                     e.preventDefault();
@@ -633,7 +634,14 @@ export function initSceneConfigCogController({
         if (!gridEl) return;
 
         const profile = SceneProfileManager.getProfile(sceneId);
-        const live = (typeof getCurrentConsoleSnapshot === 'function') ? getCurrentConsoleSnapshot(sceneId) : {};
+        let live = {};
+        try {
+            if (typeof getCurrentConsoleSnapshot === 'function') {
+                live = getCurrentConsoleSnapshot(sceneId) || {};
+            }
+        } catch (err) {
+            console.warn('[SceneCog] Snapshot fallback used:', err);
+        }
         const isCurrentStageScene = ((vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0) === Number(sceneId);
 
         // Display live values if this scene is currently on stage, or saved profile values otherwise
@@ -775,13 +783,19 @@ export function initSceneConfigCogController({
             ? Number(sceneId)
             : ((vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0);
         ensureModalDOM();
-        renderModalState(targetId);
         modalBackdrop.classList.add('active', 'open');
+        modalBackdrop.style.display = 'flex';
+        try {
+            renderModalState(targetId);
+        } catch (err) {
+            console.error('[SceneCog] Error rendering modal state:', err);
+        }
     }
 
     function closeSceneConfigModal() {
         if (modalBackdrop) {
             modalBackdrop.classList.remove('active', 'open');
+            modalBackdrop.style.display = 'none';
         }
     }
 

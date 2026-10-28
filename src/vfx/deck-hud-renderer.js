@@ -1438,5 +1438,46 @@ export function renderDJDeckHUD(ctx, width, height, d1, d2, bpm, beatPhase, tran
     ctx.fill();
     ctx.stroke();
     ctx.restore();
+
+    // 6. Center-Screen Overlay when Decks are Not Detected
+    const bothDecksOffline = Boolean((!d1 || d1.offline) && (!d2 || d2.offline) && !hasD1Track && !hasD2Track);
+    if (bothDecksOffline) {
+        ctx.save();
+        const boxW = 920;
+        const boxH = 175;
+        const boxX = (W - boxW) * 0.5;
+        const boxY = (H - boxH) * 0.5 + 30;
+        const pulse = 0.78 + 0.22 * Math.sin(nowMsHUD * 0.004);
+
+        ctx.shadowColor = `rgba(255, 72, 0, ${0.65 * pulse})`;
+        ctx.shadowBlur = 36;
+        const bgGrad = ctx.createLinearGradient(boxX, boxY, boxX, boxY + boxH);
+        bgGrad.addColorStop(0, 'rgba(22, 8, 4, 0.94)');
+        bgGrad.addColorStop(0.5, 'rgba(38, 12, 5, 0.96)');
+        bgGrad.addColorStop(1, 'rgba(18, 6, 3, 0.94)');
+        ctx.fillStyle = bgGrad;
+        ctx.beginPath();
+        ctx.roundRect(boxX, boxY, boxW, boxH, 16);
+        ctx.fill();
+
+        ctx.shadowBlur = 0;
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = `rgba(255, 115, 25, ${0.6 + 0.35 * pulse})`;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.font = '900 32px "Orbitron", "Inter", system-ui, sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = 'rgba(255, 90, 0, 0.9)';
+        ctx.shadowBlur = 18;
+        ctx.fillText('🔥 TURN ON DECKS TO ACTIVATE THIS SCENE', W * 0.5, boxY + 68);
+
+        ctx.shadowBlur = 0;
+        ctx.font = '700 15px "JetBrains Mono", monospace';
+        ctx.fillStyle = '#ffaa44';
+        ctx.fillText('AWAITING DENON STAGELINQ / PIONEER PRO DJ LINK HARDWARE CONNECTION', W * 0.5, boxY + 122);
+        ctx.restore();
+    }
 }
 

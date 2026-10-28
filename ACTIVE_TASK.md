@@ -3,6 +3,20 @@
 > **Note to Agent:** Update this file as you complete steps or switch tasks. After any context compaction, read this file and run `git diff --stat` first before acting.
 
 ## 1. Current Active Goal
+- **Task:** Hellfire Offline Overlay, Dedicated Tracklist Console Panel + Tight Gaps & Album Column, All 3 Cog (`⚙️`) Buttons Fix, and Live Performance Deck Now Playing Artwork Card [COMPLETED & VERIFIED]:
+  1. **Hellfire Waveforms (`FX 3` / Scene 04) Center-Screen Overlay when Decks Offline (`index.html`, `src/styles/main.css`, `src/vfx/deck-hud-renderer.js`, `src/main.js`)**:
+     - Added full-screen centered overlay `#hellfire-decks-offline-overlay` (plus 3D HUD canvas centered overlay in `renderDJDeckHUD`) displaying **`🔥 TURN ON DECKS TO ACTIVATE THIS SCENE`** over the top of everything whenever Scene 04 is active and decks are not connected, and automatically disappearing the instant decks connect or when switching scenes.
+  2. **Dedicated Tracklist Console Panel Icon (`#pane-tracklist`), Wider Panel (`568px`), Tighter Column Gaps & Explicit Album Column (`index.html`, `src/styles/main.css`, `src/services/session-tracker.js`, `src/main.js`)**:
+     - Moved the Tracklist out of Settings (`#pane-setup`) into its own dedicated console panel icon on the left activity bar (`data-tab="tracklist"`, `#pane-tracklist`, hotkey `Alt+9`).
+     - Widened `#hud` to `568px` (`max-width: calc(100vw - 16px)`), tightened `.denon-tracklist-header` and `.denon-track-grid-row` column gaps (`gap: 3px; padding: 3px 4px;`), and added **Album** as an explicit column (`▲ | Art | Preview | Key | BPM | Length | Title | Artist | Album`).
+     - Added `enrichMissingTrackMetadata()` in `src/services/session-tracker.js` and extended `fetchTrackArtwork()` in `src/main.js` so Album (`collectionName`), Genre (`primaryGenreName`), and Length (`trackTimeMillis`) are automatically enriched.
+  3. **Fixed All 3 Cog (`⚙️`) Buttons (Scene Card, Video Card, and Live Performance Deck Active Scene Banner) (`src/main.js`, `src/ui/scene-config-cog.js`, `src/ui/video-config-cog.js`)**:
+     - Fixed `ReferenceError: currentDjLogoIsVideo is not defined` inside `getCurrentConsoleSnapshot()` (`src/main.js` lines 7486, 7501, 7513) by using the declared variable names `isCurrentDjVideo`, `isCurrentStationVideo`, and `isCurrentFlyerVideo`.
+     - Hardened `openSceneConfigModal()` and `openVideoConfigModal()` to show the modal immediately (`display = 'flex'`) with `try/catch` guards and direct `onclick` handlers on `.fx-card-cog-btn`, `.video-card-cog-btn`, and `#btn-active-scene-cog`.
+  4. **Current Track Album Artwork & Info in Live Performance Deck Shazam Area (`index.html`, `src/main.js`)**:
+     - Added `#perform-nowplaying-strip` (`updatePerformDeckTrackCard`) right alongside the `🔍 SHAZAM` button in `#pane-perform`, displaying live **Album Artwork**, **Track Title**, **Artist & Album**, **Deck Badge**, **Key Badge**, and **BPM Badge**.
+
+## 1a. Previous Completed Goal
 - **Task:** Live Performance Deck, Settings Split & Backup/Restore, Rich Denon Tracklist + Auto-Standby, and Scene/Video Configuration Cog Modals [COMPLETED & VERIFIED]:
   1. **Live Performance Deck Panel (`#pane-perform`)**:
      - Compacted `.active-scene-banner` into a sleek single-line strip (`padding: 4px 8px; height ~32px`).

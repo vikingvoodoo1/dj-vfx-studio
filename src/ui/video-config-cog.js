@@ -360,7 +360,14 @@ export function initVideoConfigCogController({
         if (!gridEl || !activeVidObj) return;
 
         const cfg = ensureVideoConfig(activeVidObj);
-        const live = typeof getCurrentConsoleSnapshot === 'function' ? getCurrentConsoleSnapshot(22) : {};
+        let live = {};
+        try {
+            if (typeof getCurrentConsoleSnapshot === 'function') {
+                live = getCurrentConsoleSnapshot(22) || {};
+            }
+        } catch (err) {
+            console.warn('Video cog snapshot read warning:', err);
+        }
         const snap = (cfg.hasCustomSnapshot && cfg.snapshot) ? cfg.snapshot : live;
 
         const dj = snap.djLogo || DEFAULT_SCENE_PROFILE.djLogo;
@@ -457,13 +464,21 @@ export function initVideoConfigCogController({
         activeVidIdx = vidIdx;
         activeOnSaveCallback = onSaveCallback;
         ensureModalDOM();
-        renderVideoModalState();
-        modalBackdrop.classList.add('active', 'open');
+        if (modalBackdrop) {
+            modalBackdrop.classList.add('active', 'open');
+            modalBackdrop.style.display = 'flex';
+        }
+        try {
+            renderVideoModalState();
+        } catch (err) {
+            console.error('Error rendering video config modal state:', err);
+        }
     }
 
     function closeVideoConfigModal() {
         if (modalBackdrop) {
             modalBackdrop.classList.remove('active', 'open');
+            modalBackdrop.style.display = 'none';
         }
     }
 

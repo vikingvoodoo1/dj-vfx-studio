@@ -5691,20 +5691,25 @@ body.obs-transparent-mode #canvas-container {
     transition: border-color 0.15s ease;
 }
 
-/* Denon Engine DJ Style Tracklist Table & Rows */
+/* Denon Engine DJ Style Tracklist Table & Rows (Tight Gaps + Explicit Album Column) */
+#hud {
+    width: 568px !important;
+    max-width: calc(100vw - 16px);
+}
+
 .denon-tracklist-header {
     display: grid;
-    grid-template-columns: 18px 34px 118px 30px 30px 36px 1fr;
+    grid-template-columns: 14px 28px 88px 22px 24px 28px 1.25fr 0.85fr 0.75fr;
     align-items: center;
-    gap: 6px;
-    padding: 4px 6px;
+    gap: 3px;
+    padding: 4px 4px;
     background: linear-gradient(180deg, #24262e 0%, #181a20 100%);
     border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     border-radius: 4px 4px 0 0;
     font-size: 7.5px;
     font-weight: 700;
     color: #b0b6c6;
-    letter-spacing: 0.2px;
+    letter-spacing: 0.15px;
     user-select: none;
     position: sticky;
     top: 0;
@@ -5714,8 +5719,8 @@ body.obs-transparent-mode #canvas-container {
 .session-track-card-rich {
     display: flex;
     flex-direction: column;
-    gap: 3px;
-    padding: 4px 6px;
+    gap: 2px;
+    padding: 3px 4px;
     background: #14161c;
     border-bottom: 1px solid rgba(255, 255, 255, 0.07);
     transition: background 0.12s ease;
@@ -5731,15 +5736,15 @@ body.obs-transparent-mode #canvas-container {
 
 .denon-track-grid-row {
     display: grid;
-    grid-template-columns: 18px 34px 118px 30px 30px 36px 1fr;
+    grid-template-columns: 14px 28px 88px 22px 24px 28px 1.25fr 0.85fr 0.75fr;
     align-items: center;
-    gap: 6px;
+    gap: 3px;
     min-width: 0;
 }
 
 .session-track-art-box {
-    width: 34px;
-    height: 34px;
+    width: 28px;
+    height: 28px;
     border-radius: 2px;
     background: #b8bcc6;
     border: 1px solid rgba(255, 255, 255, 0.18);
@@ -5758,8 +5763,8 @@ body.obs-transparent-mode #canvas-container {
 }
 
 .session-track-wave-box {
-    width: 118px;
-    height: 28px;
+    width: 88px;
+    height: 24px;
     border-radius: 2px;
     background: #14161c;
     overflow: hidden;
@@ -5775,16 +5780,16 @@ body.obs-transparent-mode #canvas-container {
 }
 
 .denon-col-num {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 700;
     color: #9ba3b8;
     font-family: 'JetBrains Mono', monospace;
     text-align: right;
-    padding-right: 2px;
+    padding-right: 1px;
 }
 
 .denon-col-key {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 800;
     font-family: 'JetBrains Mono', monospace;
     text-align: center;
@@ -5792,7 +5797,7 @@ body.obs-transparent-mode #canvas-container {
 }
 
 .denon-col-bpm {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 700;
     color: #e6eaf2;
     font-family: 'JetBrains Mono', monospace;
@@ -5801,7 +5806,7 @@ body.obs-transparent-mode #canvas-container {
 }
 
 .denon-col-len {
-    font-size: 8.5px;
+    font-size: 8px;
     font-weight: 700;
     color: #d0d6e2;
     font-family: 'JetBrains Mono', monospace;
@@ -5822,9 +5827,9 @@ body.obs-transparent-mode #canvas-container {
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
-    padding-left: 24px;
+    padding-left: 16px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7px;
+    font-size: 6.5px;
 }
 
 .session-meta-pill {
@@ -5835,5 +5840,63 @@ body.obs-transparent-mode #canvas-container {
     color: #9ba3b8;
     white-space: nowrap;
 }
+
+/* =========================================================================
+   HELLFIRE WAVEFORMS (SCENE 04) DECKS OFFLINE FULL-SCREEN CENTER OVERLAY
+   ========================================================================= */
+#hellfire-decks-offline-overlay.active {
+    display: flex !important;
+}
+
+.hellfire-offline-banner-box {
+    background: linear-gradient(180deg, rgba(24, 9, 5, 0.94) 0%, rgba(42, 13, 6, 0.96) 50%, rgba(18, 6, 3, 0.94) 100%);
+    border: 2px solid #ff6611;
+    border-radius: 14px;
+    padding: 24px 36px;
+    text-align: center;
+    box-shadow: 0 0 42px rgba(255, 80, 0, 0.55), inset 0 0 24px rgba(255, 110, 20, 0.22);
+    backdrop-filter: blur(10px);
+    animation: hellfireOfflinePulse 2.2s ease-in-out infinite;
+    max-width: 90vw;
+}
+
+.hellfire-offline-icon {
+    font-size: 36px;
+    line-height: 1;
+    margin-bottom: 8px;
+    filter: drop-shadow(0 0 12px rgba(255, 100, 0, 0.85));
+}
+
+.hellfire-offline-title {
+    font-family: 'Orbitron', 'Inter', system-ui, sans-serif;
+    font-size: 22px;
+    font-weight: 900;
+    color: #ffffff;
+    letter-spacing: 1.4px;
+    text-shadow: 0 0 18px rgba(255, 95, 0, 0.95), 0 2px 4px rgba(0, 0, 0, 0.9);
+    margin-bottom: 6px;
+}
+
+.hellfire-offline-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: #ffaa44;
+    letter-spacing: 0.8px;
+}
+
+@keyframes hellfireOfflinePulse {
+    0%, 100% {
+        border-color: rgba(255, 102, 17, 0.75);
+        box-shadow: 0 0 32px rgba(255, 75, 0, 0.45), inset 0 0 18px rgba(255, 110, 20, 0.18);
+        transform: scale(1);
+    }
+    50% {
+        border-color: #ffaa33;
+        box-shadow: 0 0 54px rgba(255, 115, 0, 0.75), inset 0 0 28px rgba(255, 140, 30, 0.32);
+        transform: scale(1.015);
+    }
+}
+
 
 

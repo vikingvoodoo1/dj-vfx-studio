@@ -915,7 +915,7 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['perform', 'fx', 'branding', 'video', 'nowplaying', 'lighting', 'setup', 'about'];
+    const tabOrder = ['perform', 'fx', 'branding', 'video', 'nowplaying', 'tracklist', 'lighting', 'setup', 'about'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
@@ -931,7 +931,7 @@ async function init() {
             switchLightingSubtab(tabId);
             tabId = 'lighting';
         }
-        if (tabId === 'obs' || tabId === 'bridge' || tabId === 'session' || tabId === 'tracklist' || tabId === 'stage' || tabId === 'vutargets') {
+        if (tabId === 'obs' || tabId === 'bridge' || tabId === 'session' || tabId === 'stage' || tabId === 'vutargets') {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
@@ -1180,6 +1180,77 @@ async function init() {
         };
     }
 
+    const metadataClientCache = new Map();
+
+    function updateHellfireDecksOverlay() {
+        const overlay = document.getElementById('hellfire-decks-offline-overlay');
+        if (!overlay) return;
+        const curFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0;
+        const decksOnline = Boolean(isHardwareConnected || isHardwareDeckStreaming);
+        const shouldShow = (curFx === 3 && !decksOnline);
+        overlay.classList.toggle('active', shouldShow);
+        overlay.style.display = shouldShow ? 'flex' : 'none';
+    }
+    window.updateHellfireDecksOverlay = updateHellfireDecksOverlay;
+
+    function updatePerformDeckTrackCard(trackData = null) {
+        const artImg = document.getElementById('perform-track-art');
+        const artFallback = document.getElementById('perform-track-art-fallback');
+        const deckBadge = document.getElementById('perform-track-deck-badge');
+        const keyBadge = document.getElementById('perform-track-key-badge');
+        const bpmBadge = document.getElementById('perform-track-bpm-badge');
+        const titleEl = document.getElementById('perform-track-title');
+        const artistEl = document.getElementById('perform-track-artist');
+        if (!titleEl || !artistEl) return;
+
+        if (!trackData || !trackData.title || trackData.title === 'STANDBY' || trackData.title === '—' || trackData.title === 'No Track Loaded') {
+            titleEl.textContent = 'Awaiting Track...';
+            artistEl.textContent = 'Connect Decks or Click Shazam';
+            if (deckBadge) deckBadge.textContent = 'STANDBY';
+            if (keyBadge) keyBadge.style.display = 'none';
+            if (bpmBadge) bpmBadge.style.display = 'none';
+            if (artImg) {
+                artImg.style.display = 'none';
+                artImg.src = '';
+            }
+            if (artFallback) artFallback.style.display = 'inline';
+            return;
+        }
+
+        titleEl.textContent = trackData.title;
+        const albumSuffix = trackData.album ? ` • ${trackData.album}` : '';
+        artistEl.textContent = `${trackData.artist || 'Live Performance'}${albumSuffix}`;
+        if (deckBadge) {
+            deckBadge.textContent = trackData.deck === 'SHAZAM' ? 'SHAZAM' : `DECK ${trackData.deck || 1}`;
+        }
+        if (keyBadge) {
+            if (trackData.key && trackData.key !== '—') {
+                keyBadge.textContent = String(trackData.key).split(' ')[0];
+                keyBadge.style.display = 'inline';
+            } else {
+                keyBadge.style.display = 'none';
+            }
+        }
+        if (bpmBadge) {
+            if (trackData.bpm && !isNaN(parseFloat(trackData.bpm)) && parseFloat(trackData.bpm) > 40) {
+                bpmBadge.textContent = `${Math.round(parseFloat(trackData.bpm))} BPM`;
+                bpmBadge.style.display = 'inline';
+            } else {
+                bpmBadge.style.display = 'none';
+            }
+        }
+        const artUrl = trackData.artworkUrl || trackData.coverart || trackData.artwork || '';
+        if (artUrl && artImg) {
+            artImg.src = artUrl;
+            artImg.style.display = 'block';
+            if (artFallback) artFallback.style.display = 'none';
+        } else if (artImg && (!artImg.src || artImg.style.display === 'none')) {
+            artImg.style.display = 'none';
+            if (artFallback) artFallback.style.display = 'inline';
+        }
+    }
+    window.updatePerformDeckTrackCard = updatePerformDeckTrackCard;
+
     async function fetchTrackArtwork(title, artist, deckNum = 1) {
         const cleanTitle = (title || '').trim();
         const cleanArtist = (artist || '').trim();
@@ -1188,44 +1259,70 @@ async function init() {
         const cacheKey = `${cleanArtist.toLowerCase()}:::${cleanTitle.toLowerCase()}`;
         if (artworkClientCache.has(cacheKey)) {
             const cachedArt = artworkClientCache.get(cacheKey);
+            const cachedMeta = metadataClientCache.get(cacheKey) || {};
             if (vfx && vfx.setDeckData && deckNum) {
-                vfx.setDeckData({ deck: deckNum, artworkUrl: cachedArt });
+                vfx.setDeckData({ deck: deckNum, artworkUrl: cachedArt, ...cachedMeta });
             }
             return cachedArt;
         }
 
         let coverArt = null;
+        let foundAlbum = '';
+        let foundGenre = '';
+        let foundDuration = 0;
 
         // 1. Try local backend route /api/artwork (Engine DB & cache)
         try {
             const res = await fetch(`/api/artwork?title=${encodeURIComponent(cleanTitle)}&artist=${encodeURIComponent(cleanArtist)}`);
             if (res.ok) {
                 const data = await res.json();
-                if (data && data.success && data.coverart) {
-                    coverArt = data.coverart;
+                if (data && data.success) {
+                    if (data.coverart) coverArt = data.coverart;
+                    if (data.album) foundAlbum = data.album;
+                    if (data.genre) foundGenre = data.genre;
                 }
             }
         } catch (e) {}
 
-        // 2. Direct client fallback to iTunes if not found or server offline
-        if (!coverArt) {
+        // 2. Direct client fallback to iTunes for artwork + Album / Genre / Duration enrichment
+        if (!coverArt || !foundAlbum) {
             try {
-                const query = cleanArtist ? `${cleanArtist} ${cleanTitle}` : cleanTitle;
+                const strippedTitle = cleanTitle.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+                const strippedArtist = cleanArtist.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+                const query = strippedArtist ? `${strippedArtist} ${strippedTitle}` : strippedTitle;
                 const url = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`;
                 const res2 = await fetch(url);
                 if (res2.ok) {
                     const d2 = await res2.json();
-                    if (d2.results && d2.results[0] && d2.results[0].artworkUrl100) {
-                        coverArt = d2.results[0].artworkUrl100.replace(/\/\d+x\d+bb\.jpg/i, '/600x600bb.jpg');
+                    const hit = d2.results && d2.results[0];
+                    if (hit) {
+                        if (!coverArt && hit.artworkUrl100) {
+                            coverArt = hit.artworkUrl100.replace(/\/\d+x\d+bb\.jpg/i, '/600x600bb.jpg');
+                        }
+                        if (!foundAlbum && hit.collectionName) {
+                            foundAlbum = hit.collectionName;
+                        }
+                        if (!foundGenre && hit.primaryGenreName) {
+                            foundGenre = hit.primaryGenreName;
+                        }
+                        if (!foundDuration && hit.trackTimeMillis) {
+                            foundDuration = Math.round(hit.trackTimeMillis / 1000);
+                        }
                     }
                 }
             } catch (err2) {}
         }
 
+        const metaExtra = {};
+        if (foundAlbum) metaExtra.album = foundAlbum;
+        if (foundGenre) metaExtra.genre = foundGenre;
+        if (foundDuration > 0) metaExtra.duration = foundDuration;
+        metadataClientCache.set(cacheKey, metaExtra);
+
         if (coverArt) {
             artworkClientCache.set(cacheKey, coverArt);
             if (vfx && vfx.setDeckData) {
-                vfx.setDeckData({ deck: deckNum || 1, artworkUrl: coverArt });
+                vfx.setDeckData({ deck: deckNum || 1, artworkUrl: coverArt, ...metaExtra });
             }
             return coverArt;
         }
@@ -1515,6 +1612,7 @@ async function init() {
         if (currentTrack.coverart) {
             setTrackBannerArtwork(currentTrack.coverart);
         }
+        updatePerformDeckTrackCard(currentTrack);
 
         showTrackBanner(currentTrack, { force: true, immediate: true, fromShazamAcceptance: true, duration: trackDurationSec });
         showToast(`✓ Track Accepted: ${currentTrack.artist} - ${currentTrack.title}`);
@@ -4871,7 +4969,7 @@ async function init() {
                                 <span>Mix</span>
                             </label>
                             <div style="display:flex; align-items:center; gap:4px;">
-                                <button type="button" class="video-card-cog-btn ${isCustomVid ? 'customized' : ''}" title="Configure Video Settings (Play Time, Loop ON/OFF, Speed & Logo/Lighting Memory)">⚙️</button>
+                                <button type="button" class="video-card-cog-btn ${isCustomVid ? 'customized' : ''}" data-vbank="${activeBankIndex}" data-vidx="${idx}" onclick="event.stopPropagation(); if(window.openVideoConfigModalByIndex) window.openVideoConfigModalByIndex(${activeBankIndex}, ${idx});" title="Configure Video Settings (Play Time, Loop ON/OFF, Speed & Logo/Lighting Memory)">⚙️</button>
                                 <button type="button" class="video-btn-play-now" title="Cue and play this video immediately">▶ CUE</button>
                             </div>
                         </div>
@@ -5057,6 +5155,17 @@ async function init() {
                 });
 
                 // Per-Video Settings Cog Button
+                window.openVideoConfigModalByIndex = (bIdx, vIdx) => {
+                    const targetBank = banks[bIdx];
+                    const targetVid = targetBank && targetBank.videos ? targetBank.videos[vIdx] : null;
+                    if (targetVid && window.videoConfigCogCtrl && typeof window.videoConfigCogCtrl.openVideoConfigModal === 'function') {
+                        window.videoConfigCogCtrl.openVideoConfigModal(targetVid, bIdx, vIdx, () => {
+                            saveBanks();
+                            renderVideoGrid();
+                            syncBadges();
+                        });
+                    }
+                };
                 const btnCog = card.querySelector('.video-card-cog-btn');
                 if (btnCog) {
                     btnCog.addEventListener('click', (e) => {
@@ -6298,6 +6407,7 @@ async function init() {
         if (window.sceneConfigCogCtrl && typeof window.sceneConfigCogCtrl.updateActiveSceneBanner === 'function') {
             window.sceneConfigCogCtrl.updateActiveSceneBanner(targetIndex);
         }
+        updateHellfireDecksOverlay();
     }
     window.selectFX = selectFX;
 
@@ -6459,7 +6569,12 @@ async function init() {
     // FX Pane Card Click Listeners
     fxPaneCards.forEach((card) => {
         card.addEventListener('click', (e) => {
-            if (e.target && (e.target.id === 'btn-card22-open-console' || e.target.closest('#btn-card22-open-console'))) {
+            if (e.target && (
+                e.target.id === 'btn-card22-open-console' ||
+                e.target.closest('#btn-card22-open-console') ||
+                e.target.classList?.contains('fx-card-cog-btn') ||
+                e.target.closest('.fx-card-cog-btn')
+            )) {
                 return;
             }
             const fxIdx = parseInt(card.getAttribute('data-fx'), 10);
@@ -6615,7 +6730,7 @@ async function init() {
             if (kpiAvgBpm) kpiAvgBpm.textContent = metrics.avgBpm;
             if (kpiHandovers) kpiHandovers.textContent = metrics.handoverCount;
 
-            // 4. Render Chronological Denon Engine DJ Style Tracklist Table
+            // 4. Render Chronological Denon Engine DJ Style Tracklist Table (Tight Gaps + Explicit Album Column)
             if (tracklistContainer) {
                 if (metrics.tracks.length === 0) {
                     tracklistContainer.innerHTML = `
@@ -6626,7 +6741,9 @@ async function init() {
                             <span style="text-align:center;">Key</span>
                             <span style="text-align:center;">BPM</span>
                             <span style="text-align:center;">Length</span>
-                            <span>Title / Artist</span>
+                            <span>Title</span>
+                            <span>Artist</span>
+                            <span>Album</span>
                         </div>
                         <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
                             No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
@@ -6641,13 +6758,15 @@ async function init() {
                             <span style="text-align:center;">Key</span>
                             <span style="text-align:center;">BPM</span>
                             <span style="text-align:center;">Length</span>
-                            <span>Title / Artist</span>
+                            <span>Title</span>
+                            <span>Artist</span>
+                            <span>Album</span>
                         </div>
                     `;
-                    const vinylFallbackSvg = `<svg viewBox="0 0 32 32" width="28" height="28" style="display:block;"><circle cx="16" cy="16" r="11" fill="#3a3d46"/><circle cx="16" cy="16" r="4" fill="#b8bcc6"/><circle cx="16" cy="16" r="1.5" fill="#3a3d46"/></svg>`;
+                    const vinylFallbackSvg = `<svg viewBox="0 0 32 32" width="24" height="24" style="display:block;"><circle cx="16" cy="16" r="11" fill="#3a3d46"/><circle cx="16" cy="16" r="4" fill="#b8bcc6"/><circle cx="16" cy="16" r="1.5" fill="#3a3d46"/></svg>`;
                     const rowsHtml = metrics.tracks.map((t, i) => {
                         const lenStr = sessionTracker.formatTrackLength(t.duration);
-                        const albumStr = t.album || 'Club Single';
+                        const albumStr = t.album || 'Single / Promo';
                         const genreStr = t.genre || 'House / Club';
                         const rawKey = (t.key && t.key !== '—') ? String(t.key) : '9A';
                         const shortCamelotMatch = rawKey.match(/^(\d{1,2}[AB])/i);
@@ -6674,10 +6793,9 @@ async function init() {
                                     <span class="denon-col-key" style="color:${keyColor};" title="Musical / Camelot Key: ${rawKey}">${camelotCode}</span>
                                     <span class="denon-col-bpm" title="Analyzed BPM: ${t.bpm}">${bpmIntOrDec}</span>
                                     <span class="denon-col-len" title="Track Length">${lenStr}</span>
-                                    <div class="session-track-main-info">
-                                        <div style="font-size:9px; font-weight:700; color:#f2f4f8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.title}">${t.title}</div>
-                                        <div style="font-size:8px; color:#b8c0d2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.artist}">${t.artist}</div>
-                                    </div>
+                                    <div style="font-size:8.5px; font-weight:700; color:#f2f4f8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;" title="Title: ${t.title}">${t.title}</div>
+                                    <div style="font-size:8px; color:#c2cadb; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;" title="Artist: ${t.artist}">${t.artist}</div>
+                                    <div style="font-size:7.5px; color:#94a0b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0;" title="Album: ${albumStr}">${albumStr}</div>
                                 </div>
                                 <div class="session-track-meta-pills">
                                     <span class="deck-badge d${t.deck}" style="font-size:6.5px; padding:0.5px 4px;">D${t.deck}</span>
@@ -7483,7 +7601,7 @@ async function init() {
                 enabled: !!isLogoActive,
                 url: currentDjLogoUrl || '',
                 title: currentDjLogoTitle || 'Default DJ Logo',
-                isVideo: !!currentDjLogoIsVideo,
+                isVideo: !!isCurrentDjVideo,
                 position: activePosPill ? activePosPill.getAttribute('data-pos') : 'center',
                 spin: activeSpinPill ? activeSpinPill.getAttribute('data-spin') : 'vinyl',
                 spinSpeed: sliderLogoSpinSpeed ? parseFloat(sliderLogoSpinSpeed.value) : 1.0,
@@ -7498,7 +7616,7 @@ async function init() {
                 enabled: !!isStationLogoActive,
                 url: currentStationLogoUrl || '',
                 title: currentStationLogoTitle || 'Default Station Bug',
-                isVideo: !!currentStationLogoIsVideo,
+                isVideo: !!isCurrentStationVideo,
                 position: activeStPosPill ? activeStPosPill.getAttribute('data-st-pos') : 'top-right',
                 spin: activeStSpinPill ? activeStSpinPill.getAttribute('data-st-spin') : 'flat',
                 spinSpeed: sliderStationSpinSpeed ? parseFloat(sliderStationSpinSpeed.value) : 1.0,
@@ -7510,7 +7628,7 @@ async function init() {
                 enabled: !!isFlyerActive,
                 url: currentFlyerUrl || '',
                 title: currentFlyerTitle || 'Default Flyer',
-                isVideo: !!currentFlyerIsVideo,
+                isVideo: !!isCurrentFlyerVideo,
                 position: activeFlPosPill ? activeFlPosPill.getAttribute('data-fl-pos') : 'center',
                 spin: activeFlSpinPill ? activeFlSpinPill.getAttribute('data-fl-spin') : 'flat',
                 spinSpeed: sliderFlyerSpinSpeed ? parseFloat(sliderFlyerSpinSpeed.value) : 1.0,
@@ -9850,6 +9968,7 @@ async function init() {
         isHardwareDeckStreaming = true;
         lastHardwarePacketTimestamp = performance.now();
         lastHardwareSource = source || 'PRO DJ LINK';
+        updateHellfireDecksOverlay();
         hardwarePacketTotal++;
         hardwarePacketWindow++;
         const nowRate = performance.now();
@@ -10215,6 +10334,8 @@ async function init() {
 
         isHardwareDeckStreaming = false;
         lastDisplayedTrackDeck = null;
+        updateHellfireDecksOverlay();
+        updatePerformDeckTrackCard(null);
 
         if (!data.initialBoot && sessionTracker && typeof sessionTracker.notifyDecksOffline === 'function') {
             sessionTracker.notifyDecksOffline();
@@ -10302,6 +10423,7 @@ async function init() {
 
             // Immediately pipe loaded deck metadata to 3D visualizer and DJ Deck Waveforms scene (FX 3)
             if (vfx.setDeckData) vfx.setDeckData(data);
+            updatePerformDeckTrackCard(data);
             if (sessionTracker && data.title) {
                 sessionTracker.recordTrack(
                     data.deck || 1,
@@ -10317,8 +10439,11 @@ async function init() {
 
             if (data.title && (!data.artworkUrl && !data.coverart)) {
                 fetchTrackArtwork(data.title, data.artist, data.deck || 1).then((artUrl) => {
+                    const cacheKey = `${(data.artist || '').trim().toLowerCase()}:::${(data.title || '').trim().toLowerCase()}`;
+                    const metaExtra = metadataClientCache.get(cacheKey) || {};
                     if (artUrl && vfx.setDeckData) {
-                        vfx.setDeckData({ deck: data.deck || 1, artworkUrl: artUrl });
+                        vfx.setDeckData({ deck: data.deck || 1, artworkUrl: artUrl, ...metaExtra });
+                        updatePerformDeckTrackCard({ ...data, ...metaExtra, artworkUrl: artUrl });
                         if (sessionTracker) {
                             sessionTracker.recordTrack(
                                 data.deck || 1,
@@ -10327,8 +10452,8 @@ async function init() {
                                 data.bpm,
                                 data.key,
                                 artUrl,
-                                data.duration,
-                                { album: data.album, genre: data.genre, samples: data.samples }
+                                data.duration || metaExtra.duration,
+                                { album: data.album || metaExtra.album, genre: data.genre || metaExtra.genre, samples: data.samples }
                             );
                         }
                     }
@@ -10381,6 +10506,7 @@ async function init() {
             if (nowplayingPaneBpm && trackData.bpm) nowplayingPaneBpm.textContent = `${Number(trackData.bpm).toFixed(1)} BPM`;
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
+            updatePerformDeckTrackCard(trackData);
             if (sessionTracker && trackData.title) {
                 sessionTracker.recordTrack(
                     trackData.deck || 1,
@@ -10396,8 +10522,11 @@ async function init() {
 
             if (trackData.title && (!trackData.artworkUrl && !trackData.coverart)) {
                 fetchTrackArtwork(trackData.title, trackData.artist, trackData.deck || 1).then((artUrl) => {
+                    const cacheKey = `${(trackData.artist || '').trim().toLowerCase()}:::${(trackData.title || '').trim().toLowerCase()}`;
+                    const metaExtra = metadataClientCache.get(cacheKey) || {};
                     if (artUrl && vfx.setDeckData) {
-                        vfx.setDeckData({ deck: trackData.deck || 1, artworkUrl: artUrl });
+                        vfx.setDeckData({ deck: trackData.deck || 1, artworkUrl: artUrl, ...metaExtra });
+                        updatePerformDeckTrackCard({ ...trackData, ...metaExtra, artworkUrl: artUrl });
                         if (sessionTracker) {
                             sessionTracker.recordTrack(
                                 trackData.deck || 1,
@@ -10406,8 +10535,8 @@ async function init() {
                                 trackData.bpm,
                                 trackData.key,
                                 artUrl,
-                                trackData.duration,
-                                { album: trackData.album, genre: trackData.genre, samples: trackData.samples }
+                                trackData.duration || metaExtra.duration,
+                                { album: trackData.album || metaExtra.album, genre: trackData.genre || metaExtra.genre, samples: trackData.samples }
                             );
                         }
                     }
@@ -10530,6 +10659,15 @@ async function init() {
                     if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = deckInfo.title;
                     if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = deckInfo.artist || 'LIVE';
                     if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = `DECK ${pDeck}`;
+                    updatePerformDeckTrackCard({
+                        title: deckInfo.title,
+                        artist: deckInfo.artist,
+                        album: deckInfo.album,
+                        deck: pDeck,
+                        bpm: deckInfo.bpm,
+                        key: deckInfo.key,
+                        artworkUrl: deckInfo.artworkUrl
+                    });
                     showTrackBanner({
                         title: deckInfo.title,
                         artist: deckInfo.artist,
@@ -10569,6 +10707,15 @@ async function init() {
                     if (nowplayingPaneTitle) nowplayingPaneTitle.textContent = deckInfo.title;
                     if (nowplayingPaneArtist) nowplayingPaneArtist.textContent = deckInfo.artist || 'LIVE';
                     if (nowplayingPaneDeck) nowplayingPaneDeck.textContent = `DECK ${pDeck}`;
+                    updatePerformDeckTrackCard({
+                        title: deckInfo.title,
+                        artist: deckInfo.artist,
+                        album: deckInfo.album,
+                        deck: pDeck,
+                        bpm: deckInfo.bpm,
+                        key: deckInfo.key,
+                        artworkUrl: deckInfo.artworkUrl
+                    });
                     showTrackBanner({
                         title: deckInfo.title,
                         artist: deckInfo.artist,
@@ -11031,6 +11178,7 @@ async function init() {
             if (e.key === '6') { e.preventDefault(); switchTab('about'); return; }
             if (e.key === '7') { e.preventDefault(); switchTab('video'); return; }
             if (e.key === '8') { e.preventDefault(); switchTab('lighting'); return; }
+            if (e.key === '9') { e.preventDefault(); switchTab('tracklist'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();

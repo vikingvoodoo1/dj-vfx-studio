@@ -29,6 +29,51 @@ export class SessionTracker {
 
         this.loadFromStorage();
         this.startWatchdogLoop();
+        setTimeout(() => this.enrichMissingTrackMetadata(), 1200);
+    }
+
+    async enrichMissingTrackMetadata() {
+        if (!Array.isArray(this.tracks) || this.tracks.length === 0) return;
+        let updatedAny = false;
+        for (const trk of this.tracks) {
+            if (!trk || !trk.title || (trk.album && trk.duration > 0 && trk.artwork)) continue;
+            if (trk._enrichedAttempted) continue;
+            trk._enrichedAttempted = true;
+            try {
+                const cleanTitle = trk.title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+                const cleanArtist = (trk.artist || '').replace(/\(.*?\)|\[.*?\]/g, '').trim();
+                const query = encodeURIComponent(`${cleanArtist} ${cleanTitle}`.trim());
+                const resp = await fetch(`https://itunes.apple.com/search?term=${query}&entity=song&limit=1`);
+                if (resp.ok) {
+                    const data = await resp.json();
+                    const hit = data && data.results && data.results[0];
+                    if (hit) {
+                        if (!trk.album && hit.collectionName) {
+                            trk.album = hit.collectionName;
+                            updatedAny = true;
+                        }
+                        if (!trk.genre && hit.primaryGenreName) {
+                            trk.genre = hit.primaryGenreName;
+                            updatedAny = true;
+                        }
+                        if ((!trk.duration || trk.duration <= 0) && hit.trackTimeMillis) {
+                            trk.duration = Math.round(hit.trackTimeMillis / 1000);
+                            updatedAny = true;
+                        }
+                        if (!trk.artwork && hit.artworkUrl100) {
+                            trk.artwork = hit.artworkUrl100.replace('100x100bb', '600x600bb');
+                            updatedAny = true;
+                        }
+                    }
+                }
+            } catch (e) {
+                // Ignore network errors
+            }
+        }
+        if (updatedAny) {
+            this.saveToStorage();
+            this.notify();
+        }
     }
 
     addListener(cb) {
@@ -559,6 +604,9 @@ export class SessionTracker {
 
         this.saveToStorage();
         this.notify();
+        if (!newTrack.album || !newTrack.duration) {
+            setTimeout(() => this.enrichMissingTrackMetadata(), 400);
+        }
     }
 
     recordHandover(fromDeck, toDeck, faderPct) {
