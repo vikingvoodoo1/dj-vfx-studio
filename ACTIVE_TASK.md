@@ -3,6 +3,43 @@
 > **Note to Agent:** Update this file as you complete steps or switch tasks. After any context compaction, read this file and run `git diff --stat` first before acting.
 
 ## 1. Current Active Goal
+- **Task:** Fix Scene 04 (`FX 3: Hellfire Waveforms`) missing track waves, moving waves, and track info when StageLinQ is connected and decks are playing [RESOLVED]:
+  - **Root Cause 1 (`ReferenceError: hasD1 is not defined` at `src/effects.js:7893`)**: `const hasD1` and `const hasD2` were declared inside the `else { ... }` block at lines 7722–7723, but referenced outside that block at line 7893 (`const hasAnyVisibleTrack = Boolean((deck1VisibleInScene && hasD1) || (deck2VisibleInScene && hasD2));`). In ES module strict mode, this threw `ReferenceError: hasD1 is not defined` on every frame of Scene 4 (`currentFXIndex === 3`), crashing `animate()` before `djWaveMesh.visible`, `renderDJDeckHUD(...)`, and `renderer.render(...)` could execute.
+  - **Root Cause 2 (`manualPrimaryDeck` locking & visibility flags)**: `resetAllDecks()` set `manualPrimaryDeck = 1` instead of `null`, and the `manualPrimaryDeck` branches in `currentFXIndex === 3` did not update `deck1VisibleInScene` / `deck2VisibleInScene`.
+  - **Root Cause 3 (`setDeckData` Deck 3/4 empty snapshot & waveform preservation)**: Guarded `setDeckData` so empty Deck 3/4 snapshots never overwrite Deck 1/2, and ensured `setDeckWaveform` is preserved when `samples` are present.
+
+## 1a. Previous Completed Goal (Mac & Windows Startup Launchers)
+- **Task:** Document the Launcher & Modes in Markdown (`LAUNCHER_AND_MODES_GUIDE.md`), create the Windows Native Launcher (`win-launcher/LauncherApp.cs`, `DJ VFX Launcher.bat`, `scripts/build-win-launcher.ps1`), and bundle everything into the downloadable Mac & Windows deployments (`package.json`, `electron/main.cjs`, `electron/launcher-manager.cjs`, `.github/workflows/release.yml`) [COMPLETED]:
+  1. **Cross-Platform Electron Mode Launcher & Built-in Packaged Static Server (`electron/main.cjs`, `electron/launcher-manager.cjs`)**:
+     - Adapt Menu Bar / System Tray labels and interactions for both macOS (`macOS Menu Bar`) and Windows (`Windows System Tray` with left-click quick launcher).
+     - Add an automatic built-in static HTTP server on `:5173` inside `electron/main.cjs` when running as a packaged `.dmg` / `.exe` so OBS Browser Sources (`http://localhost:5173/?mode=obs`) and multi-window browser modes work out-of-the-box in downloaded builds without needing Node/Vite installed.
+  2. **Windows Native Launcher (`win-launcher/LauncherApp.cs`, `win-launcher/DJ-VFX-Launcher.ps1`, `DJ VFX Launcher.bat`, `scripts/build-win-launcher.ps1`)**:
+     - Native C# WinForms + Windows System Tray (`NotifyIcon`) application matching all 8 modes, configurable Default Mode (`%USERPROFILE%\.dj-vfx-launcher.json`), dynamic **Add to / Remove from Windows System Tray** toggle, live `:5173` and `:8080` port status, log viewer, and support for both packaged `DJ VFX Studio.exe` and dev repo modes.
+  3. **Downloadable Deployment Bundling (`package.json`, `.github/workflows/release.yml`, `mac-launcher/LauncherApp.swift`)**:
+     - Update `mac-launcher/LauncherApp.swift` so it also detects packaged `DJ VFX Studio.app` (in `/Applications` or sibling directory) when outside a source checkout.
+     - Configure `package.json` (`extraFiles` & build scripts) and `.github/workflows/release.yml` so both Mac (`.dmg`/`.zip`) and Windows (`.exe` NSIS & Portable) downloadable releases automatically build and bundle `DJ VFX Launcher.app` (Mac) and `DJ VFX Launcher.exe` (Windows).
+  4. **Comprehensive Markdown Documentation (`LAUNCHER_AND_MODES_GUIDE.md` & `README.md`)**:
+     - Document all modes, Default Mode customization, macOS Menu Bar & Windows System Tray controls, CLI flags, and deployment packaging.
+  1. **Standalone Native macOS App (`DJ VFX Launcher.app` & `mac-launcher/LauncherApp.swift`)**:
+     - Compiled native Apple Silicon (`arm64-apple-macosx`) Swift + SwiftUI + AppKit `.app` bundle with custom retina `AppIcon.icns`.
+     - **Default Mode (Mode 1 — Full Studio Mode)** out-of-the-box, with 1-click **"☆ Set as Default"** on any mode card or from the macOS Menu Bar submenu (`★ Set Default Startup Mode`).
+     - **macOS Menu Bar Integration (`NSStatusItem`)**: Shows `⚡ VFX` in the top-right macOS Menu Bar with live service status (`Vite :5173` & `Bridge :8080`), 1-click Default Mode launch (`⌘Return`), mode launcher submenu, default mode switcher submenu, and dynamic **"Add to / Remove from macOS Menu Bar"** toggle button.
+     - **All Modes Supported**:
+       - `1. Full Studio Mode` (`studio`) — Vite WebGL (`:5173`) + Hardware Bridge (`:8080`) + Main Studio UI (`http://localhost:5173/`)
+       - `2. Clean Stage / Projector Mode` (`stage`) — HUD-hidden, cursor-hidden 3D stage output (`?mode=stage&clean=true`)
+       - `3. Detached Controller + Stage Rig` (`dual-rig`) — Opens both Master Control Console (`?mode=controller`) and Clean Stage Output (`?mode=stage&clean=true`)
+       - `4a. OBS Stream Mode` (`obs`) — Zero-FOUC stream feed (`?mode=obs`) + copies OBS Browser Source URL to clipboard
+       - `4b. OBS Transparent Alpha Overlay` (`obs-overlay`) — Transparent background overlay (`?mode=obs&overlay=true`) + copies URL to clipboard
+       - `5. Native Electron Desktop App` (`electron`) — Launches GPU-accelerated Electron app + 2nd-screen Stage Projector
+       - `6a. Service Only: Hardware Bridge Only (:8080)` (`bridge-only`) — Headless telemetry daemon (`server/stagelinq-bridge.js`)
+       - `6b. Service Only: Visualizer Only (:5173)` (`vite-only`) — Standalone 3D WebGL visualizer without Hardware Bridge
+  2. **Integrated Electron Mode Switcher & Menu Bar Tray (`electron/launcher-manager.cjs`, `electron/main.cjs`, `electron/preload.cjs`)**:
+     - Shares `~/.dj-vfx-launcher.json` with `DJ VFX Launcher.app`.
+     - Added built-in Mode Launcher Window (`Cmd+Shift+M` or `npm run electron:launcher`), macOS Menu Bar `Tray` with dynamic Add/Remove toggle, Dock menu, and `Modes` application menu.
+  3. **CLI & Dev Runner Support (`server/dev-runner.js`, `package.json`)**:
+     - Added `--mode=<id>` and `--open` support to `server/dev-runner.js`, plus `npm run launcher`, `npm run launcher:build`, and `npm run electron:launcher` scripts.
+
+## 1b. Previous Completed Goal
 - **Task:** Eliminate 470% CPU Runaway WebSocket Loop & Restore Live Performance Deck Particle EQ:
   1. **Fixed Runaway 470% CPU & 17.4 GB Memory Balloon in Chrome Helper Renderer:**
      - **Root Cause Identified:** In `src/main.js`, `onStatusChange` contained `broadcastSync({ type: 'request_state' })`. Whenever the bridge sent a `status` packet, `onStatusChange` immediately requested state back from the bridge. The bridge answered by replaying `status`, `deck_loaded`, and full 512-slice waveform JSON packets, which triggered `onStatusChange` again in an infinite microsecond feedback loop (over 11,158 iterations within minutes). In addition, each iteration re-invoked `selectFX` and sent unthrottled `hue_set_config` packets that repeatedly hammered disk writes to `server/hue-config.json`.

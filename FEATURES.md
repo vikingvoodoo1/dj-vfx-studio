@@ -239,6 +239,22 @@ This document tracks all features, architectural components, lighting integratio
 
 ---
 
+### 14. ⚡ Native macOS & Windows Startup Launchers, Menu Bar / System Tray & Deployment Bundling *(NEW)*
+- [x] **Standalone macOS Native Launcher (`DJ VFX Launcher.app` / `mac-launcher/LauncherApp.swift`)**: Compiled Apple Silicon SwiftUI + AppKit `.app` bundle with custom retina `AppIcon.icns`, real-time `:5173` / `:8080` port status probing, collapsible console log drawer, and live `NSStatusItem` (`⚡ VFX`) in the macOS Menu Bar.
+- [x] **Standalone Windows Native Launcher (`DJ VFX Launcher.exe` / `win-launcher/LauncherApp.cs` / `DJ VFX Launcher.bat`)**: Compiled `.NET` WinForms application with custom neon 4-bar equalizer icon in the **Windows System Tray (`NotifyIcon`)**, live telemetry strip, and automatic detection of packaged `DJ VFX Studio.exe` vs. source repo.
+- [x] **Integrated Electron Mode Switcher (`electron/launcher-manager.cjs` / `⌘/Ctrl + Shift + M`)**: Built directly into the Electron desktop app with synchronized Menu Bar / System Tray, macOS Dock menu, and `Modes` application menu.
+- [x] **8 Selectable Startup & Display Modes (All Configurable as Default)**:
+  1. `studio` *(Initial Default)*: Full Studio Mode (Vite WebGL `:5173` + Hardware Bridge `:8080` + Main Studio UI).
+  2. `stage`: Clean Stage / Projector Mode (`?mode=stage&clean=true`).
+  3. `dual-rig`: Detached Master Control Console (`?mode=controller`) + Clean Stage Output (`?mode=stage&clean=true`).
+  4. `obs` & `obs-overlay`: OBS Clean Stream Feed (`?mode=obs`) and OBS Transparent Alpha Overlay (`?mode=obs&overlay=true`) with automatic clipboard URL copy.
+  5. `electron`: Native Electron Desktop App + 2nd-Screen Stage Projector.
+  6. `bridge-only` & `vite-only`: Service-Only Modes for headless Hardware Bridge (`:8080`) or standalone WebGL Visualizer (`:5173`).
+- [x] **Dynamic Add / Remove Menu Bar & System Tray Toggle**: Instant runtime toggle to add or remove the launcher icon from the **macOS Menu Bar** or **Windows System Tray**, persisted in `~/.dj-vfx-launcher.json`.
+- [x] **Downloadable Mac & Windows Deployment Bundling**: Packaged `.dmg`/`.zip` (macOS) and NSIS/Portable `.exe` (Windows) releases bundle the native launchers automatically and run an embedded local HTTP server on `:5173` so OBS Browser Sources and multi-window browser modes work out-of-the-box without Node.js or Vite installed.
+
+---
+
 ## 🔮 Roadmap & Upcoming Features
 
 - [ ] **DMX512 / Art-Net Output Support**: Direct Ethernet/USB DMX output for controlling physical stage moving heads and laser bars from the visualizer's sequencer.

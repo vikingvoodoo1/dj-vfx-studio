@@ -7707,21 +7707,25 @@ export function createVFXScene(container) {
             let w2 = 0.0;
             let onAirDeck = 1;
 
+            const f1 = (deck1Fader !== null && deck1Fader !== undefined) ? deck1Fader : (deck1Playing ? 1.0 : (d1IsMoving ? 1.0 : 0.0));
+            const f2 = (deck2Fader !== null && deck2Fader !== undefined) ? deck2Fader : (deck2Playing ? 1.0 : (d2IsMoving ? 1.0 : 0.0));
+
+            const hasD1 = !!(deck1Data && deck1Data.title && deck1Data.title.trim() !== '' && deck1Data.title !== 'No Track Loaded' && deck1Data.title !== '—' && !deck1Data.unloaded && !deck1Data.offline);
+            const hasD2 = !!(deck2Data && deck2Data.title && deck2Data.title.trim() !== '' && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—' && !deck2Data.unloaded && !deck2Data.offline);
+
             if (manualPrimaryDeck === 1) {
-                w1 = 1.0;
+                w1 = hasD1 ? 1.0 : 0.0;
                 w2 = 0.0;
+                deck1VisibleInScene = hasD1;
+                deck2VisibleInScene = false;
                 onAirDeck = 1;
             } else if (manualPrimaryDeck === 2) {
                 w1 = 0.0;
-                w2 = 1.0;
+                w2 = hasD2 ? 1.0 : 0.0;
+                deck1VisibleInScene = false;
+                deck2VisibleInScene = hasD2;
                 onAirDeck = 2;
             } else {
-                const f1 = (deck1Fader !== null && deck1Fader !== undefined) ? deck1Fader : (deck1Playing ? 1.0 : (d1IsMoving ? 1.0 : 0.0));
-                const f2 = (deck2Fader !== null && deck2Fader !== undefined) ? deck2Fader : (deck2Playing ? 1.0 : (d2IsMoving ? 1.0 : 0.0));
-
-                const hasD1 = !!(deck1Data && deck1Data.title && deck1Data.title.trim() !== '' && deck1Data.title !== 'No Track Loaded' && deck1Data.title !== '—' && !deck1Data.unloaded && !deck1Data.offline);
-                const hasD2 = !!(deck2Data && deck2Data.title && deck2Data.title.trim() !== '' && deck2Data.title !== 'No Track Loaded' && deck2Data.title !== '—' && !deck2Data.unloaded && !deck2Data.offline);
-
                 // --- Scene Visibility & Fader Blending Rule ---
                 // When bringing any fader down to 0 (<= 0.02) - remove that track from the scene completely.
                 // When fader is brought up (> 0.02) - blend that track into the scene with smooth fader weight.
@@ -7739,6 +7743,23 @@ export function createVFXScene(container) {
                 } else {
                     deck2VisibleInScene = true;
                     w2 = Math.min(1.0, f2);
+                }
+
+                // Fallback: if a deck is actively playing (or has a loaded track when neither fader has reported > 0.02 yet), keep it visible!
+                if (!deck1VisibleInScene && !deck2VisibleInScene) {
+                    if (deck2Playing && hasD2) {
+                        deck2VisibleInScene = true;
+                        w2 = 1.0;
+                    } else if (deck1Playing && hasD1) {
+                        deck1VisibleInScene = true;
+                        w1 = 1.0;
+                    } else if (hasD2 && !hasD1) {
+                        deck2VisibleInScene = true;
+                        w2 = 1.0;
+                    } else if (hasD1) {
+                        deck1VisibleInScene = true;
+                        w1 = 1.0;
+                    }
                 }
 
                 // Determine active on-air deck:
@@ -10523,20 +10544,26 @@ export function createVFXScene(container) {
         setDeckData: (data) => {
             if (!data) return;
             const dNum = Number(data.deck);
+            const hasIncomingTitle = Boolean(data.title && String(data.title).trim() !== '' && data.title !== 'No Track Loaded' && data.title !== '—');
             let targetDeck = null;
             if (dNum === 1 || data.deck === '1' || data.deck === 'A') {
                 targetDeck = 1;
             } else if (dNum === 2 || data.deck === '2' || data.deck === 'B') {
                 targetDeck = 2;
             } else if (dNum === 3 || data.deck === '3' || data.deck === 'C') {
-                if (data.play || (data.fader !== undefined && Number(data.fader) > 0.05)) targetDeck = 1;
+                if (hasIncomingTitle && (data.play || (data.fader !== undefined && Number(data.fader) > 0.05))) targetDeck = 1;
             } else if (dNum === 4 || data.deck === '4' || data.deck === 'D') {
-                if (data.play || (data.fader !== undefined && Number(data.fader) > 0.05)) targetDeck = 2;
+                if (hasIncomingTitle && (data.play || (data.fader !== undefined && Number(data.fader) > 0.05))) targetDeck = 2;
             }
             if (!targetDeck) return;
 
-            // Handle Track Unload / Standby reset
-            if (data.unloaded || data.title === '' || data.title === 'No Track Loaded' || data.title === '—') {
+            // Release manual deck lock when live hardware fader/play telemetry arrives
+            if (data.isHardware && (data.fader !== undefined || data.play !== undefined)) {
+                manualPrimaryDeck = null;
+            }
+
+            // Handle Track Unload / Standby reset (only when explicitly unloaded or when Deck 1/2 reports empty title in a snapshot)
+            if (data.unloaded || ((dNum === 1 || dNum === 2) && (data.title === '' || data.title === 'No Track Loaded' || data.title === '—') && !data.play)) {
                 if (targetDeck === 1) {
                     deck1Data.title = '';
                     deck1Data.artist = '';
@@ -10589,7 +10616,8 @@ export function createVFXScene(container) {
                 if (data.title) {
                     const cleanT = String(data.title).trim();
                     if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
-                        if (deck1Data.title !== data.title) {
+                        const prevTitle1 = (deck1Data.title || '').trim();
+                        if (prevTitle1 !== '' && prevTitle1 !== cleanT) {
                             deck1Data.artworkImg = null;
                             deck1Data.artworkUrl = '';
                             deck1Data._artRequested = false;
@@ -10658,7 +10686,12 @@ export function createVFXScene(container) {
                 if (data.sync !== undefined) deck1Data.sync = Boolean(data.sync);
                 if (data.cues && Array.isArray(data.cues)) deck1Data.cues = data.cues;
                 if (data.loops && Array.isArray(data.loops)) deck1Data.loops = data.loops;
-                if (data.samples && Array.isArray(data.samples)) deck1Data.samples = data.samples;
+                if (data.samples && Array.isArray(data.samples)) {
+                    deck1Data.samples = data.samples;
+                    if (!deck1HasHardwareWaveform && data.samples.length >= 3) {
+                        setDeckWaveform(Object.assign({}, data, { deck: 1 }));
+                    }
+                }
 
                 if (data.progress !== undefined) {
                     const newProg = Number(data.progress);
@@ -10681,7 +10714,8 @@ export function createVFXScene(container) {
                 if (data.title) {
                     const cleanT = String(data.title).trim();
                     if (cleanT && cleanT !== '—' && cleanT !== 'No Track Loaded' && cleanT !== 'Live Track') {
-                        if (deck2Data.title !== data.title) {
+                        const prevTitle2 = (deck2Data.title || '').trim();
+                        if (prevTitle2 !== '' && prevTitle2 !== cleanT) {
                             deck2Data.artworkImg = null;
                             deck2Data.artworkUrl = '';
                             deck2Data._artRequested = false;
@@ -10747,7 +10781,12 @@ export function createVFXScene(container) {
                 if (data.sync !== undefined) deck2Data.sync = Boolean(data.sync);
                 if (data.cues && Array.isArray(data.cues)) deck2Data.cues = data.cues;
                 if (data.loops && Array.isArray(data.loops)) deck2Data.loops = data.loops;
-                if (data.samples && Array.isArray(data.samples)) deck2Data.samples = data.samples;
+                if (data.samples && Array.isArray(data.samples)) {
+                    deck2Data.samples = data.samples;
+                    if (!deck2HasHardwareWaveform && data.samples.length >= 3) {
+                        setDeckWaveform(Object.assign({}, data, { deck: 2 }));
+                    }
+                }
 
                 if (data.progress !== undefined) {
                     const newProg2 = Number(data.progress);
@@ -10876,7 +10915,7 @@ export function createVFXScene(container) {
                 if (djAudioHistoryTex) djAudioHistoryTex.needsUpdate = true;
             }
             primaryDeck = 1;
-            manualPrimaryDeck = 1;
+            manualPrimaryDeck = null;
         },
         getDeckData: (deckNum) => (deckNum === 2 ? deck2Data : deck1Data),
         getPrimaryDeck: () => primaryDeck,

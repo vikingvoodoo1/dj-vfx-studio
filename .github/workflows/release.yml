@@ -36,10 +36,23 @@ jobs:
       - name: Build Web Application
         run: npm run build
 
+      - name: Build Native Mac & Windows Mode Launchers
+        run: npm run launcher:build
+
       - name: Build Electron App & Artifacts
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: npx electron-builder --publish always
+
+      - name: Upload Standalone Launcher Artifacts to Release
+        if: startsWith(github.ref, 'refs/tags/') && (matrix.os == 'macos-latest' || matrix.os == 'windows-2022')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/DJ-VFX-Launcher-macOS.zip
+            release/DJ-VFX-Launcher-Windows.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   create-github-release:
     name: Publish Release Notes
@@ -56,22 +69,21 @@ jobs:
         with:
           name: DJ VFX Studio ${{ github.ref_name }}
           body: |
-            ## 🎛️ DJ VFX Studio ${{ github.ref_name }} Release
+            ## 🎛️ DJ VFX Studio ${{ github.ref_name }} Stable Release
             
-            ### ✨ Highlights in v2.0.0
+            ### ✨ Highlights in v2.3.0
+            - **⚡ Native macOS (`DJ VFX Launcher.app`) & Windows (`DJ VFX Launcher.exe`) Startup Mode Launchers**: Dedicated native desktop startup apps and integrated Electron Mode Switcher (`⌘/Ctrl + Shift + M`) supporting all 8 VFX modes (`Full Studio Mode` default, `Clean Stage / Projector Mode`, `Detached Controller + Stage Rig`, `OBS Stream Mode`, `OBS Transparent Alpha Overlay`, `Native Electron Desktop App`, `Hardware Bridge Only`, and `Visualizer Only`).
+            - **📍 Dynamic macOS Menu Bar (`⚡ VFX`) & Windows System Tray Integration**: Real-time service status (`:5173` & `:8080`), 1-click Default Mode launch, mode switching submenus, custom Default Mode selector (`~/.dj-vfx-launcher.json`), and instant runtime **Add to / Remove from Menu Bar / System Tray** toggle.
+            - **🔥 Hellfire Waveforms (Scene 04) StageLinQ Engine & Fader Handover**: Full 3-band hardware waveform rendering, dual-deck overview bars, dynamic on-air fader handover, and real-time track metadata HUD.
+            - **🚀 Rock-Solid 60 FPS WebAudio & WebSocket Telemetry Architecture**: Zero-leak CoreAudio buffer draining, calibrated StageLinQ spectrum synthesis across all 23 scenes, and bundled local HTTP server (`:5173`) inside packaged `.dmg` and `.exe` builds so OBS Browser Sources work out-of-the-box.
             - **Pioneer CDJ-3000 Phrase Meter & CDJ-2000 Phase Visualizer**: Real-time Rekordbox structural phrase analysis, 8-segment bar progress tracks, countdown to drop, 4-beat phase grid with 60FPS needle sweep, DUAL stacked mode, and hardware Pro DJ Link / beat clock sync.
             - **3-Layer 3D Branding & Event Promo Engine**: Dedicated GPU-accelerated layers for DJ Logo (MP4 video/images), Station Logo, and Event Flyer/Promo Graphics with 9-way directional anchoring, 6 display modes, and 10 cinematic transition effects.
-            - **Multi-Layer Automation & Pop-Up Scheduler**: Automated periodic pop-ups with configurable intervals (`30s` to `30m`), display durations (`5s` to `60s`), and manual `⚡ POP NOW` / `⏹️ POP OFF` action triggers.
-            - **Shazam AI Live Audio Recognition & Album Art**: 1-click live audio sampling with Shazam fingerprint matching, high-res Apple Music artwork retrieval, and live broadcast lower-third banners.
-            - **22 GPU-Accelerated 3D Stage Visual Engines**: Moving-head godray fixtures, Protean volumetric fog, retro 70s illuminated disco dancefloors, VHS glitch typography, 3D stadium equalizers, starfields, and laser arrays.
-            - **Philips Hue Smart Club Lighting Integration**: Real-time 4-mode beat sync, wide-gamut HSV color mapping, independent lamp power toggle, and instantaneous Xenon-white Kick Pop Strobes.
-            - **6 Curated UI Console Themes**: `Cyber Glass`, `Studio Hardware Pro` (Universal Audio skeuomorphic console), `Cyberpunk Matrix`, `Obsidian Stealth`, `Titanium Pioneer Pro`, and `Analog Synthwave Studio`.
-            - **Universal Multi-Platform DJ Bridge**: Zero-latency companion bridge for Denon DJ StageLinq, Pioneer Pro DJ Link, Native Instruments Traktor Pro, Serato DJ, and VirtualDJ.
-            - **Multi-Screen, Projector & OBS Live Suite**: Detached master control console (`?mode=controller`), 2nd screen stage projector output (`?mode=obs`), and alpha-blended transparent OBS browser sources (`?overlay=true`).
+            - **23 GPU-Accelerated 3D Stage Visual Engines & Cyber Cinema 3D**: Moving-head godray fixtures, Protean volumetric fog, retro 70s illuminated disco dancefloors, Haunted Manor, Pumpkin Disco, and 10-bank 3D curved cinema video playback.
+            - **Philips Hue Smart Club Lighting Integration**: Real-time 4-mode beat sync, wide-gamut HSV color mapping, independent lamp power toggle, 70% Warm White instant stage reset, and Xenon-white Kick Pop Strobes.
             
             ### 📦 Download Instructions:
-            - **macOS (Apple Silicon & Intel)**: Download the `.dmg` or `.zip` file below. Drag into your Applications folder.
-            - **Windows 10/11**: Download the `.exe` (Installer or Portable).
+            - **macOS (Apple Silicon & Intel)**: Download the `.dmg` or `.zip` file below (or `DJ-VFX-Launcher-macOS.zip`). Drag into your Applications folder.
+            - **Windows 10/11**: Download the `.exe` (Installer, Portable, or `DJ-VFX-Launcher-Windows.exe`).
             - **Linux**: Download the `.AppImage` and run `chmod +x` to execute.
           draft: false
           prerelease: false

@@ -191,19 +191,36 @@ npm install
 
 ### Running the App Locally
 ```bash
-# Start Vite development server & Universal DJ Bridge simultaneously
+# Option 1: Open the Native Startup Launcher App (macOS DJ VFX Launcher.app / Windows DJ VFX Launcher.exe)
+npm run launcher
+
+# Option 2: Start Vite development server & Universal DJ Bridge simultaneously (uses saved Default Mode)
 npm run dev
+
+# Option 3: Open the Integrated Electron Mode Switcher Window
+npm run electron:launcher
 ```
 Open `http://localhost:5173` in your browser.
 
-### Building for Production
-```bash
-# Build optimized client bundle
-npm run build
+### ⚡ Native Mac & Windows Startup Launchers & Display Modes
+DJ VFX Studio includes native startup launcher apps for **macOS (`DJ VFX Launcher.app`)** and **Windows (`DJ VFX Launcher.exe` / `DJ VFX Launcher.bat`)**, plus an integrated **Electron Mode Switcher (`⌘/Ctrl + Shift + M`)** and **macOS Menu Bar (`⚡ VFX`) / Windows System Tray** icon:
+- **1. Full Studio Mode (`studio` — Initial Default)**: Starts Vite 3D WebGL (`:5173`) + Hardware Bridge (`:8080`) + Main Studio UI (`http://localhost:5173/`).
+- **2. Clean Stage / Projector Mode (`stage`)**: Zero-HUD, cursor-hidden 3D visual feed (`?mode=stage&clean=true`) for external projectors and LED walls.
+- **3. Detached Controller + Stage Rig (`dual-rig`)**: Opens both the Detached Master Control Console (`?mode=controller`) and Clean Stage Output (`?mode=stage&clean=true`).
+- **4a / 4b. OBS Stream (`?mode=obs`) & Transparent Alpha Overlay (`?mode=obs&overlay=true`)**: Zero-FOUC stream output + auto-copies OBS Browser Source URL to clipboard.
+- **5. Native Electron Desktop App (`electron`)**: Launches the GPU-accelerated desktop app + 2nd-screen Stage Projector.
+- **6a / 6b. Service-Only Modes**: **Hardware Bridge Only (`:8080`)** or **Visualizer Only (`:5173`, no Bridge)**.
+- **Custom Default Mode & Menu Bar / System Tray Toggle**: Click **`☆ Set as Default`** on any mode card to make it your new default startup preset (`~/.dj-vfx-launcher.json`), and click **`Add to / Remove from macOS Menu Bar`** (or **`Windows System Tray`**) at any time.
 
-# Preview production build locally
-npm run preview
+### Building & Packaging Downloadable Deployments (Mac & Windows)
+```bash
+# Build native startup launcher for current OS (DJ VFX Launcher.app on Mac / DJ VFX Launcher.exe on Windows)
+npm run launcher:build
+
+# Build production web bundle + native launcher + packaged Electron installer (.dmg/.zip on Mac, NSIS/Portable .exe on Windows)
+npm run electron:dist
 ```
+> **Note:** Packaged Mac (`.dmg`) and Windows (`.exe`) deployments automatically bundle the native launcher app and include an embedded local HTTP server on `:5173` so OBS Browser Sources (`http://localhost:5173/?mode=obs`) and multi-screen browser modes work out-of-the-box without requiring Node.js or Vite on the target machine.
 
 ---
 
@@ -260,6 +277,7 @@ npm run preview
 
 ## 📚 Technical Documentation
 
+- **[Startup Launcher, Modes & Deployment Guide (LAUNCHER_AND_MODES_GUIDE.md)](LAUNCHER_AND_MODES_GUIDE.md)** — Complete guide to `DJ VFX Launcher.app` (macOS), `DJ VFX Launcher.exe` (Windows), the integrated Electron Mode Switcher (`⌘/Ctrl + Shift + M`), all 8 startup & display modes, custom default presets, Menu Bar / System Tray controls, and Mac/Windows installer bundling.
 - **[Video Clarity & Cyber Cinema Render Pipeline Guide (VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)](VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)** — Tri-engine video architecture, hardware acceleration via macOS VideoToolbox/Metal, 1:1 bit-for-bit VLC parity, and eliminating WebGL banding.
 - **[Scene Reactive Matrix & Hardware Memory Profiles Guide (SCENE_REACTIVE_MATRIX_AND_PROFILES.md)](SCENE_REACTIVE_MATRIX_AND_PROFILES.md)** — Comprehensive guide to all 22 scenes, hotkeys, reactive engine tags (audio FFT, StageLinQ, BPM sync, transients, physical rig), per-scene parameter memory, and auto-recall architecture.
 - **[Authentic DJ Deck Waveforms & Wire Telemetry Guide (DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)](DECK_WAVEFORMS_AND_WIRE_TELEMETRY.md)** — Universal 3-tier waveform architecture covering Denon StageLinQ, Pioneer Pro DJ Link, and live spectral fallbacks.
