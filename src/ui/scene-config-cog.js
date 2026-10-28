@@ -137,7 +137,7 @@ export function initSceneConfigCogController({
 
         if (iconEl) iconEl.textContent = meta.icon || '✨';
         if (labelEl) {
-            labelEl.textContent = `ACTIVE STAGE SCENE • SCENE ${sceneNumStr} [${meta.hotkey}]`;
+            labelEl.textContent = `SCENE ${sceneNumStr} [${meta.hotkey}]`;
         }
         if (titleEl) {
             titleEl.textContent = `${meta.name}`;
@@ -771,37 +771,45 @@ export function initSceneConfigCogController({
     }
 
     function openSceneConfigModal(sceneId) {
-        const targetId = (sceneId !== undefined && sceneId !== null)
+        const targetId = (sceneId !== undefined && sceneId !== null && !isNaN(Number(sceneId)))
             ? Number(sceneId)
             : ((vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0);
         ensureModalDOM();
         renderModalState(targetId);
-        modalBackdrop.classList.add('active');
+        modalBackdrop.classList.add('active', 'open');
     }
 
     function closeSceneConfigModal() {
         if (modalBackdrop) {
-            modalBackdrop.classList.remove('active');
+            modalBackdrop.classList.remove('active', 'open');
         }
     }
 
-    // Wire up Active Scene Banner buttons on #pane-perform
-    const activeSceneCogBtn = document.getElementById('btn-active-scene-cog');
-    if (activeSceneCogBtn) {
-        activeSceneCogBtn.addEventListener('click', (e) => {
+    // Wire up Active Scene Banner buttons on #pane-perform + global click delegation for .fx-card-cog-btn
+    document.addEventListener('click', (e) => {
+        const cardCog = e.target.closest('.fx-card-cog-btn');
+        if (cardCog) {
             e.stopPropagation();
+            e.preventDefault();
+            const fxId = parseInt(cardCog.getAttribute('data-fx-cog') ?? cardCog.closest('.fx-pane-card')?.getAttribute('data-fx'), 10);
+            openSceneConfigModal(isNaN(fxId) ? 0 : fxId);
+            return;
+        }
+        const activeBannerCog = e.target.closest('#btn-active-scene-cog');
+        if (activeBannerCog) {
+            e.stopPropagation();
+            e.preventDefault();
             const currentFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0;
             openSceneConfigModal(currentFx);
-        });
-    }
-
-    const activeSceneFxBankBtn = document.getElementById('btn-active-scene-fxbank');
-    if (activeSceneFxBankBtn) {
-        activeSceneFxBankBtn.addEventListener('click', (e) => {
+            return;
+        }
+        const activeBannerFxBank = e.target.closest('#btn-active-scene-fxbank');
+        if (activeBannerFxBank) {
             e.stopPropagation();
+            e.preventDefault();
             if (typeof switchTab === 'function') switchTab('fx');
-        });
-    }
+        }
+    });
 
     // Initialize saved speeds for all 23 scenes from SceneProfileManager on startup
     for (let i = 0; i < 23; i++) {
@@ -833,7 +841,92 @@ export function initSceneConfigCogController({
         openSceneConfigModal,
         closeSceneConfigModal,
         updateActiveSceneBanner,
-        refreshAllSceneCardBadges
+        refreshAllSceneCardBadges,
+        refreshAllBadges: refreshAllSceneCardBadges
     };
 }
+
+/**
+ * Backup every studio setting, 23 scene profiles, video banks, lighting & audio preferences to a JSON file
+ */
+export function exportFullStudioBackup(showToast) {
+    try {
+        const storageDump = {};
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && (key.startsWith('dj_vfx_') || key.startsWith('vfx_'))) {
+                storageDump[key] = localStorage.getItem(key);
+            }
+        }
+        const payload = {
+            app: 'DJ VFX Studio Pro',
+            backupVersion: '2.3.0',
+            exportedAt: new Date().toISOString(),
+            sceneProfiles: SceneProfileManager.getAllProfiles(),
+            localStorage: storageDump
+        };
+        const jsonStr = JSON.stringify(payload, null, 2);
+        const blob = new Blob([jsonStr], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateStamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+        a.href = url;
+        a.download = `dj-vfx-studio-backup-${dateStamp}.json`;
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }, 250);
+        if (typeof showToast === 'function') {
+            showToast('💾 Full Studio Backup Exported (.json) — All Settings, Scenes & Video Configs Saved!');
+        }
+    } catch (err) {
+        console.error('[StudioBackup] Export failed:', err);
+        if (typeof showToast === 'function') {
+            showToast('⚠️ Failed to export backup: ' + err.message);
+        }
+    }
+}
+
+/**
+ * Restore all studio settings, 23 scene profiles, video loop configs & preferences from a JSON backup file
+ */
+export function importFullStudioBackup(file, onRestoredCallback, showToast) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        try {
+            const parsed = JSON.parse(String(e.target.result || '{}'));
+            if (!parsed || (typeof parsed !== 'object')) {
+                throw new Error('Invalid backup file format');
+            }
+            if (parsed.localStorage && typeof parsed.localStorage === 'object') {
+                Object.entries(parsed.localStorage).forEach(([k, v]) => {
+                    if (typeof k === 'string' && typeof v === 'string') {
+                        localStorage.setItem(k, v);
+                    }
+                });
+            }
+            if (parsed.sceneProfiles && typeof parsed.sceneProfiles === 'object') {
+                SceneProfileManager.importJSON(JSON.stringify(parsed.sceneProfiles));
+            } else if (parsed.localStorage && parsed.localStorage['dj_vfx_scene_profiles_v1']) {
+                SceneProfileManager.load();
+            }
+            if (typeof onRestoredCallback === 'function') {
+                onRestoredCallback(parsed);
+            }
+            if (typeof showToast === 'function') {
+                showToast('✅ Studio Backup Restored Successfully! All scenes, branding, video & lighting settings recovered.');
+            }
+        } catch (err) {
+            console.error('[StudioBackup] Restore failed:', err);
+            if (typeof showToast === 'function') {
+                showToast('⚠️ Could not restore backup: Invalid JSON file.');
+            }
+        }
+    };
+    reader.readAsText(file);
+}
+
 

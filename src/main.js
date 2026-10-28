@@ -5,7 +5,8 @@ import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS, REQUIREM
 import { renderParticleSpectrumEQ } from './ui/particle-eq-2d.js';
 import { MediaDB } from './services/media-db.js';
 import { initSceneCardThumbnails } from './ui/scene-thumbnails.js';
-import { initSceneConfigCogController } from './ui/scene-config-cog.js';
+import { initSceneConfigCogController, exportFullStudioBackup, importFullStudioBackup } from './ui/scene-config-cog.js';
+import { initVideoConfigCogController, ensureVideoConfig, isVideoConfigured } from './ui/video-config-cog.js';
 import { sessionTracker } from './services/session-tracker.js';
 
 // DJ VFX Studio Build Metadata
@@ -721,10 +722,13 @@ async function init() {
     const dotAbout = document.getElementById('dot-about');
     const audioDeviceBadge = document.getElementById('audio-device-badge');
 
-    // Setup Sub-Drawers Elements & State (MASTER, OBS, BRIDGES, SESSION METRICS, TRACKLIST)
+    // Setup Sub-Drawers Elements & State (MASTER CONSOLE, 2ND SCREEN, AUDIO, VU TARGETS, OBS, BRIDGES, SESSION METRICS, TRACKLIST)
     const setupSubtabs = document.querySelectorAll('.setup-nav-tab[data-setuptab]');
     const setupContents = {
         master: document.getElementById('setup-content-master'),
+        stage: document.getElementById('setup-content-stage'),
+        audio: document.getElementById('setup-content-audio'),
+        vutargets: document.getElementById('setup-content-vutargets'),
         obs: document.getElementById('setup-content-obs'),
         bridge: document.getElementById('setup-content-bridge'),
         session: document.getElementById('setup-content-session'),
@@ -927,7 +931,7 @@ async function init() {
             switchLightingSubtab(tabId);
             tabId = 'lighting';
         }
-        if (tabId === 'obs' || tabId === 'bridge' || tabId === 'session' || tabId === 'tracklist') {
+        if (tabId === 'obs' || tabId === 'bridge' || tabId === 'session' || tabId === 'tracklist' || tabId === 'stage' || tabId === 'vutargets') {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
@@ -4837,11 +4841,14 @@ async function init() {
             videoGridContainer.innerHTML = '';
 
             vids.forEach((vid, idx) => {
+                const vCfg = ensureVideoConfig(vid);
+                const isCustomVid = isVideoConfigured(vid);
                 const card = document.createElement('div');
-                card.className = `video-card-item ${vid.included ? '' : 'excluded'} ${idx === currentVideoIndex ? 'active-on-air' : ''}`;
+                card.className = `video-card-item ${vid.included ? '' : 'excluded'} ${idx === currentVideoIndex ? 'active-on-air' : ''} ${isCustomVid ? 'video-customized' : ''}`;
                 card.dataset.index = idx;
 
-                const durLabel = vid.duration ? `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}` : '0:00';
+                const naturalDurStr = vid.duration ? `${Math.floor(vid.duration / 60)}:${Math.floor(vid.duration % 60).toString().padStart(2, '0')}` : '0:00';
+                const durLabel = vCfg.playTimeSec > 0 ? `${vCfg.playTimeSec}s (${vCfg.loop ? 'LOOP' : 'ONCE'})` : `${naturalDurStr} (${vCfg.loop ? 'LOOP' : 'ONCE'})`;
                 const hasRealPoster = (vid.thumbnailUrl && vid.thumbnailUrl.startsWith('data:image/jpeg') && vid.thumbnailUrl.length > 1800);
                 const initialPoster = hasRealPoster ? vid.thumbnailUrl : '';
                 const previewSeekTime = vid.previewTime || 1.0;
@@ -4863,7 +4870,10 @@ async function init() {
                                 <input type="checkbox" class="video-inc-check" ${vid.included ? 'checked' : ''}>
                                 <span>Mix</span>
                             </label>
-                            <button class="video-btn-play-now" title="Cue and play this video immediately">▶ CUE</button>
+                            <div style="display:flex; align-items:center; gap:4px;">
+                                <button type="button" class="video-card-cog-btn ${isCustomVid ? 'customized' : ''}" title="Configure Video Settings (Play Time, Loop ON/OFF, Speed & Logo/Lighting Memory)">⚙️</button>
+                                <button type="button" class="video-btn-play-now" title="Cue and play this video immediately">▶ CUE</button>
+                            </div>
                         </div>
                     </div>
                 `;
@@ -5046,6 +5056,22 @@ async function init() {
                     }
                 });
 
+                // Per-Video Settings Cog Button
+                const btnCog = card.querySelector('.video-card-cog-btn');
+                if (btnCog) {
+                    btnCog.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (window.videoConfigCogCtrl && typeof window.videoConfigCogCtrl.openVideoConfigModal === 'function') {
+                            window.videoConfigCogCtrl.openVideoConfigModal(vid, activeBankIndex, idx, () => {
+                                saveBanks();
+                                renderVideoGrid();
+                                syncBadges();
+                            });
+                        }
+                    });
+                }
+
                 // Play Now button
                 const btnPlay = card.querySelector('.video-btn-play-now');
                 btnPlay.addEventListener('click', (e) => {
@@ -5188,6 +5214,13 @@ async function init() {
             }
 
             clipStartTime = performance.now() / 1000;
+            // Apply per-video remembered Play Time, Loop, Speed & Branding/Lighting snapshot
+            const vCfg = ensureVideoConfig(targetVid);
+            playbackSpeed = vCfg.speed || 1.0;
+            loopMode = vCfg.loop ? 'single' : 'playlist';
+            if (window.videoConfigCogCtrl && typeof window.videoConfigCogCtrl.applyVideoConfigOnPlay === 'function') {
+                window.videoConfigCogCtrl.applyVideoConfigOnPlay(targetVid);
+            }
             updateGridActiveHighlight();
             syncBadges();
         }
@@ -5750,28 +5783,25 @@ async function init() {
                 vfx.setVideoSpeed(effectiveSpeed);
             }
 
-            // Progression check based on durationSetting
-            if (durationSetting === 'natural') {
+            // Per-video Play Time & Loop check (configured via each video card's ⚙️ cog)
+            const currBank = banks[activeBankIndex];
+            const activeVid = currBank && currBank.videos ? currBank.videos[currentVideoIndex] : null;
+            const vCfg = ensureVideoConfig(activeVid);
+
+            if (vCfg.playTimeSec > 0) {
+                if (elapsed >= vCfg.playTimeSec) {
+                    if (vCfg.loop) {
+                        // Loop this video after Play Time seconds
+                        playVideoItem(currentVideoIndex, false);
+                    } else {
+                        // Advance to next enabled video in bank
+                        transitionToNextVideo();
+                    }
+                }
+            } else {
+                // Full video length (default): check if near end when Loop is OFF
                 const state = vfx.getVideoPlaybackState && vfx.getVideoPlaybackState();
-                if (state && state.duration > 0 && (state.duration - state.currentTime) < (transitionDuration + 0.2)) {
-                    transitionToNextVideo();
-                }
-            } else if (durationSetting === '15s' && elapsed >= 15) {
-                transitionToNextVideo();
-            } else if (durationSetting === '30s' && elapsed >= 30) {
-                transitionToNextVideo();
-            } else if (durationSetting === '60s' && elapsed >= 60) {
-                transitionToNextVideo();
-            } else if (durationSetting === '16beats') {
-                const bpm = window.currentBpm || 128;
-                const beatsElapsed = elapsed * (bpm / 60);
-                if (beatsElapsed >= 16) {
-                    transitionToNextVideo();
-                }
-            } else if (durationSetting === '32beats') {
-                const bpm = window.currentBpm || 128;
-                const beatsElapsed = elapsed * (bpm / 60);
-                if (beatsElapsed >= 32) {
+                if (!vCfg.loop && state && state.duration > 0 && (state.duration - state.currentTime) < (transitionDuration + 0.25)) {
                     transitionToNextVideo();
                 }
             }
@@ -6086,10 +6116,47 @@ async function init() {
     }
 
     if (btnResetAll) {
-        btnResetAll.addEventListener('click', () => resetAllParameters(true));
+        btnResetAll.addEventListener('click', () => {
+            if (!confirm('Are you sure you want to restore all studio settings and all 23 scene profiles back to factory defaults?')) return;
+            resetAllParameters(true);
+        });
     }
     if (btnSetupResetAll) {
-        btnSetupResetAll.addEventListener('click', () => resetAllParameters(true));
+        btnSetupResetAll.addEventListener('click', () => {
+            if (!confirm('Are you sure you want to restore all studio settings and all 23 scene profiles back to factory defaults?')) return;
+            resetAllParameters(true);
+        });
+    }
+
+    // Full Studio Settings Backup & Restore Handlers
+    const btnSetupBackupAll = document.getElementById('btn-setup-backup-all');
+    const btnSetupRestoreBackup = document.getElementById('btn-setup-restore-backup');
+    const fileSetupRestoreBackup = document.getElementById('file-setup-restore-backup');
+    if (btnSetupBackupAll) {
+        btnSetupBackupAll.addEventListener('click', () => {
+            exportFullStudioBackup(showToast);
+        });
+    }
+    if (btnSetupRestoreBackup && fileSetupRestoreBackup) {
+        btnSetupRestoreBackup.addEventListener('click', () => {
+            fileSetupRestoreBackup.value = '';
+            fileSetupRestoreBackup.click();
+        });
+        fileSetupRestoreBackup.addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            importFullStudioBackup(file, () => {
+                const curFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 0;
+                if (typeof applySceneProfile === 'function') applySceneProfile(curFx);
+                if (window.sceneConfigCogCtrl && typeof window.sceneConfigCogCtrl.refreshAllBadges === 'function') {
+                    window.sceneConfigCogCtrl.refreshAllBadges();
+                    window.sceneConfigCogCtrl.updateActiveSceneBanner(curFx);
+                }
+                if (window.videoPlaybackManager && typeof window.videoPlaybackManager.renderGrid === 'function') {
+                    window.videoPlaybackManager.renderGrid();
+                }
+            }, showToast);
+        });
     }
 
     function loadCustomFile(file) {
@@ -6475,21 +6542,71 @@ async function init() {
             });
         }
 
+        const btnTracklistRec = document.getElementById('btn-tracklist-rec');
+        const btnTracklistPause = document.getElementById('btn-tracklist-pause');
+        const btnTracklistStop = document.getElementById('btn-tracklist-stop');
+        const selectInactivityTimeout = document.getElementById('select-session-inactivity-timeout');
+        const tracklistRecStatusSub = document.getElementById('tracklist-rec-status-sub');
+
+        if (selectInactivityTimeout) {
+            selectInactivityTimeout.value = String(sessionTracker.getAutoStandbyMinutes());
+            selectInactivityTimeout.addEventListener('change', (e) => {
+                const mins = parseInt(e.target.value, 10);
+                sessionTracker.setAutoStandbyMinutes(isNaN(mins) ? 15 : mins);
+                showToast(mins > 0 ? `⏱️ Tracklist Auto-Standby set to ${mins} minutes of inactivity` : '⏱️ Tracklist Auto-Standby Disabled (Always On)');
+            });
+        }
+
         function renderSession(metrics) {
+            const isRec = metrics.isRecording;
+            const isPaused = metrics.isPaused;
+
             // 1. Update Notch Record Button State
             if (notchBtnRec) {
-                notchBtnRec.classList.toggle('recording', metrics.isRecording);
-                notchBtnRec.classList.toggle('ready', !metrics.isRecording);
-                if (notchRecIcon) notchRecIcon.textContent = metrics.isRecording ? '⏺' : '▶';
-                if (notchRecLabel) notchRecLabel.textContent = metrics.isRecording ? `REC ${metrics.durationFormatted}` : 'REC READY';
+                notchBtnRec.classList.toggle('recording', isRec);
+                notchBtnRec.classList.toggle('ready', !isRec);
+                if (notchRecIcon) notchRecIcon.textContent = isRec ? '⏺' : (isPaused ? '⏸' : '▶');
+                if (notchRecLabel) {
+                    notchRecLabel.textContent = isRec
+                        ? `REC ${metrics.durationFormatted}`
+                        : (isPaused ? `STANDBY (${metrics.durationFormatted})` : 'REC READY');
+                }
             }
 
             // 2. Update Settings Panel Record Button State
             if (btnSessionRec) {
-                btnSessionRec.classList.toggle('recording', metrics.isRecording);
-                btnSessionRec.classList.toggle('ready', !metrics.isRecording);
-                if (sessionRecIcon) sessionRecIcon.textContent = metrics.isRecording ? '⏺' : '▶';
-                if (sessionRecLabel) sessionRecLabel.textContent = metrics.isRecording ? `STOP (${metrics.durationFormatted})` : 'REC READY';
+                btnSessionRec.classList.toggle('recording', isRec);
+                btnSessionRec.classList.toggle('ready', !isRec);
+                if (sessionRecIcon) sessionRecIcon.textContent = isRec ? '⏺' : (isPaused ? '⏸' : '▶');
+                if (sessionRecLabel) {
+                    sessionRecLabel.textContent = isRec
+                        ? `STOP (${metrics.durationFormatted})`
+                        : (isPaused ? `PAUSED (${metrics.durationFormatted})` : 'REC READY');
+                }
+            }
+
+            // 2b. Update Tracklist Transport Buttons (REC / PAUSE / STOP)
+            if (btnTracklistRec) {
+                btnTracklistRec.style.background = isRec ? 'rgba(255,0,85,0.35)' : 'rgba(255,0,85,0.14)';
+                btnTracklistRec.style.color = isRec ? '#ffffff' : '#ff4d88';
+                btnTracklistRec.textContent = isRec ? `⏺ REC (${metrics.durationFormatted})` : (isPaused ? '▶ RESUME' : '⏺ REC');
+            }
+            if (btnTracklistPause) {
+                btnTracklistPause.style.background = isPaused ? 'rgba(255,170,0,0.32)' : 'rgba(255,170,0,0.12)';
+                btnTracklistPause.style.color = isPaused ? '#ffffff' : '#ffaa00';
+                btnTracklistPause.textContent = isPaused ? '⏸ STANDBY ON' : '⏸ PAUSE';
+            }
+            if (tracklistRecStatusSub) {
+                if (isPaused && metrics.standbyReason) {
+                    tracklistRecStatusSub.textContent = `⏸ ${metrics.standbyReason} — Click [▶ RESUME] or load a track`;
+                    tracklistRecStatusSub.style.color = '#ffaa00';
+                } else if (isRec) {
+                    tracklistRecStatusSub.textContent = `⏺ Recording Active (${metrics.durationFormatted}) • Auto-Standby: ${metrics.autoStandbyMinutes > 0 ? metrics.autoStandbyMinutes + 'm' : 'Off'}`;
+                    tracklistRecStatusSub.style.color = '#00ffcc';
+                } else {
+                    tracklistRecStatusSub.textContent = 'Album Art • 3-Band Denon Waveform • Key • BPM • Length • Album • Genre';
+                    tracklistRecStatusSub.style.color = '#8c909e';
+                }
             }
 
             // 3. Update KPI Banner
@@ -6498,30 +6615,53 @@ async function init() {
             if (kpiAvgBpm) kpiAvgBpm.textContent = metrics.avgBpm;
             if (kpiHandovers) kpiHandovers.textContent = metrics.handoverCount;
 
-            // 4. Render Chronological Tracklist Cards
+            // 4. Render Chronological Tracklist Cards (Album Art -> Title/Artist -> Denon 3-Band Beat Grid Waveform -> Key, BPM, Length, Album, Genre)
             if (tracklistContainer) {
                 if (metrics.tracks.length === 0) {
                     tracklistContainer.innerHTML = `
                         <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
-                            No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
+                            No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
                         </div>
                     `;
                 } else {
-                    tracklistContainer.innerHTML = metrics.tracks.map((t, i) => `
-                        <div class="session-track-card">
-                            <span style="font-size:8px; color:#ffaa00; font-family:'JetBrains Mono',monospace; min-width:20px;">#${i + 1}</span>
-                            <span class="deck-badge d${t.deck}">DECK ${t.deck}</span>
-                            ${t.artwork ? `<img src="${t.artwork}" alt="" style="width:22px; height:22px; border-radius:2px; object-fit:cover; border:1px solid rgba(255,255,255,0.15);" />` : `<span style="font-size:12px;">🎵</span>`}
-                            <div style="flex:1; min-width:0;">
-                                <div style="font-size:9.5px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.title}</div>
-                                <div style="font-size:8px; color:#8c909e; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${t.artist}</div>
+                    tracklistContainer.innerHTML = metrics.tracks.map((t, i) => {
+                        const lenStr = sessionTracker.formatTrackLength(t.duration);
+                        const albumStr = t.album || 'Club Single';
+                        const genreStr = t.genre || 'Electronic / Dance';
+                        const keyStr = (t.key && t.key !== '—') ? t.key : 'Auto Key';
+                        const waveImg = t.waveformThumb
+                            ? `<img src="${t.waveformThumb}" alt="Denon 3-Band Beat Grid Waveform" title="Denon Engine OS 3-Band Waveform (Blue=Low, Green=Mid, White=High) + Beat Grid" />`
+                            : '';
+                        return `
+                            <div class="session-track-card-rich">
+                                <div class="session-track-top-row">
+                                    <span style="font-size:8px; color:#ffaa00; font-family:'JetBrains Mono',monospace; font-weight:800; min-width:18px;">#${i + 1}</span>
+                                    <div class="session-track-art-box" title="Track Album Art">
+                                        ${t.artwork ? `<img src="${t.artwork}" alt="" />` : `<span style="font-size:15px;">💿</span>`}
+                                    </div>
+                                    <div class="session-track-main-info">
+                                        <div style="display:flex; align-items:center; gap:5px;">
+                                            <span class="deck-badge d${t.deck}" style="font-size:7px; padding:1px 4px;">D${t.deck}</span>
+                                            <span style="font-size:9.5px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.title}">${t.title}</span>
+                                        </div>
+                                        <div style="font-size:8px; color:#9ba3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.artist}">${t.artist}</div>
+                                        <div style="font-size:7px; color:#6c7486; font-family:'JetBrains Mono',monospace;">Logged ${t.timeStr} (${t.relativeTime})</div>
+                                    </div>
+                                    <div class="session-track-wave-box" title="Denon 3-Band Waveform (Blue/Green/White) &amp; Beat Grid">
+                                        ${waveImg}
+                                    </div>
+                                </div>
+                                <div class="session-track-meta-pills">
+                                    <span class="session-meta-pill key" title="Musical / Camelot Key">🎹 KEY: ${keyStr}</span>
+                                    <span class="session-meta-pill bpm" title="Track Tempo">⚡ ${t.bpm} BPM</span>
+                                    <span class="session-meta-pill len" title="Track Duration">⏱️ ${lenStr}</span>
+                                    <span class="session-meta-pill" title="Album">💿 ${albumStr}</span>
+                                    <span class="session-meta-pill" title="Genre">🏷️ ${genreStr}</span>
+                                    <span class="session-meta-pill" style="color:#55aaff; border-color:rgba(0,136,255,0.35);" title="Denon Engine OS 4/4 Beat Grid">📏 4/4 BEAT GRID</span>
+                                </div>
                             </div>
-                            <div style="text-align:right; font-family:'JetBrains Mono',monospace; font-size:8px; white-space:nowrap;">
-                                <div style="color:#00ffcc; font-weight:800;">${t.bpm} BPM</div>
-                                <div style="color:#8c909e;">${t.timeStr} (${t.relativeTime})</div>
-                            </div>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                 }
             }
 
@@ -6554,6 +6694,29 @@ async function init() {
 
         if (notchBtnRec) notchBtnRec.addEventListener('click', handleRecToggle);
         if (btnSessionRec) btnSessionRec.addEventListener('click', handleRecToggle);
+        if (btnTracklistRec) {
+            btnTracklistRec.addEventListener('click', () => {
+                sessionTracker.startRecording();
+                showToast('⏺ Tracklist & Session Recording Active');
+            });
+        }
+        if (btnTracklistPause) {
+            btnTracklistPause.addEventListener('click', () => {
+                if (sessionTracker.isPaused) {
+                    sessionTracker.startRecording();
+                    showToast('▶ Tracklist Recording Resumed');
+                } else {
+                    sessionTracker.pauseRecording('Paused by User');
+                    showToast('⏸ Tracklist Recording Paused (Standby)');
+                }
+            });
+        }
+        if (btnTracklistStop) {
+            btnTracklistStop.addEventListener('click', () => {
+                sessionTracker.stopRecording();
+                showToast('⏹ Tracklist Recording Stopped & Saved');
+            });
+        }
 
         // Copy tracklist to clipboard
         if (btnCopy) {
@@ -7017,17 +7180,19 @@ async function init() {
         if (typeof updateHealthDiagnosticsModalUI === 'function') updateHealthDiagnosticsModalUI();
     };
 
-    function applySceneProfile(sceneIndex) {
+    function applySceneProfile(sceneIndex, overrideProfile = null) {
         if (sceneIndex < 0 || sceneIndex >= TOTAL_FX) return;
-        const profile = SceneProfileManager.getProfile(sceneIndex);
+        const profile = overrideProfile || SceneProfileManager.getProfile(sceneIndex);
         if (!profile) return;
 
         isApplyingSceneProfile = true;
 
         try {
-            const isSceneCustomized = (typeof SceneProfileManager !== 'undefined' && typeof SceneProfileManager.isCustomized === 'function')
-                ? SceneProfileManager.isCustomized(sceneIndex)
-                : false;
+            const isSceneCustomized = overrideProfile
+                ? true
+                : ((typeof SceneProfileManager !== 'undefined' && typeof SceneProfileManager.isCustomized === 'function')
+                    ? SceneProfileManager.isCustomized(sceneIndex)
+                    : false);
 
             // 1. DJ Logo
             if (profile.djLogo) {
@@ -7354,6 +7519,20 @@ async function init() {
         applySceneProfile,
         selectFX: (idx) => selectFX(idx),
         switchTab,
+        showToast
+    });
+
+    // Initialize Per-Video Configuration Cog (⚙️) Controller
+    window.videoConfigCogCtrl = initVideoConfigCogController({
+        vfx,
+        getCurrentConsoleSnapshot,
+        applyCustomProfileSnapshot: (snap) => {
+            if (!snap) return;
+            const currentFx = (vfx && typeof vfx.getCurrentFX === 'function') ? vfx.getCurrentFX() : 22;
+            applySceneProfile(currentFx, snap);
+        },
+        getActiveVideoId: () => currentActiveVideoId,
+        renderVideoGrid: () => renderVideoGrid(),
         showToast
     });
 
@@ -10007,6 +10186,10 @@ async function init() {
 
         isHardwareDeckStreaming = false;
         lastDisplayedTrackDeck = null;
+
+        if (!data.initialBoot && sessionTracker && typeof sessionTracker.notifyDecksOffline === 'function') {
+            sessionTracker.notifyDecksOffline();
+        }
     }
 
     // Immediately trigger offline disarmed standby on boot
@@ -10091,14 +10274,34 @@ async function init() {
             // Immediately pipe loaded deck metadata to 3D visualizer and DJ Deck Waveforms scene (FX 3)
             if (vfx.setDeckData) vfx.setDeckData(data);
             if (sessionTracker && data.title) {
-                sessionTracker.recordTrack(data.deck || 1, data.title, data.artist, data.bpm, data.key, data.artworkUrl || data.coverart, data.duration);
+                sessionTracker.recordTrack(
+                    data.deck || 1,
+                    data.title,
+                    data.artist,
+                    data.bpm,
+                    data.key,
+                    data.artworkUrl || data.coverart,
+                    data.duration,
+                    { album: data.album, genre: data.genre, samples: data.samples }
+                );
             }
 
             if (data.title && (!data.artworkUrl && !data.coverart)) {
                 fetchTrackArtwork(data.title, data.artist, data.deck || 1).then((artUrl) => {
                     if (artUrl && vfx.setDeckData) {
                         vfx.setDeckData({ deck: data.deck || 1, artworkUrl: artUrl });
-                        if (sessionTracker) sessionTracker.recordTrack(data.deck || 1, data.title, data.artist, data.bpm, data.key, artUrl, data.duration);
+                        if (sessionTracker) {
+                            sessionTracker.recordTrack(
+                                data.deck || 1,
+                                data.title,
+                                data.artist,
+                                data.bpm,
+                                data.key,
+                                artUrl,
+                                data.duration,
+                                { album: data.album, genre: data.genre, samples: data.samples }
+                            );
+                        }
                     }
                 });
             }
@@ -10150,14 +10353,34 @@ async function init() {
 
             if (vfx.setDeckData) vfx.setDeckData(trackData);
             if (sessionTracker && trackData.title) {
-                sessionTracker.recordTrack(trackData.deck || 1, trackData.title, trackData.artist, trackData.bpm, trackData.key, trackData.artworkUrl || trackData.coverart, trackData.duration);
+                sessionTracker.recordTrack(
+                    trackData.deck || 1,
+                    trackData.title,
+                    trackData.artist,
+                    trackData.bpm,
+                    trackData.key,
+                    trackData.artworkUrl || trackData.coverart,
+                    trackData.duration,
+                    { album: trackData.album, genre: trackData.genre, samples: trackData.samples }
+                );
             }
 
             if (trackData.title && (!trackData.artworkUrl && !trackData.coverart)) {
                 fetchTrackArtwork(trackData.title, trackData.artist, trackData.deck || 1).then((artUrl) => {
                     if (artUrl && vfx.setDeckData) {
                         vfx.setDeckData({ deck: trackData.deck || 1, artworkUrl: artUrl });
-                        if (sessionTracker) sessionTracker.recordTrack(trackData.deck || 1, trackData.title, trackData.artist, trackData.bpm, trackData.key, artUrl, trackData.duration);
+                        if (sessionTracker) {
+                            sessionTracker.recordTrack(
+                                trackData.deck || 1,
+                                trackData.title,
+                                trackData.artist,
+                                trackData.bpm,
+                                trackData.key,
+                                artUrl,
+                                trackData.duration,
+                                { album: trackData.album, genre: trackData.genre, samples: trackData.samples }
+                            );
+                        }
                     }
                 });
             }
@@ -10227,10 +10450,29 @@ async function init() {
                     artist: waveformPacket.artist,
                     bpm: waveformPacket.bpm,
                     duration: waveformPacket.duration,
+                    key: waveformPacket.key,
+                    album: waveformPacket.album,
+                    genre: waveformPacket.genre,
                     samples: waveformPacket.samples,
                     cues: waveformPacket.cues || [],
                     loops: waveformPacket.loops || []
                 });
+            }
+            if (sessionTracker && waveformPacket.title) {
+                sessionTracker.recordTrack(
+                    waveformPacket.deck || 1,
+                    waveformPacket.title,
+                    waveformPacket.artist,
+                    waveformPacket.bpm,
+                    waveformPacket.key,
+                    waveformPacket.artworkUrl || waveformPacket.coverart || '',
+                    waveformPacket.duration,
+                    {
+                        album: waveformPacket.album,
+                        genre: waveformPacket.genre,
+                        samples: waveformPacket.samples
+                    }
+                );
             }
         },
         onDeckTelemetry: (telemetry) => {

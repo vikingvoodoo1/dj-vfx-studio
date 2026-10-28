@@ -160,16 +160,35 @@ export class WaveformService {
     }
 
     /**
+     * Format Denon Engine OS numeric key index (0..23) or string key into readable Musical + Camelot key
+     */
+    formatEngineKey(rawKey) {
+        if (rawKey === undefined || rawKey === null || rawKey === '') return '—';
+        const KEY_MAP = [
+            '8B (C)', '8A (Am)', '9B (G)', '9A (Em)', '10B (D)', '10A (Bm)',
+            '11B (A)', '11A (F#m)', '12B (E)', '12A (C#m)', '1B (B)', '1A (G#m)',
+            '2B (F#)', '2A (D#m)', '3B (Db)', '3A (Bbm)', '4B (Ab)', '4A (Fm)',
+            '5B (Eb)', '5A (Cm)', '6B (Bb)', '6A (Gm)', '7B (F)', '7A (Dm)'
+        ];
+        const num = Number(rawKey);
+        if (!isNaN(num) && Number.isInteger(num) && num >= 0 && num < KEY_MAP.length) {
+            return KEY_MAP[num];
+        }
+        return String(rawKey).trim() || '—';
+    }
+
+    /**
      * Look up track in Denon Engine OS m.db and decompress 3-Band RGB waveform
      */
     findEngineWaveform(artist, title, trackId) {
+        const selectCols = 'CAST(id AS TEXT) as id, title, artist, album, genre, key, length, bpm, bpmAnalyzed';
         for (const loc of this.engineDbPaths) {
             try {
                 const db = new DatabaseSync(loc.dbPath, { open: true, readOnly: true });
 
                 let trackRow = null;
                 if (trackId) {
-                    trackRow = db.prepare('SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE CAST(id AS TEXT) = ?').get(String(trackId));
+                    trackRow = db.prepare(`SELECT ${selectCols} FROM Track WHERE CAST(id AS TEXT) = ?`).get(String(trackId));
                 }
 
                 if (!trackRow && (title || artist)) {
@@ -182,28 +201,28 @@ export class WaveformService {
                     // Stage 1: Exact substring match on both title and artist
                     if (cleanTitle && cleanArtist) {
                         trackRow = db.prepare(
-                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
+                            `SELECT ${selectCols} FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1`
                         ).get(`%${cleanTitle}%`, `%${cleanArtist}%`);
                     }
 
                     // Stage 2: Base title and base artist match
                     if (!trackRow && baseTitle && baseArtist) {
                         trackRow = db.prepare(
-                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1'
+                            `SELECT ${selectCols} FROM Track WHERE title LIKE ? AND artist LIKE ? LIMIT 1`
                         ).get(`%${baseTitle}%`, `%${baseArtist}%`);
                     }
 
                     // Stage 3: Base title match
                     if (!trackRow && baseTitle) {
                         trackRow = db.prepare(
-                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
+                            `SELECT ${selectCols} FROM Track WHERE title LIKE ? LIMIT 1`
                         ).get(`%${baseTitle}%`);
                     }
 
                     // Stage 4: Clean title match
                     if (!trackRow && cleanTitle) {
                         trackRow = db.prepare(
-                            'SELECT CAST(id AS TEXT) as id, title, artist, length, bpm FROM Track WHERE title LIKE ? LIMIT 1'
+                            `SELECT ${selectCols} FROM Track WHERE title LIKE ? LIMIT 1`
                         ).get(`%${cleanTitle}%`);
                     }
                 }
@@ -216,10 +235,12 @@ export class WaveformService {
                         'SELECT overviewWaveFormData, quickCues, loops FROM PerformanceData WHERE CAST(trackId AS TEXT) = ?'
                     ).get(String(trackRow.id));
 
+                    const resolvedBpm = Number(trackRow.bpmAnalyzed) > 40 ? Number(trackRow.bpmAnalyzed) : (Number(trackRow.bpm) || 128.0);
+                    const formattedKey = this.formatEngineKey(trackRow.key);
+
                     if (perfRow) {
                         const durationSec = Number(trackRow.length) || 364;
-                        const trackBpm = Number(trackRow.bpm) || 128.0;
-                        if (perfRow.loops) loops = this.parseEngineLoops(perfRow.loops, durationSec, trackBpm);
+                        if (perfRow.loops) loops = this.parseEngineLoops(perfRow.loops, durationSec, resolvedBpm);
                         if (perfRow.quickCues) cues = this.parseEngineCues(perfRow.quickCues, durationSec);
                     }
 
@@ -233,8 +254,11 @@ export class WaveformService {
                                 trackId: trackRow.id,
                                 title: trackRow.title,
                                 artist: trackRow.artist,
+                                album: trackRow.album || '',
+                                genre: trackRow.genre || '',
+                                key: formattedKey,
                                 duration: trackRow.length || 0,
-                                bpm: trackRow.bpm || 0,
+                                bpm: resolvedBpm,
                                 samples,
                                 cues,
                                 loops
@@ -257,8 +281,11 @@ export class WaveformService {
                                         trackId: trackRow.id,
                                         title: trackRow.title,
                                         artist: trackRow.artist,
+                                        album: trackRow.album || '',
+                                        genre: trackRow.genre || '',
+                                        key: formattedKey,
                                         duration: trackRow.length || 0,
-                                        bpm: trackRow.bpm || 0,
+                                        bpm: resolvedBpm,
                                         samples,
                                         cues,
                                         loops

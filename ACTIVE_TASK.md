@@ -3,6 +3,25 @@
 > **Note to Agent:** Update this file as you complete steps or switch tasks. After any context compaction, read this file and run `git diff --stat` first before acting.
 
 ## 1. Current Active Goal
+- **Task:** Live Performance Deck, Settings Split & Backup/Restore, Rich Denon Tracklist + Auto-Standby, and Scene/Video Configuration Cog Modals [COMPLETED & VERIFIED]:
+  1. **Live Performance Deck Panel (`#pane-perform`)**:
+     - Compacted `.active-scene-banner` into a sleek single-line strip (`padding: 4px 8px; height ~32px`).
+     - Restored **Live Tempo & Beat** telemetry box by removing the broken `#cdj-meter-container { min-height: 22px; height: 22px; overflow: hidden; }` rule in `src/styles/main.css`.
+  2. **Scene Card & Active Scene Banner Cog (`⚙️`) Modal Fix (`src/ui/scene-config-cog.js`, `src/styles/main.css`)**:
+     - Fixed class mismatch (`.active` vs `.open` on `#scene-cog-modal-backdrop` and inner `.scene-cog-*` elements) and added global event delegation so clicking `⚙️` on any scene card or on the Live Performance Deck's Active Scene banner reliably opens the Scene Configuration Modal.
+  3. **Settings Panel (`#pane-setup`) Sub-Tab Split, Backup/Restore & Confirmed Reset**:
+     - Split the Master tab into dedicated sub-tabs: **🎛️ Master Console** (`master`), **🖥️ 2nd Screen** (`stage`), **🎙️ Audio Input** (`audio`), and **🎚️ VU Targets** (`vutargets`).
+     - Moved **Restore Default Settings & Scenes** into `#setup-persistent-footer` below all tab panels with an explicit confirmation prompt (`window.confirm`).
+     - Added **💾 Backup All Settings** & **📂 Restore from Backup** (`exportFullStudioBackup` / `importFullStudioBackup`) right above the Reset card.
+  4. **Eliminate Duplicate Entries on Reload & Enrich Tracklist (`src/services/session-tracker.js`, `server/waveform-service.js`, `src/main.js`)**:
+     - Persisted `lastTrackPerDeck` in `localStorage` and added `deduplicateHistory()` so page reloads/rebuilds never create duplicate track or event entries.
+     - Extended Denon Engine OS `m.db` queries in `server/waveform-service.js` to extract `album`, `genre`, `key` (`formatEngineKey`), and `duration`.
+     - Upgraded Tracklist cards (`.session-track-card-rich`) and widened `#hud` (`472px`) to show **Album Art** first, **Track Title & Artist**, a rectangular **Denon 3-Band Waveform + Beat Grid** image (`generateDenonWaveformDataUrl` using Denon **Blue `#0068ff`** low, **Green `#00e676`** mid, and **White `#ffffff`** high with 4/4 beat-grid markers and no fire/smoke effects), and metadata pills for **Key**, **BPM**, **Length**, **Album**, **Genre**, and **Beat Grid**.
+     - Added **Record (`⏺ REC`) / Pause (`⏸ PAUSE`) / Stop (`⏹ STOP`)** buttons and configurable **Auto-Standby on Deck Offline / Inactivity (`15m Default`)** to the Tracklist panel and Top Notch.
+  5. **Per-Video Configuration Cog (`⚙️`) in Video Loops & Library (`src/ui/video-config-cog.js`, `src/main.js`)**:
+     - Added a clickable `⚙️` cog button and `★` memory badge on every video card controlling: (a) **Video Play Time** (`Full Length` default, or `5s`–`300s`), (b) **Loop Video** (`ON` default — sole authoritative loop control), (c) **Playback Speed** (`1.0x` default), and (d) **Remember Config for Video** (saving DJ Logo, Station Logo, Promo Flyer position/size/speed/spin, Macro Faders, and Hue/DMX Lighting settings, 100% consistent with Scene Card Settings).
+
+## 1a. Previous Completed Goal (7 UI, Console, Lighting & Per-Scene Tweaks)
 - **Task:** Implement 7 UI, Console, Lighting, and Per-Scene Configuration Tweaks [COMPLETED & VERIFIED]:
   1. **Eliminate Console Panel Vertical Twitching / Nervous Scrolling**: Fixed in `src/main.js`, `index.html`, and `src/styles/main.css` (`overflow-anchor: none; scrollbar-gutter: stable;`, single-line header locking, 1.5s audio source hysteresis, uniform-height `#eq-energy-badge` text without emoji ascent jumps, compact non-wrapping `#vu-monitor-source-badge`, and 500ms throttling + DOM diffing on `updateSceneRequirementsUI()`).
   2. **Settings Console Sub-Tabs (`#pane-setup`) Multi-Line Wrapping & Splitting**: Updated `.setup-nav-bar` / `.setup-nav-tab` in `src/styles/main.css` to wrap cleanly onto multiple lines (`flex-wrap: wrap`), and split **Session Metrics** (`#setup-content-session`) and **Chronological Tracklist** (`#setup-content-tracklist`) into dedicated sub-tabs in `index.html` and `src/main.js`.

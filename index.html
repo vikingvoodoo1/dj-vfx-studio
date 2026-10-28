@@ -367,23 +367,23 @@
                     </div>
                 </div>
 
-                <!-- Active Stage Scene Banner (Works dynamically for all 23 scenes + Direct Cog Settings) -->
+                <!-- Compact Active Stage Scene Strip (Works dynamically for all 23 scenes + Direct Cog Settings) -->
                 <div class="active-scene-banner" id="video-cinema-quick-bar">
                     <div class="active-scene-banner-left">
                         <div class="active-scene-icon-wrap" id="active-scene-banner-icon" title="Current Active 3D Stage Scene">📊</div>
                         <div class="active-scene-meta">
                             <div class="active-scene-top-row">
-                                <span class="active-scene-eyebrow" id="active-scene-banner-label">ACTIVE STAGE SCENE • SCENE 01 [1]</span>
+                                <span class="active-scene-eyebrow" id="active-scene-banner-label">SCENE 01 [1]</span>
+                                <span id="video-quick-title" class="active-scene-title">3D Studio EQ</span>
                                 <span class="active-scene-pill" id="active-scene-memory-pill">DEFAULT</span>
                                 <span class="active-scene-pill speed" id="active-scene-speed-pill">⚡ 1.00x</span>
                             </div>
-                            <div id="video-quick-title" class="active-scene-title">3D Studio EQ</div>
                             <div id="active-scene-banner-sub" class="active-scene-sub">Equalizers &amp; Decks • Live Audio FFT</div>
                         </div>
                     </div>
                     <div class="active-scene-banner-actions">
-                        <button class="btn-micro" id="btn-open-video-manager" style="display:none; padding:4px 7px; font-size:8px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:4px; cursor:pointer;" title="Open 10-Bank Video Loops &amp; Library Console">📁 VIDEOS</button>
-                        <button class="btn-micro" id="btn-active-scene-fxbank" style="padding:4px 7px; font-size:8px; font-weight:700; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#d8dbe4; border-radius:4px; cursor:pointer;" title="Open Visual FX Bank to browse all 23 scenes [Alt+2]">✨ FX BANK</button>
+                        <button class="btn-micro" id="btn-open-video-manager" style="display:none; padding:2px 6px; font-size:7.5px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:3px; cursor:pointer;" title="Open 10-Bank Video Loops &amp; Library Console">📁 VIDEOS</button>
+                        <button class="btn-micro" id="btn-active-scene-fxbank" style="padding:2px 6px; font-size:7.5px; font-weight:700; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#d8dbe4; border-radius:3px; cursor:pointer;" title="Open Visual FX Bank to browse all 23 scenes [Alt+2]">✨ FX</button>
                         <button class="active-scene-cog-btn" id="btn-active-scene-cog" type="button" title="Configure Active Scene Settings (Speed, Branding Memory, Macro &amp; Lighting)">⚙️</button>
                     </div>
                 </div>
@@ -2055,60 +2055,26 @@
                 </div>
 
                 <div class="video-options-deck">
-                    <!-- Row 1: Looping & Play Order Mode Pills -->
+                    <!-- Per-Video Cog Guidance Banner -->
+                    <div style="background:rgba(0,229,255,0.07); border:1px solid rgba(0,229,255,0.28); border-radius:5px; padding:6px 8px; font-size:8px; color:#b8c4d8; display:flex; align-items:center; justify-content:space-between; gap:6px;">
+                        <span>⚙️ <strong>Per-Video Settings:</strong> Click the <strong>⚙️ Cog</strong> on any video card above to configure <strong>Play Time (e.g. 5s or Full)</strong>, <strong>Loop ON/OFF</strong>, <strong>Speed</strong> &amp; <strong>Logo/Lighting Memory</strong>.</span>
+                    </div>
+
+                    <!-- Row 1: Play Order & Audio Passthrough -->
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                         <div>
-                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">LOOP MODE</div>
-                            <div class="mode-pills" id="video-loop-pills">
-                                <button class="mode-pill active" data-loop="playlist" title="Automatically advances through all enabled videos in rotation">Loop Playlist</button>
-                                <button class="mode-pill" data-loop="single" title="Continuously loops only the current video">Loop Clip</button>
-                            </div>
-                        </div>
-                        <div>
-                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">PLAY ORDER</div>
+                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">PLAYLIST ORDER (WHEN LOOP OFF)</div>
                             <div class="mode-pills" id="video-order-pills">
                                 <button class="mode-pill active" data-order="sequential" title="Plays videos in sequential order 1, 2, 3...">Sequential</button>
                                 <button class="mode-pill" data-order="random" title="Picks random enabled video from the bank">Shuffle / Random</button>
                             </div>
                         </div>
-                    </div>
-
-                    <!-- Row 2: Playback Speed -->
-                    <div>
-                        <div class="hud-row" style="margin-bottom:3px; align-items:center; justify-content:space-between;">
-                            <span class="hud-label" style="font-size:8px;">PLAYBACK SPEED</span>
-                            <span class="hud-badge" id="video-speed-val" style="font-size:8px; color:#ffaa00;">1.0x</span>
-                        </div>
-                        <div class="mode-pills" id="video-speed-pills">
-                            <button class="mode-pill" data-speed="0.5">0.5x</button>
-                            <button class="mode-pill" data-speed="0.75">0.75x</button>
-                            <button class="mode-pill active" data-speed="1.0">1.0x</button>
-                            <button class="mode-pill" data-speed="1.25">1.25x</button>
-                            <button class="mode-pill" data-speed="1.5">1.5x</button>
-                            <button class="mode-pill" data-speed="2.0">2.0x</button>
-                            <button class="mode-pill" data-speed="bpm" title="Automatically synchronizes playback rate with incoming track BPM">BPM Sync</button>
-                        </div>
-                    </div>
-
-                    <!-- Row 3: Clip duration / switch timing -->
-                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                         <div>
-                            <div class="hud-label" style="font-size:8px; margin-bottom:3px;">CLIP DURATION / SWITCH TIMING</div>
-                            <select id="select-video-duration" class="obs-url-input" style="width:100%; font-size:9.5px; padding:4px 6px; background:#090a0d;">
-                                <option value="natural">Natural Full Playthrough</option>
-                                <option value="15s">15 Seconds</option>
-                                <option value="30s">30 Seconds</option>
-                                <option value="60s">60 Seconds</option>
-                                <option value="16beats">16 Beats (4 Bars)</option>
-                                <option value="32beats">32 Beats (8 Bars)</option>
-                            </select>
-                        </div>
-                        <div>
-                            <div class="hud-label" style="font-size:8px; margin-bottom:3px;">AUDIO PASSTHROUGH</div>
-                            <div style="display:flex; align-items:center; height:28px; background:#090a0d; border:1px solid #28334a; border-radius:4px; padding:0 8px;">
-                                <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:9.5px; color:#ffaa00; font-family:'JetBrains Mono',monospace;">
+                            <div class="hud-label" style="font-size:8px; margin-bottom:4px;">AUDIO PASSTHROUGH</div>
+                            <div style="display:flex; align-items:center; height:26px; background:#090a0d; border:1px solid #28334a; border-radius:4px; padding:0 8px;">
+                                <label style="cursor:pointer; display:flex; align-items:center; gap:6px; font-size:9px; color:#ffaa00; font-family:'JetBrains Mono',monospace;">
                                     <input type="checkbox" id="check-video-mute" checked style="accent-color:#ffaa00; cursor:pointer;">
-                                    <span>Mute Audio (Default)</span>
+                                    <span>Mute Video Audio</span>
                                 </label>
                             </div>
                         </div>
@@ -2535,9 +2501,21 @@
 
                 <!-- Browser-Style Multi-Line Studio Setup Navigation Tabs -->
                 <div class="setup-nav-bar" id="setup-subtabs">
-                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master" title="Master System Controller, 2nd Screen &amp; Reset">
+                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master" title="Master Controller Console Window">
                         <span class="tab-led"></span>
-                        <span>🎛️ MASTER</span>
+                        <span>🎛️ MASTER CONSOLE</span>
+                    </button>
+                    <button class="setup-nav-tab" id="subtab-btn-stage" data-setuptab="stage" title="2nd Screen / Clean Stage Projector Display">
+                        <span class="tab-led"></span>
+                        <span>🖥️ 2ND SCREEN</span>
+                    </button>
+                    <button class="setup-nav-tab" id="subtab-btn-audio" data-setuptab="audio" title="Audio Interface Preferences &amp; Auto-Switch">
+                        <span class="tab-led"></span>
+                        <span>🎙️ AUDIO INPUT</span>
+                    </button>
+                    <button class="setup-nav-tab" id="subtab-btn-vutargets" data-setuptab="vutargets" title="VU Meter Broadcast Headroom Targets">
+                        <span class="tab-led"></span>
+                        <span>🎚️ VU TARGETS</span>
                     </button>
                     <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs" title="OBS Streaming, Overlays &amp; Web Broadcast">
                         <span class="tab-led"></span>
@@ -2551,110 +2529,96 @@
                         <span class="tab-led"></span>
                         <span>📊 SESSION METRICS</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-tracklist" data-setuptab="tracklist" title="Chronological Tracklist &amp; Set Timestamps">
+                    <button class="setup-nav-tab" id="subtab-btn-tracklist" data-setuptab="tracklist" title="Chronological Tracklist, Album Art, Denon Beat Grid &amp; Timestamps">
                         <span class="tab-led"></span>
                         <span>📜 TRACKLIST</span>
                     </button>
                 </div>
 
-                <!-- SUB-DRAWER 0: MASTER SYSTEM CONSOLE & 2ND SCREEN -->
+                <!-- SUB-DRAWER 0A: MASTER CONTROLLER CONSOLE -->
                 <div id="setup-content-master" class="setup-subcontent active">
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <!-- Master Controller Card -->
-                        <div style="background: linear-gradient(180deg, #161720 0%, #0e0f14 100%); border: 1px solid rgba(255, 0, 127, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 13px;">🎛️</span>
-                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">MASTER CONTROLLER CONSOLE</span>
-                                </div>
-                                <span class="hud-badge" style="border-color: #ff007f; color: #ff66b2; font-size: 7.5px;">LAPTOP CONSOLE</span>
+                    <div style="background: linear-gradient(180deg, #161720 0%, #0e0f14 100%); border: 1px solid rgba(255, 0, 127, 0.35); border-radius: 6px; padding: 12px 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 14px;">🎛️</span>
+                                <span style="font-size: 11px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">MASTER CONTROLLER CONSOLE</span>
                             </div>
-                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Detach the complete DJ control panel into a dedicated window on your laptop screen while projecting the full-screen visualizer onto stage screens.
-                            </p>
-                            <button class="btn-mini" id="btn-setup-detach-console" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #ff007f 0%, #aa0055 100%); border: 1px solid #ff007f; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,127,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                                🎛️ OPEN MASTER CONTROLLER WINDOW
-                            </button>
+                            <span class="hud-badge" style="border-color: #ff007f; color: #ff66b2; font-size: 7.5px;">LAPTOP CONSOLE</span>
                         </div>
+                        <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 10px 0; line-height: 1.4;">
+                            Detach the complete DJ control panel into a dedicated window on your laptop screen while projecting the full-screen 3D visualizer onto external stage screens or LED walls.
+                        </p>
+                        <button class="btn-mini" id="btn-setup-detach-console" style="width: 100%; font-size: 10px; font-weight: 800; padding: 8px 10px; background: linear-gradient(180deg, #ff007f 0%, #aa0055 100%); border: 1px solid #ff007f; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,127,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                            🎛️ OPEN MASTER CONTROLLER WINDOW
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- 2nd Screen / Clean Stage Display Card -->
-                        <div style="background: linear-gradient(180deg, #131720 0%, #0d0f14 100%); border: 1px solid rgba(0, 210, 255, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 13px;">🖥️</span>
-                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">2ND SCREEN / STAGE DISPLAY</span>
-                                </div>
-                                <span class="hud-badge" style="border-color: #00d2ff; color: #00d2ff; font-size: 7.5px;">CLEAN OUTPUT</span>
+                <!-- SUB-DRAWER 0B: 2ND SCREEN / STAGE DISPLAY -->
+                <div id="setup-content-stage" class="setup-subcontent" style="display:none;">
+                    <div style="background: linear-gradient(180deg, #131720 0%, #0d0f14 100%); border: 1px solid rgba(0, 210, 255, 0.35); border-radius: 6px; padding: 12px 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 14px;">🖥️</span>
+                                <span style="font-size: 11px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">2ND SCREEN / STAGE DISPLAY</span>
                             </div>
-                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Launch a clean visualizer display window with zero menus or UI overlays (<code style="color:#00ffcc; font-size:8px;">?clean=true</code>) for external HDMI projectors, club LED walls, or OBS capture.
-                            </p>
-                            <button class="btn-mini" id="btn-setup-popout-screen" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #00b4d8 0%, #0077b6 100%); border: 1px solid #00d2ff; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,210,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                                🖥️ LAUNCH 2ND SCREEN POPUP
-                            </button>
+                            <span class="hud-badge" style="border-color: #00d2ff; color: #00d2ff; font-size: 7.5px;">CLEAN OUTPUT</span>
                         </div>
+                        <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 10px 0; line-height: 1.4;">
+                            Launch a clean visualizer display window with zero menus or UI overlays (<code style="color:#00ffcc; font-size:8px;">?clean=true</code>) for external HDMI projectors, club LED walls, or OBS capture.
+                        </p>
+                        <button class="btn-mini" id="btn-setup-popout-screen" style="width: 100%; font-size: 10px; font-weight: 800; padding: 8px 10px; background: linear-gradient(180deg, #00b4d8 0%, #0077b6 100%); border: 1px solid #00d2ff; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,210,255,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                            🖥️ LAUNCH 2ND SCREEN POPUP
+                        </button>
+                    </div>
+                </div>
 
-                        <!-- Audio Interface & Line-In Configuration Card -->
-                        <div style="background: linear-gradient(180deg, #131722 0%, #0c0f16 100%); border: 1px solid rgba(0, 255, 204, 0.25); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 13px;">🎙️</span>
-                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">AUDIO INTERFACE PREFERENCES</span>
-                                </div>
-                                <span id="setup-audio-mode-badge" class="hud-badge" style="border-color: #00ffcc; color: #00ffcc; font-size: 7.5px;">AUTO-INTERFACE</span>
+                <!-- SUB-DRAWER 0C: AUDIO INTERFACE PREFERENCES -->
+                <div id="setup-content-audio" class="setup-subcontent" style="display:none;">
+                    <div style="background: linear-gradient(180deg, #131722 0%, #0c0f16 100%); border: 1px solid rgba(0, 255, 204, 0.25); border-radius: 6px; padding: 12px 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 14px;">🎙️</span>
+                                <span style="font-size: 11px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">AUDIO INTERFACE PREFERENCES</span>
                             </div>
-                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Auto-prioritizes and connects to your USB / Thunderbolt audio interface (Behringer UMC, Focusrite Scarlett, Pioneer, Denon) immediately upon plug-in. Remembers your preferred device name across disconnects.
-                            </p>
-                            <div style="display: flex; flex-direction: column; gap: 6px;">
-                                <select id="setup-preferred-audio-device" class="hud-select" style="width: 100%; font-size: 9.5px; padding: 5px 8px;">
-                                    <option value="auto">⚡ Auto-Prioritize External Audio Interface (Recommended)</option>
-                                    <option value="default">Default System Audio Input</option>
-                                </select>
-                                <div style="display: flex; gap: 6px;">
-                                    <button class="btn-mini" id="btn-setup-rescan-audio" style="flex: 1; font-size: 9.5px; font-weight: 700; padding: 6px 8px; background: rgba(0,255,204,0.15); border: 1px solid #00ffcc; color: #00ffcc; cursor: pointer; border-radius: 4px;">
-                                        🔄 RESCAN AUDIO INTERFACES
-                                    </button>
-                                </div>
-                                <div id="setup-audio-fallback-notice" style="font-size: 8px; color: #ffaa00; font-family: 'JetBrains Mono', monospace; display: none;">
-                                    ⚠️ External interface not detected. Operating in ambient MacBook mic mode.
-                                </div>
+                            <span id="setup-audio-mode-badge" class="hud-badge" style="border-color: #00ffcc; color: #00ffcc; font-size: 7.5px;">AUTO-INTERFACE</span>
+                        </div>
+                        <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 10px 0; line-height: 1.4;">
+                            Auto-prioritizes and connects to your USB / Thunderbolt audio interface (Behringer UMC, Focusrite Scarlett, Pioneer, Denon) immediately upon plug-in. Remembers your preferred device name across disconnects.
+                        </p>
+                        <div style="display: flex; flex-direction: column; gap: 6px;">
+                            <select id="setup-preferred-audio-device" class="hud-select" style="width: 100%; font-size: 9.5px; padding: 6px 8px;">
+                                <option value="auto">⚡ Auto-Prioritize External Audio Interface (Recommended)</option>
+                                <option value="default">Default System Audio Input</option>
+                            </select>
+                            <div style="display: flex; gap: 6px;">
+                                <button class="btn-mini" id="btn-setup-rescan-audio" style="flex: 1; font-size: 9.5px; font-weight: 700; padding: 7px 8px; background: rgba(0,255,204,0.15); border: 1px solid #00ffcc; color: #00ffcc; cursor: pointer; border-radius: 4px;">
+                                    🔄 RESCAN AUDIO INTERFACES
+                                </button>
+                            </div>
+                            <div id="setup-audio-fallback-notice" style="font-size: 8px; color: #ffaa00; font-family: 'JetBrains Mono', monospace; display: none;">
+                                ⚠️ External interface not detected. Operating in ambient MacBook mic mode.
                             </div>
                         </div>
+                    </div>
+                </div>
 
-                        <!-- VU Meter Broadcast Headroom Targets Card -->
-                        <div style="background: linear-gradient(180deg, #131722 0%, #0c0f16 100%); border: 1px solid rgba(0, 255, 204, 0.25); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 13px;">🎚️</span>
-                                    <span style="font-size: 10.5px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">VU METER BROADCAST TARGETS</span>
-                                </div>
-                                <span id="settings-vu-status-badge" class="hud-badge" style="border-color: #00ffcc; color: #00ffcc; font-size: 7.5px;">ACTIVE ON</span>
+                <!-- SUB-DRAWER 0D: VU METER BROADCAST TARGETS -->
+                <div id="setup-content-vutargets" class="setup-subcontent" style="display:none;">
+                    <div style="background: linear-gradient(180deg, #131722 0%, #0c0f16 100%); border: 1px solid rgba(0, 255, 204, 0.25); border-radius: 6px; padding: 12px 14px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 14px;">🎚️</span>
+                                <span style="font-size: 11px; font-weight: 800; color: #ffffff; letter-spacing: 0.4px;">VU METER BROADCAST TARGETS</span>
                             </div>
-                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Calibrate live line-in VU headroom for web streaming: displays safe markers for <strong>Web Radio / BUTT (-3.0 dBFS)</strong> to prevent MP3 codec inter-sample clipping, and <strong>Twitch / OBS (-1.0 dBFS)</strong> for AAC transmission.
-                            </p>
-                            <button class="btn-mini active" id="btn-settings-vu-markers-toggle" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: rgba(0,255,204,0.18); border: 1px solid #00ffcc; color: #00ffcc; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,255,204,0.15);">
-                                🎯 BROADCAST TARGET MARKERS: ACTIVE ON
-                            </button>
+                            <span id="settings-vu-status-badge" class="hud-badge" style="border-color: #00ffcc; color: #00ffcc; font-size: 7.5px;">ACTIVE ON</span>
                         </div>
-
-                        <!-- Restore Factory Defaults Card -->
-                        <div style="background: linear-gradient(180deg, #181318 0%, #100c0f 100%); border: 1px solid rgba(255, 0, 85, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
-                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;">
-                                <div style="display: flex; align-items: center; gap: 6px;">
-                                    <span style="font-size: 13px;">↺</span>
-                                    <span style="font-size: 10.5px; font-weight: 800; color: #ff5577; letter-spacing: 0.4px;">RESTORE DEFAULT SETTINGS &amp; SCENES</span>
-                                </div>
-                                <span class="hud-badge" style="border-color: #ff0055; color: #ff0055; font-size: 7.5px;">FACTORY RESET</span>
-                            </div>
-                            <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Restores all visual effect shaders, camera positions, audio gains, clears all 23 custom scene profile overrides, and resets media back to factory defaults.
-                            </p>
-                            <button class="btn-mini danger" id="btn-setup-reset-all" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #ff0055 0%, #990033 100%); border: 1px solid #ff0055; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,85,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
-                                ↺ RESET ALL PARAMETERS &amp; SCENE PROFILES
-                            </button>
-                        </div>
+                        <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 10px 0; line-height: 1.4;">
+                            Calibrate live line-in VU headroom for web streaming: displays safe markers for <strong>Web Radio / BUTT (-3.0 dBFS)</strong> to prevent MP3 codec inter-sample clipping, and <strong>Twitch / OBS (-1.0 dBFS)</strong> for AAC transmission.
+                        </p>
+                        <button class="btn-mini active" id="btn-settings-vu-markers-toggle" style="width: 100%; font-size: 10px; font-weight: 800; padding: 8px 10px; background: rgba(0,255,204,0.18); border: 1px solid #00ffcc; color: #00ffcc; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(0,255,204,0.15);">
+                            🎯 BROADCAST TARGET MARKERS: ACTIVE ON
+                        </button>
                     </div>
                 </div>
 
@@ -2790,26 +2754,91 @@
                 <div id="setup-content-tracklist" class="setup-subcontent" style="display:none;">
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:10px 12px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span style="font-size:13px;">📜</span>
                                     <div>
-                                        <div style="font-size:10px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST &amp; TIMESTAMPS</div>
-                                        <div style="font-size:7.5px; color:#8c909e;">Logged automatically as tracks go on-air during your DJ set</div>
+                                        <div style="font-size:10px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST &amp; DENON BEAT GRID</div>
+                                        <div style="font-size:7.5px; color:#8c909e;" id="tracklist-rec-status-sub">Album Art • 3-Band Denon Waveform • Key • BPM • Length • Album • Genre</div>
                                     </div>
                                 </div>
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:4px 8px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
-                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:4px 8px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR</button>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:4px 7px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
+                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:4px 7px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR</button>
                                 </div>
                             </div>
 
-                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:4px;">
+                            <!-- Tracklist Recording Transport Controls (Record / Pause / Stop) & Configurable Idle Auto-Standby -->
+                            <div style="display:flex; align-items:center; justify-content:space-between; gap:6px; flex-wrap:wrap; background:#0b0c10; border:1px solid #222634; border-radius:5px; padding:6px 8px; margin-bottom:8px;">
+                                <div style="display:flex; align-items:center; gap:4px;">
+                                    <button type="button" class="btn-mini" id="btn-tracklist-rec" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,0,85,0.18); border:1px solid #ff0055; color:#ff4d88; border-radius:4px; cursor:pointer;" title="Start or Resume Tracklist &amp; Session Recording">⏺ REC</button>
+                                    <button type="button" class="btn-mini" id="btn-tracklist-pause" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,170,0,0.15); border:1px solid rgba(255,170,0,0.45); color:#ffaa00; border-radius:4px; cursor:pointer;" title="Pause / Standby Tracklist Recording">⏸ PAUSE</button>
+                                    <button type="button" class="btn-mini" id="btn-tracklist-stop" style="font-size:8.5px; font-weight:800; padding:4px 8px; background:rgba(255,255,255,0.07); border:1px solid rgba(255,255,255,0.2); color:#cfd6e6; border-radius:4px; cursor:pointer;" title="Stop Tracklist Recording">⏹ STOP</button>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:5px;">
+                                    <span style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace; white-space:nowrap;">IDLE STANDBY:</span>
+                                    <select id="select-session-inactivity-timeout" class="hud-select" style="width:auto; font-size:8px; padding:3px 6px; background:#14161e; border:1px solid #2b3042; color:#00ffcc; border-radius:4px;" title="Automatically pause/standby recording when decks are offline or inactive">
+                                        <option value="5">5 Min Idle</option>
+                                        <option value="10">10 Min Idle</option>
+                                        <option value="15" selected>15 Min (Default)</option>
+                                        <option value="30">30 Min Idle</option>
+                                        <option value="60">60 Min Idle</option>
+                                        <option value="0">Never (Always On)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:360px; overflow-y:auto; display:flex; flex-direction:column; gap:6px; padding-right:4px;">
                                 <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
-                                    No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
+                                    No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
                                 </div>
                             </div>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ===================================================================== -->
+                <!-- PERSISTENT FOOTER BELOW ALL SETUP TABS: BACKUP / RESTORE & RESET      -->
+                <!-- ===================================================================== -->
+                <div id="setup-persistent-footer" style="margin-top: 12px; padding-top: 10px; border-top: 1px solid #282c3a; display: flex; flex-direction: column; gap: 8px;">
+                    <!-- Full Studio Settings Backup & Recovery Card -->
+                    <div style="background: linear-gradient(180deg, #121722 0%, #0c0f17 100%); border: 1px solid rgba(0, 229, 255, 0.35); border-radius: 6px; padding: 9px 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 12px;">💾</span>
+                                <span style="font-size: 10px; font-weight: 800; color: #00e5ff; letter-spacing: 0.4px;">STUDIO SETTINGS &amp; SCENES BACKUP / RECOVERY</span>
+                            </div>
+                            <span class="hud-badge" style="border-color: #00e5ff; color: #00e5ff; font-size: 7px;">JSON SNAPSHOT</span>
+                        </div>
+                        <p style="font-size: 8px; color: #9aa0b0; margin: 0 0 7px 0; line-height: 1.35;">
+                            Backup every studio setting, all 23 custom scene configs, video loop configs, branding positions, and lighting overrides to disk, or restore from a saved backup.
+                        </p>
+                        <div style="display: flex; gap: 6px;">
+                            <button type="button" class="btn-mini" id="btn-setup-backup-all" style="flex: 1; font-size: 9px; font-weight: 800; padding: 6px 8px; background: rgba(0, 229, 255, 0.16); border: 1px solid #00e5ff; color: #00e5ff; cursor: pointer; border-radius: 4px;">
+                                💾 BACKUP ALL SETTINGS
+                            </button>
+                            <button type="button" class="btn-mini" id="btn-setup-restore-backup" style="flex: 1; font-size: 9px; font-weight: 800; padding: 6px 8px; background: rgba(0, 255, 136, 0.14); border: 1px solid #00ff88; color: #00ff88; cursor: pointer; border-radius: 4px;">
+                                📂 RESTORE FROM BACKUP
+                            </button>
+                            <input type="file" id="file-setup-restore-backup" accept=".json,application/json" style="display:none;">
+                        </div>
+                    </div>
+
+                    <!-- Restore Factory Defaults Card (Always asks confirmation) -->
+                    <div style="background: linear-gradient(180deg, #181318 0%, #100c0f 100%); border: 1px solid rgba(255, 0, 85, 0.35); border-radius: 6px; padding: 9px 11px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                            <div style="display: flex; align-items: center; gap: 6px;">
+                                <span style="font-size: 12px;">↺</span>
+                                <span style="font-size: 10px; font-weight: 800; color: #ff5577; letter-spacing: 0.4px;">RESTORE DEFAULT SETTINGS &amp; SCENES</span>
+                            </div>
+                            <span class="hud-badge" style="border-color: #ff0055; color: #ff0055; font-size: 7px;">FACTORY RESET</span>
+                        </div>
+                        <p style="font-size: 8px; color: #9aa0b0; margin: 0 0 7px 0; line-height: 1.35;">
+                            Restores all visual effect shaders, camera positions, audio gains, clears all 23 custom scene profile overrides, and resets media back to factory defaults.
+                        </p>
+                        <button type="button" class="btn-mini danger" id="btn-setup-reset-all" style="width: 100%; font-size: 9.5px; font-weight: 800; padding: 6px 10px; background: linear-gradient(180deg, #ff0055 0%, #990033 100%); border: 1px solid #ff0055; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,85,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
+                            ↺ RESET ALL PARAMETERS &amp; SCENE PROFILES
+                        </button>
                     </div>
                 </div>
             </div>
