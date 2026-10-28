@@ -159,7 +159,8 @@ body.theme-halloween, [data-theme="halloween"] {
                 inset -1px -1px 0 rgba(0, 0, 0, 0.9), 
                 inset 0 0 20px rgba(0, 0, 0, 0.8);
     border-radius: 6px;
-    width: 472px;
+    width: 520px;
+    max-width: calc(100vw - 20px);
     max-height: 92vh;
     display: flex;
     flex-direction: row;
@@ -5690,23 +5691,58 @@ body.obs-transparent-mode #canvas-container {
     transition: border-color 0.15s ease;
 }
 
-.session-track-card-rich:hover {
-    border-color: rgba(0, 229, 255, 0.45);
+/* Denon Engine DJ Style Tracklist Table & Rows */
+.denon-tracklist-header {
+    display: grid;
+    grid-template-columns: 18px 34px 118px 30px 30px 36px 1fr;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    background: linear-gradient(180deg, #24262e 0%, #181a20 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+    border-radius: 4px 4px 0 0;
+    font-size: 7.5px;
+    font-weight: 700;
+    color: #b0b6c6;
+    letter-spacing: 0.2px;
+    user-select: none;
+    position: sticky;
+    top: 0;
+    z-index: 2;
 }
 
-.session-track-top-row {
+.session-track-card-rich {
     display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 4px 6px;
+    background: #14161c;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+    transition: background 0.12s ease;
+}
+
+.session-track-card-rich:nth-child(even) {
+    background: #181b22;
+}
+
+.session-track-card-rich:hover {
+    background: #1f2430;
+}
+
+.denon-track-grid-row {
+    display: grid;
+    grid-template-columns: 18px 34px 118px 30px 30px 36px 1fr;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     min-width: 0;
 }
 
 .session-track-art-box {
-    width: 36px;
-    height: 36px;
-    border-radius: 4px;
-    background: #080a10;
-    border: 1px solid rgba(255, 255, 255, 0.16);
+    width: 34px;
+    height: 34px;
+    border-radius: 2px;
+    background: #b8bcc6;
+    border: 1px solid rgba(255, 255, 255, 0.18);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -5722,11 +5758,10 @@ body.obs-transparent-mode #canvas-container {
 }
 
 .session-track-wave-box {
-    width: 132px;
-    height: 34px;
-    border-radius: 4px;
-    background: #07090e;
-    border: 1px solid rgba(0, 136, 255, 0.35);
+    width: 118px;
+    height: 28px;
+    border-radius: 2px;
+    background: #14161c;
     overflow: hidden;
     flex-shrink: 0;
     position: relative;
@@ -5737,6 +5772,41 @@ body.obs-transparent-mode #canvas-container {
     height: 100%;
     object-fit: fill;
     display: block;
+}
+
+.denon-col-num {
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #9ba3b8;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: right;
+    padding-right: 2px;
+}
+
+.denon-col-key {
+    font-size: 8.5px;
+    font-weight: 800;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.denon-col-bpm {
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #e6eaf2;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    white-space: nowrap;
+}
+
+.denon-col-len {
+    font-size: 8.5px;
+    font-weight: 700;
+    color: #d0d6e2;
+    font-family: 'JetBrains Mono', monospace;
+    text-align: center;
+    white-space: nowrap;
 }
 
 .session-track-main-info {
@@ -5752,40 +5822,18 @@ body.obs-transparent-mode #canvas-container {
     align-items: center;
     flex-wrap: wrap;
     gap: 4px;
-    padding-top: 3px;
-    border-top: 1px solid rgba(255, 255, 255, 0.05);
+    padding-left: 24px;
     font-family: 'JetBrains Mono', monospace;
-    font-size: 7.5px;
+    font-size: 7px;
 }
 
 .session-meta-pill {
-    padding: 1px 5px;
-    border-radius: 3px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    color: #b8c0d4;
+    padding: 0.5px 4px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    color: #9ba3b8;
     white-space: nowrap;
-}
-
-.session-meta-pill.key {
-    background: rgba(187, 136, 255, 0.15);
-    border-color: rgba(187, 136, 255, 0.4);
-    color: #d4b2ff;
-    font-weight: 800;
-}
-
-.session-meta-pill.bpm {
-    background: rgba(0, 255, 204, 0.14);
-    border-color: rgba(0, 255, 204, 0.4);
-    color: #00ffcc;
-    font-weight: 800;
-}
-
-.session-meta-pill.len {
-    background: rgba(0, 170, 255, 0.14);
-    border-color: rgba(0, 170, 255, 0.35);
-    color: #55ccff;
-    font-weight: 700;
 }
 
 

@@ -6615,53 +6615,82 @@ async function init() {
             if (kpiAvgBpm) kpiAvgBpm.textContent = metrics.avgBpm;
             if (kpiHandovers) kpiHandovers.textContent = metrics.handoverCount;
 
-            // 4. Render Chronological Tracklist Cards (Album Art -> Title/Artist -> Denon 3-Band Beat Grid Waveform -> Key, BPM, Length, Album, Genre)
+            // 4. Render Chronological Denon Engine DJ Style Tracklist Table
             if (tracklistContainer) {
                 if (metrics.tracks.length === 0) {
                     tracklistContainer.innerHTML = `
+                        <div class="denon-tracklist-header">
+                            <span style="text-align:right;">▲</span>
+                            <span>Art</span>
+                            <span>Preview</span>
+                            <span style="text-align:center;">Key</span>
+                            <span style="text-align:center;">BPM</span>
+                            <span style="text-align:center;">Length</span>
+                            <span>Title / Artist</span>
+                        </div>
                         <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
                             No tracks logged yet. Click [⏺ REC] above or on the top notch to record your DJ set.
                         </div>
                     `;
                 } else {
-                    tracklistContainer.innerHTML = metrics.tracks.map((t, i) => {
+                    const headerHtml = `
+                        <div class="denon-tracklist-header">
+                            <span style="text-align:right;">▲</span>
+                            <span>Art</span>
+                            <span>Preview</span>
+                            <span style="text-align:center;">Key</span>
+                            <span style="text-align:center;">BPM</span>
+                            <span style="text-align:center;">Length</span>
+                            <span>Title / Artist</span>
+                        </div>
+                    `;
+                    const vinylFallbackSvg = `<svg viewBox="0 0 32 32" width="28" height="28" style="display:block;"><circle cx="16" cy="16" r="11" fill="#3a3d46"/><circle cx="16" cy="16" r="4" fill="#b8bcc6"/><circle cx="16" cy="16" r="1.5" fill="#3a3d46"/></svg>`;
+                    const rowsHtml = metrics.tracks.map((t, i) => {
                         const lenStr = sessionTracker.formatTrackLength(t.duration);
                         const albumStr = t.album || 'Club Single';
-                        const genreStr = t.genre || 'Electronic / Dance';
-                        const keyStr = (t.key && t.key !== '—') ? t.key : 'Auto Key';
+                        const genreStr = t.genre || 'House / Club';
+                        const rawKey = (t.key && t.key !== '—') ? String(t.key) : '9A';
+                        const shortCamelotMatch = rawKey.match(/^(\d{1,2}[AB])/i);
+                        const camelotCode = shortCamelotMatch ? shortCamelotMatch[1].toUpperCase() : rawKey.split(' ')[0];
+                        const keyColor = sessionTracker.getCamelotKeyColor
+                            ? sessionTracker.getCamelotKeyColor(camelotCode)
+                            : '#9c6eff';
+                        const bpmIntOrDec = (t.bpm && !isNaN(parseFloat(t.bpm)))
+                            ? String(Math.round(parseFloat(t.bpm)))
+                            : (t.bpm || '--');
                         const waveImg = t.waveformThumb
-                            ? `<img src="${t.waveformThumb}" alt="Denon 3-Band Beat Grid Waveform" title="Denon Engine OS 3-Band Waveform (Blue=Low, Green=Mid, White=High) + Beat Grid" />`
+                            ? `<img src="${t.waveformThumb}" alt="Denon 3-Band Preview Waveform" title="Denon Engine DJ Preview Waveform (Blue=Low, Green=Mid, White=High) + Beat Grid &amp; Hot Cues" />`
                             : '';
                         return `
                             <div class="session-track-card-rich">
-                                <div class="session-track-top-row">
-                                    <span style="font-size:8px; color:#ffaa00; font-family:'JetBrains Mono',monospace; font-weight:800; min-width:18px;">#${i + 1}</span>
+                                <div class="denon-track-grid-row">
+                                    <span class="denon-col-num">${i + 1}</span>
                                     <div class="session-track-art-box" title="Track Album Art">
-                                        ${t.artwork ? `<img src="${t.artwork}" alt="" />` : `<span style="font-size:15px;">💿</span>`}
+                                        ${t.artwork ? `<img src="${t.artwork}" alt="" />` : vinylFallbackSvg}
                                     </div>
-                                    <div class="session-track-main-info">
-                                        <div style="display:flex; align-items:center; gap:5px;">
-                                            <span class="deck-badge d${t.deck}" style="font-size:7px; padding:1px 4px;">D${t.deck}</span>
-                                            <span style="font-size:9.5px; font-weight:800; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.title}">${t.title}</span>
-                                        </div>
-                                        <div style="font-size:8px; color:#9ba3b8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.artist}">${t.artist}</div>
-                                        <div style="font-size:7px; color:#6c7486; font-family:'JetBrains Mono',monospace;">Logged ${t.timeStr} (${t.relativeTime})</div>
-                                    </div>
-                                    <div class="session-track-wave-box" title="Denon 3-Band Waveform (Blue/Green/White) &amp; Beat Grid">
+                                    <div class="session-track-wave-box" title="Denon Engine DJ 3-Band Preview Waveform (Blue/Green/White) &amp; Beat Grid">
                                         ${waveImg}
+                                    </div>
+                                    <span class="denon-col-key" style="color:${keyColor};" title="Musical / Camelot Key: ${rawKey}">${camelotCode}</span>
+                                    <span class="denon-col-bpm" title="Analyzed BPM: ${t.bpm}">${bpmIntOrDec}</span>
+                                    <span class="denon-col-len" title="Track Length">${lenStr}</span>
+                                    <div class="session-track-main-info">
+                                        <div style="font-size:9px; font-weight:700; color:#f2f4f8; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.title}">${t.title}</div>
+                                        <div style="font-size:8px; color:#b8c0d2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="${t.artist}">${t.artist}</div>
                                     </div>
                                 </div>
                                 <div class="session-track-meta-pills">
-                                    <span class="session-meta-pill key" title="Musical / Camelot Key">🎹 KEY: ${keyStr}</span>
-                                    <span class="session-meta-pill bpm" title="Track Tempo">⚡ ${t.bpm} BPM</span>
-                                    <span class="session-meta-pill len" title="Track Duration">⏱️ ${lenStr}</span>
+                                    <span class="deck-badge d${t.deck}" style="font-size:6.5px; padding:0.5px 4px;">D${t.deck}</span>
+                                    <span class="session-meta-pill" style="color:${keyColor}; border-color:${keyColor}55;" title="Full Key">${rawKey}</span>
                                     <span class="session-meta-pill" title="Album">💿 ${albumStr}</span>
                                     <span class="session-meta-pill" title="Genre">🏷️ ${genreStr}</span>
-                                    <span class="session-meta-pill" style="color:#55aaff; border-color:rgba(0,136,255,0.35);" title="Denon Engine OS 4/4 Beat Grid">📏 4/4 BEAT GRID</span>
+                                    <span class="session-meta-pill" style="color:#55aaff; border-color:rgba(0,136,255,0.3);" title="Denon Engine DJ Beat Grid">📏 Beat Grid</span>
+                                    <span style="color:#6c7486; margin-left:auto;">${t.timeStr} (${t.relativeTime})</span>
                                 </div>
                             </div>
                         `;
                     }).join('');
+                    tracklistContainer.innerHTML = headerHtml + rowsHtml;
                 }
             }
 

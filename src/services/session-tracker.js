@@ -81,54 +81,52 @@ export class SessionTracker {
     }
 
     /**
-     * Generate a crisp rectangular Denon Engine OS 3-Band Waveform + Beat Grid data URL
-     * Colors: Blue (Bass/Low), Green (Mid), White (High/Treble) + Beat Grid ticks
+     * Generate an authentic Denon Engine DJ Tracklist Preview Waveform + Beat Grid data URL
+     * Matches the Denon Engine DJ desktop/hardware Tracklist Preview column:
+     * - Bottom-anchored rising half-waveform silhouette (no fire/smoke effects)
+     * - 3-Band Denon colors layered from bottom baseline up:
+     *   - Bottom foundation: Denon Blue (#0062ff) + Cyan-Blue transition (#00b8ff)
+     *   - Middle body: Denon Emerald/Vibrant Green (#00e050)
+     *   - Upper peaks/crests: Denon Crisp White (#ffffff)
+     * - Subtle 4/4 beat-grid / phrase ticks + Hot-Cue triangles (▲) along the bottom baseline
      */
     generateDenonWaveformDataUrl(samples = null, bpm = 126, durationSec = 240, titleSeed = '') {
         try {
             if (typeof document === 'undefined') return '';
-            const width = 148;
-            const height = 34;
+            const width = 142;
+            const height = 28;
             const canvas = document.createElement('canvas');
             canvas.width = width;
             canvas.height = height;
             const ctx = canvas.getContext('2d');
             if (!ctx) return '';
 
-            // 1. Matte dark Denon Engine OS waveform background
-            ctx.fillStyle = '#07090e';
+            // 1. Clean dark Denon Engine DJ row background
+            ctx.fillStyle = '#14161c';
             ctx.fillRect(0, 0, width, height);
 
-            // 2. Beat Grid & Phrase Grid Lines (every bar / 4 beats, brighter every 16-bar phrase)
+            const baseY = height - 2;
+            const maxWaveH = height - 4;
+
+            // 2. Subtle Beat-Grid & 16-Bar Phrase Grid lines behind waveform
             const validBpm = (Number(bpm) > 40 && Number(bpm) < 240) ? Number(bpm) : 126;
             const validDur = (Number(durationSec) > 15) ? Number(durationSec) : 210;
             const totalBeats = Math.max(16, (validDur / 60) * validBpm);
             const totalBars = Math.max(4, Math.floor(totalBeats / 4));
-            const barStep = Math.max(1, Math.floor(totalBars / 18));
+            const barStep = Math.max(1, Math.floor(totalBars / 16));
 
             for (let bar = 0; bar <= totalBars; bar += barStep) {
-                const x = Math.round((bar / totalBars) * (width - 4)) + 2;
+                const x = Math.round((bar / totalBars) * (width - 6)) + 3;
                 const isPhrase = (bar % (barStep * 4) === 0);
-                ctx.fillStyle = isPhrase ? 'rgba(255, 255, 255, 0.26)' : 'rgba(255, 255, 255, 0.09)';
-                ctx.fillRect(x, 0, 1, height);
-                if (isPhrase) {
-                    // Red/white downbeat tick marker at top & bottom like Denon Engine OS beat grid
-                    ctx.fillStyle = bar === 0 ? '#ff3355' : 'rgba(255, 255, 255, 0.55)';
-                    ctx.fillRect(x, 0, 2, 3);
-                    ctx.fillRect(x, height - 3, 2, 3);
-                }
+                ctx.fillStyle = isPhrase ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.06)';
+                ctx.fillRect(x, 1, 1, baseY - 1);
             }
 
-            // Center zero-crossing axis line
-            const midY = Math.floor(height / 2);
-            ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
-            ctx.fillRect(0, midY, width, 1);
-
-            // 3. Render 3-Band Denon Waveform Columns (Blue = Low, Green = Mid, White = High)
+            // 3. Render Bottom-Anchored 3-Band Denon Preview Waveform (Blue base -> Green mid -> White peaks)
             const hasRealSamples = samples && samples.length >= 60;
             const numSlices = hasRealSamples ? Math.floor(samples.length / 3) : 0;
 
-            // Deterministic hash seed for clean fallback when pre-analyzed DB samples haven't arrived yet
+            // Deterministic hash seed per track for realistic club arrangement envelope when awaiting DB samples
             let hash = 2166136261;
             const seedStr = String(titleSeed || 'denon_track');
             for (let i = 0; i < seedStr.length; i++) {
@@ -136,7 +134,10 @@ export class SessionTracker {
                 hash = Math.imul(hash, 16777619);
             }
 
-            const maxHalfH = (height / 2) - 2;
+            const introDropX = 0.11 + ((hash & 0x0f) / 15) * 0.07;
+            const breakdownStart = 0.44 + (((hash >> 4) & 0x0f) / 15) * 0.08;
+            const breakdownEnd = breakdownStart + 0.13;
+            const outroStart = 0.85 + (((hash >> 8) & 0x0f) / 15) * 0.06;
 
             for (let x = 2; x < width - 2; x++) {
                 const normX = (x - 2) / (width - 4);
@@ -150,46 +151,71 @@ export class SessionTracker {
                     mid = (samples[sliceIdx + 1] || 0) / 255;
                     high = (samples[sliceIdx + 2] || 0) / 255;
                 } else {
-                    // Structured DJ arrangement envelope (intro -> body -> breakdown -> drop -> outro)
-                    let env = 0.82;
-                    if (normX < 0.08) env = 0.25 + (normX / 0.08) * 0.55;
-                    else if (normX > 0.42 && normX < 0.56) env = 0.32 + Math.sin(((normX - 0.42) / 0.14) * Math.PI) * 0.18;
-                    else if (normX > 0.88) env = Math.max(0.18, 1.0 - ((normX - 0.88) / 0.12) * 0.75);
+                    // Authentic House/Club track structure matching Denon Engine DJ preview silhouettes
+                    let env = 0.84;
+                    if (normX < introDropX) {
+                        env = 0.26 + (normX / introDropX) * 0.22;
+                    } else if (normX > breakdownStart && normX < breakdownEnd) {
+                        const bNorm = (normX - breakdownStart) / (breakdownEnd - breakdownStart);
+                        env = 0.34 + Math.sin(bNorm * Math.PI) * 0.22;
+                    } else if (normX > outroStart) {
+                        env = Math.max(0.16, 0.80 * (1.0 - ((normX - outroStart) / (1.0 - outroStart)) * 0.78));
+                    }
 
-                    const p1 = Math.sin(normX * 47.0 + (hash & 0xff)) * 0.5 + 0.5;
-                    const p2 = Math.cos(normX * 113.0 + ((hash >> 8) & 0xff)) * 0.5 + 0.5;
-                    const p3 = Math.sin(normX * 29.0 + ((hash >> 16) & 0xff)) * 0.5 + 0.5;
+                    const p1 = Math.sin(normX * 61.0 + (hash & 0xff)) * 0.5 + 0.5;
+                    const p2 = Math.cos(normX * 137.0 + ((hash >> 8) & 0xff)) * 0.5 + 0.5;
+                    const p3 = Math.sin(normX * 223.0 + ((hash >> 16) & 0xff)) * 0.5 + 0.5;
 
-                    low = Math.min(1.0, (0.48 + p1 * 0.48) * env);
-                    mid = Math.min(1.0, (0.32 + p2 * 0.45) * env);
-                    high = Math.min(1.0, (0.16 + p3 * 0.38) * env);
+                    low = Math.min(1.0, (0.45 + p1 * 0.52) * env);
+                    mid = Math.min(1.0, (0.38 + p2 * 0.50) * env);
+                    high = Math.min(1.0, (0.25 + p3 * 0.65) * env);
                 }
 
-                const hLow = Math.max(1, Math.round(Math.max(low, mid * 0.85, high * 0.7) * maxHalfH));
-                const hMid = Math.max(1, Math.round(Math.min(hLow, Math.max(mid, high * 0.75) * maxHalfH * 0.74)));
-                const hHigh = Math.max(1, Math.round(Math.min(hMid, high * maxHalfH * 0.45)));
+                // Total silhouette height from bottom baseline (baseY) upward
+                const peakAmp = Math.min(1.0, Math.max(low * 0.95, mid * 0.92, high * 0.90));
+                const hWhite = Math.max(2, Math.round(peakAmp * maxWaveH));
+                const hGreen = Math.max(1, Math.min(hWhite - 1, Math.round(Math.max(low * 0.78, mid * 0.82) * maxWaveH * 0.78)));
+                const hBlue = Math.max(1, Math.min(hGreen - 1, Math.round(low * maxWaveH * 0.42)));
 
-                // Outer layer: Denon Deep/Electric Blue (Bass / Lows)
-                ctx.fillStyle = '#0068ff';
-                ctx.fillRect(x, midY - hLow, 1, hLow * 2);
+                // 1) Upper Peak Silhouette: Denon Crisp White (#ffffff)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(x, baseY - hWhite, 1, hWhite);
 
-                // Middle layer: Denon Emerald Green (Mids)
-                if (hMid > 0) {
-                    ctx.fillStyle = '#00e676';
-                    ctx.fillRect(x, midY - hMid, 1, hMid * 2);
+                // 2) Mid-Frequency Body: Denon Vibrant Green (#00e050)
+                if (hGreen > 0) {
+                    ctx.fillStyle = '#00e050';
+                    ctx.fillRect(x, baseY - hGreen, 1, hGreen);
                 }
 
-                // Inner core: Denon Crisp White (Highs / Transients)
-                if (hHigh > 0) {
-                    ctx.fillStyle = '#ffffff';
-                    ctx.fillRect(x, midY - hHigh, 1, hHigh * 2);
+                // 3) Cyan-Blue Blend Transition Line (#00b4ff)
+                if (hBlue > 0) {
+                    ctx.fillStyle = '#00b4ff';
+                    ctx.fillRect(x, baseY - hBlue - 1, 1, 1);
+
+                    // 4) Low-Frequency Foundation: Denon Deep Blue (#0058ff)
+                    ctx.fillStyle = '#0058ff';
+                    ctx.fillRect(x, baseY - hBlue, 1, hBlue);
                 }
             }
 
-            // Subtle outer border
-            ctx.strokeStyle = 'rgba(0, 140, 255, 0.35)';
-            ctx.lineWidth = 1;
-            ctx.strokeRect(0.5, 0.5, width - 1, height - 1);
+            // 4. Crisp horizontal bottom baseline + Denon Hot-Cue triangles (▲) on baseline
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+            ctx.fillRect(1, baseY, width - 2, 1);
+
+            const drawCueTriangle = (normPos, color) => {
+                const cx = Math.round(3 + normPos * (width - 8));
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.moveTo(cx, baseY - 4);
+                ctx.lineTo(cx - 3, baseY + 1);
+                ctx.lineTo(cx + 3, baseY + 1);
+                ctx.closePath();
+                ctx.fill();
+            };
+
+            // Intro cue marker (Orange ▲) and Drop cue marker (Crimson/Pink ▲) just like Denon Engine DJ
+            drawCueTriangle(0.03, '#ff8c1a');
+            drawCueTriangle(introDropX, '#ff2a6d');
 
             return canvas.toDataURL('image/png');
         } catch (e) {
@@ -197,12 +223,36 @@ export class SessionTracker {
         }
     }
 
+    /**
+     * Authentic Denon Engine DJ Camelot Key Color Lookup (matches Engine OS key colors)
+     */
+    getCamelotKeyColor(keyStr) {
+        const k = String(keyStr || '').trim().toUpperCase();
+        const match = k.match(/^(\d{1,2}[AB])/);
+        const code = match ? match[1] : k;
+        const map = {
+            '1A': '#00d4b2', '1B': '#00e0c0',
+            '2A': '#6be030', '2B': '#7ce840',
+            '3A': '#2ecc71', '3B': '#40d880',
+            '4A': '#e2c038', '4B': '#ebd048',
+            '5A': '#f08c38', '5B': '#f59c48',
+            '6A': '#ec6677', '6B': '#f27888',
+            '7A': '#e05568', '7B': '#ea687a',
+            '8A': '#d858a8', '8B': '#e268b8',
+            '9A': '#9c6eff', '9B': '#ad82ff',
+            '10A': '#5b8cff', '10B': '#709eff',
+            '11A': '#38b6ff', '11B': '#50c2ff',
+            '12A': '#2dd4bf', '12B': '#45e0cc'
+        };
+        return map[code] || '#9c6eff';
+    }
+
     formatTrackLength(seconds) {
         const s = Math.round(Number(seconds) || 0);
-        if (s <= 0) return '—:—';
+        if (s <= 0) return '00:00';
         const mins = Math.floor(s / 60);
         const secs = s % 60;
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
+        return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     }
 
     getTrackSignature(title, artist) {
@@ -233,13 +283,15 @@ export class SessionTracker {
                 if (trk.genre && !matchTarget.genre) matchTarget.genre = trk.genre;
                 if (trk.key && trk.key !== '—' && (!matchTarget.key || matchTarget.key === '—')) matchTarget.key = trk.key;
                 if (trk.bpm && trk.bpm !== '--.-' && (!matchTarget.bpm || matchTarget.bpm === '--.-')) matchTarget.bpm = trk.bpm;
-                if (trk.waveformThumb && (!matchTarget.waveformThumb || trk.hasRealWaveform)) {
+                if (trk.waveformThumb && trk.waveformVersion === 2 && (!matchTarget.waveformThumb || trk.hasRealWaveform)) {
                     matchTarget.waveformThumb = trk.waveformThumb;
+                    matchTarget.waveformVersion = 2;
                     matchTarget.hasRealWaveform = Boolean(trk.hasRealWaveform);
                 }
             } else {
-                if (!trk.waveformThumb) {
+                if (!trk.waveformThumb || trk.waveformVersion !== 2) {
                     trk.waveformThumb = this.generateDenonWaveformDataUrl(null, trk.bpm, trk.duration, `${trk.artist}_${trk.title}`);
+                    trk.waveformVersion = 2;
                 }
                 dedupedTracks.push(trk);
             }
@@ -451,6 +503,7 @@ export class SessionTracker {
                     existingMatch.duration || duration,
                     `${artist}_${title}`
                 );
+                existingMatch.waveformVersion = 2;
                 existingMatch.hasRealWaveform = true;
                 changed = true;
             }
@@ -497,6 +550,7 @@ export class SessionTracker {
             artwork: artworkUrl || '',
             duration: Number(duration) || 0,
             waveformThumb,
+            waveformVersion: 2,
             hasRealWaveform: hasRealSamples
         };
 
