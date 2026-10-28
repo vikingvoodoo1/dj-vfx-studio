@@ -497,6 +497,8 @@ export function initVideoConfigCogController({
     }
 
     ensureModalDOM();
+    window.openVideoConfigModal = openVideoConfigModal;
+    window.closeVideoConfigModal = closeVideoConfigModal;
 
     return {
         openVideoConfigModal,

@@ -32,3 +32,15 @@ When resuming from an automatic context compaction (`# Resuming from a compactio
    - **If compaction happened while IDLE or when the task status is ambiguous**: report the state from `git status` / `ACTIVE_TASK.md` in 2-3 lines and ask the user to confirm the next step before modifying files.
 3. **Ignore Historical Summary Items:**
    - Compaction summaries list all past user prompts (`1, 2, ... N`). Treat `1..N-1` as completed history. Never re-run or re-apply earlier tasks unless explicitly asked.
+
+## 4. QA Subagents & Automated Post-Change Health Check (`npm run verify`)
+After any UI, CSS, shader, or bridge modification, ALWAYS run:
+```bash
+npm run verify
+```
+which executes [scripts/verify-studio-health.mjs](file:///Users/jarikuhanen/agy/dj-vfx-studio/scripts/verify-studio-health.mjs) across all 5 QA domains, and delegate deep multi-file audits to the 5 specialized subagents (documented in [.agents/skills/studio-qa-subagents/SKILL.md](file:///Users/jarikuhanen/agy/dj-vfx-studio/.agents/skills/studio-qa-subagents/SKILL.md)):
+1. **`perf-watchdog`**: WebGL 60 FPS frame budget, WebAudio `drainNode` (`0.000001` gain) memory guard, Hue/WebSocket throttling, and RAF DOM diffing.
+2. **`ui-wiring-verifier`**: Console tabs (`data-tab`), sub-tabs (`data-setuptab`), all 3 configuration cog buttons (`.fx-card-cog-btn`, `.video-card-cog-btn`, `#btn-active-scene-cog`), and `getCurrentConsoleSnapshot` variable integrity.
+3. **`ui-visual-critic`**: `#hud` width (`568px`), 9-column Denon Tracklist grid alignment (`▲ | Art | Preview | Key | BPM | Length | Title | Artist | Album`), and anti-twitch CSS rules.
+4. **`stagelinq-telemetry-auditor`**: Hellfire Waveforms center-screen offline overlay (`#hellfire-decks-offline-overlay` + 3D HUD canvas), deck handovers, and `SessionTracker` metadata enrichment.
+5. **`release-preflight`**: `node --check` across all 19 modules, `npm run build`, and Electron/Launcher packaging integrity.

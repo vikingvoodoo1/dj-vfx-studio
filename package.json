@@ -18,6 +18,7 @@
     "launcher:build:mac": "bash scripts/build-mac-launcher.sh",
     "launcher:build:win": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-win-launcher.ps1",
     "build": "vite build",
+    "verify": "node scripts/verify-studio-health.mjs",
     "preview": "vite preview",
     "electron:dev": "electron electron/main.cjs --dev",
     "electron:launcher": "electron electron/main.cjs --dev --launcher",
