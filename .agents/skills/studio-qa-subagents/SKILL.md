@@ -29,3 +29,4 @@ When deeper inspection or multi-file auditing is needed, define and invoke these
 - **`ui-visual-critic`**: Audits CSS grid columns, panel widths, text truncation (`text-overflow: ellipsis`), and layout stability.
 - **`stagelinq-telemetry-auditor`**: Audits `server/stagelinq-bridge.js`, `src/effects.js`, and `src/services/session-tracker.js` across deck load, fader handover, idle standby, and offline reset transitions.
 - **`release-preflight`**: Runs `npm run verify` and `npm run build` and validates Electron/Launcher packaging before git commits/tags.
+

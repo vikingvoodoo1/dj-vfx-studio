@@ -231,7 +231,7 @@ npm run electron:dist
 | `Space` | Manual Beat Strobe / Xenon Flash Burst |
 | `0` – `9`, `-`, `=`, `Q` – `P`, `[`, `]`, `V` | Instant Scene Switch (All 23 Presets) |
 | `V` | Toggle Scene 22: Cyber Cinema Video Playback |
-| `Alt + 1` – `Alt + 7` | Switch Master Consoles (Perform, FX Bank, Branding, Video, Now Playing, Setup, About) |
+| `Alt + 1` – `Alt + 9` | Switch Master Consoles (`1`: Perform, `2`: FX Bank, `3`: Branding, `4`: Now Playing, `5`: Setup, `6`: About, `7`: Video Loops, `8`: Lighting, `9`: Denon Tracklist) |
 | `Alt + A` | Toggle Show All Panes (Multi-Pane Scroll View) |
 | `Arrow Left` / `Arrow Right` | Previous / Next Visual Effect Preset |
 | `A` | Toggle Auto-VJ Mode |
@@ -241,8 +241,8 @@ npm run electron:dist
 | `M` | Open Scene Reactive Matrix & Hardware Memory Profiles Modal |
 | `N` | Toggle Now Playing Track Stream Overlay |
 | `F` | Toggle Fullscreen (Stage / External HDMI Output) |
-| `C` | Toggle Clean Display Mode (Hide HUD overlays for clean video feed) |
-| `H` | Toggle HUD Console & Toolbar |
+| `C` | Toggle Clean Display Mode (Hide HUD, Toolbar & Top Notch for clean video feed) |
+| `H` | Toggle HUD Console, Toolbar & Top Notch Bar |
 | `O` / `Shift + O` | Open OBS Manager / Toggle OBS Mute |
 | `Esc` | Close Scene Matrix / Notch Drawer / DJ Connection Guide / Clear Search |
 
@@ -277,6 +277,7 @@ npm run electron:dist
 
 ## 📚 Technical Documentation
 
+- **[Console Architecture, Per-Scene/Video Cog Memory, Denon Tracklist & QA Subagents Guide (STUDIO_CONSOLE_AND_QA_SUBAGENTS_GUIDE.md)](STUDIO_CONSOLE_AND_QA_SUBAGENTS_GUIDE.md)** — Complete guide to the 9-console activity bar (`Alt+1`–`Alt+9`), Per-Scene & Per-Video Configuration Cog (`⚙️`) modals, the 9-column Denon Engine DJ Tracklist & 3-band Preview Waveform, the Hellfire Waveforms offline overlay, Full JSON Backup/Restore, and the 5 QA Subagents (`npm run verify`).
 - **[Startup Launcher, Modes & Deployment Guide (LAUNCHER_AND_MODES_GUIDE.md)](LAUNCHER_AND_MODES_GUIDE.md)** — Complete guide to `DJ VFX Launcher.app` (macOS), `DJ VFX Launcher.exe` (Windows), the integrated Electron Mode Switcher (`⌘/Ctrl + Shift + M`), all 8 startup & display modes, custom default presets, Menu Bar / System Tray controls, and Mac/Windows installer bundling.
 - **[Video Clarity & Cyber Cinema Render Pipeline Guide (VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)](VIDEO_CLARITY_AND_PIPELINE_GUIDE.md)** — Tri-engine video architecture, hardware acceleration via macOS VideoToolbox/Metal, 1:1 bit-for-bit VLC parity, and eliminating WebGL banding.
 - **[Scene Reactive Matrix & Hardware Memory Profiles Guide (SCENE_REACTIVE_MATRIX_AND_PROFILES.md)](SCENE_REACTIVE_MATRIX_AND_PROFILES.md)** — Comprehensive guide to all 22 scenes, hotkeys, reactive engine tags (audio FFT, StageLinQ, BPM sync, transients, physical rig), per-scene parameter memory, and auto-recall architecture.
