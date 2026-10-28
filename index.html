@@ -293,7 +293,16 @@
                     <span class="act-dot" id="dot-nowplaying"></span>
                 </button>
 
-                <button class="activity-tab" data-tab="setup" title="⚙️ Studio Setup, OBS, Hue & Bridges [Alt+5]">
+                <button class="activity-tab" data-tab="lighting" title="💡 Venue & Stage Lighting (Philips Hue & DMX512) [Alt+8]">
+                    <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M9 18h6" />
+                        <path d="M10 22h4" />
+                        <path d="M15.09 14c.18-.98.65-1.74 1.41-2.5A4.65 4.65 0 0 0 18 8 6 6 0 0 0 6 8c0 1 .23 2.23 1.5 3.5A4.61 4.61 0 0 1 8.91 14" />
+                    </svg>
+                    <span class="act-dot" id="dot-lighting"></span>
+                </button>
+
+                <button class="activity-tab" data-tab="setup" title="⚙️ Studio Setup, OBS, Decks & Session Logs [Alt+5]">
                     <svg class="act-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                         <circle cx="12" cy="12" r="3" />
                         <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
@@ -358,15 +367,36 @@
                     </div>
                 </div>
 
+                <!-- Active Stage Scene Banner (Works dynamically for all 23 scenes + Direct Cog Settings) -->
+                <div class="active-scene-banner" id="video-cinema-quick-bar">
+                    <div class="active-scene-banner-left">
+                        <div class="active-scene-icon-wrap" id="active-scene-banner-icon" title="Current Active 3D Stage Scene">📊</div>
+                        <div class="active-scene-meta">
+                            <div class="active-scene-top-row">
+                                <span class="active-scene-eyebrow" id="active-scene-banner-label">ACTIVE STAGE SCENE • SCENE 01 [1]</span>
+                                <span class="active-scene-pill" id="active-scene-memory-pill">DEFAULT</span>
+                                <span class="active-scene-pill speed" id="active-scene-speed-pill">⚡ 1.00x</span>
+                            </div>
+                            <div id="video-quick-title" class="active-scene-title">3D Studio EQ</div>
+                            <div id="active-scene-banner-sub" class="active-scene-sub">Equalizers &amp; Decks • Live Audio FFT</div>
+                        </div>
+                    </div>
+                    <div class="active-scene-banner-actions">
+                        <button class="btn-micro" id="btn-open-video-manager" style="display:none; padding:4px 7px; font-size:8px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:4px; cursor:pointer;" title="Open 10-Bank Video Loops &amp; Library Console">📁 VIDEOS</button>
+                        <button class="btn-micro" id="btn-active-scene-fxbank" style="padding:4px 7px; font-size:8px; font-weight:700; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:#d8dbe4; border-radius:4px; cursor:pointer;" title="Open Visual FX Bank to browse all 23 scenes [Alt+2]">✨ FX BANK</button>
+                        <button class="active-scene-cog-btn" id="btn-active-scene-cog" type="button" title="Configure Active Scene Settings (Speed, Branding Memory, Macro &amp; Lighting)">⚙️</button>
+                    </div>
+                </div>
+
                 <!-- Live Tempo & StageLinQ Deck Telemetry Visualizer -->
                 <div class="hud-section" style="padding: 8px 10px; background: #0c0d12; border: 1px solid #232530; border-radius: 6px; margin-bottom: 8px;">
                     <!-- Top Header Row: Label, Telemetry Sync Badge -->
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px;">
-                        <div style="display:flex; align-items:center; gap:6px;">
-                            <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
-                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(255,170,0,0.35); color:#ffaa00; display:inline-block;" title="Telemetry source: live audio standby / waiting for music or decks">SOURCE: AUDIO (STANDBY)</span>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 6px; height: 18px; flex-wrap: nowrap; overflow: hidden;">
+                        <div style="display:flex; align-items:center; gap:6px; min-width:0; flex-wrap:nowrap; overflow:hidden;">
+                            <span class="hud-label" style="font-size:8.5px; color:#ffaa00; font-weight:800; white-space:nowrap;" id="metric-section-title">💿 LIVE TEMPO &amp; BEAT</span>
+                            <span class="hud-badge" id="phrase-sync-source" style="font-size:7.5px; padding:1px 5px; border-color:rgba(255,170,0,0.35); color:#ffaa00; display:inline-block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:165px;" title="Telemetry source: live audio standby / waiting for music or decks">SOURCE: AUDIO (STANDBY)</span>
                         </div>
-                        <div style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace;">DECK 1 METRICS</div>
+                        <div style="font-size:7.5px; color:#8c909e; font-family:'JetBrains Mono',monospace; white-space:nowrap; flex-shrink:0;">DECK 1 METRICS</div>
                     </div>
 
                     <!-- Main Metric Container: Left = BPM Display; Right = Accurate Hardware Telemetry Meter -->
@@ -565,12 +595,12 @@
                     </select>
                     <!-- 🎛️ Real-Time Particle Spectrum EQ across all frequency bands -->
                     <div class="pro-eq-card">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
-                            <div style="display:flex; align-items:center; gap:5px;">
-                                <span style="font-size:8px; font-weight:800; letter-spacing:0.8px; color:#8c91a0; font-family:'JetBrains Mono',monospace;">🎛️ PARTICLE SPECTRUM EQ</span>
-                                <span id="eq-monitor-source-badge" style="font-size:7px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3);" title="Current frequency spectrum monitor source">LIVE AUDIO FFT</span>
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; height:18px; min-height:18px; max-height:18px; flex-wrap:nowrap; overflow:hidden;">
+                            <div style="display:flex; align-items:center; gap:5px; min-width:0; flex-wrap:nowrap; overflow:hidden;">
+                                <span style="font-size:8px; font-weight:800; letter-spacing:0.8px; color:#8c91a0; font-family:'JetBrains Mono',monospace; white-space:nowrap;">🎛️ PARTICLE SPECTRUM EQ</span>
+                                <span id="eq-monitor-source-badge" style="font-size:7px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3); white-space:nowrap; line-height:13px;" title="Current frequency spectrum monitor source">LIVE AUDIO FFT</span>
                             </div>
-                            <span id="eq-energy-badge" style="font-size:7.5px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3);">FULL SPECTRUM</span>
+                            <span id="eq-energy-badge" style="font-size:7.5px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3); white-space:nowrap; line-height:13px; height:16px; display:inline-flex; align-items:center; flex-shrink:0;">FULL SPECTRUM</span>
                         </div>
                         <div style="position:relative; width:100%; height:76px; background:#08090d; border-radius:4px; overflow:hidden; border:1px solid #1f222b; box-shadow:inset 0 2px 6px rgba(0,0,0,0.85);">
                             <canvas id="particle-spectrum-eq-canvas" width="360" height="76" style="width:100%; height:100%; display:block;"></canvas>
@@ -592,13 +622,13 @@
 
                 <!-- Precision Line-In VU & Loudness Meter -->
                 <div class="hud-section" style="margin-top:8px; padding-top:8px; border-top:1px solid #2b2e3a;">
-                    <div class="hud-row" style="margin-bottom:3px; display:flex; justify-content:space-between; align-items:center;">
-                        <div style="display:flex; align-items:center; gap:5px; flex-wrap:wrap;">
-                            <span class="hud-label">🎚️ LINE-IN LEVEL / VU METER</span>
-                            <span id="vu-monitor-source-badge" style="font-size:7px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3);" title="Acoustic monitor source for VU meters and loudness calculation">SOURCE: AUDIO INTERFACE</span>
-                            <button id="btn-toggle-vu-markers" class="hud-badge active" style="cursor:pointer; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; font-size:7.5px; padding:1px 5px; border-radius:3px; transition:all 0.15s ease;" title="Click to toggle Broadcast Headroom Markers (Radio -3dB / Stream -1dB)">🎯 TARGETS: ON</button>
+                    <div class="hud-row" style="margin-bottom:3px; display:flex; justify-content:space-between; align-items:center; height:20px; min-height:20px; max-height:20px; flex-wrap:nowrap; overflow:hidden; gap:4px;">
+                        <div style="display:flex; align-items:center; gap:4px; flex-wrap:nowrap; min-width:0; overflow:hidden;">
+                            <span class="hud-label" style="white-space:nowrap; flex-shrink:0;">🎚️ VU METER</span>
+                            <span id="vu-monitor-source-badge" style="font-size:7px; font-weight:800; font-family:'JetBrains Mono',monospace; padding:1px 5px; border-radius:3px; background:rgba(0,255,204,0.12); color:#00ffcc; border:1px solid rgba(0,255,204,0.3); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:148px; line-height:13px;" title="Acoustic monitor source for VU meters and loudness calculation">● LIVE PCM</span>
+                            <button id="btn-toggle-vu-markers" class="hud-badge active" style="cursor:pointer; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.45); color:#00ffcc; font-size:7.5px; padding:1px 5px; border-radius:3px; transition:all 0.15s ease; white-space:nowrap; flex-shrink:0; line-height:13px;" title="Click to toggle Broadcast Headroom Markers (Radio -3dB / Stream -1dB)">🎯 TARGETS: ON</button>
                         </div>
-                        <span id="vu-clip-badge" class="hud-badge" style="background:rgba(255,0,85,0.2); border-color:#ff0055; color:#ff0055; font-weight:800; display:none; cursor:pointer;" title="Audio is Clipping 0dBFS! Click to Reset">⚠️ CLIP 0dB</span>
+                        <span id="vu-clip-badge" class="hud-badge" style="background:rgba(255,0,85,0.2); border-color:#ff0055; color:#ff0055; font-weight:800; display:none; cursor:pointer; white-space:nowrap; flex-shrink:0; font-size:7px; padding:1px 4px; line-height:13px;" title="Audio is Clipping 0dBFS! Click to Reset">⚠️ CLIP</span>
                     </div>
 
                     <!-- dB Scale & Precision Bar -->
@@ -682,21 +712,6 @@
                         <span class="power-btn-label">VIDEO CINEMA [V]</span>
                         <span class="power-btn-status"><span class="power-led"></span> <span id="video-scene-power-status-text">OFF</span></span>
                     </button>
-                </div>
-
-                <!-- Video Cinema Quick Bar (Underneath DJ Logo & Station Branding buttons) -->
-                <div class="video-cinema-quick-bar" id="video-cinema-quick-bar" style="margin-top:8px; padding:6px 8px; background:rgba(0,229,255,0.06); border:1px solid rgba(0,229,255,0.25); border-radius:6px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                    <div style="display:flex; align-items:center; gap:6px; min-width:0;">
-                        <span style="font-size:15px;">🎬</span>
-                        <div style="min-width:0;">
-                            <div style="font-size:7.5px; font-weight:800; color:#00e5ff; letter-spacing:0.5px; text-transform:uppercase;">Scene 23: Video Cinema & Loops</div>
-                            <div id="video-quick-title" style="font-size:9.5px; font-weight:700; color:#ffffff; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:140px;">01 JK McLaren Shock</div>
-                        </div>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
-                        <button class="btn-micro" id="btn-quick-cue-video" style="padding:4px 8px; font-size:8px; font-weight:800; background:rgba(0,255,136,0.2); border:1px solid rgba(0,255,136,0.5); color:#00ff88; border-radius:4px; cursor:pointer;" title="Switch 3D stage directly to Scene 23 Video Playback [V]">▶ ON AIR</button>
-                        <button class="btn-micro" id="btn-open-video-manager" style="padding:4px 8px; font-size:8px; font-weight:700; background:rgba(0,229,255,0.15); border:1px solid rgba(0,229,255,0.35); color:#00e5ff; border-radius:4px; cursor:pointer;" title="Open 10-Bank Video Loops & Library Console">📁 10 BANKS</button>
-                    </div>
                 </div>
 
                 <!-- Live Quick Macro Faders -->
@@ -2333,35 +2348,212 @@
             </div>
 
             <!-- ========================================================================= -->
-            <!-- PANE 5: STUDIO SETUP (BROADCAST/OBS, PHILIPS HUE, DJ BRIDGES)            -->
+            <!-- PANE 5A: VENUE & STAGE LIGHTING (PHILIPS HUE & DMX512 / SOUNDSWITCH RIG)  -->
+            <!-- ========================================================================= -->
+            <div class="ide-tab-pane" id="pane-lighting">
+                <div class="pane-section-title">
+                    <span>💡 Venue &amp; Stage Lighting</span>
+                    <span class="hud-badge" id="lighting-pane-status-badge">HUE &amp; DMX READY</span>
+                </div>
+
+                <!-- Multi-Line Lighting Sub-Tabs: Philips Hue vs DMX512 Stage Rig -->
+                <div class="setup-nav-bar" id="lighting-subtabs">
+                    <button class="setup-nav-tab active" id="lighting-tab-btn-hue" data-lightingtab="hue" title="Philips Hue Smart Room &amp; Entertainment Lighting Sync">
+                        <span class="tab-led"></span>
+                        <span>💡 PHILIPS HUE</span>
+                    </button>
+                    <button class="setup-nav-tab" id="lighting-tab-btn-dmx" data-lightingtab="dmx" title="DMX512, Art-Net, sACN &amp; SoundSwitch Stage Rig">
+                        <span class="tab-led"></span>
+                        <span>🎛️ DMX512 / STAGE RIG</span>
+                    </button>
+                </div>
+
+                <!-- LIGHTING SUB-DRAWER 1: PHILIPS HUE SMART LIGHTING -->
+                <div id="setup-content-hue" class="lighting-subcontent active">
+                    <!-- Branded Official Philips Hue Header Card -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.22); border-radius:6px; padding:8px 12px; margin-bottom:10px; gap:12px;">
+                        <img src="/images/logo/PhilipsHueLogo.png" alt="Philips Hue" style="height:24px; max-width:120px; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,255,204,0.35));">
+                        <div style="text-align:right;">
+                            <div style="font-size:9.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;">SMART LIGHTING</div>
+                            <span class="hud-badge" id="hue-status-badge" style="font-size:8px;">DISCOVERING...</span>
+                        </div>
+                    </div>
+
+                    <!-- Master Toggle, Power Off, Reset 70% White & Setup Button Row -->
+                    <div style="display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
+                        <button class="btn-mini" id="btn-hue-toggle" style="flex:1; min-width:70px; font-size:9.5px; font-weight:800; padding:6px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚡ SYNC: OFF</button>
+                        <button class="btn-mini" id="btn-hue-power" title="Click to toggle physical room lights ON/OFF" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.55); cursor:pointer; border-radius:4px;">💡 LIGHTS: OFF</button>
+                        <button class="btn-mini" id="btn-hue-reset-white" title="Reset all Philips Hue lights to clean 70% warm white room ambiance (useful if lights are stuck dim or strange)" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,220,150,0.2);">☀️ 70% WHITE</button>
+                        <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:6px 7px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE</button>
+                    </div>
+
+                    <!-- Room / Zone Selector -->
+                    <div class="hud-row" style="margin-bottom:2px;">
+                        <span class="hud-label">TARGET ROOM / ZONE</span>
+                        <span class="hud-val" id="hue-room-count" style="font-size:9px; color:rgba(255,255,255,0.5);">--</span>
+                    </div>
+                    <select id="hue-room-select" class="hud-select" title="Select Philips Hue Room or Entertainment Area">
+                        <option value="all">⚡ All Configured Lights (Broadcast)</option>
+                    </select>
+
+                    <!-- Reaction Mode Selector -->
+                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">LIGHTING REACTION MODE:</div>
+                    <div class="mode-pills" id="hue-mode-pills" style="margin-bottom:6px; flex-wrap:wrap;">
+                        <button class="mode-pill active" data-hue-mode="screen_colors" title="Dynamically match room lights to the exact colors on screen in real-time (Default)">🖥️ Screen Colors</button>
+                        <button class="mode-pill" data-hue-mode="scene_sync" title="Harmonic scene palette cycle on every beat">🪩 Scene Sync</button>
+                        <button class="mode-pill" data-hue-mode="bass_flash" title="Deep club mood with saturated drop flash">⚡ Bass Drop</button>
+                        <button class="mode-pill" data-hue-mode="rainbow_cycle" title="Chromatic rainbow sweep timed to BPM">🌈 Rainbow</button>
+                        <button class="mode-pill" data-hue-mode="strobe_only" title="Strobes on breakdown drops & spacebar">🚨 Strobe</button>
+                    </div>
+
+                    <!-- Periodic Kick Strobe White Burst Option -->
+                    <div style="margin-top:4px; margin-bottom:8px; background:rgba(255,255,255,0.03); border:1px solid #282a34; border-radius:4px; padding:6px 8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
+                        <div style="display:flex; flex-direction:column;">
+                            <span style="font-size:9.5px; font-weight:800; color:#ffffff; font-family:'JetBrains Mono',monospace;">⚡ KICK POP WHITE STROBE</span>
+                            <span style="font-size:8px; color:#8c909e;">Periodic white strobe pop on heavy bass kicks</span>
+                        </div>
+                        <button class="btn-mini" id="btn-hue-kick-strobe" style="font-size:9px; font-weight:800; padding:4px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.7); cursor:pointer; border-radius:4px; white-space:nowrap;">⚪ OFF</button>
+                    </div>
+
+                    <!-- Effect Intensity Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>EFFECT INTENSITY / PUNCH</span>
+                            <span class="val" id="hue-intensity-val">100%</span>
+                        </div>
+                        <input type="range" id="slider-hue-intensity" min="0" max="100" step="5" value="100">
+                    </div>
+
+                    <!-- Ambient Minimum Resting Brightness Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>AMBIENT RESTING FLOOR</span>
+                            <span class="val" id="hue-min-bri-val">5%</span>
+                        </div>
+                        <input type="range" id="slider-hue-min-bri" min="0" max="60" step="1" value="5">
+                    </div>
+
+                    <!-- Test Strobe Trigger -->
+                    <div style="display:flex; gap:6px; margin-top:6px;">
+                        <button class="btn-mini" id="btn-hue-test-strobe" style="flex:1; font-size:9px; font-weight:700; padding:5px 6px; background:rgba(255,0,127,0.15); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;">⚡ TEST ROOM STROBE</button>
+                    </div>
+                </div>
+
+                <!-- LIGHTING SUB-DRAWER 2: DMX512 / ART-NET / SOUNDSWITCH STAGE RIG -->
+                <div id="lighting-content-dmx" class="lighting-subcontent" style="display:none;">
+                    <!-- DMX Rig Header Card -->
+                    <div style="display:flex; align-items:center; justify-content:space-between; background:linear-gradient(135deg, rgba(187,136,255,0.12), rgba(0,229,255,0.08)); border:1px solid rgba(187,136,255,0.35); border-radius:6px; padding:9px 12px; margin-bottom:10px; gap:10px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span style="font-size:18px;">🎛️</span>
+                            <div>
+                                <div style="font-size:10px; font-weight:800; color:#ffffff; letter-spacing:0.4px;">DMX512 &amp; SOUNDSWITCH STAGE RIG</div>
+                                <div style="font-size:8px; color:#b899ff;">Art-Net UDP • sACN E1.31 • Enttec USB DMX • SoundSwitch Link</div>
+                            </div>
+                        </div>
+                        <span class="hud-badge" id="dmx-pane-status-badge" style="color:#ffaa00; border-color:rgba(255,170,0,0.4); font-size:7.5px;">STANDBY</span>
+                    </div>
+
+                    <!-- Master DMX Controls Row -->
+                    <div style="display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
+                        <button class="btn-mini" id="btn-dmx-toggle" style="flex:1; font-size:9.5px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.18); color:rgba(255,255,255,0.75); cursor:pointer;">🔌 DMX OUTPUT: STANDBY</button>
+                        <button class="btn-mini" id="btn-dmx-blackout" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,0,85,0.15); border:1px solid rgba(255,0,85,0.4); color:#ff5577; cursor:pointer;">⚫ BLACKOUT</button>
+                        <button class="btn-mini" id="btn-dmx-blinder" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; cursor:pointer;">☀️ BLINDER</button>
+                    </div>
+
+                    <!-- DMX Protocol & Universe Row -->
+                    <div style="display:grid; grid-template-columns: 1.4fr 0.8fr 0.8fr; gap:6px; margin-bottom:8px;">
+                        <div>
+                            <div class="hud-label" style="font-size:7.5px; margin-bottom:2px;">DMX PROTOCOL / DRIVER</div>
+                            <select id="select-dmx-protocol" class="hud-select" style="width:100%; font-size:9px; padding:4px 6px; margin-bottom:0;">
+                                <option value="artnet">🌐 Art-Net UDP (Port 6454)</option>
+                                <option value="sacn">⚡ sACN E1.31 Multicast</option>
+                                <option value="soundswitch">🎧 SoundSwitch Engine OS</option>
+                                <option value="enttec">🔌 Enttec USB DMX Pro</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="hud-label" style="font-size:7.5px; margin-bottom:2px;">UNIVERSE</div>
+                            <select id="select-dmx-universe" class="hud-select" style="width:100%; font-size:9px; padding:4px 6px; margin-bottom:0;">
+                                <option value="1">Universe 1</option>
+                                <option value="2">Universe 2</option>
+                                <option value="3">Universe 3</option>
+                                <option value="4">Universe 4</option>
+                            </select>
+                        </div>
+                        <div>
+                            <div class="hud-label" style="font-size:7.5px; margin-bottom:2px;">START CH</div>
+                            <input type="number" id="input-dmx-start-ch" min="1" max="512" value="1" class="obs-url-input" style="width:100%; font-size:9px; padding:4px 6px; text-align:center;">
+                        </div>
+                    </div>
+
+                    <!-- DMX Fixture Patch Profile -->
+                    <div class="hud-label" style="margin-top:4px; margin-bottom:3px;">STAGE FIXTURE PATCH PROFILE:</div>
+                    <div class="mode-pills" id="dmx-profile-pills" style="margin-bottom:8px; flex-wrap:wrap;">
+                        <button class="mode-pill active" data-dmx-profile="default" title="Standard 4-Channel RGBW Wash &amp; Par Cans">💡 RGBW Wash (4ch)</button>
+                        <button class="mode-pill" data-dmx-profile="moving_heads" title="8-Channel Motorized Pan/Tilt Moving Heads">🔦 Moving Heads (8ch)</button>
+                        <button class="mode-pill" data-dmx-profile="concert_rig" title="16-Channel Full Arena Rig: Moving Heads + Strobe Bar + Lasers">🏟️ Arena Rig (16ch)</button>
+                        <button class="mode-pill" data-dmx-profile="lasers_strobe" title="Dedicated DMX Laser Projector &amp; Xenon Strobe Array">⚡ Lasers + Strobe</button>
+                    </div>
+
+                    <!-- DMX Master Dimmer Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>🎚️ DMX MASTER DIMMER</span>
+                            <span class="val" id="dmx-master-val">100%</span>
+                        </div>
+                        <input type="range" id="slider-dmx-master" min="0" max="100" step="5" value="100">
+                    </div>
+
+                    <!-- DMX Strobe Rate Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>⚡ DMX STROBE RATE / SHUTTER</span>
+                            <span class="val" id="dmx-strobe-val">0% (Beat Auto)</span>
+                        </div>
+                        <input type="range" id="slider-dmx-strobe" min="0" max="100" step="5" value="0">
+                    </div>
+
+                    <!-- DMX Pan/Tilt Speed Slider -->
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>🌀 MOVING HEAD PAN / TILT SPEED</span>
+                            <span class="val" id="dmx-speed-val">100%</span>
+                        </div>
+                        <input type="range" id="slider-dmx-speed" min="10" max="200" step="5" value="100">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ========================================================================= -->
+            <!-- PANE 5: STUDIO SETUP (MASTER, OBS, DJ BRIDGES, SESSION METRICS & TRACKS)  -->
             <!-- ========================================================================= -->
             <div class="ide-tab-pane" id="pane-setup">
                 <div class="pane-section-title">
-                    <span>⚙️ Studio Hardware & Setup</span>
+                    <span>⚙️ Studio Hardware &amp; Setup</span>
                     <span class="hud-badge">SYSTEM OK</span>
                 </div>
 
-                <!-- Browser-Style Studio Setup Navigation Tabs -->
+                <!-- Browser-Style Multi-Line Studio Setup Navigation Tabs -->
                 <div class="setup-nav-bar" id="setup-subtabs">
-                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master" title="Master System Controller, 2nd Screen & Reset">
+                    <button class="setup-nav-tab active" id="subtab-btn-master" data-setuptab="master" title="Master System Controller, 2nd Screen &amp; Reset">
                         <span class="tab-led"></span>
                         <span>🎛️ MASTER</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs" title="OBS Streaming, Overlays & Web Broadcast">
+                    <button class="setup-nav-tab" id="subtab-btn-obs" data-setuptab="obs" title="OBS Streaming, Overlays &amp; Web Broadcast">
                         <span class="tab-led"></span>
                         <span>📡 OBS</span>
-                    </button>
-                    <button class="setup-nav-tab" id="subtab-btn-hue" data-setuptab="hue" title="Philips Hue Smart Venue Lighting Sync">
-                        <span class="tab-led"></span>
-                        <span>💡 HUE</span>
                     </button>
                     <button class="setup-nav-tab" id="subtab-btn-bridge" data-setuptab="bridge" title="Pioneer, Traktor, Denon DJ Hardware Bridges">
                         <span class="tab-led"></span>
                         <span>🎧 DECKS</span>
                     </button>
-                    <button class="setup-nav-tab" id="subtab-btn-session" data-setuptab="session" title="DJ Session Metrics, Chronological Tracklist & Handover Settings">
+                    <button class="setup-nav-tab" id="subtab-btn-session" data-setuptab="session" title="DJ Session Metrics, KPIs &amp; Transition Event Log">
                         <span class="tab-led"></span>
-                        <span>📜 SESSION LOG</span>
+                        <span>📊 SESSION METRICS</span>
+                    </button>
+                    <button class="setup-nav-tab" id="subtab-btn-tracklist" data-setuptab="tracklist" title="Chronological Tracklist &amp; Set Timestamps">
+                        <span class="tab-led"></span>
+                        <span>📜 TRACKLIST</span>
                     </button>
                 </div>
 
@@ -2457,7 +2649,7 @@
                                 <span class="hud-badge" style="border-color: #ff0055; color: #ff0055; font-size: 7.5px;">FACTORY RESET</span>
                             </div>
                             <p style="font-size: 8.5px; color: #9aa0b0; margin: 0 0 8px 0; line-height: 1.35;">
-                                Restores all visual effect shaders, camera positions, audio gains, clears all 22 custom scene profile overrides, and resets media back to factory defaults.
+                                Restores all visual effect shaders, camera positions, audio gains, clears all 23 custom scene profile overrides, and resets media back to factory defaults.
                             </p>
                             <button class="btn-mini danger" id="btn-setup-reset-all" style="width: 100%; font-size: 10px; font-weight: 800; padding: 7px 10px; background: linear-gradient(180deg, #ff0055 0%, #990033 100%); border: 1px solid #ff0055; color: #ffffff; cursor: pointer; border-radius: 4px; box-shadow: 0 0 10px rgba(255,0,85,0.3); text-shadow: 0 1px 2px rgba(0,0,0,0.8);">
                                 ↺ RESET ALL PARAMETERS &amp; SCENE PROFILES
@@ -2482,77 +2674,6 @@
                     <div style="display:flex; gap:6px; margin-top:8px;">
                         <button class="btn-mini" id="btn-pane-open-modal" style="flex:1; font-size:9px; padding:5px; background:rgba(0,180,255,0.18); border:1px solid rgba(0,180,255,0.4); color:#00e1ff; cursor:pointer;">⚙️ Detailed Setup Guide</button>
                         <button class="btn-mini" id="btn-pane-test-window" style="font-size:9px; padding:5px 8px; background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.2); color:#fff; cursor:pointer;">🚀 Test Window</button>
-                    </div>
-                </div>
-
-                <!-- SUB-DRAWER 2: PHILIPS HUE LIGHTING -->
-                <div id="setup-content-hue" class="setup-subcontent" style="display:none;">
-                    <!-- Branded Official Philips Hue Header Card -->
-                    <div style="display:flex; align-items:center; justify-content:space-between; background:rgba(255,255,255,0.03); border:1px solid rgba(0,255,204,0.22); border-radius:6px; padding:8px 12px; margin-bottom:10px; gap:12px;">
-                        <img src="/images/logo/PhilipsHueLogo.png" alt="Philips Hue" style="height:24px; max-width:120px; object-fit:contain; filter:drop-shadow(0 0 8px rgba(0,255,204,0.35));">
-                        <div style="text-align:right;">
-                            <div style="font-size:9.5px; color:#ffaa00; font-weight:800; font-family:'JetBrains Mono',monospace;">SMART LIGHTING</div>
-                            <span class="hud-badge" id="hue-status-badge" style="font-size:8px;">DISCOVERING...</span>
-                        </div>
-                    </div>
-
-                    <!-- Master Toggle, Power Off, Reset 70% White & Setup Button Row -->
-                    <div style="display:flex; gap:5px; margin-bottom:8px; flex-wrap:wrap;">
-                        <button class="btn-mini" id="btn-hue-toggle" style="flex:1; min-width:70px; font-size:9.5px; font-weight:800; padding:6px 6px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.7); cursor:pointer;">⚡ SYNC: OFF</button>
-                        <button class="btn-mini" id="btn-hue-power" title="Click to toggle physical room lights ON/OFF" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.15); color:rgba(255,255,255,0.55); cursor:pointer; border-radius:4px;">💡 LIGHTS: OFF</button>
-                        <button class="btn-mini" id="btn-hue-reset-white" title="Reset all Philips Hue lights to clean 70% warm white room ambiance (useful if lights are stuck dim or strange)" style="font-size:9px; font-weight:800; padding:6px 8px; background:rgba(255,220,150,0.18); border:1px solid #ffd280; color:#ffe8b0; cursor:pointer; border-radius:4px; box-shadow:0 0 8px rgba(255,220,150,0.2);">☀️ 70% WHITE</button>
-                        <button class="btn-mini" id="btn-hue-setup" style="font-size:9px; font-weight:700; padding:6px 7px; background:rgba(0,255,204,0.15); border:1px solid rgba(0,255,204,0.4); color:#00ffcc; cursor:pointer;">🔗 BRIDGE</button>
-                    </div>
-
-                    <!-- Room / Zone Selector -->
-                    <div class="hud-row" style="margin-bottom:2px;">
-                        <span class="hud-label">TARGET ROOM / ZONE</span>
-                        <span class="hud-val" id="hue-room-count" style="font-size:9px; color:rgba(255,255,255,0.5);">--</span>
-                    </div>
-                    <select id="hue-room-select" class="hud-select" title="Select Philips Hue Room or Entertainment Area">
-                        <option value="all">⚡ All Configured Lights (Broadcast)</option>
-                    </select>
-
-                    <!-- Reaction Mode Selector -->
-                    <div class="hud-label" style="margin-top:6px; margin-bottom:3px;">LIGHTING REACTION MODE:</div>
-                    <div class="mode-pills" id="hue-mode-pills" style="margin-bottom:6px; flex-wrap:wrap;">
-                        <button class="mode-pill active" data-hue-mode="screen_colors" title="Dynamically match room lights to the exact colors on screen in real-time (Default)">🖥️ Screen Colors</button>
-                        <button class="mode-pill" data-hue-mode="scene_sync" title="Harmonic scene palette cycle on every beat">🪩 Scene Sync</button>
-                        <button class="mode-pill" data-hue-mode="bass_flash" title="Deep club mood with saturated drop flash">⚡ Bass Drop</button>
-                        <button class="mode-pill" data-hue-mode="rainbow_cycle" title="Chromatic rainbow sweep timed to BPM">🌈 Rainbow</button>
-                        <button class="mode-pill" data-hue-mode="strobe_only" title="Strobes on breakdown drops & spacebar">🚨 Strobe</button>
-                    </div>
-
-                    <!-- Periodic Kick Strobe White Burst Option -->
-                    <div style="margin-top:4px; margin-bottom:8px; background:rgba(255,255,255,0.03); border:1px solid #282a34; border-radius:4px; padding:6px 8px; display:flex; align-items:center; justify-content:space-between; gap:8px;">
-                        <div style="display:flex; flex-direction:column;">
-                            <span style="font-size:9.5px; font-weight:800; color:#ffffff; font-family:'JetBrains Mono',monospace;">⚡ KICK POP WHITE STROBE</span>
-                            <span style="font-size:8px; color:#8c909e;">Periodic white strobe pop on heavy bass kicks</span>
-                        </div>
-                        <button class="btn-mini" id="btn-hue-kick-strobe" style="font-size:9px; font-weight:800; padding:4px 10px; background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.2); color:rgba(255,255,255,0.7); cursor:pointer; border-radius:4px; white-space:nowrap;">⚪ OFF</button>
-                    </div>
-
-                    <!-- Effect Intensity Slider -->
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>EFFECT INTENSITY / PUNCH</span>
-                            <span class="val" id="hue-intensity-val">100%</span>
-                        </div>
-                        <input type="range" id="slider-hue-intensity" min="0" max="100" step="5" value="100">
-                    </div>
-
-                    <!-- Ambient Minimum Resting Brightness Slider -->
-                    <div class="slider-row">
-                        <div class="slider-header">
-                            <span>AMBIENT RESTING FLOOR</span>
-                            <span class="val" id="hue-min-bri-val">5%</span>
-                        </div>
-                        <input type="range" id="slider-hue-min-bri" min="0" max="60" step="1" value="5">
-                    </div>
-
-                    <!-- Test Strobe Trigger -->
-                    <div style="display:flex; gap:6px; margin-top:6px;">
-                        <button class="btn-mini" id="btn-hue-test-strobe" style="flex:1; font-size:9px; font-weight:700; padding:5px 6px; background:rgba(255,0,127,0.15); border:1px solid rgba(255,0,127,0.4); color:#ff66aa; cursor:pointer;">⚡ TEST ROOM STROBE</button>
                     </div>
                 </div>
 
@@ -2605,17 +2726,17 @@
                     </div>
                 </div>
 
-                <!-- SUB-DRAWER 4: DJ SESSION METRICS & TRACK HISTORY LOG -->
+                <!-- SUB-DRAWER 4: DJ SESSION METRICS & EVENT LOG -->
                 <div id="setup-content-session" class="setup-subcontent" style="display:none;">
                     <div style="display:flex; flex-direction:column; gap:8px;">
                         <!-- Session Control Card & KPI Banner -->
                         <div style="background: linear-gradient(135deg, rgba(255, 68, 0, 0.12) 0%, rgba(20, 22, 30, 0.95) 100%); border: 1px solid rgba(255, 100, 30, 0.35); border-radius: 6px; padding: 10px 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.4);">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
                                 <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:15px;">📜</span>
+                                    <span style="font-size:15px;">📊</span>
                                     <div>
-                                        <div style="font-size:11px; font-weight:800; color:#ffffff; letter-spacing:0.4px;">DJ SESSION METRICS & TRACK LOG</div>
-                                        <div style="font-size:8px; color:#ff8844;">Real-time tracklist history, transitions, and audio headroom tracking</div>
+                                        <div style="font-size:11px; font-weight:800; color:#ffffff; letter-spacing:0.4px;">DJ SESSION METRICS &amp; TRANSITIONS</div>
+                                        <div style="font-size:8px; color:#ff8844;">Real-time set duration, BPM telemetry, and deck handover events</div>
                                     </div>
                                 </div>
                                 <div style="display:flex; align-items:center; gap:6px;">
@@ -2627,7 +2748,7 @@
                             </div>
 
                             <!-- Live Session KPIs -->
-                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-bottom:8px;">
+                            <div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:6px;">
                                 <div style="background:rgba(0,0,0,0.35); border:1px solid rgba(255,255,255,0.08); border-radius:4px; padding:6px 8px; text-align:center;">
                                     <div style="font-size:7.5px; color:#8c909e; font-weight:700; text-transform:uppercase;">Duration</div>
                                     <div id="session-kpi-duration" style="font-size:12px; font-weight:800; color:#00ffcc; font-family:'JetBrains Mono',monospace;">00:00</div>
@@ -2645,42 +2766,6 @@
                                     <div id="session-kpi-handovers" style="font-size:12px; font-weight:800; color:#bb88ff; font-family:'JetBrains Mono',monospace;">0</div>
                                 </div>
                             </div>
-
-                            <!-- Fader Handover Tolerance Slider -->
-                            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.07); border-radius:4px; padding:6px 8px; margin-bottom:8px;">
-                                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                                    <span style="font-size:9px; font-weight:700; color:#e0e4ee;">🎚️ HELLFIRE FADER HANDOVER TOLERANCE</span>
-                                    <span id="label-handover-tolerance-val" style="font-size:9px; font-weight:800; color:#ffaa00; font-family:'JetBrains Mono',monospace;">85% (Fader Threshold)</span>
-                                </div>
-                                <div style="display:flex; align-items:center; gap:8px;">
-                                    <span style="font-size:8px; color:#8c909e;">50%</span>
-                                    <input type="range" id="slider-handover-tolerance" min="50" max="95" value="85" step="1" style="flex:1; cursor:pointer; accent-color:#ffaa00;">
-                                    <span style="font-size:8px; color:#8c909e;">95%</span>
-                                </div>
-                                <div style="font-size:7.5px; color:#8c909e; margin-top:3px;">
-                                    The incoming deck channel fader must reach this level before the top track waveform handover switches over.
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Scrollable Tracklist Box -->
-                        <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:8px 10px;">
-                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <span style="font-size:11px;">📋</span>
-                                    <span style="font-size:9.5px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST & TIMESTAMPS</span>
-                                </div>
-                                <div style="display:flex; align-items:center; gap:6px;">
-                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:3px 7px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
-                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:3px 7px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR HISTORY</button>
-                                </div>
-                            </div>
-
-                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:220px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:4px;">
-                                <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
-                                    No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
-                                </div>
-                            </div>
                         </div>
 
                         <!-- Timestamped Events Log Box -->
@@ -2688,13 +2773,40 @@
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                                 <div style="display:flex; align-items:center; gap:6px;">
                                     <span style="font-size:11px;">⏱️</span>
-                                    <span style="font-size:9.5px; font-weight:800; color:#bb88ff; letter-spacing:0.3px;">SESSION EVENT LOG & TRANSITIONS</span>
+                                    <span style="font-size:9.5px; font-weight:800; color:#bb88ff; letter-spacing:0.3px;">SESSION EVENT LOG &amp; TRANSITIONS</span>
                                 </div>
                                 <span class="hud-badge" id="session-events-count-badge" style="font-size:7.5px;">0 EVENTS</span>
                             </div>
-                            <div id="session-events-container" class="session-scroll-box" style="max-height:130px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; padding-right:4px; font-family:'JetBrains Mono',monospace; font-size:8px;">
+                            <div id="session-events-container" class="session-scroll-box" style="max-height:240px; overflow-y:auto; display:flex; flex-direction:column; gap:3px; padding-right:4px; font-family:'JetBrains Mono',monospace; font-size:8px;">
                                 <div style="padding:10px; text-align:center; color:#6c7080; font-size:8px; font-style:italic;">
                                     Awaiting session start...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- SUB-DRAWER 5: CHRONOLOGICAL TRACKLIST & TIMESTAMPS -->
+                <div id="setup-content-tracklist" class="setup-subcontent" style="display:none;">
+                    <div style="display:flex; flex-direction:column; gap:8px;">
+                        <div class="hud-section" style="background:#131418; border:1px solid #282a34; border-radius:6px; padding:10px 12px;">
+                            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <span style="font-size:13px;">📜</span>
+                                    <div>
+                                        <div style="font-size:10px; font-weight:800; color:#00ffcc; letter-spacing:0.3px;">CHRONOLOGICAL TRACKLIST &amp; TIMESTAMPS</div>
+                                        <div style="font-size:7.5px; color:#8c909e;">Logged automatically as tracks go on-air during your DJ set</div>
+                                    </div>
+                                </div>
+                                <div style="display:flex; align-items:center; gap:6px;">
+                                    <button class="btn-mini" id="btn-session-copy-tracklist" style="font-size:8px; padding:4px 8px; background:#1c1e28; border:1px solid #363945; color:#ffffff; cursor:pointer; border-radius:3px;">📋 COPY</button>
+                                    <button class="btn-mini" id="btn-session-clear-history" style="font-size:8px; padding:4px 8px; background:rgba(255,50,50,0.15); border:1px solid rgba(255,50,50,0.35); color:#ff6666; cursor:pointer; border-radius:3px;">🗑️ CLEAR</button>
+                                </div>
+                            </div>
+
+                            <div id="session-tracklist-container" class="session-scroll-box" style="max-height:340px; overflow-y:auto; display:flex; flex-direction:column; gap:4px; padding-right:4px;">
+                                <div style="padding:16px; text-align:center; color:#6c7080; font-size:9px; font-style:italic;">
+                                    No tracks logged yet. Click [REC READY] on the top notch to record your DJ set.
                                 </div>
                             </div>
                         </div>

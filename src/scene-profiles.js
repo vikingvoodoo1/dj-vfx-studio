@@ -422,14 +422,24 @@ export const DEFAULT_SCENE_PROFILE = {
         sens: 1.0,
         bloom: 0.35
     },
+    fx: {
+        speed: 1.0,
+        handoverThreshold: 85
+    },
     lighting: {
         hueSync: true,
         hueMode: 'screen_colors',
         hueIntensity: 100,
         hueMinBri: 5,
         hueKickStrobe: false,
+        dmxEnabled: false,
+        dmxProtocol: 'artnet',
         dmxProfile: 'default',
-        dmxUniverse: 1
+        dmxUniverse: 1,
+        dmxStartChannel: 1,
+        dmxMaster: 100,
+        dmxStrobe: 0,
+        dmxSpeed: 100
     }
 };
 
@@ -579,6 +589,15 @@ export const SceneProfileManager = {
         if (current.stationLogo.position !== def.stationLogo.position) {
             diffs.push({ cat: 'Station', param: 'Position', current: current.stationLogo.position.toUpperCase(), def: def.stationLogo.position.toUpperCase() });
         }
+        if (current.stationLogo.spin !== def.stationLogo.spin) {
+            diffs.push({ cat: 'Station', param: 'Spin Mode', current: String(current.stationLogo.spin).toUpperCase(), def: String(def.stationLogo.spin).toUpperCase() });
+        }
+        if (Math.abs((current.stationLogo.spinSpeed ?? 1.0) - def.stationLogo.spinSpeed) > 0.05) {
+            diffs.push({ cat: 'Station', param: 'Spin Speed', current: `${Number(current.stationLogo.spinSpeed).toFixed(1)}x`, def: `${def.stationLogo.spinSpeed.toFixed(1)}x` });
+        }
+        if (Math.abs((current.stationLogo.scale ?? 1.0) - def.stationLogo.scale) > 0.04) {
+            diffs.push({ cat: 'Station', param: 'Scale', current: `${Number(current.stationLogo.scale).toFixed(2)}x`, def: `${def.stationLogo.scale.toFixed(2)}x` });
+        }
 
         // Event Flyer diffs
         if (current.flyer.enabled !== def.flyer.enabled) {
@@ -586,6 +605,27 @@ export const SceneProfileManager = {
         }
         if (current.flyer.position !== def.flyer.position) {
             diffs.push({ cat: 'Flyer', param: 'Position', current: current.flyer.position.toUpperCase(), def: def.flyer.position.toUpperCase() });
+        }
+        if (current.flyer.spin !== def.flyer.spin) {
+            diffs.push({ cat: 'Flyer', param: 'Spin Mode', current: String(current.flyer.spin).toUpperCase(), def: String(def.flyer.spin).toUpperCase() });
+        }
+        if (Math.abs((current.flyer.spinSpeed ?? 1.0) - def.flyer.spinSpeed) > 0.05) {
+            diffs.push({ cat: 'Flyer', param: 'Spin Speed', current: `${Number(current.flyer.spinSpeed).toFixed(1)}x`, def: `${def.flyer.spinSpeed.toFixed(1)}x` });
+        }
+        if (Math.abs((current.flyer.scale ?? 0.85) - def.flyer.scale) > 0.04) {
+            diffs.push({ cat: 'Flyer', param: 'Scale', current: `${Number(current.flyer.scale).toFixed(2)}x`, def: `${def.flyer.scale.toFixed(2)}x` });
+        }
+
+        // Scene FX Speed & Handover diffs
+        const curSpeed = current.fx?.speed ?? 1.0;
+        if (Math.abs(curSpeed - (def.fx?.speed ?? 1.0)) > 0.04) {
+            diffs.push({ cat: 'Scene FX', param: 'Effect Speed', current: `${Number(curSpeed).toFixed(2)}x`, def: '1.00x' });
+        }
+        if (Number(sceneIndex) === 3) {
+            const curHandover = current.fx?.handoverThreshold ?? 85;
+            if (Math.abs(curHandover - (def.fx?.handoverThreshold ?? 85)) >= 1) {
+                diffs.push({ cat: 'Scene FX', param: 'Handover', current: `${curHandover}%`, def: '85%' });
+            }
         }
 
         // Macro Faders diffs
@@ -599,12 +639,18 @@ export const SceneProfileManager = {
             diffs.push({ cat: 'Macro', param: 'Bloom Glow', current: `${current.macro.bloom.toFixed(2)}x`, def: `${def.macro.bloom.toFixed(2)}x` });
         }
 
-        // Lighting / Hue diffs
+        // Lighting / Hue & DMX diffs
         if (current.lighting.hueSync !== def.lighting.hueSync) {
             diffs.push({ cat: 'Lighting', param: 'Hue Sync', current: current.lighting.hueSync ? 'ON' : 'OFF', def: def.lighting.hueSync ? 'ON' : 'OFF' });
         }
         if (current.lighting.hueMode !== def.lighting.hueMode) {
             diffs.push({ cat: 'Lighting', param: 'Hue Mode', current: current.lighting.hueMode, def: def.lighting.hueMode });
+        }
+        if (Math.abs((current.lighting.hueIntensity ?? 100) - def.lighting.hueIntensity) >= 5) {
+            diffs.push({ cat: 'Lighting', param: 'Hue Intensity', current: `${current.lighting.hueIntensity}%`, def: `${def.lighting.hueIntensity}%` });
+        }
+        if (Math.abs((current.lighting.dmxMaster ?? 100) - def.lighting.dmxMaster) >= 5) {
+            diffs.push({ cat: 'Lighting', param: 'DMX Master', current: `${current.lighting.dmxMaster}%`, def: `${def.lighting.dmxMaster}%` });
         }
 
         return {

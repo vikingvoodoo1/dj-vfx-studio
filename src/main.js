@@ -5,6 +5,7 @@ import { SceneProfileManager, SCENE_METADATA, REACTIVE_TAG_DEFINITIONS, REQUIREM
 import { renderParticleSpectrumEQ } from './ui/particle-eq-2d.js';
 import { MediaDB } from './services/media-db.js';
 import { initSceneCardThumbnails } from './ui/scene-thumbnails.js';
+import { initSceneConfigCogController } from './ui/scene-config-cog.js';
 import { sessionTracker } from './services/session-tracker.js';
 
 // DJ VFX Studio Build Metadata
@@ -720,14 +721,14 @@ async function init() {
     const dotAbout = document.getElementById('dot-about');
     const audioDeviceBadge = document.getElementById('audio-device-badge');
 
-    // Setup Sub-Drawers Elements & State (MASTER, OBS, HUE, BRIDGES)
+    // Setup Sub-Drawers Elements & State (MASTER, OBS, BRIDGES, SESSION METRICS, TRACKLIST)
     const setupSubtabs = document.querySelectorAll('.setup-nav-tab[data-setuptab]');
     const setupContents = {
         master: document.getElementById('setup-content-master'),
         obs: document.getElementById('setup-content-obs'),
-        hue: document.getElementById('setup-content-hue'),
         bridge: document.getElementById('setup-content-bridge'),
-        session: document.getElementById('setup-content-session')
+        session: document.getElementById('setup-content-session'),
+        tracklist: document.getElementById('setup-content-tracklist')
     };
 
     function switchSetupSubtab(subtabId) {
@@ -750,6 +751,156 @@ async function init() {
         });
     });
 
+    // Dedicated Lighting Console Sub-Tabs (PHILIPS HUE & DMX512 / STAGE RIG)
+    const lightingSubtabs = document.querySelectorAll('.setup-nav-tab[data-lightingtab]');
+    const lightingContents = {
+        hue: document.getElementById('setup-content-hue'),
+        dmx: document.getElementById('lighting-content-dmx')
+    };
+
+    function switchLightingSubtab(subtabId) {
+        lightingSubtabs.forEach(tab => {
+            tab.classList.toggle('active', tab.getAttribute('data-lightingtab') === subtabId);
+        });
+        Object.entries(lightingContents).forEach(([key, el]) => {
+            if (el) {
+                const isActive = key === subtabId;
+                el.classList.toggle('active', isActive);
+                el.style.display = isActive ? 'block' : 'none';
+            }
+        });
+    }
+
+    lightingSubtabs.forEach(tab => {
+        tab.addEventListener('click', () => {
+            const subtabId = tab.getAttribute('data-lightingtab');
+            if (subtabId) switchLightingSubtab(subtabId);
+        });
+    });
+
+    // DMX512 / Stage Rig State & Interactive Controls
+    const dmxState = {
+        enabled: false,
+        protocol: 'artnet',
+        profile: 'club-wash-4ch',
+        universe: 1,
+        startChannel: 1,
+        master: 85,
+        strobe: 40,
+        speed: 1.0,
+        autoBlackout: true
+    };
+    const btnDmxToggle = document.getElementById('btn-dmx-toggle');
+    const dmxStatusBadge = document.getElementById('dmx-status-badge');
+    const dmxProtocolSelect = document.getElementById('dmx-protocol-select');
+    const dmxFixtureProfile = document.getElementById('dmx-fixture-profile');
+    const dmxUniverseInput = document.getElementById('dmx-universe-input');
+    const dmxStartChannelInput = document.getElementById('dmx-start-channel-input');
+    const sliderDmxMaster = document.getElementById('slider-dmx-master');
+    const dmxMasterVal = document.getElementById('dmx-master-val');
+    const sliderDmxStrobe = document.getElementById('slider-dmx-strobe');
+    const dmxStrobeVal = document.getElementById('dmx-strobe-val');
+    const sliderDmxSpeed = document.getElementById('slider-dmx-speed');
+    const dmxSpeedVal = document.getElementById('dmx-speed-val');
+    const checkDmxAutoBlackout = document.getElementById('check-dmx-auto-blackout');
+    const btnDmxTestFlash = document.getElementById('btn-dmx-test-flash');
+    const btnDmxBlackout = document.getElementById('btn-dmx-blackout');
+
+    function syncDmxControlsUI() {
+        if (btnDmxToggle) {
+            btnDmxToggle.classList.toggle('active', dmxState.enabled);
+            btnDmxToggle.textContent = dmxState.enabled ? '🎛️ DMX512 OUTPUT: ACTIVE ON' : '🎛️ DMX512 OUTPUT: STANDBY';
+            btnDmxToggle.style.borderColor = dmxState.enabled ? '#00ff88' : '';
+            btnDmxToggle.style.color = dmxState.enabled ? '#00ff88' : '';
+        }
+        if (dmxStatusBadge) {
+            dmxStatusBadge.textContent = dmxState.enabled ? 'ACTIVE' : 'READY (PREPARED)';
+            dmxStatusBadge.style.color = dmxState.enabled ? '#00ff88' : '#00e5ff';
+        }
+        if (dmxProtocolSelect) dmxProtocolSelect.value = dmxState.protocol;
+        if (dmxFixtureProfile) dmxFixtureProfile.value = dmxState.profile;
+        if (dmxUniverseInput) dmxUniverseInput.value = String(dmxState.universe);
+        if (dmxStartChannelInput) dmxStartChannelInput.value = String(dmxState.startChannel);
+        if (sliderDmxMaster) sliderDmxMaster.value = String(dmxState.master);
+        if (dmxMasterVal) dmxMasterVal.textContent = `${dmxState.master}%`;
+        if (sliderDmxStrobe) sliderDmxStrobe.value = String(dmxState.strobe);
+        if (dmxStrobeVal) dmxStrobeVal.textContent = `${dmxState.strobe}%`;
+        if (sliderDmxSpeed) sliderDmxSpeed.value = String(dmxState.speed);
+        if (dmxSpeedVal) dmxSpeedVal.textContent = `${Number(dmxState.speed).toFixed(1)}x`;
+        if (checkDmxAutoBlackout) checkDmxAutoBlackout.checked = !!dmxState.autoBlackout;
+    }
+
+    if (btnDmxToggle) {
+        btnDmxToggle.addEventListener('click', () => {
+            dmxState.enabled = !dmxState.enabled;
+            syncDmxControlsUI();
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxEnabled', dmxState.enabled);
+        });
+    }
+    if (dmxProtocolSelect) {
+        dmxProtocolSelect.addEventListener('change', (e) => {
+            dmxState.protocol = e.target.value;
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxProtocol', dmxState.protocol);
+        });
+    }
+    if (dmxFixtureProfile) {
+        dmxFixtureProfile.addEventListener('change', (e) => {
+            dmxState.profile = e.target.value;
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxProfile', dmxState.profile);
+        });
+    }
+    if (dmxUniverseInput) {
+        dmxUniverseInput.addEventListener('change', (e) => {
+            dmxState.universe = Math.max(1, Math.min(512, parseInt(e.target.value, 10) || 1));
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxUniverse', dmxState.universe);
+        });
+    }
+    if (dmxStartChannelInput) {
+        dmxStartChannelInput.addEventListener('change', (e) => {
+            dmxState.startChannel = Math.max(1, Math.min(512, parseInt(e.target.value, 10) || 1));
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxStartChannel', dmxState.startChannel);
+        });
+    }
+    if (sliderDmxMaster) {
+        sliderDmxMaster.addEventListener('input', (e) => {
+            dmxState.master = parseInt(e.target.value, 10) || 0;
+            if (dmxMasterVal) dmxMasterVal.textContent = `${dmxState.master}%`;
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxMaster', dmxState.master);
+        });
+    }
+    if (sliderDmxStrobe) {
+        sliderDmxStrobe.addEventListener('input', (e) => {
+            dmxState.strobe = parseInt(e.target.value, 10) || 0;
+            if (dmxStrobeVal) dmxStrobeVal.textContent = `${dmxState.strobe}%`;
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxStrobe', dmxState.strobe);
+        });
+    }
+    if (sliderDmxSpeed) {
+        sliderDmxSpeed.addEventListener('input', (e) => {
+            dmxState.speed = parseFloat(e.target.value) || 1.0;
+            if (dmxSpeedVal) dmxSpeedVal.textContent = `${dmxState.speed.toFixed(1)}x`;
+            if (typeof saveCurrentSceneParam === 'function') saveCurrentSceneParam('lighting', 'dmxSpeed', dmxState.speed);
+        });
+    }
+    if (checkDmxAutoBlackout) {
+        checkDmxAutoBlackout.addEventListener('change', (e) => {
+            dmxState.autoBlackout = e.target.checked;
+        });
+    }
+    if (btnDmxTestFlash) {
+        btnDmxTestFlash.addEventListener('click', () => {
+            vfx.triggerManualFlash();
+            if (typeof showToast === 'function') showToast('⚡ DMX512 / Stage Rig Strobe Test Pulse Fired');
+        });
+    }
+    if (btnDmxBlackout) {
+        btnDmxBlackout.addEventListener('click', () => {
+            dmxState.master = 0;
+            syncDmxControlsUI();
+            if (typeof showToast === 'function') showToast('🌑 DMX512 All-Channels Blackout Triggered');
+        });
+    }
+
     // Duplicate Controls inside Feature Panes
     const btnAutoVJPanel = document.getElementById('btn-auto-vj-panel');
     const btnFlashPanel = document.getElementById('btn-flash-panel');
@@ -760,19 +911,23 @@ async function init() {
     const btnPaneOpenModal = document.getElementById('btn-pane-open-modal');
     const btnPaneTestWindow = document.getElementById('btn-pane-test-window');
 
-    const tabOrder = ['perform', 'fx', 'branding', 'video', 'nowplaying', 'setup', 'about'];
+    const tabOrder = ['perform', 'fx', 'branding', 'video', 'nowplaying', 'lighting', 'setup', 'about'];
     let currentTabIndex = 0;
 
     function switchTab(tabId) {
         if (hud) hud.classList.remove('show-all-panes');
         if (btnActAll) btnActAll.classList.remove('active');
 
-        // Aliases for consolidated setup & branding tabs
+        // Aliases for consolidated setup, lighting & branding tabs
         if (tabId === 'audio') tabId = 'perform';
         if (tabId === 'glow' || tabId === 'logo') tabId = 'branding';
         if (tabId === 'banner' || tabId === 'track') tabId = 'nowplaying';
         if (tabId === 'info' || tabId === 'specs') tabId = 'about';
-        if (tabId === 'obs' || tabId === 'hue' || tabId === 'bridge') {
+        if (tabId === 'hue' || tabId === 'dmx') {
+            switchLightingSubtab(tabId);
+            tabId = 'lighting';
+        }
+        if (tabId === 'obs' || tabId === 'bridge' || tabId === 'session' || tabId === 'tracklist') {
             switchSetupSubtab(tabId);
             tabId = 'setup';
         }
@@ -6071,6 +6226,11 @@ async function init() {
         if (targetIndex === 22 && window.videoPlaybackManager && typeof window.videoPlaybackManager.onSceneActivated === 'function') {
             window.videoPlaybackManager.onSceneActivated();
         }
+
+        // Update Active Scene Banner on Live Performance Console (#pane-perform)
+        if (window.sceneConfigCogCtrl && typeof window.sceneConfigCogCtrl.updateActiveSceneBanner === 'function') {
+            window.sceneConfigCogCtrl.updateActiveSceneBanner(targetIndex);
+        }
     }
     window.selectFX = selectFX;
 
@@ -6789,7 +6949,10 @@ async function init() {
                 const isMet = status.internet;
                 chipsHtml += `<span class="req-chip ${isMet ? 'met' : 'unmet'}" title="${isMet ? 'Internet: Online & Synchronized' : 'Internet: Offline'}">${isMet ? '✓' : '✗'} 🌐 NET</span>`;
             }
-            reqsEl.innerHTML = chipsHtml;
+            if (reqsEl._lastHtml !== chipsHtml) {
+                reqsEl._lastHtml = chipsHtml;
+                reqsEl.innerHTML = chipsHtml;
+            }
 
             // Missing strict requirement alert chip (e.g. DJ Deck)
             let alertEl = card.querySelector('.fx-card-unmet-alert');
@@ -7030,6 +7193,21 @@ async function init() {
                 }
             }
 
+            // 4b. Per-Scene Effect Speed & Hellfire Handover Threshold
+            const isSpeedLocked = (sceneIndex === 3 || sceneIndex === 15);
+            const targetSpeed = (!isSpeedLocked && profile.fx && profile.fx.speed !== undefined)
+                ? Number(profile.fx.speed)
+                : 1.0;
+            if (vfx && typeof vfx.setSceneSpeed === 'function') {
+                vfx.setSceneSpeed(sceneIndex, targetSpeed);
+            }
+            if (sceneIndex === 3 && profile.fx && profile.fx.handoverThreshold !== undefined) {
+                const pct = Math.max(50, Math.min(98, Number(profile.fx.handoverThreshold) || 85));
+                if (vfx && typeof vfx.setHandoverThreshold === 'function') {
+                    vfx.setHandoverThreshold(pct / 100);
+                }
+            }
+
             // 5. Lighting (Hue / DMX)
             if (profile.lighting) {
                 if (isSceneCustomized && profile.lighting.hueSync !== undefined) {
@@ -7054,6 +7232,16 @@ async function init() {
                     isHueKickStrobeActive = !!profile.lighting.hueKickStrobe;
                     if (btnHueKickStrobe) btnHueKickStrobe.classList.toggle('active', isHueKickStrobeActive);
                 }
+                if (profile.lighting.dmxEnabled !== undefined) dmxState.enabled = !!profile.lighting.dmxEnabled;
+                if (profile.lighting.dmxProtocol) dmxState.protocol = profile.lighting.dmxProtocol;
+                if (profile.lighting.dmxProfile) dmxState.profile = profile.lighting.dmxProfile;
+                if (profile.lighting.dmxUniverse !== undefined) dmxState.universe = Number(profile.lighting.dmxUniverse) || 1;
+                if (profile.lighting.dmxStartChannel !== undefined) dmxState.startChannel = Number(profile.lighting.dmxStartChannel) || 1;
+                if (profile.lighting.dmxMaster !== undefined) dmxState.master = Number(profile.lighting.dmxMaster);
+                if (profile.lighting.dmxStrobe !== undefined) dmxState.strobe = Number(profile.lighting.dmxStrobe);
+                if (profile.lighting.dmxSpeed !== undefined) dmxState.speed = Number(profile.lighting.dmxSpeed) || 1.0;
+                syncDmxControlsUI();
+
                 if (stagelinqClient && stagelinqClient.setHueConfig && isSceneCustomized) {
                     const newHueSig = `${hueCurrentMode}_${hueCurrentIntensity}_${hueCurrentMinBri}_${isHueKickStrobeActive}`;
                     if (window._lastSentHueSig !== newHueSig) {
@@ -7074,7 +7262,100 @@ async function init() {
         }
 
         updateMatrixUI();
+        if (window.sceneConfigCogCtrl && typeof window.sceneConfigCogCtrl.refreshAllBadges === 'function') {
+            window.sceneConfigCogCtrl.refreshAllBadges();
+        }
     }
+
+    function getCurrentConsoleSnapshot(targetSceneId) {
+        const activePosPill = Array.from(posPills || []).find(p => p.classList.contains('active'));
+        const activeSpinPill = Array.from(spinPills || []).find(p => p.classList.contains('active'));
+        const activeStPosPill = Array.from(stationPosPills || []).find(p => p.classList.contains('active'));
+        const activeStSpinPill = Array.from(stationSpinPills || []).find(p => p.classList.contains('active'));
+        const activeFlPosPill = Array.from(flyerPosPills || []).find(p => p.classList.contains('active'));
+        const activeFlSpinPill = Array.from(flyerSpinPills || []).find(p => p.classList.contains('active'));
+        const sceneIdx = (targetSceneId !== undefined) ? Number(targetSceneId) : (vfx.getCurrentFX ? vfx.getCurrentFX() : 0);
+        const speedVal = (vfx && typeof vfx.getSceneSpeed === 'function') ? vfx.getSceneSpeed(sceneIdx) : 1.0;
+        const handoverPct = (vfx && typeof vfx.getHandoverThreshold === 'function')
+            ? Math.round(vfx.getHandoverThreshold() * 100)
+            : 85;
+
+        return {
+            fx: {
+                speed: Number(speedVal.toFixed(2)),
+                handoverThreshold: handoverPct
+            },
+            djLogo: {
+                enabled: !!isLogoActive,
+                url: currentDjLogoUrl || '',
+                title: currentDjLogoTitle || 'Default DJ Logo',
+                isVideo: !!currentDjLogoIsVideo,
+                position: activePosPill ? activePosPill.getAttribute('data-pos') : 'center',
+                spin: activeSpinPill ? activeSpinPill.getAttribute('data-spin') : 'vinyl',
+                spinSpeed: sliderLogoSpinSpeed ? parseFloat(sliderLogoSpinSpeed.value) : 1.0,
+                scale: sliderLogoScale ? parseFloat(sliderLogoScale.value) : 1.0,
+                offsetX: sliderLogoOffsetX ? parseInt(sliderLogoOffsetX.value, 10) : 0,
+                offsetY: sliderLogoOffsetY ? parseInt(sliderLogoOffsetY.value, 10) : 0,
+                contrast: sliderLogoContrast ? parseFloat(sliderLogoContrast.value) : 1.15,
+                bright: sliderLogoBright ? parseFloat(sliderLogoBright.value) : 1.0,
+                shield: checkLogoShield ? !!checkLogoShield.checked : false
+            },
+            stationLogo: {
+                enabled: !!isStationLogoActive,
+                url: currentStationLogoUrl || '',
+                title: currentStationLogoTitle || 'Default Station Bug',
+                isVideo: !!currentStationLogoIsVideo,
+                position: activeStPosPill ? activeStPosPill.getAttribute('data-st-pos') : 'top-right',
+                spin: activeStSpinPill ? activeStSpinPill.getAttribute('data-st-spin') : 'flat',
+                spinSpeed: sliderStationSpinSpeed ? parseFloat(sliderStationSpinSpeed.value) : 1.0,
+                scale: sliderStationScale ? parseFloat(sliderStationScale.value) : 1.0,
+                offsetX: sliderStationOffsetX ? parseInt(sliderStationOffsetX.value, 10) : 0,
+                offsetY: sliderStationOffsetY ? parseInt(sliderStationOffsetY.value, 10) : 0
+            },
+            flyer: {
+                enabled: !!isFlyerActive,
+                url: currentFlyerUrl || '',
+                title: currentFlyerTitle || 'Default Flyer',
+                isVideo: !!currentFlyerIsVideo,
+                position: activeFlPosPill ? activeFlPosPill.getAttribute('data-fl-pos') : 'center',
+                spin: activeFlSpinPill ? activeFlSpinPill.getAttribute('data-fl-spin') : 'flat',
+                spinSpeed: sliderFlyerSpinSpeed ? parseFloat(sliderFlyerSpinSpeed.value) : 1.0,
+                scale: sliderFlyerScale ? parseFloat(sliderFlyerScale.value) : 1.0,
+                offsetX: sliderFlyerOffsetX ? parseInt(sliderFlyerOffsetX.value, 10) : 0,
+                offsetY: sliderFlyerOffsetY ? parseInt(sliderFlyerOffsetY.value, 10) : 0
+            },
+            macro: {
+                gain: sliderGain ? parseFloat(sliderGain.value) : 1.0,
+                sens: sliderSens ? parseFloat(sliderSens.value) : 1.0,
+                bloom: sliderBloom ? parseFloat(sliderBloom.value) : 0.35
+            },
+            lighting: {
+                hueSync: !!isHueActive,
+                hueMode: hueCurrentMode || 'auto',
+                hueIntensity: sliderHueIntensity ? parseInt(sliderHueIntensity.value, 10) : Math.round((hueCurrentIntensity || 0.85) * 100),
+                hueMinBri: sliderHueMinBri ? parseInt(sliderHueMinBri.value, 10) : Math.round((hueCurrentMinBri || 0.15) * 100),
+                hueKickStrobe: !!isHueKickStrobeActive,
+                dmxEnabled: !!dmxState.enabled,
+                dmxProtocol: dmxState.protocol,
+                dmxProfile: dmxState.profile,
+                dmxUniverse: dmxState.universe,
+                dmxStartChannel: dmxState.startChannel,
+                dmxMaster: dmxState.master,
+                dmxStrobe: dmxState.strobe,
+                dmxSpeed: dmxState.speed
+            }
+        };
+    }
+
+    // Initialize Per-Scene Configuration Cog (⚙️) & Active Scene Banner Controller
+    window.sceneConfigCogCtrl = initSceneConfigCogController({
+        vfx,
+        getCurrentConsoleSnapshot,
+        applySceneProfile,
+        selectFX: (idx) => selectFX(idx),
+        switchTab,
+        showToast
+    });
 
     function updateMatrixUI() {
         if (!matrixCardsContainer) {
@@ -9369,11 +9650,14 @@ async function init() {
             hardwarePacketWindow = 0;
             lastPacketRateCalcTime = nowRate;
         }
-        if (typeof updateSceneRequirementsUI === 'function') {
-            updateSceneRequirementsUI();
-        }
-        if (typeof updateConsoleHealthMiniStrip === 'function') {
-            updateConsoleHealthMiniStrip();
+        if (!window._lastHwReqUiUpdateTime || (nowRate - window._lastHwReqUiUpdateTime >= 500)) {
+            window._lastHwReqUiUpdateTime = nowRate;
+            if (typeof updateSceneRequirementsUI === 'function') {
+                updateSceneRequirementsUI();
+            }
+            if (typeof updateConsoleHealthMiniStrip === 'function') {
+                updateConsoleHealthMiniStrip();
+            }
         }
         if (cdjMeterContainer) cdjMeterContainer.style.display = 'block';
         if (cdj3000View) cdj3000View.style.display = 'block';
@@ -10466,7 +10750,7 @@ async function init() {
     };
 
     window.addEventListener('keydown', (e) => {
-        // [Alt + 1..6] for 6 Master Consoles, [Alt + A] for Show All
+        // [Alt + 1..8] for Master Consoles, [Alt + A] for Show All
         if (e.altKey) {
             if (e.key === '1') { e.preventDefault(); switchTab('perform'); return; }
             if (e.key === '2') { e.preventDefault(); switchTab('fx'); return; }
@@ -10475,6 +10759,7 @@ async function init() {
             if (e.key === '5') { e.preventDefault(); switchTab('setup'); return; }
             if (e.key === '6') { e.preventDefault(); switchTab('about'); return; }
             if (e.key === '7') { e.preventDefault(); switchTab('video'); return; }
+            if (e.key === '8') { e.preventDefault(); switchTab('lighting'); return; }
             if (e.key === 'a' || e.key === 'A') {
                 e.preventDefault();
                 if (btnActAll) btnActAll.click();
@@ -10513,11 +10798,14 @@ async function init() {
         else if (e.key === 'n' || e.key === 'N') {
             setTrackBannerEnabled(!isTrackBannerEnabled, true);
         }
-        // [C] to toggle Clean Display Mode for Stage / 2nd Screen
-        else if (e.key === 'c' || e.key === 'C') {
+        // [C] to toggle Clean Display Mode for Stage / 2nd Screen (also hides Notch bar)
+        else if (!e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'c' || e.key === 'C')) {
             hud.classList.toggle('hidden');
             fxBankPanel.classList.toggle('hidden');
-            document.body.style.cursor = hud.classList.contains('hidden') ? 'none' : 'default';
+            const isHudHidden = hud.classList.contains('hidden');
+            const topNotch = document.getElementById('hud-top-notch');
+            if (topNotch) topNotch.classList.toggle('hidden', isHudHidden);
+            document.body.style.cursor = isHudHidden ? 'none' : 'default';
         }
         // [Space] for manual beat strobe / flash
         else if (e.code === 'Space') {
@@ -10540,11 +10828,14 @@ async function init() {
                 document.exitFullscreen().catch(err => console.log(err));
             }
         }
-        // [H] to toggle entire HUD Console / UI & Toolbar
-        else if (e.key === 'h' || e.key === 'H') {
+        // [H] to toggle entire HUD Console / UI, Toolbar & Top Notch Bar
+        else if (!e.altKey && !e.ctrlKey && !e.metaKey && (e.key === 'h' || e.key === 'H')) {
             if (hud) hud.classList.toggle('hidden');
             if (fxBankPanel) fxBankPanel.classList.toggle('hidden');
-            document.body.style.cursor = (hud && hud.classList.contains('hidden')) ? 'none' : 'default';
+            const isHudHidden = !!(hud && hud.classList.contains('hidden'));
+            const topNotch = document.getElementById('hud-top-notch');
+            if (topNotch) topNotch.classList.toggle('hidden', isHudHidden);
+            document.body.style.cursor = isHudHidden ? 'none' : 'default';
         }
         // [O] to open OBS Streaming Manager or Shift+[O] to toggle OBS Output Mute
         else if (e.key === 'o' || e.key === 'O') {
@@ -10657,6 +10948,10 @@ async function init() {
                 (realAudio.bass > 0.04 && realAudio.overall > 0.02)
             )) {
                 isRealAudioActive = true;
+                window._lastRealAudioActiveTime = now;
+            } else if (!isDeckLiveSelected && realAudio && window._lastRealAudioActiveTime && (now - window._lastRealAudioActiveTime < 1500)) {
+                // 1.5s hold hysteresis so quiet gaps between kicks never flip source badges at 60Hz
+                isRealAudioActive = true;
             }
         }
 
@@ -10757,26 +11052,37 @@ async function init() {
 
         if (!isCleanDisplay && eqEnergyBadge) {
             const isAudioActive = (data.bass > 0.04 || (data.smoothedMid || data.mid || 0) > 0.04 || (data.smoothedTreble || data.treble || 0) > 0.04 || (data.overall || 0) > 0.03);
+            let nextBadgeState = 'live';
             if (!isAudioActive) {
-                eqEnergyBadge.textContent = 'STANDBY';
-                eqEnergyBadge.style.color = '#8c91a0';
-                eqEnergyBadge.style.borderColor = 'rgba(140,145,160,0.3)';
-                eqEnergyBadge.style.background = 'rgba(140,145,160,0.1)';
+                nextBadgeState = 'standby';
             } else if (data.isOnset && (data.bassImpact || data.bass || 0) > 0.70) {
-                eqEnergyBadge.textContent = '🔥 SUB DROP';
-                eqEnergyBadge.style.color = '#ff0055';
-                eqEnergyBadge.style.borderColor = '#ff0055';
-                eqEnergyBadge.style.background = 'rgba(255,0,85,0.25)';
+                nextBadgeState = 'drop';
             } else if (data.transientImpulse > 0.40) {
-                eqEnergyBadge.textContent = '⚡ TRANSIENT';
-                eqEnergyBadge.style.color = '#00ffff';
-                eqEnergyBadge.style.borderColor = '#00ffff';
-                eqEnergyBadge.style.background = 'rgba(0,255,255,0.20)';
-            } else {
-                eqEnergyBadge.textContent = 'LIVE SPECTRUM';
-                eqEnergyBadge.style.color = '#00ffcc';
-                eqEnergyBadge.style.borderColor = 'rgba(0,255,204,0.3)';
-                eqEnergyBadge.style.background = 'rgba(0,255,204,0.12)';
+                nextBadgeState = 'transient';
+            }
+            if (eqEnergyBadge._lastState !== nextBadgeState) {
+                eqEnergyBadge._lastState = nextBadgeState;
+                if (nextBadgeState === 'standby') {
+                    eqEnergyBadge.textContent = 'STANDBY';
+                    eqEnergyBadge.style.color = '#8c91a0';
+                    eqEnergyBadge.style.borderColor = 'rgba(140,145,160,0.3)';
+                    eqEnergyBadge.style.background = 'rgba(140,145,160,0.1)';
+                } else if (nextBadgeState === 'drop') {
+                    eqEnergyBadge.textContent = '● SUB DROP';
+                    eqEnergyBadge.style.color = '#ff0055';
+                    eqEnergyBadge.style.borderColor = '#ff0055';
+                    eqEnergyBadge.style.background = 'rgba(255,0,85,0.25)';
+                } else if (nextBadgeState === 'transient') {
+                    eqEnergyBadge.textContent = '▲ TRANSIENT';
+                    eqEnergyBadge.style.color = '#00ffff';
+                    eqEnergyBadge.style.borderColor = '#00ffff';
+                    eqEnergyBadge.style.background = 'rgba(0,255,255,0.20)';
+                } else {
+                    eqEnergyBadge.textContent = 'LIVE SPECTRUM';
+                    eqEnergyBadge.style.color = '#00ffcc';
+                    eqEnergyBadge.style.borderColor = 'rgba(0,255,204,0.3)';
+                    eqEnergyBadge.style.background = 'rgba(0,255,204,0.12)';
+                }
             }
         }
 
@@ -10831,22 +11137,26 @@ async function init() {
             vuClipBadge.style.display = 'none';
         }
 
-        // Update Explicit Monitor Source Badges across console UI
+        // Update Explicit Monitor Source Badges across console UI (diffed & fixed single-line width)
         if (vuMonitorSourceBadge && data) {
-            if (data.sourceType === 'audio_interface') {
-                const label = data.sourceLabel || 'AUDIO INTERFACE';
-                const cleanName = label.length > 22 ? label.slice(0, 20) + '...' : label;
-                vuMonitorSourceBadge.textContent = `● SOURCE: ${cleanName.toUpperCase()} (LIVE PCM)`;
-                vuMonitorSourceBadge.style.color = '#00ffcc';
-                vuMonitorSourceBadge.style.borderColor = 'rgba(0,255,204,0.45)';
-                vuMonitorSourceBadge.style.background = 'rgba(0,255,204,0.12)';
-                vuMonitorSourceBadge.title = `Monitoring live acoustic audio from ${label}`;
-            } else {
-                vuMonitorSourceBadge.textContent = '● SOURCE: DECK METRICS (SYNTH - NO AUDIO IN)';
-                vuMonitorSourceBadge.style.color = '#ffaa00';
-                vuMonitorSourceBadge.style.borderColor = 'rgba(255,170,0,0.45)';
-                vuMonitorSourceBadge.style.background = 'rgba(255,170,0,0.12)';
-                vuMonitorSourceBadge.title = 'No live audio input signal detected. Operating from StageLinQ deck telemetry.';
+            const sig = `${data.sourceType}_${data.sourceLabel || ''}`;
+            if (vuMonitorSourceBadge._lastSig !== sig) {
+                vuMonitorSourceBadge._lastSig = sig;
+                if (data.sourceType === 'audio_interface') {
+                    const label = data.sourceLabel || 'AUDIO INTERFACE';
+                    const cleanName = label.length > 16 ? label.slice(0, 14) + '..' : label;
+                    vuMonitorSourceBadge.textContent = `● LIVE PCM: ${cleanName.toUpperCase()}`;
+                    vuMonitorSourceBadge.style.color = '#00ffcc';
+                    vuMonitorSourceBadge.style.borderColor = 'rgba(0,255,204,0.45)';
+                    vuMonitorSourceBadge.style.background = 'rgba(0,255,204,0.12)';
+                    vuMonitorSourceBadge.title = `Monitoring live acoustic audio from ${label}`;
+                } else {
+                    vuMonitorSourceBadge.textContent = '● DECK SYNTH (STAGELINQ)';
+                    vuMonitorSourceBadge.style.color = '#ffaa00';
+                    vuMonitorSourceBadge.style.borderColor = 'rgba(255,170,0,0.45)';
+                    vuMonitorSourceBadge.style.background = 'rgba(255,170,0,0.12)';
+                    vuMonitorSourceBadge.title = 'No live audio input signal detected. Operating from StageLinQ deck telemetry.';
+                }
             }
         }
 

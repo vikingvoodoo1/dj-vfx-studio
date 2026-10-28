@@ -6929,6 +6929,10 @@ export function createVFXScene(container) {
     let streamFlowProgress = 0.0;
     let streamCurveTime = 0.0;
 
+    // Per-scene effect speed multipliers (1.0 = normal speed; Scene 04/FX 3 is deck-locked at 1.0)
+    const sceneSpeedMultipliers = new Float32Array(32).fill(1.0);
+    let virtualElapsedTime = 0.0;
+
     function switchFX(index) {
         if (index >= 0 && index < fxRoots.length) {
             fxRoots.forEach((grp, idx) => {
@@ -6946,11 +6950,11 @@ export function createVFXScene(container) {
             nightclubPass.uniforms.uAberration.value = 0.3;
             manualFlash = 0.3;
             if (index === 19) {
-                vhsLastPhraseSwitchTime = clock.getElapsedTime();
+                vhsLastPhraseSwitchTime = virtualElapsedTime;
                 renderVhsTextCanvas(vhsCurrentPhraseIdx);
             }
             if (index === 21) {
-                const now = clock.getElapsedTime();
+                const now = virtualElapsedTime;
                 hauntedWeatherState = 'clear';
                 hauntedWeatherTimer = 0.0;
                 hauntedWeatherPhaseDuration = 14.0; // Initial dry moonlit spell (14s) before storm clouds gather
@@ -7131,12 +7135,19 @@ export function createVFXScene(container) {
     function animate(getAudioDataFn) {
         requestAnimationFrame(() => animate(getAudioDataFn));
 
-        const delta = Math.min(clock.getDelta(), 0.1);
-        const elapsedTime = clock.getElapsedTime();
+        const rawDelta = Math.min(clock.getDelta(), 0.1);
+        const realElapsedTime = clock.getElapsedTime();
 
-        // Update continuous StageLinQ hardware deck waveform synthesis across all scenes
-        advanceDeckPlaybackProgress(delta);
+        // Update continuous StageLinQ hardware deck waveform synthesis across all scenes using 1:1 hardware time
+        advanceDeckPlaybackProgress(rawDelta);
         updateSynthesizedDeckSpectrum();
+
+        // Apply per-scene effect speed multiplier (Hellfire Waveforms FX 3 & Time.is Clock FX 15 stay 1:1 deck/clock locked)
+        const isDeckLockedScene = (currentFXIndex === 3 || currentFXIndex === 15);
+        const activeSceneSpeed = isDeckLockedScene ? 1.0 : Math.max(0.1, Math.min(3.0, sceneSpeedMultipliers[currentFXIndex] || 1.0));
+        const delta = rawDelta * activeSceneSpeed;
+        virtualElapsedTime += delta;
+        const elapsedTime = isDeckLockedScene ? realElapsedTime : virtualElapsedTime;
 
         let audio = null;
         if (typeof getAudioDataFn === 'function') {
@@ -10976,6 +10987,27 @@ export function createVFXScene(container) {
             }
         },
         getHandoverThreshold: () => faderHandoverThreshold,
+        setSceneSpeed: (sceneIdx, val) => {
+            const idx = parseInt(sceneIdx, 10);
+            const num = parseFloat(val);
+            if (!isNaN(idx) && idx >= 0 && idx < sceneSpeedMultipliers.length && !isNaN(num)) {
+                const clamped = Math.max(0.1, Math.min(3.0, num));
+                sceneSpeedMultipliers[idx] = clamped;
+                if (idx === 22) {
+                    videoSpeedSetting = clamped;
+                    if (videoChannelA) videoChannelA.playbackRate = clamped;
+                    if (videoChannelB) videoChannelB.playbackRate = clamped;
+                    if (directVideoOverlay) directVideoOverlay.playbackRate = clamped;
+                }
+            }
+        },
+        getSceneSpeed: (sceneIdx) => {
+            const idx = parseInt(sceneIdx, 10);
+            if (!isNaN(idx) && idx >= 0 && idx < sceneSpeedMultipliers.length) {
+                return sceneSpeedMultipliers[idx] || 1.0;
+            }
+            return sceneSpeedMultipliers[currentFXIndex] || 1.0;
+        },
         setCrossfader: (xfVal) => {
             const val = Math.max(0.0, Math.min(1.0, Number(xfVal)));
             // val: 0.0 = Deck 1, 1.0 = Deck 2, 0.5 = center blend
@@ -11217,7 +11249,7 @@ export function createVFXScene(container) {
                 cinemaScreenShaderMat.uniforms.uHasVideo.value = 1.0;
             }
             videoTransitionDuration = Math.max(0.1, Number(durSec) || 1.0);
-            videoTransitionStartTime = clock.getElapsedTime();
+            videoTransitionStartTime = virtualElapsedTime;
             videoTransitionActive = true;
 
             if (directVideoOverlay) {
